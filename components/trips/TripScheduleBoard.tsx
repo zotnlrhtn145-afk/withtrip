@@ -3,13 +3,13 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { AccommodationSection } from "@/components/trips/AccommodationSection"
 import { FlightSection } from "@/components/trips/FlightSection"
-import { ItineraryTab } from "@/components/trips/ItineraryTab"
+import { ScheduleSection } from "@/components/trips/ScheduleSection"
 import { type Trip } from "@/lib/trip-data"
 
 /**
  * 상세 페이지 상단 2컬럼 보드
  * 좌(5): 비행기 일정 + 숙소 정보
- * 우(7): Supabase 연동 ItineraryTab 타임라인
+ * 우(7): Supabase 연동 여행 일정 (ScheduleSection)
  */
 export function TripScheduleBoard({
   trip,
@@ -31,7 +31,11 @@ export function TripScheduleBoard({
       <div className="min-w-0 lg:col-span-7">
         <Card className="h-full">
           <CardContent className="pt-6">
-            <ItineraryTab trip={trip} />
+            <ScheduleSection
+              tripId={trip.id}
+              tripStartDate={trip.startDate}
+              tripCity={trip.title.split(/[·•]/)[0]?.trim() || trip.region}
+            />
           </CardContent>
         </Card>
       </div>

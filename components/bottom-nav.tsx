@@ -36,7 +36,7 @@ export function BottomNav({
           className={cn(
             "absolute left-1/2 z-10 flex size-[3.75rem] -translate-x-1/2 -translate-y-[55%] items-center justify-center rounded-full",
             "bg-primary text-primary-foreground shadow-[0_8px_24px_rgba(255,193,7,0.45)]",
-            "ring-[6px] ring-card transition-transform active:scale-95",
+            "ring-[6px] ring-card transform-gpu transition-transform duration-150 ease-out active:scale-[0.97]",
             "hover:brightness-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/40"
           )}
         >
@@ -53,7 +53,7 @@ export function BottomNav({
                   onClick={() => onSelect(item.key)}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "flex w-full flex-col items-center gap-1 py-2 text-[10px] font-medium transition-colors sm:text-[11px]",
+                    "flex w-full flex-col items-center gap-1 py-2 text-[10px] font-medium transform-gpu transition-[color,transform] duration-150 ease-out active:scale-[0.97] sm:text-[11px]",
                     isActive ? "text-foreground" : "text-muted-foreground"
                   )}
                 >
@@ -63,7 +63,7 @@ export function BottomNav({
                       isActive ? "bg-primary text-primary-foreground" : "bg-transparent"
                     )}
                   >
-                    <item.icon className="size-4" />
+                    <item.icon className="size-4 stroke-[1.35]" />
                   </span>
                   {item.label}
                 </button>

@@ -79,7 +79,8 @@ export function PlaceRegisterModal({
       <button
         type="button"
         aria-label="모달 닫기"
-        className="absolute inset-0 bg-black/45 animate-in fade-in-0"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-200 ease-out animate-in fade-in-0"
+        data-no-press
         onClick={() => onOpenChange(false)}
       />
 
@@ -87,7 +88,7 @@ export function PlaceRegisterModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="place-modal-title"
-        className="relative z-10 flex max-h-[92dvh] w-full flex-col rounded-t-3xl border border-border bg-card shadow-2xl animate-in slide-in-from-bottom-4 duration-300 sm:mx-4 sm:rounded-3xl"
+        className="relative z-10 flex max-h-[92dvh] w-full flex-col rounded-t-3xl border border-border bg-card shadow-2xl transform-gpu animate-in fade-in zoom-in-95 duration-200 ease-out sm:mx-4 sm:rounded-3xl"
       >
         <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
           <div className="flex items-center gap-2">

@@ -13,10 +13,11 @@ import {
 } from "lucide-react"
 
 import { useTrips } from "@/components/trips-store"
-import { Avatar, AvatarFallback, AvatarGroup } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { getTripMembers, formatTripDuration, type Trip } from "@/lib/trip-data"
 import { FALLBACK_TRIP_COVER } from "@/lib/getCityImage"
+import { getTripMembers, formatTripDuration, type Trip } from "@/lib/trip-data"
+import { formatMemberSummary } from "@/lib/trip-group"
 
 const weatherIcons = {
   sun: Sun,
@@ -35,7 +36,10 @@ export function TripBannerCard({
 }) {
   const { members } = useTrips()
   const WeatherIcon = weatherIcons[trip.weatherIcon]
-  const tripMembers = getTripMembers(trip, members)
+  const tripMembers = trip.groupMembers?.length
+    ? trip.groupMembers
+    : getTripMembers(trip, members)
+  const memberSummary = formatMemberSummary(tripMembers.map((member) => member.name))
   const [coverSrc, setCoverSrc] = useState(trip.heroImage || FALLBACK_TRIP_COVER)
 
   useEffect(() => {
@@ -47,7 +51,7 @@ export function TripBannerCard({
       type="button"
       onClick={() => onSelect(trip)}
       aria-label={`${trip.title} 상세 보기`}
-      className="group relative block h-64 w-full overflow-hidden rounded-2xl border border-border text-left ring-offset-2 ring-offset-background transition-transform outline-none focus-visible:ring-2 focus-visible:ring-ring hover:-translate-y-0.5 sm:h-72"
+      className="group media-card relative block h-64 w-full overflow-hidden rounded-2xl border border-border text-left ring-offset-2 ring-offset-background outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-72"
     >
       <Image
         src={coverSrc}
@@ -55,10 +59,9 @@ export function TripBannerCard({
         fill
         priority={priority}
         sizes="(min-width: 1280px) 640px, (min-width: 768px) 50vw, 100vw"
-        className="object-cover transition-transform duration-500 group-hover:scale-105"
+        className="media-card-image object-cover"
         onError={() => setCoverSrc(FALLBACK_TRIP_COVER)}
       />
-      {/* Netflix-style cinematic scrim for readable white type */}
       <div
         aria-hidden="true"
         className="absolute inset-0 z-10 bg-gradient-to-t from-black/80 via-black/30 to-transparent"
@@ -104,14 +107,21 @@ export function TripBannerCard({
           <AvatarGroup className="-space-x-1.5">
             {tripMembers.map((member) => (
               <Avatar key={member.id} className="size-6 ring-2 ring-black/40">
+                {"avatarUrl" in member && member.avatarUrl ? (
+                  <AvatarImage src={member.avatarUrl} alt="" />
+                ) : null}
                 <AvatarFallback className={`${member.color} text-[10px] font-semibold`}>
                   {member.initials}
                 </AvatarFallback>
               </Avatar>
             ))}
           </AvatarGroup>
-          <span className="text-xs text-white/90">
-            멤버 {tripMembers.length}명 · {formatTripDuration(trip.nights, trip.days)}
+          <span className="truncate text-xs text-white/90">
+            {memberSummary}
+            <span className="text-white/70">
+              {" "}
+              · {formatTripDuration(trip.nights, trip.days)}
+            </span>
           </span>
         </div>
       </div>

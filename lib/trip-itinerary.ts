@@ -211,7 +211,7 @@ export const seedStays: Record<string, StayEntry[]> = {
 
 /* ── 가고 싶은 곳 (Wishlist) ───────────────────────────────────────── */
 
-export type WishlistKind = 'restaurant' | 'bar'
+export type WishlistKind = 'restaurant' | 'bar' | 'stay'
 
 export type WishlistEntry = Place & { kind: WishlistKind }
 
@@ -220,9 +220,26 @@ export const wishlistCategories: {
   label: string
   guide: string
 }[] = [
-  { kind: 'restaurant', label: '미슐랭 레스토랑', guide: 'Michelin Guide 2026' },
-  { kind: 'bar', label: '라운지 & 바', guide: "World's 50 Best Bars" },
+  { kind: 'restaurant', label: '레스토랑', guide: 'Restaurant' },
+  { kind: 'bar', label: '라운지 & 바', guide: 'Lounge & Bar' },
+  { kind: 'stay', label: '숙소', guide: 'Hotel & Stay' },
 ]
+
+/** Canonical category values stored in `saved_places.category`. */
+export const WISHLIST_CATEGORY_VALUE: Record<WishlistKind, string> = {
+  restaurant: '레스토랑',
+  bar: '라운지 & 바',
+  stay: '숙소',
+}
+
+export function toWishlistKind(category: unknown): WishlistKind {
+  const raw = String(category ?? '').trim()
+  if (raw === WISHLIST_CATEGORY_VALUE.stay || raw === 'stay' || raw === '숙소') return 'stay'
+  if (raw === WISHLIST_CATEGORY_VALUE.bar || raw === 'bar') return 'bar'
+  if (/숙소|hotel|lodging|resort|리조트|료칸|ryokan|stay/i.test(raw)) return 'stay'
+  if (/라운지|lounge|\bbar\b|바/i.test(raw)) return 'bar'
+  return 'restaurant'
+}
 
 export const seedWishlist: Record<string, WishlistEntry[]> = {
   'osaka-kyoto': [
@@ -291,7 +308,7 @@ export const wishlistSuggestions: (Omit<Place, 'id' | 'savedBy'> & { kind: Wishl
     badgeNote: '교토 카모가와 뷰',
     address: '359 Kiyamachi-dori, Nakagyo-ku, Kyoto 604-8017',
     phone: '+81 75-212-5556',
-    category: '���그니처 칵테일 · 강변 뷰',
+    category: '시그니처 칵테일 · 강변 뷰',
     priceRange: '¥¥¥',
     rating: 4.5,
     reviews: 386,

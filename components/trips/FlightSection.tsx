@@ -158,7 +158,7 @@ function FlightTicket({
   const badgeLabel = [flight.airlineName, flight.flightNo].filter(Boolean).join(" · ")
 
   return (
-    <li className="relative overflow-hidden rounded-2xl bg-secondary/70 ring-1 ring-border">
+    <li className="media-card relative overflow-hidden rounded-2xl bg-secondary/70 ring-1 ring-border">
       {code ? (
         <span
           aria-hidden="true"
@@ -209,7 +209,7 @@ function LayoverJourney({
   onDelete: (id: string) => void
 }) {
   return (
-    <li className="overflow-hidden rounded-2xl bg-secondary/70 ring-1 ring-border">
+    <li className="media-card overflow-hidden rounded-2xl bg-secondary/70 ring-1 ring-border">
       <div className="flex flex-col gap-0 px-5 py-4">
         {flights.map((flight, index) => {
           const accent = airlineAccent(flight.airlineName)

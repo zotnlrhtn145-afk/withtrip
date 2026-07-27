@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
+  Building2,
+  Check,
   ChevronRight,
   Crown,
   KeyRound,
@@ -10,6 +12,7 @@ import {
   Pencil,
   Plane,
   UserRoundX,
+  Wallet,
 } from "lucide-react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -18,9 +21,23 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { useTrips } from "@/components/trips-store"
 import { demoUser } from "@/lib/auth-data"
+import {
+  BANK_OPTIONS,
+  CRYPTO_NETWORK_OPTIONS,
+  EMPTY_PAYOUT_ACCOUNT,
+  type PayoutAccount,
+} from "@/lib/payout-account"
+import { fetchUserPayoutAccount, saveUserPayoutAccount } from "@/lib/user-api"
 import { getTripMembers, type Trip } from "@/lib/trip-data"
 
 export function MyPageView({
@@ -33,6 +50,55 @@ export function MyPageView({
   const { trips, members } = useTrips()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(demoUser.name)
+  const [payout, setPayout] = useState<PayoutAccount>(EMPTY_PAYOUT_ACCOUNT)
+  const [payoutSaved, setPayoutSaved] = useState(false)
+  const [payoutHint, setPayoutHint] = useState<string | null>(null)
+  const [payoutLoading, setPayoutLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      setPayoutLoading(true)
+      const result = await fetchUserPayoutAccount()
+      if (cancelled) return
+      setPayout(result.account)
+      setPayoutLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const updateBank = <K extends keyof PayoutAccount["bank"]>(
+    key: K,
+    value: PayoutAccount["bank"][K]
+  ) => {
+    setPayout((prev) => ({ ...prev, bank: { ...prev.bank, [key]: value } }))
+    setPayoutSaved(false)
+    setPayoutHint(null)
+  }
+
+  const updateCrypto = <K extends keyof PayoutAccount["crypto"]>(
+    key: K,
+    value: PayoutAccount["crypto"][K]
+  ) => {
+    setPayout((prev) => ({ ...prev, crypto: { ...prev.crypto, [key]: value } }))
+    setPayoutSaved(false)
+    setPayoutHint(null)
+  }
+
+  const handleSavePayout = () => {
+    void (async () => {
+      const result = await saveUserPayoutAccount(payout)
+      setPayoutSaved(result.ok)
+      setPayoutHint(
+        result.source === "api"
+          ? null
+          : result.error || "로컬에 저장됐어요. DB 연동은 SQL 마이그레이션 후 가능해요."
+      )
+      window.setTimeout(() => setPayoutSaved(false), 2200)
+    })()
+  }
 
   return (
     <div className="flex w-full flex-col gap-5">
@@ -89,7 +155,9 @@ export function MyPageView({
             <div className="rounded-xl bg-secondary px-4 py-3">
               <p className="text-xs text-muted-foreground">다음 출발</p>
               <p className="text-sm font-semibold tabular-nums">
-                {trips.length > 0 ? `D-${Math.min(...trips.map((trip) => trip.dDay))}` : "예정 없음"}
+                {trips.length > 0
+                  ? `D-${Math.min(...trips.map((trip) => trip.dDay))}`
+                  : "예정 없음"}
               </p>
             </div>
           </div>
@@ -141,6 +209,122 @@ export function MyPageView({
               </div>
             </form>
           ) : null}
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-2xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Wallet className="size-4" />
+            정산 수령 계좌 관리
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            정산 받을 은행 계좌와 코인 지갑을 등록하면 카카오톡 공유에 자동으로 포함돼요.
+          </p>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <Building2 className="size-4 text-muted-foreground" />
+              <p className="text-sm font-semibold">은행 계좌 정보</p>
+            </div>
+            <FieldGroup>
+              <Field>
+                <FieldLabel>은행 선택</FieldLabel>
+                <Select
+                  value={payout.bank.bankName || undefined}
+                  onValueChange={(value) => updateBank("bankName", String(value ?? ""))}
+                >
+                  <SelectTrigger className="w-full rounded-xl">
+                    <SelectValue placeholder="은행을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BANK_OPTIONS.map((bank) => (
+                      <SelectItem key={bank} value={bank}>
+                        {bank}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="payout-account-number">계좌번호</FieldLabel>
+                <Input
+                  id="payout-account-number"
+                  inputMode="numeric"
+                  placeholder="하이픈 없이 입력"
+                  value={payout.bank.accountNumber}
+                  onChange={(event) => updateBank("accountNumber", event.target.value)}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="payout-account-holder">예금주</FieldLabel>
+                <Input
+                  id="payout-account-holder"
+                  placeholder="예금주명"
+                  value={payout.bank.accountHolder}
+                  onChange={(event) => updateBank("accountHolder", event.target.value)}
+                />
+              </Field>
+            </FieldGroup>
+          </div>
+
+          <Separator />
+
+          <div className="flex flex-col gap-3">
+            <p className="text-sm font-semibold">암호화폐 지갑 정보</p>
+            <FieldGroup>
+              <Field>
+                <FieldLabel>네트워크 / 코인</FieldLabel>
+                <Select
+                  value={payout.crypto.network || undefined}
+                  onValueChange={(value) => updateCrypto("network", String(value ?? ""))}
+                >
+                  <SelectTrigger className="w-full rounded-xl">
+                    <SelectValue placeholder="네트워크를 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CRYPTO_NETWORK_OPTIONS.map((network) => (
+                      <SelectItem key={network} value={network}>
+                        {network}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="payout-wallet">지갑 주소</FieldLabel>
+                <Input
+                  id="payout-wallet"
+                  placeholder="0x… 또는 지갑 주소"
+                  value={payout.crypto.walletAddress}
+                  onChange={(event) => updateCrypto("walletAddress", event.target.value)}
+                  className="font-mono text-sm"
+                />
+              </Field>
+            </FieldGroup>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              onClick={handleSavePayout}
+              disabled={payoutLoading}
+              className="rounded-full font-semibold"
+            >
+              {payoutSaved ? (
+                <>
+                  <Check data-icon="inline-start" />
+                  저장됨
+                </>
+              ) : (
+                "수령 정보 저장"
+              )}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              {payoutHint || "Supabase profiles에 저장돼요."}
+            </p>
+          </div>
         </CardContent>
       </Card>
 

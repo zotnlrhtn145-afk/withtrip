@@ -7,13 +7,11 @@ import { ArrowLeft, Loader2, Search } from "lucide-react"
 import { AccountMenu } from "@/components/account-menu"
 import { WishlistSection } from "@/components/itinerary/wishlist-section"
 import { NotificationMenu } from "@/components/notification-menu"
-import { SideNav } from "@/components/side-nav"
 import { TripHeroCard } from "@/components/trip-hero-card"
 import { TripSearchDialog } from "@/components/trip-search-dialog"
 import { TripScheduleBoard } from "@/components/trips/TripScheduleBoard"
 import { TripsProvider, useTrips } from "@/components/trips-store"
 import { ViewSwitcher, type ViewMode } from "@/components/view-switcher"
-import { type NavKey } from "@/components/bottom-nav"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { fetchTripById, getErrorMessage } from "@/lib/trips-api"
@@ -29,7 +27,12 @@ function enrichTrip(trip: Trip): Trip {
     weather: trip.weather === "예보 준비 중" ? seed.weather : trip.weather,
     weatherIcon: trip.weather === "예보 준비 중" ? seed.weatherIcon : trip.weatherIcon,
     readiness: trip.readiness <= 5 ? seed.readiness : trip.readiness,
-    memberIds: trip.memberIds.length <= 1 ? seed.memberIds : trip.memberIds,
+    memberIds: trip.groupMembers?.length
+      ? trip.memberIds
+      : trip.memberIds.length <= 1
+        ? seed.memberIds
+        : trip.memberIds,
+    groupMembers: trip.groupMembers,
     flight: trip.flight === "항공편 미정" ? seed.flight : trip.flight,
     heroImageAlt: trip.heroImageAlt || seed.heroImageAlt,
   }
@@ -43,8 +46,6 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<ViewMode>("desktop")
   const [searchOpen, setSearchOpen] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [activeNav, setActiveNav] = useState<NavKey>("home")
   const [flightsRevision, setFlightsRevision] = useState(0)
 
   const handleFlightChange = () => {
@@ -101,16 +102,7 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
   const displayTrip = useMemo(() => (trip ? enrichTrip(trip) : null), [trip])
 
   const goHome = () => router.push("/")
-  const openTrip = (next: Trip) => router.push(`/trips/${next.id}`)
-
-  const handleNavSelect = (key: NavKey) => {
-    setActiveNav(key)
-    if (key === "home") {
-      router.push("/")
-      return
-    }
-    router.push(`/?nav=${key}`)
-  }
+  const openTrip = (next: Trip) => router.push(`/settlement/${next.id}`)
 
   if (loading) {
     return (
@@ -137,11 +129,12 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
 
   const accountMenu = (compact: boolean) => (
     <AccountMenu
-      isLoggedIn={isLoggedIn}
       compact={compact}
       onLoginClick={() => router.push("/?view=login")}
       onMyPageClick={() => router.push("/?nav=mypage")}
-      onLogout={() => setIsLoggedIn(false)}
+      onLogout={() => {
+        router.push("/")
+      }}
     />
   )
 
@@ -189,15 +182,6 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <SideNav
-        active={activeNav}
-        onSelect={handleNavSelect}
-        currentView="detail"
-        selectedTrip={displayTrip}
-        onSelectTrip={openTrip}
-        onHome={goHome}
-      />
-
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-border bg-background/90 px-6 py-3 backdrop-blur">
           <div className="flex min-w-0 items-center gap-3">

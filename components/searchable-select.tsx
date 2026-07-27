@@ -1,11 +1,13 @@
 "use client"
 
 import { useEffect, useId, useMemo, useRef, useState } from "react"
-import { Check, ChevronDown, Search } from "lucide-react"
+import { Check, ChevronDown, Loader2, Search } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
 export type SearchableOption = {
+  /** Stable key for list rendering (e.g. Google place_id). */
+  id?: string
   value: string
   label: string
   description?: string
@@ -26,11 +28,16 @@ export function SearchableSelect({
   options,
   placeholder,
   emptyText = "검색 결과가 없어요",
+  idleText,
+  loading = false,
+  loadingText = "검색 중…",
+  filterLocally = true,
   allowCustom = false,
   customHint,
   disabled = false,
   className,
   onSelectOption,
+  onQueryChange,
 }: {
   id?: string
   value: string
@@ -38,6 +45,12 @@ export function SearchableSelect({
   options?: SearchableOption[] | null
   placeholder?: string
   emptyText?: string
+  /** Shown when the input is empty (instead of listing all options). */
+  idleText?: string
+  loading?: boolean
+  loadingText?: string
+  /** When false, options are shown as provided (for remote search). */
+  filterLocally?: boolean
   /** Keep free-text values that are not in the option list. */
   allowCustom?: boolean
   customHint?: string
@@ -45,6 +58,8 @@ export function SearchableSelect({
   className?: string
   /** Fired when the user picks an item from the dropdown (not free-text typing). */
   onSelectOption?: (option: SearchableOption) => void
+  /** Fired on every input change (useful for remote debounce). */
+  onQueryChange?: (query: string) => void
 }) {
   const listId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
@@ -86,16 +101,20 @@ export function SearchableSelect({
     }
   }, [open, safeValue])
 
+  const queryTrimmed = safeText(query).trim()
+  const isIdle = queryTrimmed.length === 0
+
   const filtered = useMemo(() => {
-    const q = safeLower(query).trim()
-    if (!q) return optionList
+    if (isIdle) return idleText ? [] : optionList
+    if (!filterLocally) return optionList
+    const q = safeLower(queryTrimmed)
     return optionList.filter((option) =>
       safeLower([option.label, option.value, option.description ?? ""].join(" ")).includes(q)
     )
-  }, [optionList, query])
+  }, [optionList, queryTrimmed, isIdle, idleText, filterLocally])
 
   const exactMatch = optionList.some(
-    (option) => safeLower(option.value) === safeLower(query).trim()
+    (option) => safeLower(option.value) === safeLower(queryTrimmed)
   )
 
   const commitCustom = () => {
@@ -116,6 +135,12 @@ export function SearchableSelect({
     setQuery(next)
     setOpen(false)
   }
+
+  const statusMessage = loading
+    ? loadingText
+    : isIdle && idleText
+      ? idleText
+      : emptyText
 
   return (
     <div ref={rootRef} className={cn("relative", className)}>
@@ -138,6 +163,7 @@ export function SearchableSelect({
             const next = event.target.value ?? ""
             setQuery(next)
             setOpen(true)
+            onQueryChange?.(next)
             if (allowCustom) onChange(next)
           }}
           onKeyDown={(event) => {
@@ -186,17 +212,20 @@ export function SearchableSelect({
           role="listbox"
           className="absolute z-50 mt-1.5 max-h-56 w-full overflow-y-auto rounded-xl border border-border bg-popover p-1.5 shadow-md ring-1 ring-foreground/5"
         >
-          {filtered.length === 0 ? (
+          {loading || filtered.length === 0 ? (
             <div className="px-3 py-3 text-center text-xs text-muted-foreground">
-              <p>{emptyText}</p>
-              {allowCustom && safeText(query).trim() ? (
+              <p className="inline-flex items-center justify-center gap-1.5">
+                {loading ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                {statusMessage}
+              </p>
+              {allowCustom && !loading && !isIdle ? (
                 <button
                   type="button"
                   className="mt-2 w-full rounded-lg bg-secondary px-3 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-primary/15"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={commitCustom}
                 >
-                  “{safeText(query).trim()}” 직접 사용
+                  “{queryTrimmed}” 직접 사용
                 </button>
               ) : null}
             </div>
@@ -205,7 +234,7 @@ export function SearchableSelect({
               {filtered.map((option) => {
                 const selected = option.value === safeValue
                 return (
-                  <li key={option.value}>
+                  <li key={option.id ?? `${option.value}:${option.description ?? ""}`}>
                     <button
                       type="button"
                       role="option"
@@ -232,7 +261,7 @@ export function SearchableSelect({
                   </li>
                 )
               })}
-              {allowCustom && safeText(query).trim() && !exactMatch ? (
+              {allowCustom && queryTrimmed && !exactMatch ? (
                 <li>
                   <button
                     type="button"
@@ -241,7 +270,7 @@ export function SearchableSelect({
                     onClick={commitCustom}
                   >
                     <span className="text-muted-foreground">직접 입력 · </span>
-                    <span className="ml-1 font-medium">{safeText(query).trim()}</span>
+                    <span className="ml-1 font-medium">{queryTrimmed}</span>
                   </button>
                 </li>
               ) : null}

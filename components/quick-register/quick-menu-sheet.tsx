@@ -43,8 +43,9 @@ export function QuickMenuSheet({
       <button
         type="button"
         aria-label="퀵 메뉴 닫기"
+        data-no-press
         className={cn(
-          "absolute inset-0 bg-black/40 transition-opacity duration-300",
+          "absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-200 ease-out",
           open ? "opacity-100" : "opacity-0"
         )}
         onClick={() => onOpenChange(false)}
@@ -55,7 +56,7 @@ export function QuickMenuSheet({
         aria-modal="true"
         aria-label="퀵 등록 메뉴"
         className={cn(
-          "absolute inset-x-0 bottom-0 rounded-t-3xl border border-border bg-card pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl transition-transform duration-300 ease-out",
+          "absolute inset-x-0 bottom-0 rounded-t-3xl border border-border bg-card pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl transform-gpu transition-transform duration-200 ease-out",
           open ? "translate-y-0" : "translate-y-full"
         )}
       >
@@ -83,7 +84,7 @@ export function QuickMenuSheet({
               <button
                 type="button"
                 onClick={onSelectTrip}
-                className="flex w-full items-center gap-3 rounded-2xl border border-border bg-background px-4 py-3.5 text-left transition-colors hover:bg-secondary/70 active:scale-[0.99]"
+                className="touch-press flex w-full items-center gap-3 rounded-2xl border border-border bg-background px-4 py-3.5 text-left transition-colors hover:bg-secondary/70"
               >
                 <span className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
                   <Plane className="size-5" />
@@ -100,7 +101,7 @@ export function QuickMenuSheet({
               <button
                 type="button"
                 onClick={onSelectExpense}
-                className="flex w-full items-center gap-3 rounded-2xl border border-border bg-background px-4 py-3.5 text-left transition-colors hover:bg-secondary/70 active:scale-[0.99]"
+                className="touch-press flex w-full items-center gap-3 rounded-2xl border border-border bg-background px-4 py-3.5 text-left transition-colors hover:bg-secondary/70"
               >
                 <span className="flex size-11 items-center justify-center rounded-xl bg-secondary text-foreground">
                   <Receipt className="size-5" />
@@ -117,7 +118,7 @@ export function QuickMenuSheet({
               <button
                 type="button"
                 onClick={onSelectPlace}
-                className="flex w-full items-center gap-3 rounded-2xl border border-border bg-background px-4 py-3.5 text-left transition-colors hover:bg-secondary/70 active:scale-[0.99]"
+                className="touch-press flex w-full items-center gap-3 rounded-2xl border border-border bg-background px-4 py-3.5 text-left transition-colors hover:bg-secondary/70"
               >
                 <span className="flex size-11 items-center justify-center rounded-xl bg-secondary text-foreground">
                   <MapPinPlus className="size-5" />

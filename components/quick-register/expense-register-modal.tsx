@@ -6,15 +6,13 @@ import {
   Check,
   ImagePlus,
   Loader2,
-  Pencil,
   ScanLine,
   X,
 } from "lucide-react"
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
@@ -25,7 +23,16 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { members } from "@/lib/trip-data"
+import {
+  fetchSettlementMembers,
+  formatWon,
+  initialsFromNickname,
+  insertExpense,
+  uploadReceiptImage,
+  type ExpenseCategory,
+} from "@/lib/settlements-api"
+import { calcPerPerson } from "@/lib/settlement-math"
+import { members as mockMembers } from "@/lib/trip-data"
 import { cn } from "@/lib/utils"
 
 export type ExpenseDraft = {
@@ -38,23 +45,48 @@ export type ExpenseDraft = {
   receiptPreview: string | null
 }
 
+type MemberOption = {
+  id: string
+  name: string
+  initials: string
+  color?: string
+  avatarUrl?: string
+}
+
 const CATEGORIES = ["식비", "숙박", "교통", "관광", "기타"] as const
+
+const CATEGORY_TO_DB: Record<string, ExpenseCategory> = {
+  식비: "식사",
+  숙박: "숙소",
+  교통: "교통",
+  관광: "기타",
+  기타: "기타",
+}
 
 function toLocalDateTimeValue(date = new Date()) {
   const pad = (n: number) => `${n}`.padStart(2, "0")
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-function emptyDraft(): ExpenseDraft {
+function emptyDraft(memberIds: string[] = []): ExpenseDraft {
   return {
     amount: "",
     storeName: "",
     category: "식비",
     paidAt: toLocalDateTimeValue(),
-    paidById: members[0]?.id ?? "",
-    splitMemberIds: members.map((m) => m.id),
+    paidById: memberIds[0] ?? "",
+    splitMemberIds: memberIds,
     receiptPreview: null,
   }
+}
+
+function mapMockMembers(): MemberOption[] {
+  return mockMembers.map((m) => ({
+    id: m.id,
+    name: m.name,
+    initials: m.initials,
+    color: m.color,
+  }))
 }
 
 /** Mock OCR result — replaced later by real AI OCR. */
@@ -76,27 +108,89 @@ function mockOcrFromImage(_file: File): Pick<
 export function ExpenseRegisterModal({
   open,
   onOpenChange,
+  tripId = null,
   onSaved,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  tripId?: string | null
   onSaved?: (draft: ExpenseDraft) => void
 }) {
+  const activeTripId = String(tripId ?? "").trim() || null
   const [tab, setTab] = useState<"scan" | "manual">("scan")
-  const [draft, setDraft] = useState<ExpenseDraft>(emptyDraft)
+  const [memberOptions, setMemberOptions] = useState<MemberOption[]>(() => mapMockMembers())
+  const [draft, setDraft] = useState<ExpenseDraft>(() =>
+    emptyDraft(mapMockMembers().map((m) => m.id))
+  )
+  const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [scanning, setScanning] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
   const [ocrNotice, setOcrNotice] = useState<string | null>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
   const scanTimer = useRef<number | null>(null)
+  const previewUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!open) return
-    setTab("scan")
-    setDraft(emptyDraft())
-    setScanning(false)
-    setOcrNotice(null)
-  }, [open])
+    let cancelled = false
+
+    const resetWithMembers = (list: MemberOption[]) => {
+      if (cancelled) return
+      setMemberOptions(list)
+      const ids = list.map((m) => m.id)
+      setTab("scan")
+      setDraft(emptyDraft(ids))
+      setReceiptFile(null)
+      setScanning(false)
+      setSaving(false)
+      setFormError(null)
+      setOcrNotice(null)
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current)
+        previewUrlRef.current = null
+      }
+    }
+
+    if (!activeTripId) {
+      resetWithMembers(mapMockMembers())
+      return () => {
+        cancelled = true
+      }
+    }
+
+    void (async () => {
+      try {
+        const members = await fetchSettlementMembers(activeTripId)
+        if (cancelled) return
+        if (members.length === 0) {
+          resetWithMembers(mapMockMembers())
+          setFormError("여행 멤버를 불러오지 못했어요. 사이드바에서 여행을 확인해 주세요.")
+          return
+        }
+        resetWithMembers(
+          members.map((m) => ({
+            id: m.userId,
+            name: m.nickname,
+            initials: initialsFromNickname(m.nickname),
+            avatarUrl: m.avatarUrl,
+          }))
+        )
+      } catch (err) {
+        const typed = err as { message?: string }
+        console.error("[ExpenseRegisterModal] members:", typed?.message)
+        if (!cancelled) {
+          resetWithMembers(mapMockMembers())
+          setFormError("멤버를 불러오지 못했어요.")
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, activeTripId])
 
   useEffect(() => {
     if (!open) return
@@ -124,6 +218,15 @@ export function ExpenseRegisterModal({
     )
   }, [draft])
 
+  const liveShare = useMemo(() => {
+    const amount = Number(draft.amount.replace(/,/g, ""))
+    if (!Number.isFinite(amount) || amount <= 0 || draft.splitMemberIds.length === 0) return 0
+    return calcPerPerson(amount, draft.splitMemberIds.length)
+  }, [draft.amount, draft.splitMemberIds.length])
+
+  const allSplitSelected =
+    memberOptions.length > 0 && draft.splitMemberIds.length === memberOptions.length
+
   const update = <K extends keyof ExpenseDraft>(key: K, value: ExpenseDraft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }))
   }
@@ -137,14 +240,36 @@ export function ExpenseRegisterModal({
     })
   }
 
+  const toggleAllSplitMembers = () => {
+    setDraft((current) => ({
+      ...current,
+      splitMemberIds: allSplitSelected ? [] : memberOptions.map((member) => member.id),
+    }))
+  }
+
+  const clearReceipt = () => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current)
+      previewUrlRef.current = null
+    }
+    setReceiptFile(null)
+    update("receiptPreview", null)
+    setOcrNotice(null)
+    setScanning(false)
+  }
+
   const processReceiptFile = (file: File | undefined) => {
     if (!file || !file.type.startsWith("image/")) return
     if (scanTimer.current) window.clearTimeout(scanTimer.current)
 
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
     const previewUrl = URL.createObjectURL(file)
+    previewUrlRef.current = previewUrl
+    setReceiptFile(file)
     update("receiptPreview", previewUrl)
     setScanning(true)
     setOcrNotice(null)
+    setFormError(null)
 
     scanTimer.current = window.setTimeout(() => {
       const extracted = mockOcrFromImage(file)
@@ -159,11 +284,51 @@ export function ExpenseRegisterModal({
     }, 1400)
   }
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (!canSubmit) return
-    onSaved?.(draft)
-    onOpenChange(false)
+    if (!canSubmit || scanning || saving) return
+
+    if (!activeTripId) {
+      setFormError("지출을 저장하려면 사이드바에서 여행을 선택해 주세요.")
+      return
+    }
+
+    setSaving(true)
+    setFormError(null)
+    try {
+      let receiptUrl: string | undefined
+      if (receiptFile) {
+        receiptUrl = await uploadReceiptImage(receiptFile, activeTripId)
+      }
+
+      const amount = Number(draft.amount.replace(/,/g, ""))
+      const expenseDate = (draft.paidAt.slice(0, 10) || new Date().toISOString().slice(0, 10))
+      await insertExpense({
+        tripId: activeTripId,
+        title: draft.storeName.trim(),
+        amount,
+        category: CATEGORY_TO_DB[draft.category] ?? "기타",
+        payerId: draft.paidById,
+        expenseDate,
+        receiptUrl,
+        participantIds: draft.splitMemberIds,
+      })
+
+      onSaved?.(draft)
+      onOpenChange(false)
+    } catch (err) {
+      const typed = err as { message?: string }
+      console.error("[ExpenseRegisterModal] save failed:", typed?.message)
+      setFormError(
+        typed?.message?.includes("receipts")
+          ? "영수증 업로드에 실패했어요. Storage 버킷(receipts)을 확인해 주세요."
+          : typed?.message?.includes("expense_participants")
+            ? "정산 대상자 저장에 실패했어요. expense_participants 테이블을 확인해 주세요."
+            : "지출 저장에 실패했어요. 잠시 후 다시 시도해 주세요."
+      )
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (!open) return null
@@ -173,7 +338,8 @@ export function ExpenseRegisterModal({
       <button
         type="button"
         aria-label="모달 닫기"
-        className="absolute inset-0 bg-black/45 animate-in fade-in-0"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-200 ease-out animate-in fade-in-0"
+        data-no-press
         onClick={() => onOpenChange(false)}
       />
 
@@ -181,7 +347,7 @@ export function ExpenseRegisterModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="expense-modal-title"
-        className="relative z-10 flex max-h-[92dvh] w-full flex-col rounded-t-3xl border border-border bg-card shadow-2xl animate-in slide-in-from-bottom-4 duration-300 sm:mx-4 sm:rounded-3xl"
+        className="relative z-10 flex max-h-[92dvh] w-full flex-col rounded-t-3xl border border-border bg-card shadow-2xl transform-gpu animate-in fade-in zoom-in-95 duration-200 ease-out sm:mx-4 sm:rounded-3xl"
       >
         <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
           <div>
@@ -218,14 +384,13 @@ export function ExpenseRegisterModal({
                 value="manual"
                 className="rounded-lg text-xs font-semibold data-active:bg-primary data-active:text-primary-foreground sm:text-sm"
               >
-                <Pencil data-icon="inline-start" />
-                직접 수기 입력
+                직접 입력
               </TabsTrigger>
             </TabsList>
           </div>
 
           <form
-            onSubmit={handleSubmit}
+            onSubmit={(event) => void handleSubmit(event)}
             className="flex min-h-0 flex-1 flex-col"
           >
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
@@ -235,11 +400,7 @@ export function ExpenseRegisterModal({
                   scanning={scanning}
                   onCamera={() => cameraInputRef.current?.click()}
                   onGallery={() => galleryInputRef.current?.click()}
-                  onClear={() => {
-                    update("receiptPreview", null)
-                    setOcrNotice(null)
-                    setScanning(false)
-                  }}
+                  onClear={clearReceipt}
                 />
                 <input
                   ref={cameraInputRef}
@@ -263,7 +424,7 @@ export function ExpenseRegisterModal({
                   }}
                 />
                 <p className="text-center text-[11px] text-muted-foreground">
-                  사진은 기기에서만 미리보기되며, 추후 AI OCR과 연동될 예정이에요.
+                  저장 시 영수증 이미지가 Storage에 업로드되고 지출에 연결돼요.
                 </p>
               </TabsContent>
 
@@ -284,7 +445,9 @@ export function ExpenseRegisterModal({
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold">첨부된 영수증</p>
-                      <p className="text-[11px] text-muted-foreground">값을 확인·수정한 뒤 저장하세요</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        저장 시 Storage에 업로드됩니다
+                      </p>
                     </div>
                     <Badge variant="outline" className="shrink-0 font-semibold">
                       OCR
@@ -293,13 +456,25 @@ export function ExpenseRegisterModal({
                 ) : null}
                 <ExpenseFormFields
                   draft={draft}
+                  members={memberOptions}
+                  allSplitSelected={allSplitSelected}
+                  liveShare={liveShare}
                   onChange={update}
                   onToggleSplit={toggleSplitMember}
+                  onToggleAllSplit={toggleAllSplitMembers}
                 />
               </TabsContent>
             </div>
 
             <div className="border-t border-border bg-card px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              {liveShare > 0 && draft.splitMemberIds.length > 0 ? (
+                <p className="mb-3 text-center text-xs font-medium text-muted-foreground transition-opacity duration-300">
+                  1인당 {formatWon(liveShare)} (총 {draft.splitMemberIds.length}명)
+                </p>
+              ) : null}
+              {formError ? (
+                <p className="mb-3 text-center text-xs font-medium text-destructive">{formError}</p>
+              ) : null}
               {tab === "scan" && !draft.receiptPreview ? (
                 <Button
                   type="button"
@@ -312,10 +487,11 @@ export function ExpenseRegisterModal({
               ) : (
                 <Button
                   type="submit"
-                  disabled={!canSubmit || scanning}
+                  disabled={!canSubmit || scanning || saving}
                   className="w-full rounded-full font-semibold"
                 >
-                  지출 저장하기
+                  {saving ? <Loader2 className="animate-spin" data-icon="inline-start" /> : null}
+                  {saving ? "저장 중…" : "지출 저장하기"}
                 </Button>
               )}
             </div>
@@ -385,12 +561,20 @@ function ReceiptScanPanel({
 
 function ExpenseFormFields({
   draft,
+  members,
+  allSplitSelected,
+  liveShare,
   onChange,
   onToggleSplit,
+  onToggleAllSplit,
 }: {
   draft: ExpenseDraft
+  members: MemberOption[]
+  allSplitSelected: boolean
+  liveShare: number
   onChange: <K extends keyof ExpenseDraft>(key: K, value: ExpenseDraft[K]) => void
   onToggleSplit: (id: string, checked: boolean) => void
+  onToggleAllSplit: () => void
 }) {
   return (
     <FieldGroup className="gap-4">
@@ -472,33 +656,55 @@ function ExpenseFormFields({
       </Field>
 
       <Field>
-        <FieldLabel>함께 정산할 동행 멤버</FieldLabel>
-        <ul className="flex flex-col gap-2 rounded-xl border border-border p-2">
+        <div className="flex items-center justify-between gap-2">
+          <FieldLabel>정산 대상자 (누가 함께 냈나요?)</FieldLabel>
+          <button
+            type="button"
+            onClick={onToggleAllSplit}
+            className="text-xs font-semibold text-primary underline-offset-2 hover:underline"
+          >
+            {allSplitSelected ? "전체 해제" : "전체 선택"}
+          </button>
+        </div>
+        <div className="mt-1.5 flex flex-wrap gap-2">
           {members.map((member) => {
             const checked = draft.splitMemberIds.includes(member.id)
             return (
-              <li key={member.id}>
-                <label
-                  className={cn(
-                    "flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 transition-colors",
-                    checked ? "bg-primary/10" : "hover:bg-secondary/60"
-                  )}
-                >
-                  <Checkbox
-                    checked={checked}
-                    onCheckedChange={(value) => onToggleSplit(member.id, value === true)}
-                  />
-                  <Avatar className="size-8">
-                    <AvatarFallback className={cn("text-xs font-bold", member.color)}>
-                      {member.initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm font-medium">{member.name}</span>
-                </label>
-              </li>
+              <button
+                key={member.id}
+                type="button"
+                onClick={() => onToggleSplit(member.id, !checked)}
+                aria-pressed={checked}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all duration-200",
+                  checked
+                    ? "border-primary/40 bg-primary/15 text-foreground shadow-sm"
+                    : "border-border bg-secondary/40 text-muted-foreground line-through decoration-muted-foreground/40"
+                )}
+              >
+                <Avatar className="size-5">
+                  {member.avatarUrl ? <AvatarImage src={member.avatarUrl} alt="" /> : null}
+                  <AvatarFallback className={cn("text-[9px] font-bold", member.color)}>
+                    {member.initials || initialsFromNickname(member.name)}
+                  </AvatarFallback>
+                </Avatar>
+                {member.name}
+              </button>
             )
           })}
-        </ul>
+        </div>
+        <div
+          className={cn(
+            "overflow-hidden transition-all duration-300 ease-out",
+            liveShare > 0 && draft.splitMemberIds.length > 0
+              ? "mt-2 max-h-12 opacity-100"
+              : "max-h-0 opacity-0"
+          )}
+        >
+          <p className="rounded-xl bg-primary/10 px-3 py-2 text-xs font-medium text-foreground">
+            1인당 {formatWon(liveShare)} (총 {draft.splitMemberIds.length}명)
+          </p>
+        </div>
       </Field>
     </FieldGroup>
   )

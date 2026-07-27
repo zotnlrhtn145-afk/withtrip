@@ -161,7 +161,67 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+
   body {
     @apply bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+
+  /**
+   * App-like touch feedback — CSS :active only (no JS hover state / re-renders).
+   * Animate transform + opacity only; skip layout props (top/left/width/…).
+   * Full-screen dismiss targets opt out via [data-no-press].
+   */
+  button:not(:disabled):not([aria-disabled='true']):not([data-no-press]),
+  [role='button']:not([aria-disabled='true']):not([data-no-press]),
+  a[href]:not([data-no-press]),
+  summary,
+  input[type='button']:not(:disabled),
+  input[type='submit']:not(:disabled),
+  input[type='reset']:not(:disabled) {
+    @apply transform-gpu transition-transform duration-150 ease-out;
+  }
+
+  button:not(:disabled):not([aria-disabled='true']):not([data-no-press]):active,
+  [role='button']:not([aria-disabled='true']):not([data-no-press]):active,
+  a[href]:not([data-no-press]):active,
+  summary:active,
+  input[type='button']:not(:disabled):active,
+  input[type='submit']:not(:disabled):active,
+  input[type='reset']:not(:disabled):active {
+    @apply scale-[0.97];
+  }
+
+  .overflow-auto,
+  .overflow-y-auto,
+  .overflow-x-auto,
+  [data-slot='scroll-area'],
+  [data-slot='dialog-content'] {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@layer utilities {
+  /** Press feedback helper for non-native controls (chips, list rows). */
+  .touch-press {
+    @apply transform-gpu transition-transform duration-150 ease-out active:scale-[0.97];
+  }
+
+  /** Place / stay / trip media cards — GPU hover lift. */
+  .media-card {
+    @apply transform-gpu will-change-transform transition-transform duration-200 ease-out hover:-translate-y-1;
+  }
+
+  /** Cover image zoom inside a `group` card. */
+  .media-card-image {
+    @apply transform-gpu transition-transform duration-300 ease-out group-hover:scale-105;
   }
 }

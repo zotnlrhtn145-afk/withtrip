@@ -80,7 +80,9 @@ export function HomeView({
           <span className="flex size-11 items-center justify-center rounded-full bg-secondary">
             <Plane className="size-5" />
           </span>
-          <p className="text-sm font-semibold">등록된 여행이 없습니다. 새로운 여행을 추가해 보세요!</p>
+          <p className="text-sm font-semibold">
+            등록된 여행이 없습니다. 새 여행을 만들어보세요!
+          </p>
           <p className="text-sm text-muted-foreground">
             하단 + 버튼 또는 새 여행 만들기로 첫 여행을 등록할 수 있어요.
           </p>

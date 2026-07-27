@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { BedDouble, Check, Loader2, Plus } from "lucide-react"
 
-import { SearchableSelect } from "@/components/searchable-select"
+import { SearchableSelect, type SearchableOption } from "@/components/searchable-select"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -23,7 +23,8 @@ import {
   updateAccommodation,
   type Accommodation,
 } from "@/lib/accommodations-api"
-import { findHotelPresetByName, HOTEL_SEARCH_OPTIONS } from "@/lib/hotel-presets"
+import { placeResultToSearchOption } from "@/lib/hotel-presets"
+import { searchGooglePlaces, type PlaceSearchResult } from "@/lib/places-search"
 
 export function AccommodationRegisterModal({
   open,
@@ -56,6 +57,17 @@ export function AccommodationRegisterModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [hotelQuery, setHotelQuery] = useState("")
+  const [hotelResults, setHotelResults] = useState<PlaceSearchResult[]>([])
+  const [searchingHotels, setSearchingHotels] = useState(false)
+  const [searchWarning, setSearchWarning] = useState<string | null>(null)
+  const searchSeq = useRef(0)
+
+  const hotelOptions = useMemo(
+    () => hotelResults.map(placeResultToSearchOption),
+    [hotelResults]
+  )
+
   const toInputDate = (value: string) => {
     const raw = String(value ?? "").trim()
     const match = raw.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})/)
@@ -67,6 +79,10 @@ export function AccommodationRegisterModal({
     if (!open) return
     setError(null)
     setSaving(false)
+    setHotelResults([])
+    setSearchingHotels(false)
+    setSearchWarning(null)
+    setHotelQuery("")
 
     if (editing) {
       setName(editing.name)
@@ -77,6 +93,7 @@ export function AccommodationRegisterModal({
       setCheckOutTime(editing.checkOutTime || "11:00")
       setPhoneNumber(editing.phoneNumber)
       setMemo(editing.memo)
+      setHotelQuery(editing.name)
       return
     }
 
@@ -90,12 +107,45 @@ export function AccommodationRegisterModal({
     setMemo("")
   }, [open, editing, defaultCheckInDate, defaultCheckOutDate])
 
-  const handleHotelSelect = (option: { value: string }) => {
-    const preset = findHotelPresetByName(option.value)
-    if (!preset) return
-    setName(preset.name)
-    setAddress(preset.address)
-    setPhoneNumber(preset.phone)
+  useEffect(() => {
+    if (!open) return
+    const q = hotelQuery.trim()
+    if (q.length < 1) {
+      setHotelResults([])
+      setSearchingHotels(false)
+      setSearchWarning(null)
+      return
+    }
+
+    const seq = ++searchSeq.current
+    setSearchingHotels(true)
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        const { results, warning } = await searchGooglePlaces(q, "stay")
+        if (seq !== searchSeq.current) return
+        setHotelResults(results)
+        setSearchWarning(warning ?? null)
+        setSearchingHotels(false)
+      })()
+    }, 300)
+
+    return () => window.clearTimeout(timer)
+  }, [hotelQuery, open])
+
+  const handleHotelSelect = (option: SearchableOption) => {
+    const place =
+      hotelResults.find((item) => option.id && item.id === option.id) ??
+      hotelResults.find((item) => item.placeName === option.value)
+    if (place) {
+      setName(place.placeName)
+      setHotelQuery(place.placeName)
+      setAddress(place.address)
+      setPhoneNumber(place.phoneNumber)
+      setError(null)
+      return
+    }
+    setName(option.label)
+    setHotelQuery(option.label)
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -158,7 +208,7 @@ export function AccommodationRegisterModal({
           <DialogDescription>
             {isEditMode
               ? "숙소 정보를 수정한 뒤 수정 완료를 눌러 주세요."
-              : "숙소를 검색해 선택하면 주소·전화번호가 자동으로 채워져요."}
+              : "전 세계 숙소를 검색해 선택하면 주소·전화번호가 자동으로 채워져요."}
           </DialogDescription>
         </DialogHeader>
 
@@ -174,13 +224,24 @@ export function AccommodationRegisterModal({
                 id="acc-name"
                 value={name}
                 onChange={setName}
+                onQueryChange={setHotelQuery}
                 onSelectOption={handleHotelSelect}
-                options={HOTEL_SEARCH_OPTIONS}
-                placeholder="숙소를 검색하거나 직접 입력하세요"
+                options={hotelOptions}
+                placeholder="숙소 이름이나 도시를 입력하세요"
+                idleText="숙소 이름이나 도시를 입력하세요"
                 emptyText="일치하는 숙소가 없어요"
+                loading={searchingHotels}
+                filterLocally={false}
                 allowCustom
                 customHint="목록에 없으면 입력한 이름을 그대로 저장해요."
               />
+              {searchWarning ? (
+                <FieldDescription className="text-amber-700">{searchWarning}</FieldDescription>
+              ) : (
+                <FieldDescription>
+                  Google Places로 전 세계 호텔·리조트를 검색합니다.
+                </FieldDescription>
+              )}
             </Field>
 
             <Field>
@@ -189,7 +250,7 @@ export function AccommodationRegisterModal({
                 id="acc-address"
                 value={address}
                 onChange={(event) => setAddress(event.target.value)}
-                placeholder="예: 53 Ter Quai des Grands Augustins"
+                placeholder="예: 3-7-1-2 Nishi-Shinjuku, Shinjuku City, Tokyo"
                 className="rounded-xl"
               />
               <FieldDescription>검색 선택 시 자동 입력되며, 직접 수정할 수 있어요.</FieldDescription>
@@ -254,7 +315,7 @@ export function AccommodationRegisterModal({
                 inputMode="tel"
                 value={phoneNumber}
                 onChange={(event) => setPhoneNumber(event.target.value)}
-                placeholder="예: +33 1 44 41 31 00 (선택)"
+                placeholder="예: +81 3-5322-1234 (선택)"
                 className="rounded-xl tabular-nums"
               />
               <FieldDescription>검색 선택 시 자동 입력되며, 직접 수정할 수 있어요.</FieldDescription>

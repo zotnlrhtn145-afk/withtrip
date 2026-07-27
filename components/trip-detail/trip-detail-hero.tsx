@@ -5,15 +5,19 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { ArrowLeft, CalendarDays, MapPin } from "lucide-react"
 
-import { Avatar, AvatarFallback, AvatarGroup } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { FALLBACK_TRIP_COVER } from "@/lib/getCityImage"
 import { formatTripDuration, getTripMembers, members, type Trip } from "@/lib/trip-data"
+import { formatMemberSummary } from "@/lib/trip-group"
 
 export function TripDetailHero({ trip }: { trip: Trip }) {
   const router = useRouter()
-  const tripMembers = getTripMembers(trip, members)
+  const tripMembers = trip.groupMembers?.length
+    ? trip.groupMembers
+    : getTripMembers(trip, members)
+  const memberSummary = formatMemberSummary(tripMembers.map((member) => member.name))
   const [coverSrc, setCoverSrc] = useState(trip.heroImage || FALLBACK_TRIP_COVER)
 
   useEffect(() => {
@@ -75,13 +79,16 @@ export function TripDetailHero({ trip }: { trip: Trip }) {
             <AvatarGroup className="-space-x-1.5">
               {tripMembers.map((member) => (
                 <Avatar key={member.id} className="size-8 ring-2 ring-black/40">
+                  {"avatarUrl" in member && member.avatarUrl ? (
+                    <AvatarImage src={member.avatarUrl} alt="" />
+                  ) : null}
                   <AvatarFallback className={`${member.color} text-xs font-semibold`}>
                     {member.initials}
                   </AvatarFallback>
                 </Avatar>
               ))}
             </AvatarGroup>
-            <span className="text-sm text-white/90">멤버 {tripMembers.length}명</span>
+            <span className="text-sm text-white/90">{memberSummary}</span>
           </div>
         </div>
       </div>

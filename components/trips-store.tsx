@@ -11,6 +11,7 @@ import {
 } from "react"
 
 import { initialNotifications, type AppNotification } from "@/lib/notifications"
+import { insertSavedPlace } from "@/lib/saved-places-api"
 import {
   fetchTripsFromSupabase,
   insertTripToSupabase,
@@ -20,7 +21,6 @@ import {
 import {
   memberPalette,
   members as seedMembers,
-  trips as seedTrips,
   type Member,
   type ScheduleItem,
   type Trip,
@@ -84,6 +84,8 @@ type TripsStore = {
   addScheduleItem: (tripId: string, dayId: string, draft: ScheduleItemDraft) => void
   /** Clone seed flights/stays/wishlist onto a trip id when missing (for detail UI). */
   ensureTripBundle: (trip: Trip) => void
+  /** Update local trip settlement completion (syncs sub-panel lists). */
+  setTripSettledStatus: (tripId: string, isSettled: boolean) => void
 }
 
 const TripsContext = createContext<TripsStore | null>(null)
@@ -156,6 +158,28 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     void refreshTrips()
   }, [refreshTrips])
 
+  // Re-fetch when auth session changes (login / logout / OAuth).
+  useEffect(() => {
+    let mounted = true
+    let unsubscribe: (() => void) | undefined
+
+    void import("@/utils/supabase/client").then(({ createClient }) => {
+      if (!mounted) return
+      const supabase = createClient()
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange(() => {
+        void refreshTrips({ silent: true })
+      })
+      unsubscribe = () => subscription.unsubscribe()
+    })
+
+    return () => {
+      mounted = false
+      unsubscribe?.()
+    }
+  }, [refreshTrips])
+
   const createTrip = useCallback(
     async (input: CreateTripInput) => {
       try {
@@ -208,6 +232,24 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       ...current,
       [tripId]: [...(current[tripId] ?? []), { ...draft, id: `w-${Date.now()}`, savedBy: ["JH"] }],
     }))
+    void insertSavedPlace({
+      tripId,
+      placeName: draft.name,
+      category:
+        draft.kind === "bar"
+          ? "라운지 & 바"
+          : draft.kind === "stay"
+            ? "숙소"
+            : "레스토랑",
+      localName: draft.nameLocal,
+      subCategory: draft.category,
+      guideBadge: draft.badge,
+      priceRange: draft.priceRange,
+      address: draft.address,
+      phoneNumber: draft.phone,
+    }).catch((err) => {
+      console.error("[addWishlistPlace] saved_places insert failed:", err)
+    })
   }, [])
 
   const addFlight = useCallback((tripId: string, draft: FlightDraft) => {
@@ -253,6 +295,51 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       return { ...current, [tripId]: cloned }
     })
   }, [])
+
+  const setTripSettledStatus = useCallback((tripId: string, isSettled: boolean) => {
+    const id = String(tripId ?? "").trim()
+    if (!id) return
+    setTrips((current) =>
+      current.map((trip) =>
+        trip.id === id
+          ? {
+              ...trip,
+              isSettled,
+              isCompleted: isSettled,
+              settlementStatus: isSettled ? "SETTLED" : "open",
+              settledAt: isSettled ? new Date().toISOString() : null,
+            }
+          : trip
+      )
+    )
+  }, [])
+
+  useEffect(() => {
+    const onSettled = (event: Event) => {
+      const detail = (event as CustomEvent<{ tripId?: string; settled?: boolean }>).detail
+      const id = String(detail?.tripId ?? "").trim()
+      if (!id) return
+      setTripSettledStatus(id, Boolean(detail?.settled))
+    }
+    window.addEventListener("withtrip:trip-settled", onSettled)
+    return () => window.removeEventListener("withtrip:trip-settled", onSettled)
+  }, [setTripSettledStatus])
+
+  // When settle status changes elsewhere, soft-refresh from DB shortly after.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const onSettled = () => {
+      window.clearTimeout(timer)
+      timer = setTimeout(() => {
+        void refreshTrips({ silent: true })
+      }, 400)
+    }
+    window.addEventListener("withtrip:trip-settled", onSettled)
+    return () => {
+      window.clearTimeout(timer)
+      window.removeEventListener("withtrip:trip-settled", onSettled)
+    }
+  }, [refreshTrips])
 
   const addTrip = useCallback(
     async (draft: NewTripDraft) => {
@@ -330,27 +417,21 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<TripsStore>(() => {
-    const mergedTrips = (() => {
-      const supabaseTitles = new Set(trips.map((t) => t.title))
-      const demos = seedTrips.filter((t) => !supabaseTitles.has(t.title))
-      return [...trips, ...demos]
-    })()
-
     const keyword = String(query ?? "")
       .trim()
       .toLowerCase()
     const filteredTrips = keyword
-      ? mergedTrips.filter((trip) =>
+      ? trips.filter((trip) =>
           [trip?.title, trip?.country, trip?.region]
             .map((part) => String(part ?? ""))
             .join(" ")
             .toLowerCase()
             .includes(keyword)
         )
-      : mergedTrips
+      : trips
 
     return {
-      trips: mergedTrips,
+      trips,
       members,
       filteredTrips,
       query,
@@ -374,6 +455,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       scheduleByTrip,
       addScheduleItem,
       ensureTripBundle,
+      setTripSettledStatus,
     }
   }, [
     addFlight,
@@ -393,6 +475,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     query,
     refreshTrips,
     scheduleByTrip,
+    setTripSettledStatus,
     staysByTrip,
     trips,
     updateTrip,

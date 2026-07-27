@@ -1,16 +1,42 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, MailCheck } from "lucide-react"
+import { ArrowLeft, Loader2, MailCheck } from "lucide-react"
 
 import { AuthShell } from "@/components/auth/auth-shell"
 import { Button } from "@/components/ui/button"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { mapAuthError, resetPasswordForEmail } from "@/lib/auth-api"
 
 export function ForgotPasswordView({ onBackToLogin }: { onBackToLogin: () => void }) {
   const [email, setEmail] = useState("")
   const [sent, setSent] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (isSubmitting) return
+
+    const trimmed = email.trim()
+    if (!trimmed) {
+      setErrorMessage("이메일을 입력해 주세요.")
+      return
+    }
+
+    setIsSubmitting(true)
+    setErrorMessage(null)
+    try {
+      await resetPasswordForEmail(trimmed)
+      setSent(true)
+    } catch (err) {
+      console.error("[ForgotPasswordView] reset failed:", err)
+      setErrorMessage(mapAuthError(err as Error))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <AuthShell
@@ -18,7 +44,7 @@ export function ForgotPasswordView({ onBackToLogin }: { onBackToLogin: () => voi
       description="가입하신 이메일을 입력하시면 비밀번호 재설정 링크를 보내드립니다."
     >
       {sent ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl bg-secondary px-4 py-6 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-xl bg-secondary px-4 py-6 text-center animate-in fade-in zoom-in-95 duration-200 ease-out">
           <span className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
             <MailCheck className="size-5" />
           </span>
@@ -37,13 +63,7 @@ export function ForgotPasswordView({ onBackToLogin }: { onBackToLogin: () => voi
           </Button>
         </div>
       ) : (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault()
-            setSent(true)
-          }}
-          className="flex flex-col gap-5"
-        >
+        <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-5">
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="reset-email">이메일</FieldLabel>
@@ -51,16 +71,41 @@ export function ForgotPasswordView({ onBackToLogin }: { onBackToLogin: () => voi
                 id="reset-email"
                 type="email"
                 autoComplete="email"
-                placeholder="you@withtrip.kr"
+                placeholder="you@withtrip.app"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => {
+                  setEmail(event.target.value)
+                  if (errorMessage) setErrorMessage(null)
+                }}
+                disabled={isSubmitting}
                 required
               />
             </Field>
           </FieldGroup>
 
-          <Button type="submit" size="lg" className="w-full rounded-xl font-bold">
-            재설정 링크 받기
+          {errorMessage ? (
+            <div
+              role="alert"
+              className="rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
+            >
+              <FieldError>{errorMessage}</FieldError>
+            </div>
+          ) : null}
+
+          <Button
+            type="submit"
+            size="lg"
+            disabled={isSubmitting}
+            className="w-full rounded-xl font-bold"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 data-icon="inline-start" className="animate-spin" />
+                전송 중…
+              </>
+            ) : (
+              "재설정 링크 받기"
+            )}
           </Button>
         </form>
       )}
@@ -69,6 +114,7 @@ export function ForgotPasswordView({ onBackToLogin }: { onBackToLogin: () => voi
         type="button"
         variant="ghost"
         size="sm"
+        disabled={isSubmitting}
         onClick={onBackToLogin}
         className="self-center font-semibold text-muted-foreground"
       >

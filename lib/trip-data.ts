@@ -1,3 +1,5 @@
+import type { TripGroupMember } from "@/lib/trip-group"
+
 export type Member = {
   id: string
   name: string
@@ -44,6 +46,8 @@ export type Place = {
 export type Trip = {
   id: string
   title: string
+  /** Share/invite code stored on `trips.invite_code`. */
+  inviteCode?: string
   country: string
   region: string
   startDate: string
@@ -58,6 +62,14 @@ export type Trip = {
   flight: string
   memberIds: string[]
   readiness: number
+  /** Live group members from `trip_members` (+ profiles). */
+  groupMembers?: TripGroupMember[]
+  /** Optional settlement completion flags from API/UI. */
+  isCompleted?: boolean
+  isSettled?: boolean
+  settledAt?: string | null
+  settlementStatus?: 'open' | 'SETTLED' | 'COMPLETED'
+  status?: string
 }
 
 export const trips: Trip[] = [
@@ -125,6 +137,14 @@ export const members: Member[] = [
 ]
 
 export function getTripMembers(tripItem: Trip, pool: Member[] = members): Member[] {
+  if (tripItem.groupMembers && tripItem.groupMembers.length > 0) {
+    return tripItem.groupMembers.map((member) => ({
+      id: member.id,
+      name: member.name,
+      initials: member.initials,
+      color: member.color,
+    }))
+  }
   return tripItem.memberIds
     .map((id) => pool.find((member) => member.id === id))
     .filter((member): member is Member => Boolean(member))

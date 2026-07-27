@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useEffect, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Compass, Search } from "lucide-react"
 
 import { AccountMenu } from "@/components/account-menu"
@@ -22,35 +22,37 @@ import { QuickMenuSheet } from "@/components/quick-register/quick-menu-sheet"
 import { TripRegisterModal } from "@/components/quick-register/trip-register-modal"
 import { ScheduleTimeline } from "@/components/schedule-timeline"
 import { SettlementView } from "@/components/settlement-view"
-import { SideNav } from "@/components/side-nav"
 import { SpotsView } from "@/components/spots-view"
 import { TripHeroCard } from "@/components/trip-hero-card"
 import { TripSearchDialog } from "@/components/trip-search-dialog"
 import { TripsProvider, useTrips } from "@/components/trips-store"
 import { ViewSwitcher, type ViewMode } from "@/components/view-switcher"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { type AppView } from "@/lib/auth-data"
+import { signOutAuth } from "@/lib/auth-api"
 import { type Trip } from "@/lib/trip-data"
-
-const pageTitles: Partial<Record<AppView, string>> = {
-  home: "내 여행",
-  friends: "친구",
-  spots: "주변 스팟",
-  settlement: "정산",
-  mypage: "마이페이지",
-}
+import { pickPreferredTripId } from "@/lib/trip-group"
+import { createClient } from "@/utils/supabase/client"
 
 export function WithtripApp() {
   return (
     <TripsProvider>
-      <WithtripShell />
+      <Suspense
+        fallback={
+          <div className="flex min-h-screen items-center justify-center bg-background">
+            <p className="text-sm text-muted-foreground">불러오는 중…</p>
+          </div>
+        }
+      >
+        <WithtripShell />
+      </Suspense>
     </TripsProvider>
   )
 }
 
 function WithtripShell() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [view, setView] = useState<ViewMode>("mobile")
   const [searchOpen, setSearchOpen] = useState(false)
   const [currentView, setCurrentView] = useState<AppView>("home")
@@ -70,6 +72,18 @@ function WithtripShell() {
   const selectedTrip = selectedTripId
     ? (trips.find((item) => item.id === selectedTripId) ?? null)
     : null
+
+  // Prefer Paris trip as the active settlement/group context when available.
+  useEffect(() => {
+    if (trips.length === 0) return
+    const preferred = pickPreferredTripId(
+      trips.map((trip) => trip.id),
+      selectedTripId
+    )
+    if (preferred && preferred !== selectedTripId && !selectedTripId) {
+      setSelectedTripId(preferred)
+    }
+  }, [trips, selectedTripId])
 
   useEffect(() => {
     const query = window.matchMedia("(min-width: 1024px)")
@@ -94,6 +108,68 @@ function WithtripShell() {
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [])
 
+  // Sync in-app views with global Sidebar deep-links (?nav= / ?view=).
+  useEffect(() => {
+    const nav = searchParams.get("nav") as NavKey | null
+    const viewParam = searchParams.get("view")
+
+    if (viewParam === "login") {
+      setCurrentView("login")
+      return
+    }
+
+    if (
+      nav === "friends" ||
+      nav === "spots" ||
+      nav === "mypage" ||
+      nav === "home"
+    ) {
+      setActiveNav(nav)
+      if (nav === "mypage") {
+        setCurrentView(isLoggedIn ? "mypage" : "login")
+      } else {
+        setCurrentView(nav)
+      }
+      return
+    }
+
+    if (nav === "settlement") {
+      const preferred = pickPreferredTripId(
+        trips.map((trip) => trip.id),
+        selectedTripId
+      )
+      if (preferred) {
+        router.replace(`/settlement/${preferred}`)
+      } else {
+        router.replace("/settlement")
+      }
+    }
+  }, [searchParams, isLoggedIn, trips, selectedTripId, router])
+
+  useEffect(() => {
+    const supabase = createClient()
+    let mounted = true
+
+    void supabase.auth.getUser().then(({ data, error }) => {
+      if (!mounted) return
+      if (error && error.message !== "Auth session missing!") {
+        console.warn("[WithtripShell] getUser:", error.message)
+      }
+      setIsLoggedIn(Boolean(data.user))
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(Boolean(session?.user))
+    })
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
+
   const handleViewChange = (next: ViewMode) => {
     manualOverride.current = true
     setView(next)
@@ -110,7 +186,9 @@ function WithtripShell() {
     goTo("home")
   }
 
-  const openTrip = (trip: Trip) => {
+  const openTripDetail = (trip: Trip) => {
+    // Home planned-trip cards → trip schedule/detail page.
+    setSelectedTripId(trip.id)
     router.push(`/trips/${trip.id}`)
   }
 
@@ -123,13 +201,23 @@ function WithtripShell() {
     setIsLoggedIn(true)
     setActiveNav("home")
     goTo("home")
+    router.push("/")
   }
 
   const handleLogout = () => {
-    setIsLoggedIn(false)
-    setSelectedTripId(null)
-    setActiveNav("home")
-    goTo("home")
+    void (async () => {
+      try {
+        await signOutAuth()
+      } catch (err) {
+        console.error("[WithtripShell] signOut failed:", err)
+      } finally {
+        setIsLoggedIn(false)
+        setSelectedTripId(null)
+        setActiveNav("home")
+        goTo("home")
+        router.push("/")
+      }
+    })()
   }
 
   const handleNavSelect = (key: NavKey) => {
@@ -151,7 +239,16 @@ function WithtripShell() {
       return
     }
     if (key === "settlement") {
-      goTo("settlement")
+      const preferred = pickPreferredTripId(
+        trips.map((trip) => trip.id),
+        selectedTripId
+      )
+      if (preferred) {
+        setSelectedTripId(preferred)
+        router.push(`/settlement/${preferred}`)
+      } else {
+        router.push("/settlement")
+      }
       return
     }
   }
@@ -191,23 +288,33 @@ function WithtripShell() {
       ) : null}
       {currentView === "friends" ? <FriendsView /> : null}
       {currentView === "spots" ? <SpotsView /> : null}
-      {currentView === "settlement" ? <SettlementView /> : null}
+      {currentView === "settlement" ? (
+        <SettlementView
+          tripId={selectedTripId}
+          tripTitle={selectedTrip?.title ?? null}
+          onChangeTrip={() => router.push("/settlement")}
+        />
+      ) : null}
       {currentView === "mypage" ? (
-        <MyPageView onSelectTrip={openTrip} onLogout={handleLogout} />
+        <MyPageView onSelectTrip={openTripDetail} onLogout={handleLogout} />
       ) : null}
       {currentView === "home" ? (
-        <HomeView onSelectTrip={openTrip} compact={view === "mobile"} />
+        <HomeView onSelectTrip={openTripDetail} compact={view === "mobile"} />
       ) : null}
     </>
   )
 
   const accountMenu = (compact: boolean) => (
     <AccountMenu
-      isLoggedIn={isLoggedIn}
       compact={compact}
       onLoginClick={() => goTo("login")}
       onMyPageClick={openMyPage}
-      onLogout={handleLogout}
+      onLogout={() => {
+        setIsLoggedIn(false)
+        setSelectedTripId(null)
+        setActiveNav("home")
+        goTo("home")
+      }}
     />
   )
 
@@ -253,28 +360,8 @@ function WithtripShell() {
     return (
       <div className="min-h-screen bg-background">
         <div className="relative mx-auto flex w-full max-w-md flex-col pb-28">
-          <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-border bg-background/90 px-4 py-3 backdrop-blur">
-            {currentView === "detail" ? (
-              <Button variant="ghost" size="sm" onClick={goHome} className="-ml-2 font-semibold">
-                <ArrowLeft data-icon="inline-start" />
-                목록으로
-              </Button>
-            ) : (
-              <button
-                type="button"
-                onClick={goHome}
-                aria-label="WITHTRIP 홈으로"
-                className="flex items-center gap-2 transition-opacity hover:opacity-80"
-              >
-                <span className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                  <Compass className="size-4.5" />
-                </span>
-                <span className="text-base leading-none font-extrabold tracking-tight">
-                  WITHTRIP
-                </span>
-              </button>
-            )}
-            <div className="flex items-center gap-1">
+          <header className="sticky top-0 z-30 flex items-center justify-end gap-1 bg-background/90 px-3 py-1.5 backdrop-blur">
+            <div className="flex items-center gap-0.5">
               <ViewSwitcher view={view} onViewChange={handleViewChange} />
               <Button
                 variant="ghost"
@@ -284,12 +371,20 @@ function WithtripShell() {
               >
                 <Search />
               </Button>
-              <NotificationMenu onSelectTrip={openTrip} />
+              <NotificationMenu onSelectTrip={openTripDetail} />
               {accountMenu(true)}
             </div>
           </header>
 
-          <main className="flex flex-col gap-4 p-4">{mainContent}</main>
+          <main
+            className={
+              currentView === "friends"
+                ? "flex min-h-0 flex-1 flex-col p-2 sm:p-3"
+                : "flex flex-col gap-4 p-4"
+            }
+          >
+            {mainContent}
+          </main>
         </div>
 
         <BottomNav
@@ -328,9 +423,15 @@ function WithtripShell() {
         <ExpenseRegisterModal
           open={isExpenseModalOpen}
           onOpenChange={setIsExpenseModalOpen}
+          tripId={selectedTripId}
           onSaved={(draft) => {
             setActiveNav("settlement")
-            goTo("settlement")
+            const targetTripId = selectedTripId
+            if (targetTripId) {
+              router.push(`/settlement/${targetTripId}`)
+            } else {
+              router.push("/settlement")
+            }
             setQuickToast(`「${draft.storeName}」 지출이 등록되었어요.`)
             window.setTimeout(() => setQuickToast(null), 2800)
           }}
@@ -355,7 +456,7 @@ function WithtripShell() {
         <TripSearchDialog
           open={searchOpen}
           onOpenChange={setSearchOpen}
-          onSelectTrip={openTrip}
+          onSelectTrip={openTripDetail}
         />
       </div>
     )
@@ -363,61 +464,40 @@ function WithtripShell() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <SideNav
-        active={activeNav}
-        onSelect={handleNavSelect}
-        currentView={currentView}
-        selectedTrip={selectedTrip}
-        onSelectTrip={openTrip}
-        onHome={goHome}
-      />
-
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-border bg-background/90 px-6 py-3 backdrop-blur">
-          {currentView === "detail" && selectedTrip ? (
-            <div className="flex min-w-0 items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={goHome}
-                className="-ml-2 shrink-0 font-semibold"
-              >
-                <ArrowLeft data-icon="inline-start" />
-                목록으로 돌아가기
-              </Button>
-              <h1 className="truncate text-base font-bold">{selectedTrip.title}</h1>
-              <Badge className="shrink-0 tabular-nums">D-{selectedTrip.dDay}</Badge>
-              <span className="hidden text-xs text-muted-foreground tabular-nums lg:inline">
-                {selectedTrip.startDate} — {selectedTrip.endDate}
-              </span>
-            </div>
-          ) : (
-            <h1 className="text-base font-bold">{pageTitles[currentView] ?? "내 여행"}</h1>
-          )}
-          <div className="flex items-center gap-2">
+        <header className="sticky top-0 z-30 flex h-10 items-center justify-end gap-1 bg-background/85 px-4 py-1 backdrop-blur">
+          <div className="flex items-center gap-0.5">
             <ViewSwitcher view={view} onViewChange={handleViewChange} />
             <Button
               variant="ghost"
               size="sm"
               aria-label="여행 검색"
               onClick={() => setSearchOpen(true)}
-              className="gap-2 rounded-full font-medium text-muted-foreground"
+              className="h-8 gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground"
             >
-              <Search />
-              <span className="hidden lg:inline">여행 검색</span>
-              <kbd className="hidden rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px] font-semibold lg:inline">
+              <Search className="size-3.5 stroke-[1.5]" />
+              <span className="hidden lg:inline">검색</span>
+              <kbd className="hidden rounded border border-border bg-secondary px-1 py-0.5 text-[9px] font-semibold lg:inline">
                 ⌘K
               </kbd>
             </Button>
-            <NotificationMenu onSelectTrip={openTrip} />
-            {accountMenu(false)}
+            <NotificationMenu onSelectTrip={openTripDetail} />
+            {accountMenu(true)}
           </div>
         </header>
 
-        <main className="flex flex-col gap-5 p-6">{mainContent}</main>
+        <main
+          className={
+            currentView === "friends"
+              ? "flex min-h-0 flex-1 flex-col p-3 sm:p-4"
+              : "flex flex-col gap-5 p-6"
+          }
+        >
+          {mainContent}
+        </main>
       </div>
 
-      <TripSearchDialog open={searchOpen} onOpenChange={setSearchOpen} onSelectTrip={openTrip} />
+      <TripSearchDialog open={searchOpen} onOpenChange={setSearchOpen} onSelectTrip={openTripDetail} />
     </div>
   )
 }

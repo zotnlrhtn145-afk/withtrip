@@ -42,13 +42,13 @@ function StayItem({ stay }: { stay: StayEntry }) {
   )}`
 
   return (
-    <li className="overflow-hidden rounded-2xl bg-card ring-1 ring-border">
+    <li className="group media-card overflow-hidden rounded-2xl bg-card ring-1 ring-border">
       {/* 히어로 배너 — 숙소 사진 위에 이름과 숙박일수를 얹는다. */}
       <div className="relative h-[120px] w-full overflow-hidden bg-secondary">
         <img
           src={stay.imageUrl || DEFAULT_STAY_IMAGE}
           alt={`${stay.name} 숙소 사진`}
-          className="absolute inset-0 size-full object-cover"
+          className="media-card-image absolute inset-0 size-full object-cover"
         />
         <div
           aria-hidden="true"

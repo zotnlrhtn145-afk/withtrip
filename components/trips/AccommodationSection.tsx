@@ -8,6 +8,7 @@ import {
   LogOut,
   MapPin,
   Moon,
+  Navigation,
   NotebookPen,
   Pencil,
   Phone,
@@ -31,9 +32,19 @@ import {
   formatStayDuration,
   type Accommodation,
 } from "@/lib/accommodations-api"
+import {
+  ACCOMMODATION_CARD_BG,
+  generateHotelImagePrompt,
+  resolveHotelBannerSrc,
+} from "@/lib/hotel-image"
 import { cn } from "@/lib/utils"
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
+const TEXT = "#212121"
+const MUTED = "#616161"
+const ICON = "#424242"
+const PANEL = "#F8F9FA"
+const YELLOW_BTN = "#FFD54F"
 
 function formatStamp(dateValue: string, timeValue: string) {
   const match = String(dateValue ?? "").match(/^(\d{4})-(\d{2})-(\d{2})/)
@@ -61,19 +72,37 @@ function AccommodationCard({
   onDelete: (id: string) => void
 }) {
   const duration = formatStayDuration(item.checkInDate, item.checkOutDate)
+  const bannerSrc = resolveHotelBannerSrc(item.name)
+  const imagePrompt = generateHotelImagePrompt(item.name, {
+    cardBackground: ACCOMMODATION_CARD_BG,
+  })
+  const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    item.address || item.name
+  )}`
 
   return (
-    <li className="relative overflow-hidden rounded-2xl bg-secondary/70 ring-1 ring-border">
-      <div className="relative flex items-start justify-between gap-2 px-5 pt-4">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          {duration ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-bold text-foreground ring-1 ring-primary/25">
-              <Moon className="size-3" />
-              {duration}
-            </span>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-0.5">
+    <li
+      className="group media-card overflow-hidden rounded-2xl ring-1 ring-border"
+      style={{ backgroundColor: ACCOMMODATION_CARD_BG }}
+    >
+      {/* Banner — natural cool night tones, no sepia wash */}
+      <div className="relative h-[132px] w-full overflow-hidden bg-[#E9ECEF]">
+        <img
+          src={bannerSrc}
+          alt={`${item.name} 숙소`}
+          data-ai-prompt={imagePrompt}
+          className="media-card-image absolute inset-0 size-full object-cover"
+          onError={(event) => {
+            event.currentTarget.style.visibility = "hidden"
+          }}
+        />
+        {/* Subtle cool scrim for title legibility only */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"
+        />
+
+        <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-end gap-0.5 p-2.5">
           <Button
             type="button"
             variant="ghost"
@@ -81,9 +110,9 @@ function AccommodationCard({
             aria-label="숙소 수정"
             disabled={deleting}
             onClick={() => onEdit(item)}
-            className="text-muted-foreground hover:text-foreground"
+            className="bg-white/90 text-[#212121] backdrop-blur-sm hover:bg-white hover:text-black"
           >
-            <Pencil />
+            <Pencil className="text-[#424242]" />
           </Button>
           <Button
             type="button"
@@ -92,40 +121,59 @@ function AccommodationCard({
             aria-label="숙소 삭제"
             disabled={deleting}
             onClick={() => onDelete(item.id)}
-            className="text-muted-foreground hover:text-destructive"
+            className="bg-white/90 text-[#212121] backdrop-blur-sm hover:bg-white hover:text-destructive"
           >
-            {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+            {deleting ? (
+              <Loader2 className="animate-spin text-[#424242]" />
+            ) : (
+              <Trash2 className="text-[#424242]" />
+            )}
           </Button>
+        </div>
+
+        <div className="absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-3 p-4">
+          <p className="min-w-0 flex-1 truncate text-lg font-extrabold text-white drop-shadow-sm">
+            {item.name}
+          </p>
+          {duration ? (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-xs font-bold text-white tabular-nums backdrop-blur-sm">
+              <Moon aria-hidden="true" className="size-3" />
+              {duration}
+            </span>
+          ) : null}
         </div>
       </div>
 
-      <div className="relative flex flex-col gap-3 px-5 pt-2 pb-5">
-        <div className="flex flex-col gap-1">
-          <h3 className="text-lg leading-snug font-extrabold text-balance">{item.name}</h3>
-          {item.address ? (
-            <p className="flex items-start gap-1.5 text-sm text-muted-foreground">
-              <MapPin className="mt-0.5 size-3.5 shrink-0" />
-              <span className="text-pretty">{item.address}</span>
-            </p>
-          ) : null}
-        </div>
+      <div className="relative flex flex-col gap-3 px-5 pt-3 pb-5" style={{ color: TEXT }}>
+        {item.address ? (
+          <p className="flex items-start gap-1.5 text-sm" style={{ color: MUTED }}>
+            <MapPin className="mt-0.5 size-3.5 shrink-0" style={{ color: ICON }} />
+            <span className="text-pretty">{item.address}</span>
+          </p>
+        ) : null}
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="flex flex-col gap-1 rounded-xl bg-card/70 p-3 ring-1 ring-border/60">
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <LogIn className="size-3.5" />
+          <div
+            className="flex flex-col gap-1 rounded-xl p-3 ring-1 ring-[#E9ECEF]"
+            style={{ backgroundColor: PANEL }}
+          >
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: MUTED }}>
+              <LogIn className="size-3.5" style={{ color: ICON }} />
               체크인
             </span>
-            <span className="text-sm font-semibold tabular-nums">
+            <span className="text-sm font-semibold tabular-nums" style={{ color: TEXT }}>
               {formatStamp(item.checkInDate, item.checkInTime)}
             </span>
           </div>
-          <div className="flex flex-col gap-1 rounded-xl bg-card/70 p-3 ring-1 ring-border/60">
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <LogOut className="size-3.5" />
+          <div
+            className="flex flex-col gap-1 rounded-xl p-3 ring-1 ring-[#E9ECEF]"
+            style={{ backgroundColor: PANEL }}
+          >
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: MUTED }}>
+              <LogOut className="size-3.5" style={{ color: ICON }} />
               체크아웃
             </span>
-            <span className="text-sm font-semibold tabular-nums">
+            <span className="text-sm font-semibold tabular-nums" style={{ color: TEXT }}>
               {formatStamp(item.checkOutDate, item.checkOutTime)}
             </span>
           </div>
@@ -133,11 +181,12 @@ function AccommodationCard({
 
         {item.phoneNumber ? (
           <p className="flex items-center gap-1.5 text-sm">
-            <Phone className="size-3.5 shrink-0 text-muted-foreground" />
-            <span className="text-muted-foreground">전화번호</span>
+            <Phone className="size-3.5 shrink-0" style={{ color: ICON }} />
+            <span style={{ color: MUTED }}>전화번호</span>
             <a
               href={`tel:${item.phoneNumber.replace(/[^\d+]/g, "")}`}
               className="font-semibold tabular-nums underline-offset-4 hover:underline"
+              style={{ color: TEXT }}
             >
               {item.phoneNumber}
             </a>
@@ -145,11 +194,25 @@ function AccommodationCard({
         ) : null}
 
         {item.memo ? (
-          <p className="flex items-start gap-1.5 rounded-xl bg-card/50 px-3 py-2.5 text-sm text-muted-foreground ring-1 ring-border/50">
-            <NotebookPen className="mt-0.5 size-3.5 shrink-0" />
+          <p
+            className="flex items-start gap-1.5 rounded-xl px-3 py-2.5 text-sm ring-1 ring-[#E9ECEF]"
+            style={{ backgroundColor: PANEL, color: MUTED }}
+          >
+            <NotebookPen className="mt-0.5 size-3.5 shrink-0" style={{ color: ICON }} />
             <span className="text-pretty">{item.memo}</span>
           </p>
         ) : null}
+
+        <Button
+          render={<a href={mapHref} target="_blank" rel="noreferrer" />}
+          nativeButton={false}
+          size="sm"
+          className="w-fit rounded-full font-semibold text-[#212121] hover:brightness-95"
+          style={{ backgroundColor: YELLOW_BTN }}
+        >
+          <Navigation data-icon="inline-start" className="text-[#212121]" />
+          길찾기
+        </Button>
       </div>
     </li>
   )
