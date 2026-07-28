@@ -43,10 +43,10 @@ export async function GET(request: Request) {
       {
         trip_id: tripId,
         user_id: user.id,
+        status: "accepted",
       },
       {
         onConflict: "trip_id,user_id",
-        ignoreDuplicates: true,
       }
     )
 

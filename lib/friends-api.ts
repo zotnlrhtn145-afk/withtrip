@@ -103,10 +103,34 @@ export async function sendFriendRequest(currentUserId: string, targetUserId: str
     status: "pending" as const,
   }
 
-  const { error } = await supabase.from("friendships").insert(payload)
+  const { data, error } = await supabase
+    .from("friendships")
+    .insert(payload)
+    .select("id")
+    .maybeSingle()
+
   if (error) {
     logSupabaseError("sendFriendRequest", error)
     throw error
+  }
+
+  try {
+    const { createNotification, resolveActorDisplayName } = await import(
+      "@/lib/notifications-api"
+    )
+    const actorName = await resolveActorDisplayName(currentUserId)
+    await createNotification({
+      userId: targetUserId,
+      actorId: currentUserId,
+      type: "friend_request",
+      message: `${actorName}님이 친구 요청을 보냈습니다.`,
+      referenceId: String((data as { id?: string } | null)?.id ?? "").trim() || null,
+    })
+  } catch (err) {
+    console.warn(
+      "[sendFriendRequest] notification skipped:",
+      err instanceof Error ? err.message : err
+    )
   }
 }
 

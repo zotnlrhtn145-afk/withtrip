@@ -421,75 +421,171 @@ export async function addTripMember(input: {
     status: "pending",
   })
 
-  const upsert = await client.from("trip_members").upsert(payload, {
-    onConflict: "trip_id,user_id",
-  })
-
-  if (!upsert.error) {
-    return { tripId, userId: inviteeUserId, status: "pending" as const }
-  }
-
-  console.error(
-    "[addTripMember] upsert failed:",
-    upsert.error.message || upsert.error.details || upsert.error.code || upsert.error
-  )
-
-  // Legacy DB without status column
-  if (/status|column .* does not exist/i.test(upsert.error.message ?? "")) {
-    const legacyPayload = { trip_id: tripId, user_id: inviteeUserId }
-    const legacy = await client.from("trip_members").upsert(legacyPayload, {
-      onConflict: "trip_id,user_id",
-      ignoreDuplicates: true,
-    })
-    if (!legacy.error) return { tripId, userId: inviteeUserId, status: "pending" as const }
-    const legacyInsert = await client.from("trip_members").insert(legacyPayload)
-    if (legacyInsert.error) throw new Error(formatMemberError(legacyInsert.error))
-    return { tripId, userId: inviteeUserId, status: "pending" as const }
-  }
-
-  // Fallback for DBs without unique(trip_id, user_id) for onConflict
-  const existing = await client
+  const upsert = await client
     .from("trip_members")
-    .select("id, status")
-    .eq("trip_id", tripId)
-    .eq("user_id", inviteeUserId)
+    .upsert(payload, { onConflict: "trip_id,user_id" })
+    .select("id")
     .maybeSingle()
 
-  if (!existing.error && existing.data) {
-    const update = await client
-      .from("trip_members")
-      .update({ status: "pending" })
-      .eq("id", String((existing.data as { id?: string }).id ?? ""))
-    if (update.error && !/status|column .* does not exist/i.test(update.error.message ?? "")) {
-      throw new Error(formatMemberError(update.error))
-    }
-    return { tripId, userId: inviteeUserId, status: "pending" as const }
-  }
+  let memberId = String((upsert.data as { id?: string } | null)?.id ?? "").trim()
 
-  const insert = await client.from("trip_members").insert(payload).select("id").maybeSingle()
-  if (insert.error) {
+  if (upsert.error) {
     console.error(
-      "[addTripMember] insert failed:",
-      insert.error.message || insert.error.details || insert.error.code || insert.error
+      "[addTripMember] upsert failed:",
+      upsert.error.message || upsert.error.details || upsert.error.code || upsert.error
     )
-    const message = formatMemberError(insert.error)
-    if (/row-level security|rls|permission|policy/i.test(message)) {
-      throw new Error(
-        "멤버 초대 권한이 없어요. Supabase에서 trip_members RLS 정책(소유자 INSERT 허용)을 확인해 주세요."
+
+    // Legacy DB without status column
+    if (/status|column .* does not exist/i.test(upsert.error.message ?? "")) {
+      const legacyPayload = { trip_id: tripId, user_id: inviteeUserId }
+      const legacy = await client
+        .from("trip_members")
+        .upsert(legacyPayload, {
+          onConflict: "trip_id,user_id",
+          ignoreDuplicates: true,
+        })
+        .select("id")
+        .maybeSingle()
+      if (!legacy.error) {
+        memberId = String((legacy.data as { id?: string } | null)?.id ?? "").trim()
+        await createTripInviteNotification({
+          tripId,
+          inviteeUserId,
+          actorId: authUserId,
+          tripMemberId: memberId,
+        })
+        return { tripId, userId: inviteeUserId, status: "pending" as const, memberId }
+      }
+      const legacyInsert = await client
+        .from("trip_members")
+        .insert(legacyPayload)
+        .select("id")
+        .maybeSingle()
+      if (legacyInsert.error) throw new Error(formatMemberError(legacyInsert.error))
+      memberId = String((legacyInsert.data as { id?: string } | null)?.id ?? "").trim()
+      await createTripInviteNotification({
+        tripId,
+        inviteeUserId,
+        actorId: authUserId,
+        tripMemberId: memberId,
+      })
+      return { tripId, userId: inviteeUserId, status: "pending" as const, memberId }
+    }
+
+    // Fallback for DBs without unique(trip_id, user_id) for onConflict
+    const existing = await client
+      .from("trip_members")
+      .select("id, status")
+      .eq("trip_id", tripId)
+      .eq("user_id", inviteeUserId)
+      .maybeSingle()
+
+    if (!existing.error && existing.data) {
+      memberId = String((existing.data as { id?: string }).id ?? "").trim()
+      const update = await client
+        .from("trip_members")
+        .update({ status: "pending" })
+        .eq("id", memberId)
+      if (update.error && !/status|column .* does not exist/i.test(update.error.message ?? "")) {
+        throw new Error(formatMemberError(update.error))
+      }
+      await createTripInviteNotification({
+        tripId,
+        inviteeUserId,
+        actorId: authUserId,
+        tripMemberId: memberId,
+      })
+      return { tripId, userId: inviteeUserId, status: "pending" as const, memberId }
+    }
+
+    const insert = await client
+      .from("trip_members")
+      .insert(payload)
+      .select("id")
+      .maybeSingle()
+    if (insert.error) {
+      console.error(
+        "[addTripMember] insert failed:",
+        insert.error.message || insert.error.details || insert.error.code || insert.error
       )
+      const message = formatMemberError(insert.error)
+      if (/row-level security|rls|permission|policy/i.test(message)) {
+        throw new Error(
+          "멤버 초대 권한이 없어요. Supabase에서 trip_members RLS 정책(소유자 INSERT 허용)을 확인해 주세요."
+        )
+      }
+      if (/foreign key|violates foreign key/i.test(message)) {
+        throw new Error(
+          "초대 대상 계정이 profiles에 없어요. 친구가 한 번 로그인한 뒤 다시 초대해 주세요."
+        )
+      }
+      if (/duplicate|unique/i.test(message)) {
+        const again = await client
+          .from("trip_members")
+          .select("id")
+          .eq("trip_id", tripId)
+          .eq("user_id", inviteeUserId)
+          .maybeSingle()
+        memberId = String((again.data as { id?: string } | null)?.id ?? "").trim()
+        await createTripInviteNotification({
+          tripId,
+          inviteeUserId,
+          actorId: authUserId,
+          tripMemberId: memberId,
+        })
+        return { tripId, userId: inviteeUserId, status: "pending" as const, memberId }
+      }
+      throw new Error(message || "멤버 초대에 실패했어요.")
     }
-    if (/foreign key|violates foreign key/i.test(message)) {
-      throw new Error(
-        "초대 대상 계정이 profiles에 없어요. 친구가 한 번 로그인한 뒤 다시 초대해 주세요."
-      )
-    }
-    if (/duplicate|unique/i.test(message)) {
-      return { tripId, userId: inviteeUserId, status: "pending" as const }
-    }
-    throw new Error(message || "멤버 초대에 실패했어요.")
+    memberId = String((insert.data as { id?: string } | null)?.id ?? "").trim()
   }
 
-  return { tripId, userId: inviteeUserId, status: "pending" as const }
+  if (!memberId) {
+    const lookup = await client
+      .from("trip_members")
+      .select("id")
+      .eq("trip_id", tripId)
+      .eq("user_id", inviteeUserId)
+      .maybeSingle()
+    memberId = String((lookup.data as { id?: string } | null)?.id ?? "").trim()
+  }
+
+  await createTripInviteNotification({
+    tripId,
+    inviteeUserId,
+    actorId: authUserId,
+    tripMemberId: memberId,
+  })
+
+  return { tripId, userId: inviteeUserId, status: "pending" as const, memberId }
+}
+
+async function createTripInviteNotification(input: {
+  tripId: string
+  inviteeUserId: string
+  actorId: string
+  tripMemberId?: string
+}) {
+  const { createNotification, resolveActorDisplayName } = await import(
+    "@/lib/notifications-api"
+  )
+  const client = createClient()
+  const { data: trip } = await client
+    .from("trips")
+    .select("title")
+    .eq("id", input.tripId)
+    .maybeSingle()
+  const tripTitle =
+    String((trip as { title?: string } | null)?.title ?? "").trim() || "여행"
+  const actorName = await resolveActorDisplayName(input.actorId)
+  await createNotification({
+    userId: input.inviteeUserId,
+    actorId: input.actorId,
+    type: "trip_invite",
+    message: `${actorName}님이 '${tripTitle}'에 초대했습니다.`,
+    referenceId: input.tripId,
+    tripMemberId: input.tripMemberId || null,
+  })
 }
 
 /** Pending invitations addressed to the current user. */
@@ -626,20 +722,7 @@ export async function rejectTripInvitation(memberId: string): Promise<void> {
 
   const client = createClient()
 
-  // Prefer soft-reject; fall back to delete if update fails
-  const { error: updateError } = await client
-    .from("trip_members")
-    .update({ status: "rejected" })
-    .eq("id", id)
-    .eq("user_id", authUserId)
-
-  if (!updateError) return
-
-  console.error(
-    "[rejectTripInvitation] update failed:",
-    updateError.message || updateError.details || updateError
-  )
-
+  // Reject = delete the pending membership row
   const { error: deleteError } = await client
     .from("trip_members")
     .delete()

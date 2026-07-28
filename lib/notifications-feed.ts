@@ -5,7 +5,12 @@ import {
   rejectFriendRequest,
   resolveUsersByIds,
 } from "@/lib/friends-api"
-import { getCurrentUserId } from "@/lib/auth-session"
+import {
+  deleteNotification,
+  fetchMyNotifications,
+  markNotificationRead,
+  type NotificationType,
+} from "@/lib/notifications-api"
 import {
   acceptTripInvitation,
   fetchPendingInvitations,
@@ -21,6 +26,8 @@ export type NotificationActionState = "pending" | "accepted" | "dismissed"
 
 export type FeedNotification = {
   id: string
+  /** DB notification type — used by tab filters */
+  type: NotificationType
   category: NotificationCategory
   actorName: string
   actorAvatarUrl?: string
@@ -32,14 +39,18 @@ export type FeedNotification = {
   actionState: NotificationActionState
   /** trip_members.id | friendships.id | trip_clips.id */
   actionId: string
+  /** notifications.id when sourced from notifications table */
+  notificationId?: string
 }
 
 export type NotificationTimeGroup = "today" | "week" | "earlier"
 
-const FILTER_TO_CATEGORY: Record<Exclude<NotificationFilter, "all">, NotificationCategory> = {
-  trip: "trip",
-  friend: "friend",
-  clip: "clip",
+const CLIP_TYPES: NotificationType[] = ["clip_invite", "clip_like", "clip_comment"]
+
+function categoryFromType(type: NotificationType): NotificationCategory {
+  if (type === "friend_request") return "friend"
+  if (CLIP_TYPES.includes(type)) return "clip"
+  return "trip"
 }
 
 export function filterNotifications(
@@ -47,8 +58,15 @@ export function filterNotifications(
   filter: NotificationFilter
 ): FeedNotification[] {
   if (filter === "all") return items
-  const category = FILTER_TO_CATEGORY[filter]
-  return items.filter((item) => item.category === category)
+  if (filter === "trip") {
+    return items.filter(
+      (item) => item.type === "trip_invite" && item.actionState === "pending"
+    )
+  }
+  if (filter === "friend") {
+    return items.filter((item) => item.type === "friend_request")
+  }
+  return items.filter((item) => CLIP_TYPES.includes(item.type))
 }
 
 export function formatRelativeTimeKo(iso?: string | null): string {
@@ -109,7 +127,7 @@ export function groupNotificationsByTime(
     .filter((section) => section.items.length > 0)
 }
 
-async function fetchFriendRequestNotifications(): Promise<FeedNotification[]> {
+async function fetchFriendRequestNotificationsFallback(): Promise<FeedNotification[]> {
   const userId = await getCurrentAuthUserId()
   if (!userId) return []
 
@@ -128,6 +146,7 @@ async function fetchFriendRequestNotifications(): Promise<FeedNotification[]> {
           String(profile?.avatar_url ?? profile?.profile_image ?? "").trim() || undefined
         return {
           id: `friend:${row.id}`,
+          type: "friend_request" as const,
           category: "friend" as const,
           actorName,
           actorAvatarUrl,
@@ -139,32 +158,44 @@ async function fetchFriendRequestNotifications(): Promise<FeedNotification[]> {
       })
   } catch (err) {
     console.error(
-      "[fetchFriendRequestNotifications]",
+      "[fetchFriendRequestNotificationsFallback]",
       err instanceof Error ? err.message : err
     )
     return []
   }
 }
 
-async function fetchClipShareNotifications(): Promise<FeedNotification[]> {
-  const userId = await getCurrentUserId()
+async function fetchTripInviteNotificationsFallback(): Promise<FeedNotification[]> {
+  const invites = await fetchPendingInvitations()
+  return invites.map((invite) => ({
+    id: `trip:${invite.id}`,
+    type: "trip_invite" as const,
+    category: "trip" as const,
+    actorName: invite.inviterName,
+    actorAvatarUrl: invite.inviterAvatarUrl,
+    tripId: invite.tripId,
+    tripTitle: invite.tripTitle,
+    message: `${invite.inviterName}님이 '${invite.tripTitle}'에 초대했습니다.`,
+    createdAt: invite.createdAt ?? new Date().toISOString(),
+    actionState: "pending" as const,
+    actionId: invite.id,
+  }))
+}
+
+/** Soft clip activity from shared trips (when no clip_invite rows exist yet). */
+async function fetchClipActivityFallback(): Promise<FeedNotification[]> {
+  const userId = await getCurrentAuthUserId()
   if (!userId) return []
 
   const client = createClient()
   const { data, error } = await client
     .from("trip_clips")
-    .select(
-      "id, trip_id, user_id, caption, created_at, trips:trip_id(title)"
-    )
+    .select("id, trip_id, user_id, created_at, trips:trip_id(title)")
     .neq("user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(20)
+    .limit(12)
 
-  if (error) {
-    // Table may not exist yet — soft-fail
-    console.warn("[fetchClipShareNotifications]", error.message || error)
-    return []
-  }
+  if (error) return []
 
   type ClipRow = {
     id?: string
@@ -190,12 +221,12 @@ async function fetchClipShareNotifications(): Promise<FeedNotification[]> {
       const tripId = String(row.trip_id ?? "").trim() || undefined
       const profile = profiles[authorId]
       const actorName = profile?.nickname || "친구"
-      const actorAvatarUrl = profile?.avatarUrl
       return {
-        id: `clip:${id}`,
+        id: `clip-like:${id}`,
+        type: "clip_comment" as const,
         category: "clip" as const,
         actorName,
-        actorAvatarUrl,
+        actorAvatarUrl: profile?.avatarUrl,
         tripId,
         tripTitle,
         message: `${actorName}님이 '${tripTitle}'에 클립을 공유했습니다.`,
@@ -207,66 +238,145 @@ async function fetchClipShareNotifications(): Promise<FeedNotification[]> {
     .filter((item): item is FeedNotification => Boolean(item))
 }
 
+function mapDbNotification(row: Awaited<ReturnType<typeof fetchMyNotifications>>[number]): FeedNotification {
+  const type = row.type
+  const category = categoryFromType(type)
+  const actorName = row.actorName || "친구"
+  const tripId =
+    type === "trip_invite" || type === "clip_invite" ? row.referenceId : undefined
+  const actionId =
+    row.tripMemberId ||
+    (type === "friend_request" ? row.referenceId : undefined) ||
+    row.referenceId ||
+    row.id
+
+  return {
+    id: `notif:${row.id}`,
+    type,
+    category,
+    actorName,
+    actorAvatarUrl: row.actorAvatarUrl,
+    tripId,
+    tripTitle: row.tripTitle,
+    message: row.message || `${actorName}님의 알림`,
+    createdAt: row.createdAt,
+    actionState: row.status === "accepted" ? "accepted" : "pending",
+    actionId: String(actionId ?? "").trim(),
+    notificationId: row.id,
+  }
+}
+
 export async function fetchFeedNotifications(): Promise<FeedNotification[]> {
-  const [invites, friends, clips] = await Promise.all([
-    fetchPendingInvitations(),
-    fetchFriendRequestNotifications(),
-    fetchClipShareNotifications(),
+  const dbRows = await fetchMyNotifications()
+
+  if (dbRows.length > 0) {
+    const mapped = dbRows.map(mapDbNotification)
+    // Merge friend requests that may not have notification rows yet
+    const friendFallback = await fetchFriendRequestNotificationsFallback()
+    const existingFriendIds = new Set(
+      mapped
+        .filter((item) => item.type === "friend_request")
+        .map((item) => item.actionId)
+    )
+    const mergedFriends = friendFallback.filter(
+      (item) => !existingFriendIds.has(item.actionId)
+    )
+
+    // Merge pending trip invites missing from notifications table
+    const tripFallback = await fetchTripInviteNotificationsFallback()
+    const existingTripMemberIds = new Set(
+      mapped
+        .filter((item) => item.type === "trip_invite")
+        .map((item) => item.actionId)
+    )
+    const mergedTrips = tripFallback.filter(
+      (item) => !existingTripMemberIds.has(item.actionId)
+    )
+
+    const hasClipNotifs = mapped.some((item) => CLIP_TYPES.includes(item.type))
+    const clips = hasClipNotifs ? [] : await fetchClipActivityFallback()
+
+    return [...mapped, ...mergedFriends, ...mergedTrips, ...clips].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+  }
+
+  // Full fallback when notifications table is empty / missing
+  const [trips, friends, clips] = await Promise.all([
+    fetchTripInviteNotificationsFallback(),
+    fetchFriendRequestNotificationsFallback(),
+    fetchClipActivityFallback(),
   ])
 
-  const tripItems: FeedNotification[] = invites.map((invite) => ({
-    id: `trip:${invite.id}`,
-    category: "trip",
-    actorName: invite.inviterName,
-    actorAvatarUrl: invite.inviterAvatarUrl,
-    tripId: invite.tripId,
-    tripTitle: invite.tripTitle,
-    message: `${invite.inviterName}님이 '${invite.tripTitle}'에 초대했습니다.`,
-    createdAt: invite.createdAt ?? new Date().toISOString(),
-    actionState: "pending",
-    actionId: invite.id,
-  }))
-
-  return [...tripItems, ...friends, ...clips].sort((a, b) => {
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  })
+  return [...trips, ...friends, ...clips].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
 }
 
 export async function acceptFeedNotification(
   item: FeedNotification
 ): Promise<{ toast: string; tripId?: string }> {
-  if (item.category === "trip") {
-    const { tripTitle } = await acceptTripInvitation(item.actionId)
+  if (item.type === "trip_invite" || item.type === "clip_invite") {
+    if (!item.actionId) throw new Error("초대 정보가 없어요.")
+    await acceptTripInvitation(item.actionId)
+    if (item.notificationId) {
+      await markNotificationRead(item.notificationId, "accepted")
+    }
     return {
-      toast: `'${tripTitle}' 여행에 참여했습니다!`,
+      toast: "여행 멤버로 합류했습니다!",
       tripId: item.tripId,
     }
   }
-  if (item.category === "friend") {
+
+  if (item.type === "friend_request") {
     await acceptFriendRequest(item.actionId)
+    if (item.notificationId) {
+      await markNotificationRead(item.notificationId, "accepted")
+    }
     return { toast: `${item.actorName}님과 친구가 되었어요.` }
   }
-  // Clip shares are informational — accepting marks as seen
+
+  // clip_like / clip_comment — mark read
+  if (item.notificationId) {
+    await markNotificationRead(item.notificationId, "dismissed")
+  }
   return { toast: "확인했습니다." }
 }
 
-export async function rejectFeedNotification(item: FeedNotification): Promise<{ toast: string }> {
-  if (item.category === "trip") {
-    await rejectTripInvitation(item.actionId)
+export async function rejectFeedNotification(
+  item: FeedNotification
+): Promise<{ toast: string }> {
+  if (item.type === "trip_invite" || item.type === "clip_invite") {
+    if (item.actionId) {
+      await rejectTripInvitation(item.actionId)
+    }
+    if (item.notificationId) {
+      await deleteNotification(item.notificationId)
+    }
     return { toast: "초대를 거절했어요." }
   }
-  if (item.category === "friend") {
+
+  if (item.type === "friend_request") {
     await rejectFriendRequest(item.actionId)
+    if (item.notificationId) {
+      await deleteNotification(item.notificationId)
+    }
     return { toast: "친구 요청을 거절했어요." }
+  }
+
+  if (item.notificationId) {
+    await deleteNotification(item.notificationId)
   }
   return { toast: "알림을 삭제했어요." }
 }
 
-/** Pending actionable count (trip invites + friend requests). */
+/** Pending actionable count (trip/clip invites + friend requests). */
 export function countActionableNotifications(items: FeedNotification[]): number {
   return items.filter(
     (item) =>
       item.actionState === "pending" &&
-      (item.category === "trip" || item.category === "friend")
+      (item.type === "trip_invite" ||
+        item.type === "clip_invite" ||
+        item.type === "friend_request")
   ).length
 }

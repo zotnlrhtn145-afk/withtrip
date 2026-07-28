@@ -288,7 +288,7 @@ export function TripHeroCard({
           avatarUrl: friend.avatarUrl,
         })
         await reloadJoinedMembers()
-        showNotice(`${friend.nickname || "친구"}님을 초대했어요`)
+        showNotice(`${friend.nickname || "친구"}님에게 초대를 보냈어요`)
       } catch (err) {
         const message =
           err && typeof err === "object"
@@ -460,7 +460,7 @@ export function TripHeroCard({
           <DialogHeader>
             <DialogTitle>멤버 초대하기</DialogTitle>
             <DialogDescription>
-              수락된 친구를 여행 멤버로 초대할 수 있어요.
+              친구에게 초대를 보내면, 상대가 알림에서 수락한 뒤 멤버로 합류해요.
             </DialogDescription>
           </DialogHeader>
 

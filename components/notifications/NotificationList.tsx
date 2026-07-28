@@ -88,7 +88,12 @@ function ActionButtons({
     return <span className="text-xs font-medium text-slate-400">참여 중</span>
   }
 
-  if (item.category === "clip") {
+  const needsAcceptReject =
+    item.type === "trip_invite" ||
+    item.type === "clip_invite" ||
+    item.type === "friend_request"
+
+  if (!needsAcceptReject) {
     return (
       <button
         type="button"
@@ -169,7 +174,7 @@ export function NotificationList({
     setActingId(item.id)
     try {
       const result = await acceptFeedNotification(item)
-      if (item.category === "trip") {
+      if (item.type === "trip_invite" || item.type === "clip_invite") {
         setItems((current) =>
           current.map((row) =>
             row.id === item.id ? { ...row, actionState: "accepted" } : row
@@ -178,8 +183,6 @@ export function NotificationList({
         await refreshTrips({ silent: true })
         window.setTimeout(() => removeWithFade(item.id), 900)
         if (result.tripId) onSelectTrip?.({ id: result.tripId })
-      } else if (item.category === "friend") {
-        removeWithFade(item.id)
       } else {
         removeWithFade(item.id)
       }
@@ -273,26 +276,27 @@ export function NotificationList({
                           <NotificationAvatars item={item} />
                           <div className="min-w-0 flex-1">
                             <p className="text-[13px] leading-snug text-slate-800">
-                              <span className="font-bold text-slate-900">
-                                {item.actorName}
-                              </span>
-                              {item.category === "trip" ? (
-                                <>
-                                  님이 &apos;
-                                  <span className="font-bold text-slate-900">
-                                    {item.tripTitle}
-                                  </span>
-                                  &apos;에 초대했습니다.
-                                </>
-                              ) : item.category === "friend" ? (
-                                <>님이 친구 요청을 보냈습니다.</>
+                              {item.message ? (
+                                <span>{item.message}</span>
                               ) : (
                                 <>
-                                  님이 &apos;
                                   <span className="font-bold text-slate-900">
-                                    {item.tripTitle}
+                                    {item.actorName}
                                   </span>
-                                  &apos;에 클립을 공유했습니다.
+                                  {item.type === "trip_invite" ||
+                                  item.type === "clip_invite" ? (
+                                    <>
+                                      님이 &apos;
+                                      <span className="font-bold text-slate-900">
+                                        {item.tripTitle}
+                                      </span>
+                                      &apos;에 초대했습니다.
+                                    </>
+                                  ) : item.type === "friend_request" ? (
+                                    <>님이 친구 요청을 보냈습니다.</>
+                                  ) : (
+                                    <>님이 클립 활동을 보냈습니다.</>
+                                  )}
                                 </>
                               )}{" "}
                               <span className="whitespace-nowrap text-slate-400">
