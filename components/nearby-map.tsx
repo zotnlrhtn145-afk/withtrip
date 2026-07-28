@@ -189,6 +189,7 @@ function NearbyMapInner({
   onRecenter,
   recenterKey,
   locating,
+  fill = false,
 }: {
   center: LatLng
   accuracy: number | null
@@ -198,6 +199,7 @@ function NearbyMapInner({
   onRecenter: () => void
   recenterKey: number
   locating?: boolean
+  fill?: boolean
 }) {
   const selected = useMemo(
     () => spots.find((spot) => spot.id === selectedId) ?? null,
@@ -206,8 +208,12 @@ function NearbyMapInner({
   const mapId = googleMapId()
 
   return (
-    <div className="relative aspect-[4/3] w-full sm:aspect-[16/11]">
-      <Map
+    <div
+      className={cn(
+        "relative w-full",
+        fill ? "h-full min-h-[16rem]" : "aspect-[4/3] sm:aspect-[16/11]"
+      )}
+    >      <Map
         className="absolute inset-0 h-full w-full"
         defaultCenter={{ lat: center.lat, lng: center.lng }}
         defaultZoom={15}
@@ -293,6 +299,7 @@ export function NearbyMap({
   recenterKey,
   locating,
   className,
+  fill = false,
 }: {
   center: LatLng
   accuracy: number | null
@@ -303,6 +310,8 @@ export function NearbyMap({
   recenterKey: number
   locating?: boolean
   className?: string
+  /** Stretch map to parent height instead of fixed aspect ratio. */
+  fill?: boolean
 }) {
   const apiKey = googleMapsApiKey()
   const [missingKey] = useState(!apiKey)
@@ -319,10 +328,16 @@ export function NearbyMap({
       <div
         className={cn(
           "relative overflow-hidden rounded-2xl border border-border bg-card",
+          fill && "flex h-full min-h-[16rem] flex-col",
           className
         )}
       >
-        <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 px-6 text-center sm:aspect-[16/11]">
+        <div
+          className={cn(
+            "flex w-full flex-1 flex-col items-center justify-center gap-2 px-6 text-center",
+            fill ? "min-h-[16rem]" : "aspect-[4/3] sm:aspect-[16/11]"
+          )}
+        >
           <p className="text-sm font-semibold">Google Maps API 키가 필요해요</p>
           <p className="max-w-sm text-xs text-muted-foreground">
             `.env.local`에{" "}
@@ -340,20 +355,24 @@ export function NearbyMap({
     <div
       className={cn(
         "relative overflow-hidden rounded-2xl border border-border bg-card",
+        fill && "flex h-full min-h-[16rem] flex-col",
         className
       )}
     >
       <APIProvider apiKey={apiKey} libraries={["marker"]}>
-        <NearbyMapInner
-          center={center}
-          accuracy={accuracy}
-          spots={spots}
-          selectedId={selectedId}
-          onSelect={handleSelect}
-          onRecenter={onRecenter}
-          recenterKey={recenterKey}
-          locating={locating}
-        />
+        <div className={cn(fill && "min-h-0 flex-1")}>
+          <NearbyMapInner
+            center={center}
+            accuracy={accuracy}
+            spots={spots}
+            selectedId={selectedId}
+            onSelect={handleSelect}
+            onRecenter={onRecenter}
+            recenterKey={recenterKey}
+            locating={locating}
+            fill={fill}
+          />
+        </div>
       </APIProvider>
 
       <div className="flex items-center justify-between gap-2 border-t border-border px-4 py-2.5">

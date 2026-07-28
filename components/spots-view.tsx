@@ -39,7 +39,7 @@ type AuthPhase = "checking" | "guest" | "authed"
 
 function SpotsEmptyState({ onGoHome }: { onGoHome: () => void }) {
   return (
-    <div className="flex min-h-[60vh] w-full items-center justify-center bg-white px-2 py-6">
+    <div className="flex h-full w-full items-center justify-center bg-white px-1 py-2 md:px-2 md:py-4">
       <div className="w-full max-w-md border-2 border-dashed border-amber-300/70 rounded-3xl p-8 bg-white text-center">
         <h3 className="text-lg font-bold text-gray-900 mb-2">
           가고 싶은 장소를 등록해 보세요!
@@ -212,25 +212,57 @@ export function SpotsView() {
   if (spots.length === 0) {
     return (
       <div className="flex flex-col gap-5 bg-white">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">주변 스팟</h2>
-          <p className="text-sm text-muted-foreground">
-            현재 위치 기준으로 등록된 장소를 거리순으로 확인할 수 있어요.
-          </p>
+        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">주변 스팟</h2>
+
+        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-secondary px-3 py-2.5">
+          <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <Navigation
+              className={cn("size-4", geo.status === "locating" && "animate-pulse")}
+            />
+          </span>
+          <div className="flex min-w-0 flex-col">
+            <span className="text-sm font-semibold">
+              {geo.isFallback ? "오사카 · 우메다 (대체 위치)" : "내 현재 위치"}
+            </span>
+            <span className="text-xs text-muted-foreground">{statusLabel}</span>
+          </div>
+          <Badge className="ml-auto font-semibold tabular-nums">0곳</Badge>
         </div>
-        <SpotsEmptyState onGoHome={() => router.push("/")} />
+
+        {geo.errorMessage ? (
+          <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+            {geo.errorMessage}
+          </div>
+        ) : null}
+
+        <div className="flex flex-col gap-6 md:flex-row md:items-stretch">
+          <div className="w-full md:min-w-0 md:flex-1">
+            <div className="h-64 w-full md:h-full md:min-h-[420px]">
+              <NearbyMap
+                fill
+                className="h-full"
+                center={geo.position}
+                accuracy={geo.accuracy}
+                spots={[]}
+                selectedId={null}
+                onSelect={() => {}}
+                onRecenter={handleRecenter}
+                recenterKey={recenterKey}
+                locating={geo.status === "locating"}
+              />
+            </div>
+          </div>
+          <div className="flex w-full md:min-w-0 md:flex-1 md:items-center">
+            <SpotsEmptyState onGoHome={() => router.push("/")} />
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="flex flex-col gap-5 bg-white">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">주변 스팟</h2>
-        <p className="text-sm text-muted-foreground">
-          현재 위치 기준으로 등록된 장소를 거리순으로 확인할 수 있어요.
-        </p>
-      </div>
+      <h2 className="text-xl font-bold tracking-tight sm:text-2xl">주변 스팟</h2>
 
       <div className="flex flex-wrap items-center gap-2 rounded-xl bg-secondary px-3 py-2.5">
         <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
