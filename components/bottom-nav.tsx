@@ -67,20 +67,20 @@ export function BottomNav({
         bottom: "1rem",
         left: "50%",
         transform: "translateX(-50%)",
-        zIndex: 99999,
-        width: "92%",
-        maxWidth: "400px",
+        zIndex: 9999,
+        width: "calc(100% - 2.5rem)",
+        maxWidth: "380px",
         pointerEvents: "auto",
       }}
       className={cn(
-        "fixed bottom-4 left-1/2 z-[99999] w-[92%] max-w-[400px] -translate-x-1/2 md:hidden",
-        "pointer-events-auto",
-        "rounded-full border border-white/20 bg-white/80 shadow-xl backdrop-blur-md",
+        "fixed bottom-4 left-1/2 z-[9999] w-[calc(100%-2.5rem)] max-w-[380px] -translate-x-1/2 md:hidden",
+        "flex items-center justify-around px-2 py-2 pointer-events-auto",
+        "rounded-full border border-white/30 bg-white/85 shadow-2xl backdrop-blur-md",
         "transition-all duration-300 ease-in-out transform",
         compact ? "scale-90 opacity-90 py-1.5" : "scale-100 opacity-100 py-3"
       )}
     >
-      <ul className="relative m-0 flex list-none items-center justify-around px-2 py-0">
+      <ul className="relative m-0 flex w-full list-none items-center justify-around px-0 py-0">
         {navItems.map((item) => {
           const isActive = item.key === active
           return (
@@ -93,7 +93,7 @@ export function BottomNav({
                 whileTap={{ scale: 1.1 }}
                 transition={{ type: "spring", stiffness: 460, damping: 28 }}
                 className={cn(
-                  "relative z-10 flex w-full flex-col items-center gap-1 py-1 text-[10px] font-medium",
+                  "relative z-10 flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-medium whitespace-nowrap",
                   isActive ? "text-foreground" : "text-muted-foreground"
                 )}
               >
