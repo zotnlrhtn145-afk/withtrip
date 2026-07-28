@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Loader2, Plane, Plus, SearchX, X } from "lucide-react"
+import { Compass, Loader2, Plane, Plus, SearchX, X } from "lucide-react"
 
 import { CreateTripDialog } from "@/components/create-trip-dialog"
 import { TripBannerCard } from "@/components/trip-banner-card"
@@ -84,22 +84,28 @@ export function HomeView({
           <p className="text-sm text-muted-foreground">Supabase에서 여행을 불러오는 중…</p>
         </div>
       ) : trips.length === 0 && !isFiltered ? (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-6 py-14 text-center">
-          <span className="flex size-11 items-center justify-center rounded-full bg-secondary">
-            <Plane className="size-5" />
-          </span>
-          <p className="text-sm font-semibold">
-            등록된 여행이 없습니다. 새 여행을 만들어보세요!
-          </p>
-          <p className="text-sm text-muted-foreground">
-            하단 + 버튼 또는 새 여행 만들기로 첫 여행을 등록할 수 있어요.
+        <div className="flex min-h-[70vh] flex-col items-center justify-center rounded-2xl bg-white px-4 text-center">
+          <div className="rounded-full bg-gradient-to-tr from-amber-400 via-rose-400 to-amber-500 p-[2.5px] shadow-md">
+            <span className="flex size-16 items-center justify-center rounded-full bg-white">
+              <Compass className="size-7 text-amber-500" />
+            </span>
+          </div>
+          <h3 className="mt-6 mb-2 text-xl font-bold tracking-tight text-gray-900 md:text-2xl">
+            첫 번째 여행을 기록해 보세요
+          </h3>
+          <p className="mx-auto mb-8 max-w-sm text-sm leading-relaxed text-gray-500">
+            친구들과 함께 일정을 계획하고 정산까지 한곳에서 스마트하게 관리할 수
+            있어요.
           </p>
           <CreateTripDialog
             trigger={
-              <Button className="hidden rounded-full font-semibold md:inline-flex">
-                <Plus data-icon="inline-start" />
-                새 여행 만들기
-              </Button>
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-7 py-3.5 text-sm font-semibold text-black shadow-lg shadow-amber-200/50 transition-all hover:scale-105 hover:bg-amber-500 active:scale-95"
+              >
+                <Plus className="size-4" />
+                새 여행 시작하기
+              </button>
             }
           />
         </div>
