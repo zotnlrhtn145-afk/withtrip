@@ -8,6 +8,9 @@ import { BottomNav, type NavKey } from "@/components/bottom-nav"
 import { CreateTripDialog } from "@/components/create-trip-dialog"
 
 function resolveActive(pathname: string, nav: string | null): NavKey {
+  if (pathname === "/around") return "spots"
+  if (pathname === "/friends") return "friends"
+  if (pathname === "/mypage") return "mypage"
   if (pathname.startsWith("/settlement")) return "settlement"
   if (pathname === "/") {
     if (nav === "spots") return "spots"
@@ -34,11 +37,22 @@ export function MobileGlobalChrome() {
       router.push("/")
       return
     }
+    if (key === "spots") {
+      router.push("/around")
+      return
+    }
+    if (key === "friends") {
+      router.push("/friends")
+      return
+    }
     if (key === "settlement") {
       router.push("/settlement")
       return
     }
-    router.push(`/?nav=${key}`)
+    if (key === "mypage") {
+      router.push("/mypage")
+      return
+    }
   }
 
   const hideBottomNav =
