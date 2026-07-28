@@ -12,6 +12,12 @@ import { cn } from "@/lib/utils"
 export const SIDEBAR_WIDTH_PX = 80
 
 function resolveActiveNav(pathname: string, navParam: string | null): NavKey {
+  if (pathname === "/around") return "spots"
+  if (pathname === "/friends") return "friends"
+  if (pathname === "/mypage") return "mypage"
+  if (pathname === "/login" || pathname === "/signup" || pathname === "/forgot-password") {
+    return "mypage"
+  }
   if (pathname.startsWith("/settlement")) return "settlement"
   if (pathname.startsWith("/trips")) return "home"
   if (
@@ -36,15 +42,27 @@ export function Sidebar() {
   )
 
   const go = (key: NavKey) => {
+    // Keep URL routing authoritative across all desktop pages.
     if (key === "home") {
       router.push("/")
+      return
+    }
+    if (key === "spots") {
+      router.push("/around")
+      return
+    }
+    if (key === "friends") {
+      router.push("/friends")
       return
     }
     if (key === "settlement") {
       router.push("/settlement")
       return
     }
-    router.push(`/?nav=${key}`)
+    if (key === "mypage") {
+      router.push("/mypage")
+      return
+    }
   }
 
   return (
