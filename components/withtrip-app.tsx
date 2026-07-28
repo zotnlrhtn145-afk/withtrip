@@ -166,6 +166,41 @@ function WithtripShell() {
     }
   }, [])
 
+  useEffect(() => {
+    const onBottomTab = (
+      event: Event
+    ) => {
+      const detail = (
+        event as CustomEvent<{ key?: NavKey }>
+      ).detail
+      const key = detail?.key
+      if (!key) return
+      setActiveNav(key)
+      if (key === "home") {
+        setCurrentView("home")
+        return
+      }
+      if (key === "spots") {
+        setCurrentView("spots")
+        return
+      }
+      if (key === "friends") {
+        setCurrentView("friends")
+        return
+      }
+      if (key === "settlement") {
+        setCurrentView("settlement")
+        return
+      }
+      if (key === "mypage") {
+        setCurrentView(isLoggedIn ? "mypage" : "login")
+      }
+    }
+    window.addEventListener("withtrip:bottom-nav-tab", onBottomTab)
+    return () =>
+      window.removeEventListener("withtrip:bottom-nav-tab", onBottomTab)
+  }, [isLoggedIn])
+
   const goTo = (next: AppView) => {
     setCurrentView(next)
     window.scrollTo({ top: 0 })

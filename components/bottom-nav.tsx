@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, type MouseEvent } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { Home, MapPin, UserRound, Users, Wallet, type LucideIcon } from "lucide-react"
@@ -45,7 +45,9 @@ export function BottomNav({
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
 
-  const handleTabClick = (key: NavKey) => {
+  const handleTabClick = (event: MouseEvent<HTMLButtonElement>, key: NavKey) => {
+    event.stopPropagation()
+
     // 1) Sync upper SPA state if a callback exists.
     onTabChange?.(key)
     onSelect?.(key)
@@ -61,8 +63,7 @@ export function BottomNav({
     <nav
       aria-label="주요 메뉴"
       className={cn(
-        "fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-[9999] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 md:hidden",
-        "relative",
+        "fixed bottom-4 left-1/2 z-[99999] w-[90%] max-w-[400px] -translate-x-1/2 md:hidden",
         "pointer-events-auto",
         "rounded-full border border-white/20 bg-white/80 shadow-xl backdrop-blur-md",
         "transition-all duration-300 ease-in-out transform",
@@ -76,7 +77,7 @@ export function BottomNav({
             <li key={item.key} className="relative flex-1">
               <motion.button
                 type="button"
-                onClick={() => handleTabClick(item.key)}
+                onClick={(event) => handleTabClick(event, item.key)}
                 aria-current={isActive ? "page" : undefined}
                 style={{ touchAction: "manipulation" }}
                 whileTap={{ scale: 1.1 }}
@@ -90,7 +91,7 @@ export function BottomNav({
                   <motion.div
                     layoutId="activeTabIndicator"
                     transition={{ type: "spring", stiffness: 520, damping: 34 }}
-                    className="absolute top-0 left-1/2 -z-10 h-9 w-[3.1rem] -translate-x-1/2 rounded-full bg-primary/25"
+                    className="absolute inset-y-0 left-1/2 z-[-1] my-auto h-9 w-[3.1rem] -translate-x-1/2 rounded-full bg-primary/25"
                   />
                 ) : null}
                 <item.icon className="size-4.5 stroke-[1.8]" />

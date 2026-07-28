@@ -64,10 +64,11 @@ export function MobileGlobalChrome() {
       {!hideBottomNav ? (
         <BottomNav
           active={active}
-          onTabChange={(key: NavKey) => {
-            // Keep explicit state callback channel for SPA shells.
-            void key
-          }}
+          onTabChange={(key: NavKey) =>
+            window.dispatchEvent(
+              new CustomEvent("withtrip:bottom-nav-tab", { detail: { key } })
+            )
+          }
         />
       ) : null}
     </>
