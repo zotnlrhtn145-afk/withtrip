@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { Compass, Plus } from "lucide-react"
 
 import { BottomNav, type NavKey } from "@/components/bottom-nav"
@@ -22,7 +22,6 @@ function resolveActive(pathname: string, nav: string | null): NavKey {
 }
 
 export function MobileGlobalChrome() {
-  const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const viewParam = searchParams.get("view")
@@ -31,30 +30,6 @@ export function MobileGlobalChrome() {
     () => resolveActive(pathname, searchParams.get("nav")),
     [pathname, searchParams]
   )
-
-  const navigate = (key: NavKey) => {
-    // Always route by tab key regardless of current screen/layer state.
-    if (key === "home") {
-      router.push("/")
-      return
-    }
-    if (key === "spots") {
-      router.push("/around")
-      return
-    }
-    if (key === "friends") {
-      router.push("/friends")
-      return
-    }
-    if (key === "settlement") {
-      router.push("/settlement")
-      return
-    }
-    if (key === "mypage") {
-      router.push("/mypage")
-      return
-    }
-  }
 
   const hideBottomNav =
     pathname === "/login" ||
@@ -86,7 +61,15 @@ export function MobileGlobalChrome() {
         </div>
       </header>
 
-      {!hideBottomNav ? <BottomNav active={active} onSelect={navigate} /> : null}
+      {!hideBottomNav ? (
+        <BottomNav
+          active={active}
+          onTabChange={(key: NavKey) => {
+            // Keep explicit state callback channel for SPA shells.
+            void key
+          }}
+        />
+      ) : null}
     </>
   )
 }

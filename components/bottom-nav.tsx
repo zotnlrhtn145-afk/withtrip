@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { Home, MapPin, UserRound, Users, Wallet, type LucideIcon } from "lucide-react"
 
@@ -16,13 +17,25 @@ export const navItems: { key: NavKey; label: string; icon: LucideIcon }[] = [
   { key: "mypage", label: "마이", icon: UserRound },
 ]
 
+function toHref(key: NavKey): string {
+  if (key === "home") return "/"
+  if (key === "spots") return "/around"
+  if (key === "friends") return "/friends"
+  if (key === "settlement") return "/settlement"
+  return "/mypage"
+}
+
 export function BottomNav({
   active,
   onSelect,
+  onTabChange,
 }: {
   active: NavKey
-  onSelect: (key: NavKey) => void
+  onSelect?: (key: NavKey) => void
+  onTabChange?: (key: NavKey) => void
 }) {
+  const router = useRouter()
+  const pathname = usePathname()
   const [compact, setCompact] = useState(false)
 
   useEffect(() => {
@@ -32,11 +45,24 @@ export function BottomNav({
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
 
+  const handleTabClick = (key: NavKey) => {
+    // 1) Sync upper SPA state if a callback exists.
+    onTabChange?.(key)
+    onSelect?.(key)
+
+    // 2) Always sync URL routing so state and path never diverge.
+    const href = toHref(key)
+    if (pathname !== href || key === "home") {
+      router.push(href)
+    }
+  }
+
   return (
     <nav
       aria-label="주요 메뉴"
       className={cn(
         "fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-[9999] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 md:hidden",
+        "relative",
         "pointer-events-auto",
         "rounded-full border border-white/20 bg-white/80 shadow-xl backdrop-blur-md",
         "transition-all duration-300 ease-in-out transform",
@@ -50,7 +76,7 @@ export function BottomNav({
             <li key={item.key} className="relative flex-1">
               <motion.button
                 type="button"
-                onClick={() => onSelect(item.key)}
+                onClick={() => handleTabClick(item.key)}
                 aria-current={isActive ? "page" : undefined}
                 style={{ touchAction: "manipulation" }}
                 whileTap={{ scale: 1.1 }}
