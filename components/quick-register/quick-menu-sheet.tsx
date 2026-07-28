@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { MapPinPlus, Plane, Receipt, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { clearDocumentScrollLock } from "@/lib/clear-scroll-lock"
 
 export function QuickMenuSheet({
   open,
@@ -24,11 +25,10 @@ export function QuickMenuSheet({
       if (event.key === "Escape") onOpenChange(false)
     }
     window.addEventListener("keydown", onKey)
-    const prev = document.body.style.overflow
     document.body.style.overflow = "hidden"
     return () => {
       window.removeEventListener("keydown", onKey)
-      document.body.style.overflow = prev
+      clearDocumentScrollLock()
     }
   }, [open, onOpenChange])
 
@@ -46,7 +46,7 @@ export function QuickMenuSheet({
         data-no-press
         className={cn(
           "absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-200 ease-out",
-          open ? "opacity-100" : "opacity-0"
+          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
         onClick={() => onOpenChange(false)}
       />

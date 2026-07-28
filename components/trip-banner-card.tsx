@@ -64,7 +64,7 @@ export function TripBannerCard({
       />
       <div
         aria-hidden="true"
-        className="absolute inset-0 z-10 bg-gradient-to-t from-black/80 via-black/30 to-transparent"
+        className="absolute inset-0 z-10 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none"
       />
 
       <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-4">

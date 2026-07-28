@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { clearDocumentScrollLock } from "@/lib/clear-scroll-lock"
 
 const PLACE_CATEGORIES = ["맛집", "카페", "바", "관광", "쇼핑", "기타"] as const
 
@@ -52,11 +53,10 @@ export function PlaceRegisterModal({
       if (event.key === "Escape") onOpenChange(false)
     }
     window.addEventListener("keydown", onKey)
-    const prev = document.body.style.overflow
     document.body.style.overflow = "hidden"
     return () => {
       window.removeEventListener("keydown", onKey)
-      document.body.style.overflow = prev
+      clearDocumentScrollLock()
     }
   }, [open, onOpenChange])
 

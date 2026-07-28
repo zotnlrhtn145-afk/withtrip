@@ -1,12 +1,23 @@
 "use client"
 
-import { Suspense, type ReactNode } from "react"
+import { Suspense, useEffect, type ReactNode } from "react"
+import { usePathname } from "next/navigation"
 
 import { MobileGlobalChrome } from "@/components/mobile-global-chrome"
 import { Sidebar, SIDEBAR_WIDTH_PX } from "@/components/sidebar"
 import { TripsProvider } from "@/components/trips-store"
+import { clearDocumentScrollLock } from "@/lib/clear-scroll-lock"
 
 function AppShellInner({ children }: { children: ReactNode }) {
+  const pathname = usePathname()
+
+  // Drop stuck dialog/modal scroll locks so mouse wheel works again.
+  useEffect(() => {
+    clearDocumentScrollLock()
+    const timer = window.setTimeout(() => clearDocumentScrollLock(), 0)
+    return () => window.clearTimeout(timer)
+  }, [pathname])
+
   return (
     <TripsProvider>
       {/*

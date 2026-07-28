@@ -33,6 +33,7 @@ import {
 } from "@/lib/settlements-api"
 import { calcPerPerson } from "@/lib/settlement-math"
 import { members as mockMembers } from "@/lib/trip-data"
+import { clearDocumentScrollLock } from "@/lib/clear-scroll-lock"
 import { cn } from "@/lib/utils"
 
 export type ExpenseDraft = {
@@ -198,11 +199,10 @@ export function ExpenseRegisterModal({
       if (event.key === "Escape") onOpenChange(false)
     }
     window.addEventListener("keydown", onKey)
-    const prev = document.body.style.overflow
     document.body.style.overflow = "hidden"
     return () => {
       window.removeEventListener("keydown", onKey)
-      document.body.style.overflow = prev
+      clearDocumentScrollLock()
       if (scanTimer.current) window.clearTimeout(scanTimer.current)
     }
   }, [open, onOpenChange])

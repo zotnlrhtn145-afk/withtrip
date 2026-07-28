@@ -7,6 +7,7 @@ import { useTrips } from "@/components/trips-store"
 import { Button } from "@/components/ui/button"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { clearDocumentScrollLock } from "@/lib/clear-scroll-lock"
 import { type Trip } from "@/lib/trip-data"
 
 export function TripRegisterModal({
@@ -42,11 +43,10 @@ export function TripRegisterModal({
       if (event.key === "Escape") onOpenChange(false)
     }
     window.addEventListener("keydown", onKey)
-    const prev = document.body.style.overflow
     document.body.style.overflow = "hidden"
     return () => {
       window.removeEventListener("keydown", onKey)
-      document.body.style.overflow = prev
+      clearDocumentScrollLock()
     }
   }, [open, onOpenChange])
 
