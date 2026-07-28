@@ -84,7 +84,7 @@ export function HomeView({
           <p className="text-sm text-muted-foreground">Supabase에서 여행을 불러오는 중…</p>
         </div>
       ) : trips.length === 0 && !isFiltered ? (
-        <div className="flex min-h-[70vh] flex-col items-center justify-center rounded-2xl bg-white px-4 text-center">
+        <div className="w-full max-w-2xl mx-auto p-8 md:p-12 rounded-3xl border-2 border-dashed border-amber-300/70 bg-white/50 backdrop-blur-sm flex flex-col items-center justify-center text-center transition-all min-h-[70vh]">
           <div className="rounded-full bg-gradient-to-tr from-amber-400 via-rose-400 to-amber-500 p-[2.5px] shadow-md">
             <span className="flex size-16 items-center justify-center rounded-full bg-white">
               <Compass className="size-7 text-amber-500" />

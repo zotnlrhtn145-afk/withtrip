@@ -49,8 +49,8 @@
 
 :root {
   color-scheme: light;
-  /* Pastel yellow app background */
-  --background: oklch(0.98 0.026 96);
+  /* Global pure white background */
+  --background: #ffffff;
   --foreground: oklch(0.24 0.018 68);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.24 0.018 68);
@@ -86,8 +86,8 @@
 }
 
 .dark {
-  color-scheme: dark;
-  --background: oklch(0.19 0.012 70);
+  color-scheme: light;
+  --background: #ffffff;
   --foreground: oklch(0.96 0.01 95);
   --card: oklch(0.24 0.014 70);
   --card-foreground: oklch(0.96 0.01 95);
@@ -122,8 +122,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    color-scheme: dark;
-    --background: oklch(0.19 0.012 70);
+    color-scheme: light;
+    --background: #ffffff;
     --foreground: oklch(0.96 0.01 95);
     --card: oklch(0.24 0.014 70);
     --card-foreground: oklch(0.96 0.01 95);
