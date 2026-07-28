@@ -11,8 +11,10 @@ import {
   Loader2,
   MapPin,
   Pencil,
+  Plane,
   Share2,
   Sun,
+  User,
   UserPlus,
 } from "lucide-react"
 
@@ -21,7 +23,6 @@ import { useTrips } from "@/components/trips-store"
 import { Avatar, AvatarFallback, AvatarGroup, AvatarGroupCount, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { cn } from "@/lib/utils"
 import {
   fetchFriendships,
   getCurrentAuthUserId,
@@ -55,7 +57,11 @@ const weatherIcons = {
   rain: CloudRain,
 } as const
 
-const EMPTY_FLIGHT_LABEL = "✈️ 항공편 미등록"
+const EMPTY_FLIGHT_LABEL = "항공편 미등록"
+const actionBtnClass =
+  "inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-200/80 active:scale-95"
+const primaryCtaClass =
+  "inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-5 py-2 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 transition-all hover:bg-amber-500 active:scale-95"
 
 function routeArrow(fromCode: string, toCode: string) {
   return `${fromCode || "—"}→${toCode || "—"}`
@@ -91,7 +97,7 @@ function formatHeroFlightLabel(flights: TripFlight[]): string {
   }
   const returnPart = inbound ? `오는 편: ${routeArrow(inbound.fromCode, inbound.toCode)}` : ""
   const summary = [goingPart, returnPart].filter(Boolean).join(" · ")
-  return summary ? `✈️ ${summary}` : EMPTY_FLIGHT_LABEL
+  return summary || EMPTY_FLIGHT_LABEL
 }
 
 function initialsFromName(name: string) {
@@ -281,9 +287,18 @@ export function TripHeroCard({
     [reloadJoinedMembers, showNotice, trip.id]
   )
 
+  const durationLabel = formatTripDuration(trip.nights, trip.days)
+  const memberHeadline =
+    memberCount > 0 ? memberSummary : "함께할 멤버를 초대해 보세요"
+
   return (
-    <Card className="relative border-0 p-0 ring-0">
-      <div className={compact ? "relative h-44 w-full" : "relative h-56 w-full md:h-64"}>
+    <section className="relative mb-8 border-b border-slate-200/70 pb-2">
+      <div
+        className={cn(
+          "relative h-52 w-full overflow-hidden rounded-3xl shadow-sm sm:h-72",
+          compact && "sm:h-64"
+        )}
+      >
         <Image
           src={coverSrc}
           alt={trip.heroImageAlt}
@@ -295,93 +310,117 @@ export function TripHeroCard({
         />
         <div
           aria-hidden="true"
-          className="absolute inset-0 z-10 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none"
+          className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent"
         />
 
-        <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between p-4">
-          <Badge className="h-8 rounded-full px-3 text-sm font-bold tabular-nums shadow-sm">
+        <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-4 sm:p-5">
+          <span className="rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-slate-950 shadow-sm tabular-nums">
             D-{trip.dDay}
-          </Badge>
-          <Badge variant="secondary" className="h-8 rounded-full px-3">
-            <WeatherIcon data-icon="inline-start" />
+          </span>
+          <span className="flex items-center gap-1 rounded-full border border-white/20 bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur-md">
+            <WeatherIcon className="size-3.5" />
             {trip.weather}
-          </Badge>
+          </span>
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col gap-2 p-4">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-white/90">
-            <MapPin className="size-3.5" />
+        <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col p-4 sm:p-5">
+          <p className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-200/90">
+            <MapPin className="size-3.5 shrink-0" />
             <span>
               {trip.region} · {trip.country}
             </span>
-          </div>
-          <h2 className="text-2xl leading-tight font-bold text-balance text-white drop-shadow-sm">
+          </p>
+          <h2 className="text-xl font-extrabold tracking-tight text-balance text-white drop-shadow-sm sm:text-3xl">
             {trip.title}
           </h2>
-          <div className="flex min-w-0 max-w-full items-center gap-3 overflow-x-auto text-[11px] text-white/90 sm:text-xs">
+          <div className="mt-1.5 flex min-w-0 max-w-full items-center gap-3 overflow-x-auto text-xs font-medium text-slate-200/80">
             <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap tabular-nums">
               <CalendarDays className="size-3.5 shrink-0" />
               {trip.startDate} — {trip.endDate}
             </span>
-            <span className="min-w-0 truncate whitespace-nowrap" title={flightLabel}>
-              {flightLabel}
+            <span
+              className="inline-flex min-w-0 items-center gap-1.5 truncate whitespace-nowrap"
+              title={flightLabel}
+            >
+              <Plane className="size-3.5 shrink-0" />
+              <span className="truncate">{flightLabel}</span>
             </span>
           </div>
         </div>
       </div>
 
-      <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-4">
-        <div className="flex items-center gap-3">
-          <AvatarGroup className="-space-x-1.5">
-            {visibleMembers.map((member) => (
-              <Avatar key={member.id}>
-                {member.avatarUrl ? <AvatarImage src={member.avatarUrl} alt="" /> : null}
-                <AvatarFallback className="text-xs font-semibold">
-                  {initialsFromName(member.name)}
-                </AvatarFallback>
-              </Avatar>
-            ))}
-            {hiddenCount > 0 ? (
-              <AvatarGroupCount className="text-xs font-semibold">+{hiddenCount}</AvatarGroupCount>
-            ) : null}
+      <div className="flex flex-col items-start justify-between gap-4 pt-5 pb-6 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 items-center gap-3">
+          <AvatarGroup className="-space-x-2">
+            {memberCount > 0 ? (
+              <>
+                {visibleMembers.map((member) => (
+                  <Avatar key={member.id} className="size-9 ring-2 ring-white">
+                    {member.avatarUrl ? <AvatarImage src={member.avatarUrl} alt="" /> : null}
+                    <AvatarFallback className="bg-slate-100 text-[11px] font-semibold text-slate-600">
+                      {initialsFromName(member.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
+                {hiddenCount > 0 ? (
+                  <AvatarGroupCount className="size-9 text-[11px] font-semibold ring-2 ring-white">
+                    +{hiddenCount}
+                  </AvatarGroupCount>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <Avatar className="size-9 ring-2 ring-white">
+                  <AvatarFallback className="bg-slate-100 text-slate-400">
+                    <User className="size-4" />
+                  </AvatarFallback>
+                </Avatar>
+                <Avatar className="size-9 ring-2 ring-white">
+                  <AvatarFallback className="bg-slate-50 text-slate-300">
+                    <User className="size-4" />
+                  </AvatarFallback>
+                </Avatar>
+              </>
+            )}
           </AvatarGroup>
-          <div className="flex min-w-0 flex-col">
-            <span className="truncate text-sm font-semibold">{memberSummary}</span>
-            <span className="text-xs text-muted-foreground">
-              멤버 {memberCount}명 · {formatTripDuration(trip.nights, trip.days)} 함께 편집 중
-            </span>
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 truncate text-sm font-bold text-slate-900">
+              {memberHeadline}
+            </p>
+            <p className="mt-0.5 text-xs font-medium text-slate-400">
+              {durationLabel} · 실시간 편집 가능
+            </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="no-scrollbar flex w-full max-w-full items-center gap-2 overflow-x-auto sm:w-auto sm:justify-end">
           <EditTripDialog
             trip={trip}
             trigger={
-              <Button variant="outline" size="lg" className="rounded-full font-semibold">
-                <Pencil data-icon="inline-start" />
+              <button type="button" className={cn(actionBtnClass, "shrink-0")}>
+                <Pencil className="size-3.5" />
                 편집
-              </Button>
+              </button>
             }
           />
-          <Button
-            variant="outline"
-            size="lg"
-            className="rounded-full font-semibold"
+          <button
+            type="button"
+            className={cn(actionBtnClass, "shrink-0")}
             onClick={() => void handleCopyText(shareUrl, "링크가 복사되었습니다")}
           >
-            <Share2 data-icon="inline-start" />
+            <Share2 className="size-3.5" />
             공유
-          </Button>
-          <Button
-            size="lg"
-            className="rounded-full font-semibold"
+          </button>
+          <button
+            type="button"
+            className={cn(primaryCtaClass, "shrink-0")}
             onClick={() => setInviteOpen(true)}
           >
-            <UserPlus data-icon="inline-start" />
+            <UserPlus className="size-3.5" />
             멤버 초대하기
-          </Button>
+          </button>
         </div>
-      </CardContent>
+      </div>
 
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent className="max-h-[90svh] overflow-y-auto rounded-2xl sm:max-w-lg">
@@ -476,10 +515,10 @@ export function TripHeroCard({
       </Dialog>
 
       {notice ? (
-        <div className="pointer-events-none fixed right-4 bottom-4 z-[70] rounded-xl bg-foreground px-3 py-2 text-sm font-semibold text-background shadow-lg">
+        <div className="pointer-events-none fixed right-4 bottom-4 z-[70] rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-lg">
           {notice}
         </div>
       ) : null}
-    </Card>
+    </section>
   )
 }

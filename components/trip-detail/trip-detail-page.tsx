@@ -156,7 +156,7 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
     return (
       <div className="min-h-screen bg-background">
         <div className="relative mx-auto flex w-full max-w-md flex-col pb-8">
-          <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-border bg-background/90 px-4 py-3 backdrop-blur">
+          <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-slate-200/70 bg-white/90 px-4 py-3 backdrop-blur">
             <Button variant="ghost" size="sm" onClick={goHome} className="-ml-2 font-semibold">
               <ArrowLeft data-icon="inline-start" />
               목록으로
@@ -184,7 +184,7 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
   return (
     <div className="flex min-h-screen bg-background">
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-border bg-background/90 px-6 py-3 backdrop-blur">
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-slate-200/70 bg-white/90 px-6 py-3 backdrop-blur">
           <div className="flex min-w-0 items-center gap-3">
             <Button
               variant="ghost"
