@@ -1,7 +1,7 @@
 "use client"
 
-import { useMemo } from "react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
 import { Compass } from "lucide-react"
 
 import { AccountMenu } from "@/components/account-menu"
@@ -11,85 +11,51 @@ import { cn } from "@/lib/utils"
 /** Global primary sidebar width — sub-panels should start at this offset. */
 export const SIDEBAR_WIDTH_PX = 80
 
-function resolveActiveNav(pathname: string, navParam: string | null): NavKey {
-  if (pathname === "/around") return "spots"
-  if (pathname === "/friends") return "friends"
-  if (pathname === "/mypage") return "mypage"
-  if (pathname === "/login" || pathname === "/signup" || pathname === "/forgot-password") {
-    return "mypage"
+function hrefFor(key: NavKey): string {
+  if (key === "home") return "/"
+  if (key === "spots") return "/spots"
+  if (key === "friends") return "/friends"
+  if (key === "settlement") return "/settlement"
+  return "/mypage"
+}
+
+function isActiveNav(pathname: string, key: NavKey): boolean {
+  if (key === "home") return pathname === "/"
+  if (key === "spots") return pathname.startsWith("/spots") || pathname.startsWith("/around")
+  if (key === "friends") return pathname.startsWith("/friends")
+  if (key === "settlement") {
+    return pathname.startsWith("/settlement") || pathname.startsWith("/bills")
   }
-  if (pathname.startsWith("/settlement")) return "settlement"
-  if (pathname.startsWith("/trips")) return "home"
-  if (
-    navParam === "friends" ||
-    navParam === "spots" ||
-    navParam === "mypage" ||
-    navParam === "settlement" ||
-    navParam === "home"
-  ) {
-    return navParam
-  }
-  return "home"
+  return pathname.startsWith("/mypage")
 }
 
 export function Sidebar() {
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const active = useMemo(
-    () => resolveActiveNav(pathname, searchParams.get("nav")),
-    [pathname, searchParams]
-  )
-
-  const go = (key: NavKey) => {
-    // Keep URL routing authoritative across all desktop pages.
-    if (key === "home") {
-      router.push("/")
-      return
-    }
-    if (key === "spots") {
-      router.push("/around")
-      return
-    }
-    if (key === "friends") {
-      router.push("/friends")
-      return
-    }
-    if (key === "settlement") {
-      router.push("/settlement")
-      return
-    }
-    if (key === "mypage") {
-      router.push("/mypage")
-      return
-    }
-  }
 
   return (
     <aside
       aria-label="메인 메뉴"
-      className="sticky top-0 z-50 flex h-dvh w-20 shrink-0 flex-col items-center border-r border-border/80 bg-[#F7F4EE]/95 py-4 backdrop-blur-md"
+      className="sticky top-0 relative z-50 flex h-dvh w-20 shrink-0 flex-col items-center border-r border-border/80 bg-[#F7F4EE]/95 py-4 backdrop-blur-md pointer-events-auto"
       style={{ width: SIDEBAR_WIDTH_PX }}
     >
       {/* Brand */}
-      <button
-        type="button"
-        onClick={() => go("home")}
+      <Link
+        href="/"
         aria-label="WITHTRIP 홈으로"
         className="mb-5 flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_4px_14px_rgba(255,193,7,0.45)] transition-transform hover:scale-[1.03] active:scale-[0.98]"
       >
         <Compass className="size-5 stroke-[1.6]" />
-      </button>
+      </Link>
 
       {/* Main nav */}
       <nav className="flex w-full flex-1 flex-col items-center gap-1.5 px-2">
         {navItems.map((item) => {
-          const isActive = item.key === active
+          const isActive = isActiveNav(pathname, item.key)
           return (
-            <button
+            <Link
               key={item.key}
-              type="button"
-              onClick={() => go(item.key)}
+              href={hrefFor(item.key)}
               aria-label={item.label}
               aria-current={isActive ? "page" : undefined}
               title={item.label}
@@ -109,7 +75,7 @@ export function Sidebar() {
               <span className="text-[10px] font-semibold leading-none tracking-tight">
                 {item.label}
               </span>
-            </button>
+            </Link>
           )
         })}
       </nav>
@@ -118,8 +84,8 @@ export function Sidebar() {
       <div className="mt-auto flex flex-col items-center gap-2 pb-1">
         <AccountMenu
           rail
-          onLoginClick={() => router.push("/?view=login")}
-          onMyPageClick={() => go("mypage")}
+          onLoginClick={() => router.push("/login")}
+          onMyPageClick={() => router.push("/mypage")}
         />
       </div>
     </aside>
