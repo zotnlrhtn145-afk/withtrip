@@ -303,6 +303,47 @@ export async function insertTripToSupabase(input: CreateTripInput): Promise<Trip
   return mapTripRowToTrip(data as TripRow)
 }
 
+export async function deleteTripFromSupabase(tripId: string): Promise<void> {
+  const id = String(tripId ?? "").trim()
+  if (!id) throw new Error("삭제할 여행이 없어요.")
+
+  const userId = await getCurrentUserId()
+  if (!userId) throw new Error("로그인이 필요해요.")
+
+  const client = createClient()
+
+  const { data: row, error: lookupError } = await client
+    .from("trips")
+    .select("id, user_id, title")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (lookupError) {
+    console.error(
+      "[deleteTripFromSupabase] lookup:",
+      lookupError.message || lookupError.details || lookupError
+    )
+    throw new Error(getErrorMessage(lookupError) || "여행을 찾지 못했어요.")
+  }
+
+  if (!row) throw new Error("여행을 찾을 수 없어요.")
+
+  const ownerId = String((row as { user_id?: string | null }).user_id ?? "").trim()
+  if (ownerId && ownerId !== userId) {
+    throw new Error("본인이 만든 여행만 삭제할 수 있어요.")
+  }
+
+  const { error } = await client.from("trips").delete().eq("id", id).eq("user_id", userId)
+
+  if (error) {
+    console.error(
+      "[deleteTripFromSupabase]",
+      error.message || error.details || error
+    )
+    throw new Error(getErrorMessage(error) || "여행 삭제에 실패했어요.")
+  }
+}
+
 export function toIsoDate(date: Date) {
   const y = date.getFullYear()
   const m = `${date.getMonth() + 1}`.padStart(2, "0")
