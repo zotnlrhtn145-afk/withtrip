@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/client"
-import { nearbySpots, type NearbySpot } from "@/lib/spots-data"
+import { type NearbySpot } from "@/lib/spots-data"
 
 type ProfileJoin = {
   nickname?: string | null
@@ -80,7 +80,7 @@ const SPOT_SELECT = `
 
 /**
  * Fetch nearby spots with author profile (avatar_url, nickname) joined.
- * Falls back to local seed data when the table is missing / empty / errors.
+ * Returns [] when the table is empty or unavailable so the UI can show Empty State.
  */
 export async function fetchNearbySpots(): Promise<NearbySpot[]> {
   try {
@@ -92,17 +92,15 @@ export async function fetchNearbySpots(): Promise<NearbySpot[]> {
 
     if (error) {
       console.warn("[fetchNearbySpots]", error.message)
-      return nearbySpots
+      return []
     }
 
     const rows = (data as SpotRow[] | null) ?? []
-    const mapped = rows
+    return rows
       .map(mapSpotRowToNearbySpot)
       .filter((spot): spot is NearbySpot => Boolean(spot))
-
-    return mapped.length > 0 ? mapped : nearbySpots
   } catch (err) {
     console.warn("[fetchNearbySpots] unexpected:", err)
-    return nearbySpots
+    return []
   }
 }

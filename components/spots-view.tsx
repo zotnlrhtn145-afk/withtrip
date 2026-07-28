@@ -2,7 +2,8 @@
 
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Footprints, MapPin, Navigation, Star } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Footprints, Loader2, MapPin, Navigation, Star } from "lucide-react"
 
 import { useGeolocation } from "@/hooks/use-geolocation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -16,10 +17,10 @@ import {
 import { fetchNearbySpots } from "@/lib/spots-api"
 import {
   DEFAULT_SPOT_AVATAR,
-  nearbySpots as seedSpots,
   type NearbySpot,
 } from "@/lib/spots-data"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/utils/supabase/client"
 
 const NearbyMap = dynamic(
   () => import("@/components/nearby-map").then((mod) => mod.NearbyMap),
@@ -33,10 +34,37 @@ const NearbyMap = dynamic(
   }
 )
 
+type AuthPhase = "checking" | "guest" | "authed"
+
+function SpotsEmptyState({ onGoHome }: { onGoHome: () => void }) {
+  return (
+    <div className="flex min-h-[60vh] w-full items-center justify-center bg-white px-2 py-6">
+      <div className="w-full max-w-md border-2 border-dashed border-amber-300/70 rounded-3xl p-8 bg-white text-center">
+        <h3 className="text-lg font-bold text-gray-900 mb-2">
+          가고 싶은 장소를 등록해 보세요!
+        </h3>
+        <p className="text-sm text-gray-500 max-w-xs mx-auto leading-relaxed mb-6">
+          여행 카드 상세 페이지에서 라운지바, 맛집, 핫플을 추가하면 이곳에서 지도와
+          거리순으로 한눈에 확인할 수 있어요.
+        </p>
+        <button
+          type="button"
+          onClick={onGoHome}
+          className="bg-amber-400 hover:bg-amber-500 text-black font-semibold text-sm px-6 py-2.5 rounded-full shadow-md transition-all"
+        >
+          내 여행 보러가기
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function SpotsView() {
+  const router = useRouter()
   const geo = useGeolocation()
-  const [rawSpots, setRawSpots] = useState<NearbySpot[]>(seedSpots)
-  const [spotsLoading, setSpotsLoading] = useState(true)
+  const [authPhase, setAuthPhase] = useState<AuthPhase>("checking")
+  const [rawSpots, setRawSpots] = useState<NearbySpot[]>([])
+  const [spotsLoading, setSpotsLoading] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [recenterKey, setRecenterKey] = useState(0)
   const didAutoCenter = useRef(false)
@@ -44,6 +72,34 @@ export function SpotsView() {
   const cardRefs = useRef<Record<string, HTMLLIElement | null>>({})
 
   useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const supabase = createClient()
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (cancelled) return
+        setAuthPhase(user ? "authed" : "guest")
+      } catch {
+        if (!cancelled) setAuthPhase("guest")
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (authPhase !== "guest") return
+    const timer = window.setTimeout(() => {
+      router.push("/login")
+    }, 1000)
+    return () => window.clearTimeout(timer)
+  }, [authPhase, router])
+
+  useEffect(() => {
+    if (authPhase !== "authed") return
     let cancelled = false
     void (async () => {
       setSpotsLoading(true)
@@ -55,7 +111,7 @@ export function SpotsView() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [authPhase])
 
   const spots = useMemo(() => {
     return rawSpots
@@ -77,6 +133,7 @@ export function SpotsView() {
   const selected = spots.find((spot) => spot.id === selectedId) ?? null
 
   useEffect(() => {
+    if (authPhase !== "authed") return
     if (geo.status !== "ready") return
     if (!didAutoCenter.current) {
       didAutoCenter.current = true
@@ -87,7 +144,7 @@ export function SpotsView() {
       followNextFix.current = false
       setRecenterKey((key) => key + 1)
     }
-  }, [geo.status, geo.position.lat, geo.position.lng])
+  }, [authPhase, geo.status, geo.position.lat, geo.position.lng])
 
   useEffect(() => {
     if (!selectedId) return
@@ -122,8 +179,49 @@ export function SpotsView() {
     }
   })()
 
+  if (authPhase === "checking" || authPhase === "guest") {
+    return (
+      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3 bg-white px-6 text-center">
+        <Loader2 className="size-7 animate-spin text-primary" />
+        <p className="text-sm font-medium text-gray-700">
+          {authPhase === "guest"
+            ? "로그인이 필요한 화면입니다."
+            : "불러오는 중…"}
+        </p>
+        {authPhase === "guest" ? (
+          <p className="text-xs text-muted-foreground">
+            잠시 후 로그인 화면으로 이동합니다…
+          </p>
+        ) : null}
+      </div>
+    )
+  }
+
+  if (spotsLoading) {
+    return (
+      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3 bg-white px-6 text-center">
+        <Loader2 className="size-7 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">주변 스팟을 불러오는 중…</p>
+      </div>
+    )
+  }
+
+  if (spots.length === 0) {
+    return (
+      <div className="flex flex-col gap-5 bg-white">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">주변 스팟</h2>
+          <p className="text-sm text-muted-foreground">
+            현재 위치 기준으로 등록된 장소를 거리순으로 확인할 수 있어요.
+          </p>
+        </div>
+        <SpotsEmptyState onGoHome={() => router.push("/")} />
+      </div>
+    )
+  }
+
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 bg-white">
       <div className="flex flex-col gap-1">
         <h2 className="text-xl font-bold tracking-tight sm:text-2xl">주변 스팟</h2>
         <p className="text-sm text-muted-foreground">
@@ -144,7 +242,7 @@ export function SpotsView() {
           <span className="text-xs text-muted-foreground">{statusLabel}</span>
         </div>
         <Badge className="ml-auto font-semibold tabular-nums">
-          {spotsLoading ? "…" : `${spots.length}곳`}
+          {`${spots.length}곳`}
         </Badge>
       </div>
 
