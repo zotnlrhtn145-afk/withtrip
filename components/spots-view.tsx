@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Footprints, Loader2, MapPin, Navigation, Star } from "lucide-react"
 
 import { useGeolocation } from "@/hooks/use-geolocation"
+import { LoginRedirectOverlay } from "@/components/login-redirect-overlay"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -94,7 +95,7 @@ export function SpotsView() {
     if (authPhase !== "guest") return
     const timer = window.setTimeout(() => {
       router.push("/login")
-    }, 1000)
+    }, 1200)
     return () => window.clearTimeout(timer)
   }, [authPhase, router])
 
@@ -179,20 +180,22 @@ export function SpotsView() {
     }
   })()
 
-  if (authPhase === "checking" || authPhase === "guest") {
+  if (authPhase === "checking") {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3 bg-white px-6 text-center">
         <Loader2 className="size-7 animate-spin text-primary" />
-        <p className="text-sm font-medium text-gray-700">
-          {authPhase === "guest"
-            ? "로그인이 필요한 화면입니다."
-            : "불러오는 중…"}
-        </p>
-        {authPhase === "guest" ? (
-          <p className="text-xs text-muted-foreground">
-            잠시 후 로그인 화면으로 이동합니다…
-          </p>
-        ) : null}
+        <p className="text-sm text-muted-foreground">불러오는 중…</p>
+      </div>
+    )
+  }
+
+  if (authPhase === "guest") {
+    return (
+      <div className="min-h-[70vh] bg-white">
+        <LoginRedirectOverlay
+          open
+          message="로그인이 필요한 화면입니다."
+        />
       </div>
     )
   }
