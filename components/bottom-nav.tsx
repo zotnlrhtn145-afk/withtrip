@@ -82,11 +82,11 @@ export function BottomNav({
         compact ? "scale-90 opacity-90 py-1.5" : "scale-100 opacity-100 py-3"
       )}
     >
-      <ul className="relative m-0 flex w-full list-none items-center justify-between px-0 py-0">
+      <ul className="relative m-0 grid w-full list-none grid-cols-5 items-center px-3 py-1.5">
         {navItems.map((item) => {
           const isActive = item.key === active
           return (
-            <li key={item.key} className="relative m-0 list-none flex-1 p-0">
+            <li key={item.key} className="relative m-0 list-none px-0 py-0">
               <motion.button
                 type="button"
                 onClick={(event) => handleTabClick(event, item.key)}
@@ -95,7 +95,7 @@ export function BottomNav({
                 whileTap={{ scale: 1.1 }}
                 transition={{ type: "spring", stiffness: 460, damping: 28 }}
                 className={cn(
-                  "relative z-10 flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-medium whitespace-nowrap",
+                  "relative z-10 flex w-full flex-col items-center justify-center py-1 text-[11px] font-medium whitespace-nowrap",
                   isActive ? "text-foreground" : "text-muted-foreground"
                 )}
               >
@@ -103,7 +103,7 @@ export function BottomNav({
                   <motion.div
                     layoutId="activeTabIndicator"
                     transition={{ type: "spring", stiffness: 520, damping: 34 }}
-                    className="absolute inset-y-0 left-1/2 z-[-1] my-auto h-9 w-[3.1rem] -translate-x-1/2 rounded-full bg-primary/25"
+                    className="absolute inset-0 -z-10 rounded-full bg-amber-100"
                   />
                 ) : null}
                 <item.icon className="size-4.5 stroke-[1.8]" />
