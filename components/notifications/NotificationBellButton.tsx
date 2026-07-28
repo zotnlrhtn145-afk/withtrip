@@ -1,14 +1,12 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import { Bell } from "lucide-react"
 
 import { useNotifications } from "@/components/notifications/notifications-provider"
 import { cn } from "@/lib/utils"
 
 /**
- * Bell trigger: desktop opens the Instagram-style drawer;
- * mobile routes to `/notifications`.
+ * Bell trigger: desktop → left sidebar drawer / mobile → RTL full-screen drawer.
  */
 export function NotificationBellButton({
   className,
@@ -17,15 +15,14 @@ export function NotificationBellButton({
   className?: string
   iconClassName?: string
 }) {
-  const router = useRouter()
-  const { openDrawer, unreadCount } = useNotifications()
+  const { openDrawer, openMobileNotifications, unreadCount } = useNotifications()
 
   const handleClick = () => {
     if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
       openDrawer()
       return
     }
-    router.push("/notifications")
+    openMobileNotifications()
   }
 
   return (
@@ -34,7 +31,7 @@ export function NotificationBellButton({
       aria-label={unreadCount > 0 ? `알림 ${unreadCount}개` : "알림"}
       onClick={handleClick}
       className={cn(
-        "relative flex size-9 items-center justify-center rounded-full text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900",
+        "relative flex size-9 items-center justify-center rounded-full text-slate-800 transition-colors hover:text-black",
         className
       )}
     >

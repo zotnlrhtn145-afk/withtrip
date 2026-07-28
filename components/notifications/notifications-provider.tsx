@@ -20,10 +20,16 @@ type NotificationsContextValue = {
   items: FeedNotification[]
   loading: boolean
   unreadCount: number
+  /** Desktop left slide drawer */
   drawerOpen: boolean
   openDrawer: () => void
   closeDrawer: () => void
   setDrawerOpen: (open: boolean) => void
+  /** Mobile right-to-left full-screen drawer */
+  isMobileNotificationOpen: boolean
+  openMobileNotifications: () => void
+  closeMobileNotifications: () => void
+  setMobileNotificationOpen: (open: boolean) => void
   refresh: () => Promise<void>
   setItems: React.Dispatch<React.SetStateAction<FeedNotification[]>>
 }
@@ -34,6 +40,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<FeedNotification[]>([])
   const [loading, setLoading] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [isMobileNotificationOpen, setMobileNotificationOpen] = useState(false)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -67,8 +74,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, [refresh])
 
   useEffect(() => {
-    if (drawerOpen) void refresh()
-  }, [drawerOpen, refresh])
+    if (drawerOpen || isMobileNotificationOpen) void refresh()
+  }, [drawerOpen, isMobileNotificationOpen, refresh])
 
   const value = useMemo<NotificationsContextValue>(
     () => ({
@@ -79,10 +86,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       openDrawer: () => setDrawerOpen(true),
       closeDrawer: () => setDrawerOpen(false),
       setDrawerOpen,
+      isMobileNotificationOpen,
+      openMobileNotifications: () => setMobileNotificationOpen(true),
+      closeMobileNotifications: () => setMobileNotificationOpen(false),
+      setMobileNotificationOpen,
       refresh,
       setItems,
     }),
-    [items, loading, drawerOpen, refresh]
+    [items, loading, drawerOpen, isMobileNotificationOpen, refresh]
   )
 
   return (

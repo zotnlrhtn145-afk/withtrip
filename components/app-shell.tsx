@@ -4,6 +4,7 @@ import { Suspense, useEffect, type ReactNode } from "react"
 import { usePathname, useRouter } from "next/navigation"
 
 import { MobileGlobalChrome } from "@/components/mobile-global-chrome"
+import { MobileNotificationDrawer } from "@/components/notifications/MobileNotificationDrawer"
 import { NotificationDrawer } from "@/components/notifications/NotificationDrawer"
 import { NotificationsProvider } from "@/components/notifications/notifications-provider"
 import { Sidebar, SIDEBAR_WIDTH_PX } from "@/components/sidebar"
@@ -41,19 +42,16 @@ function AppShellInner({ children }: { children: ReactNode }) {
           style={{ ["--app-sidebar-width" as string]: `${SIDEBAR_WIDTH_PX}px` }}
         >
           <MobileGlobalChrome />
-          <div
-            className={
-              pathname === "/notifications"
-                ? "w-full flex-1"
-                : "w-full flex-1 pt-12 pb-24 md:pt-0 md:pb-0"
-            }
-          >
-            {children}
-          </div>
+          <div className="w-full flex-1 pb-24 md:pt-0 md:pb-0">{children}</div>
         </div>
       </div>
 
       <NotificationDrawer
+        onSelectTrip={(trip) => {
+          router.push(`/trips/${trip.id}`)
+        }}
+      />
+      <MobileNotificationDrawer
         onSelectTrip={(trip) => {
           router.push(`/trips/${trip.id}`)
         }}

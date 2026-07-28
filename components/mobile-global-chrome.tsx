@@ -1,12 +1,15 @@
 "use client"
 
-import { useMemo } from "react"
-import { usePathname, useSearchParams } from "next/navigation"
-import { Compass, Plus } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import type { SupabaseClient, User } from "@supabase/supabase-js"
+import { PlusSquare } from "lucide-react"
 
+import { AccountMenu } from "@/components/account-menu"
 import { BottomNav, type NavKey } from "@/components/bottom-nav"
 import { CreateTripDialog } from "@/components/create-trip-dialog"
 import { NotificationBellButton } from "@/components/notifications/NotificationBellButton"
+import { createClient } from "@/utils/supabase/client"
 
 function resolveActive(pathname: string, nav: string | null): NavKey {
   if (pathname === "/around") return "spots"
@@ -20,6 +23,73 @@ function resolveActive(pathname: string, nav: string | null): NavKey {
     return "home"
   }
   return "home"
+}
+
+function HeaderLoginButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="cursor-pointer rounded-full bg-slate-100 px-4 py-1.5 text-sm font-semibold text-slate-900 transition-all hover:bg-slate-200"
+    >
+      로그인
+    </button>
+  )
+}
+
+function HeaderAuthControl() {
+  const router = useRouter()
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    setSupabase(createClient())
+  }, [])
+
+  useEffect(() => {
+    if (!supabase) return
+    let mounted = true
+    void supabase.auth.getUser().then(({ data }) => {
+      if (!mounted) return
+      setUser(data.user ?? null)
+      setReady(true)
+    })
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      setReady(true)
+    })
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
+  }, [supabase])
+
+  const goLogin = () => router.push("/login")
+  const goMyPage = () => router.push("/mypage")
+
+  if (!ready) {
+    return (
+      <button
+        type="button"
+        disabled
+        className="cursor-pointer rounded-full bg-slate-100 px-4 py-1.5 text-sm font-semibold text-slate-900 opacity-60 transition-all"
+      >
+        로그인
+      </button>
+    )
+  }
+
+  if (!user) {
+    return <HeaderLoginButton onClick={goLogin} />
+  }
+
+  return (
+    <AccountMenu compact onLoginClick={goLogin} onMyPageClick={goMyPage} />
+  )
 }
 
 export function MobileGlobalChrome() {
@@ -36,7 +106,6 @@ export function MobileGlobalChrome() {
     pathname === "/login" ||
     pathname === "/signup" ||
     pathname === "/forgot-password" ||
-    pathname === "/notifications" ||
     viewParam === "login" ||
     viewParam === "signup" ||
     viewParam === "forgot-password"
@@ -46,25 +115,23 @@ export function MobileGlobalChrome() {
   return (
     <>
       {!hideChrome ? (
-        <header className="fixed inset-x-0 top-0 z-50 md:hidden">
-          <div className="mx-auto flex h-12 w-full max-w-md items-center justify-between border-b border-border/60 bg-background/90 px-3 backdrop-blur">
-            <div className="flex items-center gap-1.5 text-sm font-bold tracking-tight">
-              <Compass className="size-4 text-primary" />
-              WITHTRIP
-            </div>
-            <div className="flex items-center gap-0.5">
-              <NotificationBellButton className="size-8 text-foreground" iconClassName="size-4" />
-              <CreateTripDialog
-                trigger={
-                  <button
-                    type="button"
-                    aria-label="새 여행 만들기"
-                    className="flex size-8 items-center justify-center rounded-full bg-secondary text-foreground transition active:scale-95"
-                  >
-                    <Plus className="size-4" />
-                  </button>
-                }
-              />
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md md:hidden">
+          <div className="flex items-center justify-between px-4 py-3">
+            <CreateTripDialog
+              trigger={
+                <button
+                  type="button"
+                  aria-label="새 여행 만들기"
+                  className="flex size-9 items-center justify-center text-slate-800 transition-colors hover:text-black"
+                >
+                  <PlusSquare className="size-6 stroke-[1.5]" />
+                </button>
+              }
+            />
+
+            <div className="flex flex-row items-center gap-3">
+              <HeaderAuthControl />
+              <NotificationBellButton className="size-9" iconClassName="size-5" />
             </div>
           </div>
         </header>
