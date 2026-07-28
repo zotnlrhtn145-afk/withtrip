@@ -39,23 +39,21 @@ type AuthPhase = "checking" | "guest" | "authed"
 
 function SpotsEmptyState({ onGoHome }: { onGoHome: () => void }) {
   return (
-    <div className="flex h-full w-full items-center justify-center bg-white px-1 py-2 md:px-2 md:py-4">
-      <div className="w-full max-w-md border-2 border-dashed border-amber-300/70 rounded-3xl p-8 bg-white text-center">
-        <h3 className="text-lg font-bold text-gray-900 mb-2">
-          가고 싶은 장소를 등록해 보세요!
-        </h3>
-        <p className="text-sm text-gray-500 max-w-xs mx-auto leading-relaxed mb-6">
-          여행 카드 상세 페이지에서 라운지바, 맛집, 핫플을 추가하면 이곳에서 지도와
-          거리순으로 한눈에 확인할 수 있어요.
-        </p>
-        <button
-          type="button"
-          onClick={onGoHome}
-          className="bg-amber-400 hover:bg-amber-500 text-black font-semibold text-sm px-6 py-2.5 rounded-full shadow-md transition-all"
-        >
-          내 여행 보러가기
-        </button>
-      </div>
+    <div className="h-full min-h-[400px] flex flex-col justify-center items-center text-center p-8 bg-amber-50/20 border-2 border-dashed border-amber-300/80 rounded-2xl w-full">
+      <h3 className="text-lg font-bold text-gray-900 mb-2">
+        가고 싶은 장소를 등록해 보세요!
+      </h3>
+      <p className="text-sm text-gray-500 max-w-xs mx-auto leading-relaxed mb-6">
+        여행 카드 상세 페이지에서 라운지바, 맛집, 핫플을 추가하면 이곳에서 지도와
+        거리순으로 한눈에 확인할 수 있어요.
+      </p>
+      <button
+        type="button"
+        onClick={onGoHome}
+        className="bg-amber-400 hover:bg-amber-500 text-black font-semibold text-sm px-6 py-2.5 rounded-full shadow-md transition-all"
+      >
+        내 여행 보러가기
+      </button>
     </div>
   )
 }
@@ -212,8 +210,6 @@ export function SpotsView() {
   if (spots.length === 0) {
     return (
       <div className="flex flex-col gap-5 bg-white">
-        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">주변 스팟</h2>
-
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-secondary px-3 py-2.5">
           <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
             <Navigation
@@ -235,26 +231,22 @@ export function SpotsView() {
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-6 md:flex-row md:items-stretch">
-          <div className="w-full md:min-w-0 md:flex-1">
-            <div className="h-64 w-full md:h-full md:min-h-[420px]">
-              <NearbyMap
-                fill
-                className="h-full"
-                center={geo.position}
-                accuracy={geo.accuracy}
-                spots={[]}
-                selectedId={null}
-                onSelect={() => {}}
-                onRecenter={handleRecenter}
-                recenterKey={recenterKey}
-                locating={geo.status === "locating"}
-              />
-            </div>
+        <div className="grid w-full grid-cols-1 items-stretch gap-6 md:grid-cols-2">
+          <div className="h-64 w-full md:h-full md:min-h-[400px]">
+            <NearbyMap
+              fill
+              className="h-full rounded-2xl"
+              center={geo.position}
+              accuracy={geo.accuracy}
+              spots={[]}
+              selectedId={null}
+              onSelect={() => {}}
+              onRecenter={handleRecenter}
+              recenterKey={recenterKey}
+              locating={geo.status === "locating"}
+            />
           </div>
-          <div className="flex w-full md:min-w-0 md:flex-1 md:items-center">
-            <SpotsEmptyState onGoHome={() => router.push("/")} />
-          </div>
+          <SpotsEmptyState onGoHome={() => router.push("/")} />
         </div>
       </div>
     )
@@ -262,8 +254,6 @@ export function SpotsView() {
 
   return (
     <div className="flex flex-col gap-5 bg-white">
-      <h2 className="text-xl font-bold tracking-tight sm:text-2xl">주변 스팟</h2>
-
       <div className="flex flex-wrap items-center gap-2 rounded-xl bg-secondary px-3 py-2.5">
         <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
           <Navigation
