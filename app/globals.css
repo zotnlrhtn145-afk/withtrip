@@ -163,16 +163,22 @@
   }
 
   html {
+    @apply min-h-screen w-full bg-white overflow-y-auto;
+    height: auto;
+    max-height: none;
+    overflow-x: visible;
+    overflow-y: auto;
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
-    overscroll-behavior-y: none;
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply min-h-screen w-full bg-white overflow-y-auto text-foreground;
+    height: auto;
+    max-height: none;
+    overflow-x: visible;
+    overflow-y: auto;
     -webkit-tap-highlight-color: transparent;
-    overscroll-behavior-y: none;
-    min-height: 100dvh;
   }
 
   /* Defensive reset for nav/list fallback when utility CSS fails to hydrate. */

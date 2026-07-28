@@ -10,22 +10,24 @@ function AppShellInner({ children }: { children: ReactNode }) {
   return (
     <TripsProvider>
       {/*
-        Do not put overflow-x-hidden on this flex row: it forces overflow-y to auto
-        and can lock the content column to the viewport height (no page scroll).
-        Horizontal clipping stays on html/body via overflow-x-clip.
+        Keep the proven flex shell: reserved w-20 rail on desktop + flexible main.
+        Do NOT use overflow-x-hidden here — it can trap overflow-y and kill wheel scroll.
       */}
-      <div className="flex min-h-dvh max-w-full bg-background">
-        {/* Desktop / tablet primary rail — sticky, viewport height */}
-        <div className="hidden shrink-0 lg:block">
+      <div className="flex min-h-screen w-full bg-white">
+        {/* Desktop rail spacer — keeps layout width while Sidebar is position:fixed */}
+        <div
+          className="relative hidden w-20 shrink-0 lg:block"
+          style={{ width: SIDEBAR_WIDTH_PX }}
+        >
           <Sidebar />
         </div>
+
         <div
-          className="flex min-h-dvh min-w-0 max-w-full flex-1 flex-col"
+          className="flex min-h-screen min-w-0 flex-1 flex-col bg-white"
           style={{ ["--app-sidebar-width" as string]: `${SIDEBAR_WIDTH_PX}px` }}
         >
-          {/* Mobile-only global top/bottom chrome */}
           <MobileGlobalChrome />
-          <div className="w-full max-w-full flex-1 pt-12 pb-24 md:pt-0 md:pb-0">
+          <div className="w-full flex-1 pt-12 pb-24 md:pt-0 md:pb-0">
             {children}
           </div>
         </div>
@@ -40,12 +42,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     <Suspense
       fallback={
         <TripsProvider>
-          <div className="flex min-h-dvh max-w-full bg-background">
+          <div className="flex min-h-screen w-full bg-white">
             <div
-              className="hidden h-dvh w-20 shrink-0 border-r border-border/80 bg-[#F7F4EE] lg:block"
+              className="hidden h-screen w-20 shrink-0 border-r border-border/80 bg-[#F7F4EE] lg:block"
+              style={{ width: SIDEBAR_WIDTH_PX }}
               aria-hidden
             />
-            <div className="min-h-dvh min-w-0 max-w-full flex-1">{children}</div>
+            <div className="min-h-screen min-w-0 flex-1 bg-white">{children}</div>
           </div>
         </TripsProvider>
       }

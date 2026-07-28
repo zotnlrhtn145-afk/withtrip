@@ -36,7 +36,7 @@ export function Sidebar() {
   return (
     <aside
       aria-label="메인 메뉴"
-      className="sticky top-0 relative z-50 flex h-dvh w-20 shrink-0 flex-col items-center border-r border-border/80 bg-[#F7F4EE]/95 py-4 backdrop-blur-md pointer-events-auto"
+      className="fixed top-0 left-0 z-50 flex h-screen w-20 flex-col items-center border-r border-border/80 bg-[#F7F4EE]/95 py-4 backdrop-blur-md pointer-events-auto max-lg:hidden"
       style={{ width: SIDEBAR_WIDTH_PX }}
     >
       {/* Brand */}
