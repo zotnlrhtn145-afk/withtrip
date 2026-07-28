@@ -1,10 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { Compass } from "lucide-react"
 
-import { AccountMenu } from "@/components/account-menu"
 import { navItems, type NavKey } from "@/components/bottom-nav"
 import { cn } from "@/lib/utils"
 
@@ -30,7 +29,6 @@ function isActiveNav(pathname: string, key: NavKey): boolean {
 }
 
 export function Sidebar() {
-  const router = useRouter()
   const pathname = usePathname()
 
   return (
@@ -79,15 +77,6 @@ export function Sidebar() {
           )
         })}
       </nav>
-
-      {/* Profile / account */}
-      <div className="mt-auto flex flex-col items-center gap-2 pb-1">
-        <AccountMenu
-          rail
-          onLoginClick={() => router.push("/login")}
-          onMyPageClick={() => router.push("/mypage")}
-        />
-      </div>
     </aside>
   )
 }
