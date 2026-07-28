@@ -6,7 +6,6 @@ import { AnimatePresence, motion } from "framer-motion"
 import { Loader2, Plane, Search } from "lucide-react"
 
 import { AccountMenu } from "@/components/account-menu"
-import { BottomNav, type NavKey } from "@/components/bottom-nav"
 import { NotificationMenu } from "@/components/notification-menu"
 import {
   isSettlementInProgress,
@@ -15,7 +14,7 @@ import {
 import { SettlementView } from "@/components/settlement-view"
 import { TripBannerCard } from "@/components/trip-banner-card"
 import { TripSearchDialog } from "@/components/trip-search-dialog"
-import { TripsProvider, useTrips } from "@/components/trips-store"
+import { useTrips } from "@/components/trips-store"
 import { ViewSwitcher, type ViewMode } from "@/components/view-switcher"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -83,7 +82,6 @@ function SettlementShellInner({ children }: { children: ReactNode }) {
   const { trips, loading } = useTrips()
   const [view, setView] = useState<ViewMode>("mobile")
   const [searchOpen, setSearchOpen] = useState(false)
-  const [activeNav] = useState<NavKey>("settlement")
   const manualOverride = useRef(false)
 
   const activeTripId = String(params.tripId ?? "").trim() || null
@@ -102,18 +100,6 @@ function SettlementShellInner({ children }: { children: ReactNode }) {
   const openTrip = (trip: Trip) => {
     // Soft navigation — layout (and sub-panel) stays mounted.
     router.push(`/settlement/${trip.id}`)
-  }
-
-  const handleNavSelect = (key: NavKey) => {
-    if (key === "home") {
-      router.push("/")
-      return
-    }
-    if (key === "settlement") {
-      router.push("/settlement")
-      return
-    }
-    router.push(`/?nav=${key}`)
   }
 
   const handleViewChange = (next: ViewMode) => {
@@ -154,21 +140,6 @@ function SettlementShellInner({ children }: { children: ReactNode }) {
     return (
       <div className="min-h-screen bg-background">
         <div className="relative mx-auto flex w-full max-w-md flex-col pb-28">
-          <header className="sticky top-0 z-30 flex items-center justify-end gap-1 bg-background/90 px-3 py-1.5 backdrop-blur">
-            <div className="flex items-center gap-0.5">
-              <ViewSwitcher view={view} onViewChange={handleViewChange} />
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="여행 검색"
-                onClick={() => setSearchOpen(true)}
-              >
-                <Search />
-              </Button>
-              <NotificationMenu onSelectTrip={openTrip} />
-              {accountMenu(true)}
-            </div>
-          </header>
           <main className="flex flex-col gap-4 p-4">
             <AnimatePresence mode="wait">
               <motion.div
@@ -183,7 +154,6 @@ function SettlementShellInner({ children }: { children: ReactNode }) {
             </AnimatePresence>
           </main>
         </div>
-        <BottomNav active={activeNav} onSelect={handleNavSelect} />
         <TripSearchDialog
           open={searchOpen}
           onOpenChange={setSearchOpen}
@@ -245,11 +215,7 @@ function SettlementShellInner({ children }: { children: ReactNode }) {
 }
 
 export function SettlementShell({ children }: { children: ReactNode }) {
-  return (
-    <TripsProvider>
-      <SettlementShellInner>{children}</SettlementShellInner>
-    </TripsProvider>
-  )
+  return <SettlementShellInner>{children}</SettlementShellInner>
 }
 
 export function SettlementTripDetail({ tripId }: { tripId: string }) {

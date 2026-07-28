@@ -246,24 +246,24 @@ export function FriendsView() {
   const refreshFriends = useCallback(async () => {
     const supabase = createClient()
     const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+      data: { session },
+    } = await supabase.auth.getSession()
 
-    if (authError) {
-      const auth = authError as { message?: string; details?: string; hint?: string }
-      console.error(
-        "[FriendsView] refreshFriends failed:",
-        auth?.message,
-        auth?.details,
-        auth?.hint
-      )
+    // No session (or missing user) is a normal logged-out state: quiet early return.
+    if (!session?.user) {
+      setCurrentUserId(null)
+      setFriendships([])
+      setUsersById({})
+      setCoTravelers([])
+      setLoading(false)
+      setError(null)
+      return
     }
 
-    const authUserId = String(user?.id ?? "").trim() || null
+    const authUserId = String(session.user.id ?? "").trim() || null
     setCurrentUserId(authUserId)
 
-    if (!authUserId || !user) {
+    if (!authUserId) {
       setFriendships([])
       setUsersById({})
       setCoTravelers([])

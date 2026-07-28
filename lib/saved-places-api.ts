@@ -198,6 +198,21 @@ function sanitizeInsertPayload(
   return cleaned
 }
 
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value)
+    if (Number.isFinite(n)) return n
+  }
+  return null
+}
+
+function toReviewCount(value: unknown): number {
+  const n = toFiniteNumber(value)
+  if (n == null) return 0
+  return Math.max(0, Math.floor(n))
+}
+
 function buildPayload(input: CreateSavedPlaceInput & { userId?: string | null }) {
   const category = String(input.category ?? "").trim()
   const subCategory = String(input.subCategory ?? "").trim()
@@ -220,9 +235,10 @@ function buildPayload(input: CreateSavedPlaceInput & { userId?: string | null })
     memo: String(input.memo ?? "").trim() || null,
     image_url: imageUrl || null,
     user_id: normalizeUserIdForDb(input.userId),
-    rating: typeof input.rating === "number" ? input.rating : null,
-    review_count: typeof input.reviewCount === "number" ? input.reviewCount : null,
-    distance_km: typeof input.distanceKm === "number" ? input.distanceKm : null,
+    rating: toFiniteNumber(input.rating),
+    // Always send a number — omit/undefined/null → 0 (avoids NOT NULL / type errors).
+    review_count: toReviewCount(input.reviewCount),
+    distance_km: toFiniteNumber(input.distanceKm),
   })
 }
 

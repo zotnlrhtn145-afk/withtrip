@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Footprints, MapPin, Navigation, Star } from "lucide-react"
 
 import { useGeolocation } from "@/hooks/use-geolocation"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,7 +13,12 @@ import {
   estimateWalkMinutes,
   formatDistance,
 } from "@/lib/geo"
-import { nearbySpots } from "@/lib/spots-data"
+import { fetchNearbySpots } from "@/lib/spots-api"
+import {
+  DEFAULT_SPOT_AVATAR,
+  nearbySpots as seedSpots,
+  type NearbySpot,
+} from "@/lib/spots-data"
 import { cn } from "@/lib/utils"
 
 const NearbyMap = dynamic(
@@ -21,7 +27,7 @@ const NearbyMap = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex aspect-[4/3] w-full items-center justify-center rounded-2xl border border-border bg-secondary sm:aspect-[16/11]">
-        <p className="text-sm text-muted-foreground">고정밀 지도를 불러오는 중…</p>
+        <p className="text-sm text-muted-foreground">Google 지도를 불러오는 중…</p>
       </div>
     ),
   }
@@ -29,16 +35,35 @@ const NearbyMap = dynamic(
 
 export function SpotsView() {
   const geo = useGeolocation()
+  const [rawSpots, setRawSpots] = useState<NearbySpot[]>(seedSpots)
+  const [spotsLoading, setSpotsLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [recenterKey, setRecenterKey] = useState(0)
   const didAutoCenter = useRef(false)
   const followNextFix = useRef(false)
   const cardRefs = useRef<Record<string, HTMLLIElement | null>>({})
 
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      setSpotsLoading(true)
+      const next = await fetchNearbySpots()
+      if (cancelled) return
+      setRawSpots(next)
+      setSpotsLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const spots = useMemo(() => {
-    return nearbySpots
+    return rawSpots
       .map((spot) => {
-        const meters = distanceMeters(geo.position, { lat: spot.lat, lng: spot.lng })
+        const meters = distanceMeters(geo.position, {
+          lat: spot.lat,
+          lng: spot.lng,
+        })
         return {
           ...spot,
           distanceMeters: meters,
@@ -47,7 +72,7 @@ export function SpotsView() {
         }
       })
       .sort((a, b) => a.distanceMeters - b.distanceMeters)
-  }, [geo.position])
+  }, [geo.position, rawSpots])
 
   const selected = spots.find((spot) => spot.id === selectedId) ?? null
 
@@ -108,7 +133,9 @@ export function SpotsView() {
 
       <div className="flex flex-wrap items-center gap-2 rounded-xl bg-secondary px-3 py-2.5">
         <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-          <Navigation className={cn("size-4", geo.status === "locating" && "animate-pulse")} />
+          <Navigation
+            className={cn("size-4", geo.status === "locating" && "animate-pulse")}
+          />
         </span>
         <div className="flex min-w-0 flex-col">
           <span className="text-sm font-semibold">
@@ -116,7 +143,9 @@ export function SpotsView() {
           </span>
           <span className="text-xs text-muted-foreground">{statusLabel}</span>
         </div>
-        <Badge className="ml-auto font-semibold tabular-nums">{spots.length}곳</Badge>
+        <Badge className="ml-auto font-semibold tabular-nums">
+          {spotsLoading ? "…" : `${spots.length}곳`}
+        </Badge>
       </div>
 
       {geo.errorMessage ? (
@@ -140,8 +169,11 @@ export function SpotsView() {
         <section className="flex flex-col gap-3">
           <h3 className="text-sm font-semibold text-muted-foreground">거리순</h3>
           <ul className="flex max-h-[min(70vh,640px)] flex-col gap-2 overflow-y-auto pr-0.5">
-            {spots.map((spot, index) => {
+            {spots.map((spot) => {
               const isActive = spot.id === selectedId
+              const author =
+                spot.authorNickname?.trim() ||
+                (spot.userId ? "여행자" : null)
               return (
                 <li
                   key={spot.id}
@@ -159,16 +191,20 @@ export function SpotsView() {
                         : "border-border bg-card hover:bg-secondary/60"
                     )}
                   >
-                    <span
+                    <Avatar
                       className={cn(
-                        "flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold",
-                        isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary text-secondary-foreground"
+                        "size-10 shrink-0 border-2",
+                        isActive ? "border-amber-400" : "border-border"
                       )}
                     >
-                      {index + 1}
-                    </span>
+                      <AvatarImage
+                        src={spot.authorAvatarUrl || DEFAULT_SPOT_AVATAR}
+                        alt=""
+                      />
+                      <AvatarFallback className="bg-secondary text-xs font-bold">
+                        {(author || spot.name).slice(0, 1)}
+                      </AvatarFallback>
+                    </Avatar>
                     <div
                       className="size-14 shrink-0 overflow-hidden rounded-xl bg-secondary bg-cover bg-center"
                       style={{ backgroundImage: `url(${spot.image})` }}
@@ -177,14 +213,17 @@ export function SpotsView() {
                     />
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-semibold">{spot.name}</span>
+                        <span className="truncate text-sm font-semibold">
+                          {spot.name}
+                        </span>
                         <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium tabular-nums text-muted-foreground">
                           <Star className="size-3 fill-primary text-primary" />
                           {spot.rating}
                         </span>
                       </div>
                       <span className="truncate text-xs text-muted-foreground">
-                        {spot.category} · {spot.nameLocal}
+                        {spot.category}
+                        {author ? ` · ${author}` : ` · ${spot.nameLocal}`}
                       </span>
                       <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
                         <span className="inline-flex items-center gap-1 font-semibold text-foreground tabular-nums">
@@ -206,17 +245,35 @@ export function SpotsView() {
           {selected ? (
             <div className="rounded-2xl border border-border bg-card p-4">
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">{selected.name}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{selected.address}</p>
+                <div className="flex min-w-0 items-start gap-3">
+                  <Avatar className="size-9 shrink-0 border border-border">
+                    <AvatarImage
+                      src={selected.authorAvatarUrl || DEFAULT_SPOT_AVATAR}
+                      alt=""
+                    />
+                    <AvatarFallback className="text-xs font-bold">
+                      {(selected.authorNickname || selected.name).slice(0, 1)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">{selected.name}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {selected.address}
+                    </p>
+                    {selected.authorNickname ? (
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        등록 · {selected.authorNickname}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
                 <Badge className="shrink-0 font-semibold tabular-nums">
                   {selected.distanceLabel}
                 </Badge>
               </div>
               <p className="mt-2 text-xs text-muted-foreground tabular-nums">
-                위도 {selected.lat.toFixed(5)} · 경도 {selected.lng.toFixed(5)} · 도보 약{" "}
-                {selected.walkMinutes}분
+                위도 {selected.lat.toFixed(5)} · 경도 {selected.lng.toFixed(5)} ·
+                도보 약 {selected.walkMinutes}분
               </p>
               <Button
                 className="mt-3 w-full rounded-full font-semibold"

@@ -8,7 +8,7 @@ import { AccountMenu } from "@/components/account-menu"
 import { ForgotPasswordView } from "@/components/auth/forgot-password-view"
 import { LoginView } from "@/components/auth/login-view"
 import { SignupView } from "@/components/auth/signup-view"
-import { BottomNav, type NavKey } from "@/components/bottom-nav"
+import { type NavKey } from "@/components/bottom-nav"
 import { FriendsView } from "@/components/friends-view"
 import { HomeView } from "@/components/home-view"
 import { FlightSection } from "@/components/itinerary/flight-section"
@@ -25,7 +25,7 @@ import { SettlementView } from "@/components/settlement-view"
 import { SpotsView } from "@/components/spots-view"
 import { TripHeroCard } from "@/components/trip-hero-card"
 import { TripSearchDialog } from "@/components/trip-search-dialog"
-import { TripsProvider, useTrips } from "@/components/trips-store"
+import { useTrips } from "@/components/trips-store"
 import { ViewSwitcher, type ViewMode } from "@/components/view-switcher"
 import { Button } from "@/components/ui/button"
 import { type AppView } from "@/lib/auth-data"
@@ -36,17 +36,15 @@ import { createClient } from "@/utils/supabase/client"
 
 export function WithtripApp() {
   return (
-    <TripsProvider>
-      <Suspense
-        fallback={
-          <div className="flex min-h-screen items-center justify-center bg-background">
-            <p className="text-sm text-muted-foreground">불러오는 중…</p>
-          </div>
-        }
-      >
-        <WithtripShell />
-      </Suspense>
-    </TripsProvider>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-background">
+          <p className="text-sm text-muted-foreground">불러오는 중…</p>
+        </div>
+      }
+    >
+      <WithtripShell />
+    </Suspense>
   )
 }
 
@@ -220,39 +218,6 @@ function WithtripShell() {
     })()
   }
 
-  const handleNavSelect = (key: NavKey) => {
-    setActiveNav(key)
-    if (key === "mypage") {
-      goTo(isLoggedIn ? "mypage" : "login")
-      return
-    }
-    if (key === "home") {
-      goTo("home")
-      return
-    }
-    if (key === "friends") {
-      goTo("friends")
-      return
-    }
-    if (key === "spots") {
-      goTo("spots")
-      return
-    }
-    if (key === "settlement") {
-      const preferred = pickPreferredTripId(
-        trips.map((trip) => trip.id),
-        selectedTripId
-      )
-      if (preferred) {
-        setSelectedTripId(preferred)
-        router.push(`/settlement/${preferred}`)
-      } else {
-        router.push("/settlement")
-      }
-      return
-    }
-  }
-
   const mainContent = (
     <>
       {currentView === "detail" && selectedTrip ? (
@@ -360,22 +325,6 @@ function WithtripShell() {
     return (
       <div className="min-h-screen bg-background">
         <div className="relative mx-auto flex w-full max-w-md flex-col pb-28">
-          <header className="sticky top-0 z-30 flex items-center justify-end gap-1 bg-background/90 px-3 py-1.5 backdrop-blur">
-            <div className="flex items-center gap-0.5">
-              <ViewSwitcher view={view} onViewChange={handleViewChange} />
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="여행 검색"
-                onClick={() => setSearchOpen(true)}
-              >
-                <Search />
-              </Button>
-              <NotificationMenu onSelectTrip={openTripDetail} />
-              {accountMenu(true)}
-            </div>
-          </header>
-
           <main
             className={
               currentView === "friends"
@@ -387,11 +336,6 @@ function WithtripShell() {
           </main>
         </div>
 
-        <BottomNav
-          active={activeNav}
-          onSelect={handleNavSelect}
-          onQuickAdd={() => setIsQuickMenuOpen(true)}
-        />
         <QuickMenuSheet
           open={isQuickMenuOpen}
           onOpenChange={setIsQuickMenuOpen}

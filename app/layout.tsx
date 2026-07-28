@@ -35,6 +35,9 @@ export const viewport: Viewport = {
   colorScheme: 'light dark',
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#FFC107' },
     { media: '(prefers-color-scheme: dark)', color: '#2a2418' },
@@ -47,8 +50,12 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ko" className="bg-background" data-scroll-behavior="smooth">
-      <body className="font-sans antialiased">
+    <html
+      lang="ko"
+      className="max-w-full overflow-x-hidden bg-background"
+      data-scroll-behavior="smooth"
+    >
+      <body className="max-w-full overflow-x-hidden font-sans antialiased">
         <AppShell>{children}</AppShell>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

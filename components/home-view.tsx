@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Loader2, Plane, Plus, SearchX, X } from "lucide-react"
 
 import { CreateTripDialog } from "@/components/create-trip-dialog"
@@ -18,6 +19,13 @@ export function HomeView({
 }) {
   const { trips, filteredTrips, query, setQuery, loading, error, refreshTrips } = useTrips()
   const isFiltered = query.trim().length > 0
+  // Keep SSR + first client paint identical (avoids hydration mismatch on subtitle / list).
+  const [hasMounted, setHasMounted] = useState(false)
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
+
+  const showLoading = !hasMounted || loading
 
   return (
     <div className="flex flex-col gap-5">
@@ -25,14 +33,14 @@ export function HomeView({
         <div className="flex flex-col gap-1">
           <h2 className="text-xl font-bold tracking-tight sm:text-2xl">계획한 여행</h2>
           <p className="text-sm text-muted-foreground">
-            {loading
+            {showLoading
               ? "여행 목록을 불러오는 중이에요…"
               : `총 ${trips.length}개의 여행이 준비되어 있어요. 카드를 눌러 상세 일정을 확인하세요.`}
           </p>
         </div>
         <CreateTripDialog
           trigger={
-            <Button className="rounded-full font-semibold">
+            <Button className="hidden rounded-full font-semibold md:inline-flex">
               <Plus data-icon="inline-start" />
               새 여행 만들기
             </Button>
@@ -40,7 +48,7 @@ export function HomeView({
         />
       </div>
 
-      {error ? (
+      {error && hasMounted ? (
         <div className="flex flex-col items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-4">
           <p className="text-sm font-medium text-destructive">{error}</p>
           <Button variant="outline" size="sm" onClick={() => void refreshTrips()} className="rounded-full">
@@ -70,7 +78,7 @@ export function HomeView({
         </div>
       ) : null}
 
-      {loading ? (
+      {showLoading ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-6 py-16 text-center">
           <Loader2 className="size-6 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">Supabase에서 여행을 불러오는 중…</p>
@@ -88,7 +96,7 @@ export function HomeView({
           </p>
           <CreateTripDialog
             trigger={
-              <Button className="rounded-full font-semibold">
+              <Button className="hidden rounded-full font-semibold md:inline-flex">
                 <Plus data-icon="inline-start" />
                 새 여행 만들기
               </Button>

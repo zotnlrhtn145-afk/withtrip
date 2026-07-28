@@ -9,7 +9,14 @@ export type NearbySpot = {
   rating: number
   image: string
   imageAlt: string
+  /** Author (profiles) — null when seed / anonymous. */
+  userId?: string | null
+  authorNickname?: string | null
+  authorAvatarUrl?: string | null
 }
+
+/** Fallback when `avatar_url` is missing. */
+export const DEFAULT_SPOT_AVATAR = "/placeholder-logo.svg"
 
 /** Fallback “my location” pin (Osaka Umeda). Prefer live GPS via `useGeolocation`. */
 export const currentLocation = {
@@ -18,7 +25,7 @@ export const currentLocation = {
   label: "현재 위치",
 }
 
-/** Registered places with real WGS84 coordinates (Osaka / Kobe area). */
+/** Local seed places (used when Supabase `spots` is empty / unavailable). */
 export const nearbySpots: NearbySpot[] = [
   {
     id: "s1",
