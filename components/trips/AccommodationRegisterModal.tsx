@@ -1,12 +1,12 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { BedDouble, Check, Loader2, Plus } from "lucide-react"
+import { BedDouble, Check, Loader2, Plus, X } from "lucide-react"
 
 import { SearchableSelect, type SearchableOption } from "@/components/searchable-select"
-import { Button } from "@/components/ui/button"
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -25,6 +25,13 @@ import {
 } from "@/lib/accommodations-api"
 import { placeResultToSearchOption } from "@/lib/hotel-presets"
 import { searchGooglePlaces, type PlaceSearchResult } from "@/lib/places-search"
+import { cn } from "@/lib/utils"
+
+const labelClass =
+  "mb-1.5 flex items-center gap-1 text-[11px] font-bold tracking-wider text-slate-400 uppercase"
+const inputClass =
+  "h-auto rounded-xl border border-slate-200/80 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-none transition-all placeholder:text-slate-400 focus-visible:border-amber-400 focus-visible:ring-4 focus-visible:ring-amber-400/15"
+const helperClass = "mt-1.5 text-[11px] font-normal text-slate-400"
 
 export function AccommodationRegisterModal({
   open,
@@ -197,17 +204,36 @@ export function AccommodationRegisterModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90svh] gap-5 overflow-y-auto rounded-2xl sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <BedDouble className="size-4" />
-            </span>
+      <DialogContent
+        showCloseButton={false}
+        className={cn(
+          "flex w-full max-w-[calc(100%-0px)] flex-col gap-0 overflow-hidden bg-white p-0 text-sm text-slate-900 shadow-xl ring-1 ring-slate-200/60",
+          // Mobile: bottom sheet
+          "inset-x-0 top-auto bottom-0 max-h-[90vh] translate-x-0 translate-y-0 rounded-t-3xl rounded-b-none",
+          // Desktop: centered modal
+          "sm:inset-auto sm:top-1/2 sm:left-1/2 sm:bottom-auto sm:max-h-[90svh] sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl"
+        )}
+      >
+        <DialogHeader className="relative shrink-0 gap-0 border-b border-slate-100 px-5 pt-5 pb-4 text-left sm:px-6 sm:pt-6">
+          <DialogClose
+            className={cn(
+              "absolute top-3 right-3 rounded-full p-2 text-slate-400 transition-all",
+              "hover:bg-slate-100 hover:text-slate-700"
+            )}
+          >
+            <X className="size-4" />
+            <span className="sr-only">닫기</span>
+          </DialogClose>
+
+          <span className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-500">
+            <BedDouble className="size-5" />
+          </span>
+          <DialogTitle className="text-lg font-bold tracking-tight text-slate-900">
             {isEditMode ? "숙소 정보 수정" : "숙소 정보 등록"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="mt-0.5 text-xs font-medium text-slate-400">
             {isEditMode
-              ? "숙소 정보를 수정한 뒤 수정 완료를 눌러 주세요."
+              ? "숙소 정보를 수정한 뒤 저장해 주세요."
               : "전 세계 숙소를 검색해 선택하면 주소·전화번호가 자동으로 채워져요."}
           </DialogDescription>
         </DialogHeader>
@@ -215,11 +241,13 @@ export function AccommodationRegisterModal({
         <form
           id="accommodation-register-form"
           onSubmit={(event) => void handleSubmit(event)}
-          className="flex flex-col gap-5"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-4 sm:px-6"
         >
-          <FieldGroup>
+          <FieldGroup className="gap-4">
             <Field>
-              <FieldLabel htmlFor="acc-name">숙소 이름</FieldLabel>
+              <FieldLabel htmlFor="acc-name" className={labelClass}>
+                숙소 이름
+              </FieldLabel>
               <SearchableSelect
                 id="acc-name"
                 value={name}
@@ -234,81 +262,99 @@ export function AccommodationRegisterModal({
                 filterLocally={false}
                 allowCustom
                 customHint="목록에 없으면 입력한 이름을 그대로 저장해요."
+                inputClassName={cn(
+                  inputClass,
+                  "h-auto min-h-10 py-2.5 pr-9 pl-9"
+                )}
               />
               {searchWarning ? (
-                <FieldDescription className="text-amber-700">{searchWarning}</FieldDescription>
+                <p className={cn(helperClass, "text-amber-600")}>{searchWarning}</p>
               ) : (
-                <FieldDescription>
+                <FieldDescription className={helperClass}>
                   Google Places로 전 세계 호텔·리조트를 검색합니다.
                 </FieldDescription>
               )}
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="acc-address">숙소 주소 / 위치</FieldLabel>
+              <FieldLabel htmlFor="acc-address" className={labelClass}>
+                숙소 주소 / 위치
+              </FieldLabel>
               <Input
                 id="acc-address"
                 value={address}
                 onChange={(event) => setAddress(event.target.value)}
                 placeholder="예: 3-7-1-2 Nishi-Shinjuku, Shinjuku City, Tokyo"
-                className="rounded-xl"
+                className={inputClass}
               />
-              <FieldDescription>검색 선택 시 자동 입력되며, 직접 수정할 수 있어요.</FieldDescription>
+              <FieldDescription className={helperClass}>
+                검색 선택 시 자동 입력되며, 직접 수정할 수 있어요.
+              </FieldDescription>
             </Field>
 
             <div className="grid grid-cols-2 gap-3">
               <Field>
-                <FieldLabel htmlFor="acc-checkin-date">체크인 날짜</FieldLabel>
+                <FieldLabel htmlFor="acc-checkin-date" className={labelClass}>
+                  체크인 날짜
+                </FieldLabel>
                 <Input
                   id="acc-checkin-date"
                   type="date"
                   value={checkInDate}
                   onChange={(event) => setCheckInDate(event.target.value)}
-                  className="rounded-xl tabular-nums"
+                  className={cn(inputClass, "tabular-nums")}
                   required
                 />
               </Field>
               <Field>
-                <FieldLabel htmlFor="acc-checkin-time">체크인 시간</FieldLabel>
+                <FieldLabel htmlFor="acc-checkin-time" className={labelClass}>
+                  체크인 시간
+                </FieldLabel>
                 <Input
                   id="acc-checkin-time"
                   type="time"
                   value={checkInTime}
                   onChange={(event) => setCheckInTime(event.target.value)}
-                  className="rounded-xl tabular-nums"
+                  className={cn(inputClass, "tabular-nums")}
                 />
               </Field>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <Field>
-                <FieldLabel htmlFor="acc-checkout-date">체크아웃 날짜</FieldLabel>
+                <FieldLabel htmlFor="acc-checkout-date" className={labelClass}>
+                  체크아웃 날짜
+                </FieldLabel>
                 <Input
                   id="acc-checkout-date"
                   type="date"
                   value={checkOutDate}
                   onChange={(event) => setCheckOutDate(event.target.value)}
-                  className="rounded-xl tabular-nums"
+                  className={cn(inputClass, "tabular-nums")}
                   required
                 />
               </Field>
               <Field>
-                <FieldLabel htmlFor="acc-checkout-time">체크아웃 시간</FieldLabel>
+                <FieldLabel htmlFor="acc-checkout-time" className={labelClass}>
+                  체크아웃 시간
+                </FieldLabel>
                 <Input
                   id="acc-checkout-time"
                   type="time"
                   value={checkOutTime}
                   onChange={(event) => setCheckOutTime(event.target.value)}
-                  className="rounded-xl tabular-nums"
+                  className={cn(inputClass, "tabular-nums")}
                 />
               </Field>
             </div>
-            <FieldDescription>
+            <FieldDescription className={cn(helperClass, "-mt-2")}>
               체크아웃 날짜는 체크인 날짜와 같거나 이후여야 해요.
             </FieldDescription>
 
             <Field>
-              <FieldLabel htmlFor="acc-phone">전화번호</FieldLabel>
+              <FieldLabel htmlFor="acc-phone" className={labelClass}>
+                전화번호
+              </FieldLabel>
               <Input
                 id="acc-phone"
                 type="tel"
@@ -316,20 +362,27 @@ export function AccommodationRegisterModal({
                 value={phoneNumber}
                 onChange={(event) => setPhoneNumber(event.target.value)}
                 placeholder="예: +81 3-5322-1234 (선택)"
-                className="rounded-xl tabular-nums"
+                className={cn(inputClass, "tabular-nums")}
               />
-              <FieldDescription>검색 선택 시 자동 입력되며, 직접 수정할 수 있어요.</FieldDescription>
+              <FieldDescription className={helperClass}>
+                검색 선택 시 자동 입력되며, 직접 수정할 수 있어요.
+              </FieldDescription>
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="acc-memo">메모 / 특이사항</FieldLabel>
+              <FieldLabel htmlFor="acc-memo" className={labelClass}>
+                메모 / 특이사항
+              </FieldLabel>
               <Textarea
                 id="acc-memo"
                 value={memo}
                 onChange={(event) => setMemo(event.target.value)}
                 placeholder="예: 짐 보관 가능 여부 확인 필요"
                 rows={3}
-                className="rounded-xl"
+                className={cn(
+                  "min-h-[90px] resize-none rounded-xl border border-slate-200/80 bg-white p-3 text-sm text-slate-900 shadow-none transition-all",
+                  "placeholder:text-slate-400 focus-visible:border-amber-400 focus-visible:ring-4 focus-visible:ring-amber-400/15"
+                )}
               />
             </Field>
           </FieldGroup>
@@ -337,38 +390,44 @@ export function AccommodationRegisterModal({
           {error ? (
             <div
               role="alert"
-              className="rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
+              className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-600"
             >
               <p className="break-words">{error}</p>
             </div>
           ) : null}
         </form>
 
-        <DialogFooter className="rounded-b-2xl">
-          <Button
+        <DialogFooter
+          className={cn(
+            "sticky bottom-0 left-0 right-0 z-10 mx-0 mb-0",
+            "grid w-full grid-cols-2 gap-2.5 sm:flex sm:flex-row sm:items-center sm:justify-end",
+            "rounded-none border-t border-slate-100 bg-white/95 px-5 pt-3.5 backdrop-blur-md sm:rounded-b-3xl",
+            "pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-3"
+          )}
+        >
+          <button
             type="button"
-            variant="ghost"
             onClick={() => onOpenChange(false)}
             disabled={saving}
-            className="rounded-full font-semibold"
+            className="rounded-full px-4 py-2.5 text-xs font-semibold text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-900 active:scale-95 disabled:opacity-50"
           >
             취소
-          </Button>
-          <Button
+          </button>
+          <button
             type="submit"
             form="accommodation-register-form"
             disabled={saving}
-            className="rounded-full font-semibold"
+            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-amber-400 px-6 py-2.5 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 transition-all hover:bg-amber-500 active:scale-95 disabled:opacity-60"
           >
             {saving ? (
-              <Loader2 data-icon="inline-start" className="animate-spin" />
+              <Loader2 className="size-3.5 animate-spin" />
             ) : isEditMode ? (
-              <Check data-icon="inline-start" />
+              <Check className="size-3.5" />
             ) : (
-              <Plus data-icon="inline-start" />
+              <Plus className="size-3.5" />
             )}
-            {isEditMode ? "수정 완료" : "저장하기"}
-          </Button>
+            {saving ? "저장 중…" : isEditMode ? "수정 완료" : "저장하기"}
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

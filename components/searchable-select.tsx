@@ -36,6 +36,7 @@ export function SearchableSelect({
   customHint,
   disabled = false,
   className,
+  inputClassName,
   onSelectOption,
   onQueryChange,
 }: {
@@ -56,6 +57,7 @@ export function SearchableSelect({
   customHint?: string
   disabled?: boolean
   className?: string
+  inputClassName?: string
   /** Fired when the user picks an item from the dropdown (not free-text typing). */
   onSelectOption?: (option: SearchableOption) => void
   /** Fired on every input change (useful for remote debounce). */
@@ -195,7 +197,8 @@ export function SearchableSelect({
           className={cn(
             "flex h-9 w-full rounded-xl border border-input bg-transparent py-2 pr-9 pl-9 text-sm outline-none transition-colors",
             "placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-            "disabled:cursor-not-allowed disabled:opacity-50"
+            "disabled:cursor-not-allowed disabled:opacity-50",
+            inputClassName
           )}
         />
         <ChevronDown
