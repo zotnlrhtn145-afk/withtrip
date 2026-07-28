@@ -4,7 +4,6 @@ import { useEffect, useId, useMemo, useState } from "react"
 import { Check, Loader2, Plane, Plus, Trash2 } from "lucide-react"
 
 import { SearchableSelect } from "@/components/searchable-select"
-import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -559,31 +558,37 @@ export function FlightRegisterModal({
           ) : null}
         </form>
 
-        <DialogFooter className="mx-0 mb-0 gap-2 rounded-b-3xl border-t border-gray-100 bg-white px-5 py-4 sm:justify-between">
-          <Button
+        <DialogFooter
+          className={cn(
+            "sticky bottom-0 left-0 right-0 z-10 mx-0 mb-0",
+            "grid w-full grid-cols-2 gap-2.5 sm:flex sm:flex-row sm:items-center sm:justify-end",
+            "rounded-b-3xl border-t border-slate-100 bg-white/95 px-5 pt-4 backdrop-blur-md",
+            "pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
+          )}
+        >
+          <button
             type="button"
-            variant="ghost"
             onClick={() => onOpenChange(false)}
             disabled={saving}
-            className="rounded-full font-semibold text-gray-500 hover:text-gray-900"
+            className="rounded-full px-4 py-2.5 text-xs font-semibold text-slate-500 transition-all hover:bg-slate-100/80 hover:text-slate-900 active:scale-95 disabled:opacity-50 sm:w-auto"
           >
             취소
-          </Button>
-          <Button
+          </button>
+          <button
             type="submit"
             form="flight-register-form"
             disabled={saving}
-            className="rounded-full bg-amber-400 px-6 font-semibold text-black shadow-md shadow-amber-200/40 hover:bg-amber-500"
+            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-amber-400 px-6 py-2.5 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 transition-all hover:bg-amber-500 active:scale-95 disabled:opacity-60 sm:w-auto"
           >
             {saving ? (
-              <Loader2 data-icon="inline-start" className="animate-spin" />
+              <Loader2 className="size-3.5 animate-spin" />
             ) : isEditMode ? (
-              <Check data-icon="inline-start" />
+              <Check className="size-3.5" />
             ) : (
-              <Plus data-icon="inline-start" />
+              <Plus className="size-3.5" />
             )}
-            {isEditMode ? "수정 완료" : "저장하기"}
-          </Button>
+            {saving ? "저장 중…" : isEditMode ? "수정 완료" : "저장하기"}
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
