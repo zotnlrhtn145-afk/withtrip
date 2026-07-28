@@ -35,13 +35,23 @@ function formatLabel(date: Date) {
 export function CreateTripDialog({
   trigger,
   onCreated,
+  open: openProp,
+  onOpenChange,
 }: {
-  trigger: ReactNode
+  trigger?: ReactNode
   /** Called after successful create. Prefer staying on home — do not open trip detail here. */
   onCreated?: (trip: Trip) => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
   const { addTrip, setQuery } = useTrips()
-  const [open, setOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const isControlled = openProp !== undefined
+  const open = isControlled ? openProp : uncontrolledOpen
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setUncontrolledOpen(next)
+    onOpenChange?.(next)
+  }
   const [country, setCountry] = useState("")
   const [region, setRegion] = useState("")
   const [title, setTitle] = useState("")
@@ -172,7 +182,7 @@ export function CreateTripDialog({
         if (!next) reset()
       }}
     >
-      <DialogTrigger render={trigger as React.ReactElement} />
+      {trigger ? <DialogTrigger render={trigger as React.ReactElement} /> : null}
       <DialogContent className="max-h-[90svh] gap-5 overflow-y-auto rounded-2xl sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold">새 여행 만들기</DialogTitle>

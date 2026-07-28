@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { AnimatePresence, motion } from "framer-motion"
 import { Compass, Loader2, Plane, Plus, SearchX, X } from "lucide-react"
 
 import { CreateTripDialog } from "@/components/create-trip-dialog"
@@ -9,6 +11,7 @@ import { useTrips } from "@/components/trips-store"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { type Trip } from "@/lib/trip-data"
+import { createClient } from "@/utils/supabase/client"
 
 export function HomeView({
   onSelectTrip,
@@ -17,13 +20,42 @@ export function HomeView({
   onSelectTrip: (trip: Trip) => void
   compact?: boolean
 }) {
+  const router = useRouter()
   const { trips, filteredTrips, query, setQuery, loading, error, refreshTrips } = useTrips()
   const isFiltered = query.trim().length > 0
   // Keep SSR + first client paint identical (avoids hydration mismatch on subtitle / list).
   const [hasMounted, setHasMounted] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [isRedirectingToLogin, setIsRedirectingToLogin] = useState(false)
+
   useEffect(() => {
     setHasMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (!isRedirectingToLogin) return
+    const timer = window.setTimeout(() => {
+      router.push("/login")
+    }, 1200)
+    return () => window.clearTimeout(timer)
+  }, [isRedirectingToLogin, router])
+
+  const handleStartTrip = async () => {
+    if (isRedirectingToLogin) return
+    try {
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (user) {
+        setCreateOpen(true)
+        return
+      }
+      setIsRedirectingToLogin(true)
+    } catch {
+      setIsRedirectingToLogin(true)
+    }
+  }
 
   const showLoading = !hasMounted || loading
 
@@ -78,17 +110,15 @@ export function HomeView({
             친구들과 함께 일정을 계획하고 정산까지 한곳에서 스마트하게 관리할 수
             있어요.
           </p>
-          <CreateTripDialog
-            trigger={
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-7 py-3.5 text-sm font-semibold text-black shadow-lg shadow-amber-200/50 transition-all hover:scale-105 hover:bg-amber-500 active:scale-95"
-              >
-                <Plus className="size-4" />
-                새 여행 시작하기
-              </button>
-            }
-          />
+          <button
+            type="button"
+            onClick={() => void handleStartTrip()}
+            className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-7 py-3.5 text-sm font-semibold text-black shadow-lg shadow-amber-200/50 transition-all hover:scale-105 hover:bg-amber-500 active:scale-95"
+          >
+            <Plus className="size-4" />
+            새 여행 시작하기
+          </button>
+          <CreateTripDialog open={createOpen} onOpenChange={setCreateOpen} />
         </div>
       ) : filteredTrips.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-6 py-14 text-center">
@@ -115,6 +145,51 @@ export function HomeView({
           ))}
         </div>
       )}
+
+      <AnimatePresence>
+        {isRedirectingToLogin ? (
+          <motion.div
+            key="login-redirect-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35 }}
+            className="fixed inset-0 z-[100] bg-white/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center"
+          >
+            <motion.p
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.05 }}
+              className="text-gray-500 font-medium text-sm mb-4 animate-fade-in"
+            >
+              로그인이 필요한 서비스입니다
+            </motion.p>
+
+            <motion.div
+              initial={{ scale: 0.86, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 260, damping: 18 }}
+              className="relative"
+            >
+              <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-amber-400 via-rose-400 to-amber-500 opacity-40 blur-md animate-pulse" />
+              <div className="relative rounded-full bg-gradient-to-tr from-amber-400 via-rose-400 to-amber-500 p-[3px] shadow-lg animate-pulse">
+                <span className="flex size-20 items-center justify-center rounded-full bg-white animate-bounce">
+                  <Plane className="size-8 text-amber-500" />
+                </span>
+              </div>
+            </motion.div>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.45, delay: 0.2 }}
+              className="text-xs text-gray-400 mt-6"
+            >
+              잠시 후 로그인 화면으로 이동합니다...
+            </motion.p>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   )
 }
