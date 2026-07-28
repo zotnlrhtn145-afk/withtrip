@@ -2,9 +2,10 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Compass } from "lucide-react"
+import { Bell, Compass } from "lucide-react"
 
 import { navItems, type NavKey } from "@/components/bottom-nav"
+import { useNotifications } from "@/components/notifications/notifications-provider"
 import { cn } from "@/lib/utils"
 
 /** Global primary sidebar width — sub-panels should start at this offset. */
@@ -30,11 +31,12 @@ function isActiveNav(pathname: string, key: NavKey): boolean {
 
 export function Sidebar() {
   const pathname = usePathname()
+  const { openDrawer, drawerOpen, unreadCount } = useNotifications()
 
   return (
     <aside
       aria-label="메인 메뉴"
-      className="fixed top-0 left-0 z-50 flex h-screen w-20 flex-col items-center border-r border-border/80 bg-[#F7F4EE]/95 py-4 backdrop-blur-md pointer-events-auto max-lg:hidden"
+      className="pointer-events-auto fixed top-0 left-0 z-50 flex h-screen w-20 flex-col items-center border-r border-border/80 bg-[#F7F4EE]/95 py-4 backdrop-blur-md max-lg:hidden"
       style={{ width: SIDEBAR_WIDTH_PX }}
     >
       {/* Brand */}
@@ -76,6 +78,28 @@ export function Sidebar() {
             </Link>
           )
         })}
+
+        <button
+          type="button"
+          aria-label={unreadCount > 0 ? `알림 ${unreadCount}개` : "알림"}
+          title="알림"
+          onClick={openDrawer}
+          className={cn(
+            "relative mt-1 flex w-full flex-col items-center gap-1 rounded-[1.35rem] px-1 py-2.5 transition-all duration-200",
+            drawerOpen
+              ? "bg-primary text-primary-foreground shadow-[0_6px_16px_rgba(255,193,7,0.38)]"
+              : "text-[#5C5346] hover:bg-primary/25 hover:text-[#3D3428]"
+          )}
+        >
+          <Bell className={cn("size-[1.15rem]", drawerOpen ? "stroke-[1.7]" : "stroke-[1.35]")} />
+          <span className="text-[10px] font-semibold leading-none tracking-tight">알림</span>
+          {unreadCount > 0 ? (
+            <span
+              aria-hidden="true"
+              className="absolute top-2 right-3 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-[#F7F4EE]"
+            />
+          ) : null}
+        </button>
       </nav>
     </aside>
   )

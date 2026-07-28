@@ -6,6 +6,7 @@ import { Compass, Plus } from "lucide-react"
 
 import { BottomNav, type NavKey } from "@/components/bottom-nav"
 import { CreateTripDialog } from "@/components/create-trip-dialog"
+import { NotificationBellButton } from "@/components/notifications/NotificationBellButton"
 
 function resolveActive(pathname: string, nav: string | null): NavKey {
   if (pathname === "/around") return "spots"
@@ -31,35 +32,43 @@ export function MobileGlobalChrome() {
     [pathname, searchParams]
   )
 
-  const hideBottomNav =
+  const hideChrome =
     pathname === "/login" ||
     pathname === "/signup" ||
     pathname === "/forgot-password" ||
+    pathname === "/notifications" ||
     viewParam === "login" ||
     viewParam === "signup" ||
     viewParam === "forgot-password"
 
+  const hideBottomNav = hideChrome
+
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-50 md:hidden">
-        <div className="mx-auto flex h-12 w-full max-w-md items-center justify-between border-b border-border/60 bg-background/90 px-3 backdrop-blur">
-          <div className="flex items-center gap-1.5 text-sm font-bold tracking-tight">
-            <Compass className="size-4 text-primary" />
-            WITHTRIP
+      {!hideChrome ? (
+        <header className="fixed inset-x-0 top-0 z-50 md:hidden">
+          <div className="mx-auto flex h-12 w-full max-w-md items-center justify-between border-b border-border/60 bg-background/90 px-3 backdrop-blur">
+            <div className="flex items-center gap-1.5 text-sm font-bold tracking-tight">
+              <Compass className="size-4 text-primary" />
+              WITHTRIP
+            </div>
+            <div className="flex items-center gap-0.5">
+              <NotificationBellButton className="size-8 text-foreground" iconClassName="size-4" />
+              <CreateTripDialog
+                trigger={
+                  <button
+                    type="button"
+                    aria-label="새 여행 만들기"
+                    className="flex size-8 items-center justify-center rounded-full bg-secondary text-foreground transition active:scale-95"
+                  >
+                    <Plus className="size-4" />
+                  </button>
+                }
+              />
+            </div>
           </div>
-          <CreateTripDialog
-            trigger={
-              <button
-                type="button"
-                aria-label="새 여행 만들기"
-                className="flex size-8 items-center justify-center rounded-full bg-secondary text-foreground transition active:scale-95"
-              >
-                <Plus className="size-4" />
-              </button>
-            }
-          />
-        </div>
-      </header>
+        </header>
+      ) : null}
 
       {!hideBottomNav ? (
         <BottomNav
