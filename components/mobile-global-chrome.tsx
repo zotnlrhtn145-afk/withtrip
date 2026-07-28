@@ -33,6 +33,7 @@ export function MobileGlobalChrome() {
   )
 
   const navigate = (key: NavKey) => {
+    // Always route by tab key regardless of current screen/layer state.
     if (key === "home") {
       router.push("/")
       return

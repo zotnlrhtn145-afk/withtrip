@@ -36,7 +36,8 @@ export function BottomNav({
     <nav
       aria-label="주요 메뉴"
       className={cn(
-        "fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 md:hidden",
+        "fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-[9999] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 md:hidden",
+        "pointer-events-auto",
         "rounded-full border border-white/20 bg-white/80 shadow-xl backdrop-blur-md",
         "transition-all duration-300 ease-in-out transform",
         compact ? "scale-90 opacity-90 py-1.5" : "scale-100 opacity-100 py-3"
@@ -51,6 +52,7 @@ export function BottomNav({
                 type="button"
                 onClick={() => onSelect(item.key)}
                 aria-current={isActive ? "page" : undefined}
+                style={{ touchAction: "manipulation" }}
                 whileTap={{ scale: 1.1 }}
                 transition={{ type: "spring", stiffness: 460, damping: 28 }}
                 className={cn(
