@@ -143,3 +143,53 @@ export async function insertTripClip(input: {
 
   return mapRow(data as TripClipRow)
 }
+
+export async function deleteTripClip(clipId: string): Promise<void> {
+  const id = String(clipId ?? "").trim()
+  if (!id) throw new Error("삭제할 클립이 없어요.")
+
+  const userId = await getCurrentUserId()
+  if (!userId) throw new Error("로그인이 필요해요.")
+
+  const client = createClient()
+
+  // Ownership guard — only the author can delete
+  const { data: row, error: lookupError } = await client
+    .from("trip_clips")
+    .select("id, user_id, media_url")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (lookupError) {
+    console.error("[deleteTripClip] lookup:", lookupError.message || lookupError.details || lookupError)
+    throw new Error(formatError(lookupError) || "클립을 찾지 못했어요.")
+  }
+
+  if (!row) throw new Error("클립을 찾을 수 없어요.")
+
+  const ownerId = String((row as { user_id?: string }).user_id ?? "").trim()
+  if (ownerId !== userId) {
+    throw new Error("본인이 올린 클립만 삭제할 수 있어요.")
+  }
+
+  const { error } = await client.from("trip_clips").delete().eq("id", id).eq("user_id", userId)
+
+  if (error) {
+    console.error("[deleteTripClip]", error.message || error.details || error)
+    throw new Error(formatError(error) || "클립 삭제에 실패했어요.")
+  }
+
+  // Best-effort storage cleanup (public URL → path under trip-clips bucket)
+  const mediaUrl = String((row as { media_url?: string }).media_url ?? "").trim()
+  const marker = "/trip-clips/"
+  const idx = mediaUrl.indexOf(marker)
+  if (idx >= 0) {
+    const path = decodeURIComponent(mediaUrl.slice(idx + marker.length).split("?")[0] ?? "")
+    if (path.startsWith(`${userId}/`)) {
+      const { error: storageError } = await client.storage.from("trip-clips").remove([path])
+      if (storageError) {
+        console.warn("[deleteTripClip] storage cleanup:", storageError.message)
+      }
+    }
+  }
+}
