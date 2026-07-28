@@ -11,7 +11,7 @@ import { TripHeroCard } from "@/components/trip-hero-card"
 import { TripSearchDialog } from "@/components/trip-search-dialog"
 import { TripScheduleBoard } from "@/components/trips/TripScheduleBoard"
 import { TripsProvider, useTrips } from "@/components/trips-store"
-import { ViewSwitcher, type ViewMode } from "@/components/view-switcher"
+import { type ViewMode } from "@/components/view-switcher"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { fetchTripById, getErrorMessage } from "@/lib/trips-api"
@@ -51,6 +51,16 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
   const handleFlightChange = () => {
     setFlightsRevision((current) => current + 1)
   }
+
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 768px)")
+    const sync = () => {
+      setView(query.matches ? "desktop" : "mobile")
+    }
+    sync()
+    query.addEventListener("change", sync)
+    return () => query.removeEventListener("change", sync)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -160,7 +170,6 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
               목록으로
             </Button>
             <div className="flex items-center gap-1">
-              <ViewSwitcher view={view} onViewChange={setView} />
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -201,7 +210,6 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <ViewSwitcher view={view} onViewChange={setView} />
             <Button
               variant="ghost"
               size="sm"

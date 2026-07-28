@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useRef, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Compass, Search } from "lucide-react"
 
@@ -26,7 +26,7 @@ import { SpotsView } from "@/components/spots-view"
 import { TripHeroCard } from "@/components/trip-hero-card"
 import { TripSearchDialog } from "@/components/trip-search-dialog"
 import { useTrips } from "@/components/trips-store"
-import { ViewSwitcher, type ViewMode } from "@/components/view-switcher"
+import { type ViewMode } from "@/components/view-switcher"
 import { Button } from "@/components/ui/button"
 import { type AppView } from "@/lib/auth-data"
 import { signOutAuth } from "@/lib/auth-api"
@@ -63,7 +63,6 @@ function WithtripShell() {
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false)
   const [isPlaceModalOpen, setIsPlaceModalOpen] = useState(false)
   const [quickToast, setQuickToast] = useState<string | null>(null)
-  const manualOverride = useRef(false)
   const { trips } = useTrips()
 
   // Derive from the store so edits to the trip flow straight into the detail view.
@@ -86,7 +85,6 @@ function WithtripShell() {
   useEffect(() => {
     const query = window.matchMedia("(min-width: 768px)")
     const sync = () => {
-      if (manualOverride.current) return
       setView(query.matches ? "desktop" : "mobile")
     }
     sync()
@@ -167,11 +165,6 @@ function WithtripShell() {
       subscription.unsubscribe()
     }
   }, [])
-
-  const handleViewChange = (next: ViewMode) => {
-    manualOverride.current = true
-    setView(next)
-  }
 
   const goTo = (next: AppView) => {
     setCurrentView(next)
@@ -411,7 +404,6 @@ function WithtripShell() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-10 items-center justify-end gap-1 bg-background/85 px-4 py-1 backdrop-blur">
           <div className="flex items-center gap-0.5">
-            <ViewSwitcher view={view} onViewChange={handleViewChange} />
             <Button
               variant="ghost"
               size="sm"

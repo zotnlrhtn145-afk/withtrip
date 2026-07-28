@@ -34,13 +34,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-dvh max-w-full overflow-x-hidden bg-background">
-          <div
-            className="hidden h-dvh w-20 shrink-0 border-r border-border/80 bg-[#F7F4EE] lg:block"
-            aria-hidden
-          />
-          <div className="min-w-0 max-w-full flex-1 overflow-x-hidden">{children}</div>
-        </div>
+        <TripsProvider>
+          <div className="flex min-h-dvh max-w-full overflow-x-hidden bg-background">
+            <div
+              className="hidden h-dvh w-20 shrink-0 border-r border-border/80 bg-[#F7F4EE] lg:block"
+              aria-hidden
+            />
+            <div className="min-w-0 max-w-full flex-1 overflow-x-hidden">{children}</div>
+          </div>
+        </TripsProvider>
       }
     >
       <AppShellInner>{children}</AppShellInner>

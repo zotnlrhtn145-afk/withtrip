@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { useParams, usePathname, useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
 import { Loader2, Plane, Search } from "lucide-react"
@@ -15,7 +15,7 @@ import { SettlementView } from "@/components/settlement-view"
 import { TripBannerCard } from "@/components/trip-banner-card"
 import { TripSearchDialog } from "@/components/trip-search-dialog"
 import { useTrips } from "@/components/trips-store"
-import { ViewSwitcher, type ViewMode } from "@/components/view-switcher"
+import { type ViewMode } from "@/components/view-switcher"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { type Trip } from "@/lib/trip-data"
@@ -82,14 +82,12 @@ function SettlementShellInner({ children }: { children: ReactNode }) {
   const { trips, loading } = useTrips()
   const [view, setView] = useState<ViewMode>("mobile")
   const [searchOpen, setSearchOpen] = useState(false)
-  const manualOverride = useRef(false)
 
   const activeTripId = String(params.tripId ?? "").trim() || null
 
   useEffect(() => {
     const query = window.matchMedia("(min-width: 768px)")
     const sync = () => {
-      if (manualOverride.current) return
       setView(query.matches ? "desktop" : "mobile")
     }
     sync()
@@ -100,11 +98,6 @@ function SettlementShellInner({ children }: { children: ReactNode }) {
   const openTrip = (trip: Trip) => {
     // Soft navigation — layout (and sub-panel) stays mounted.
     router.push(`/settlement/${trip.id}`)
-  }
-
-  const handleViewChange = (next: ViewMode) => {
-    manualOverride.current = true
-    setView(next)
   }
 
   const accountMenu = (compact: boolean) => (
@@ -175,7 +168,6 @@ function SettlementShellInner({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-10 items-center justify-end gap-1 bg-background/85 px-4 py-1 backdrop-blur">
           <div className="flex items-center gap-0.5">
-            <ViewSwitcher view={view} onViewChange={handleViewChange} />
             <Button
               variant="ghost"
               size="sm"
