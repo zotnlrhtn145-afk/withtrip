@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Compass, Loader2, Plus, SearchX, X } from "lucide-react"
 
 import { CreateTripDialog } from "@/components/create-trip-dialog"
+import { TripClipsTray } from "@/components/home/TripClipsTray"
 import { LoginRedirectOverlay } from "@/components/login-redirect-overlay"
 import { TripBannerCard } from "@/components/trip-banner-card"
 import { useTrips } from "@/components/trips-store"
@@ -61,6 +62,8 @@ export function HomeView({
 
   return (
     <div className="flex flex-col gap-5">
+      <TripClipsTray trips={trips} />
+
       {error && hasMounted ? (
         <div className="flex flex-col items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-4">
           <p className="text-sm font-medium text-destructive">{error}</p>
