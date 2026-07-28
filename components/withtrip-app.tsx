@@ -1,7 +1,7 @@
 "use client"
 
 import { Suspense, useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Search } from "lucide-react"
 
 import { AccountMenu } from "@/components/account-menu"
@@ -50,6 +50,7 @@ export function WithtripApp() {
 
 function WithtripShell() {
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const [view, setView] = useState<ViewMode>("mobile")
   const [searchOpen, setSearchOpen] = useState(false)
@@ -106,6 +107,48 @@ function WithtripShell() {
 
   // Sync in-app views with global Sidebar deep-links (?nav= / ?view=).
   useEffect(() => {
+    if (pathname === "/login") {
+      setCurrentView("login")
+      return
+    }
+    if (pathname === "/friends") {
+      setActiveNav("friends")
+      setCurrentView("friends")
+      return
+    }
+    if (pathname === "/around" || pathname === "/spots") {
+      setActiveNav("spots")
+      setCurrentView("spots")
+      return
+    }
+    if (pathname === "/mypage") {
+      setActiveNav("mypage")
+      setCurrentView(isLoggedIn ? "mypage" : "login")
+      return
+    }
+    if (pathname === "/") {
+      const nav = searchParams.get("nav") as NavKey | null
+      const viewParam = searchParams.get("view")
+      if (viewParam === "login") {
+        setCurrentView("login")
+        return
+      }
+      if (
+        nav === "friends" ||
+        nav === "spots" ||
+        nav === "mypage" ||
+        nav === "home"
+      ) {
+        setActiveNav(nav)
+        if (nav === "mypage") {
+          setCurrentView(isLoggedIn ? "mypage" : "login")
+        } else {
+          setCurrentView(nav)
+        }
+        return
+      }
+    }
+
     const nav = searchParams.get("nav") as NavKey | null
     const viewParam = searchParams.get("view")
 
@@ -140,7 +183,7 @@ function WithtripShell() {
         router.replace("/settlement")
       }
     }
-  }, [searchParams, isLoggedIn, trips, selectedTripId, router])
+  }, [pathname, searchParams, isLoggedIn, trips, selectedTripId, router])
 
   useEffect(() => {
     const supabase = createClient()

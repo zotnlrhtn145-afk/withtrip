@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation"
+import { WithtripApp } from "@/components/withtrip-app"
 
 export default function LoginPage() {
-  redirect("/?view=login")
+  return <WithtripApp />
 }

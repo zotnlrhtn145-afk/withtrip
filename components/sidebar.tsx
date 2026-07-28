@@ -26,7 +26,7 @@ function isActiveNav(pathname: string, key: NavKey): boolean {
   if (key === "settlement") {
     return pathname.startsWith("/settlement") || pathname.startsWith("/bills")
   }
-  return pathname.startsWith("/mypage")
+  return pathname.startsWith("/mypage") || pathname.startsWith("/login")
 }
 
 export function Sidebar() {
