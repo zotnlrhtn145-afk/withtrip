@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { clearWithTripClientCaches } from "@/lib/client-session-reset"
 import { createClient } from "@/utils/supabase/client"
 
 type AccountProfile = {
@@ -107,6 +108,7 @@ export function AccountMenu({
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
+      clearWithTripClientCaches()
       setUser(null)
       onLogout?.()
       router.push("/")

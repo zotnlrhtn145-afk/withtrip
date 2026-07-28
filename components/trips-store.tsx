@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react"
 
-import { initialNotifications, type AppNotification } from "@/lib/notifications"
+import { type AppNotification } from "@/lib/notifications"
 import { insertSavedPlace } from "@/lib/saved-places-api"
 import {
   fetchTripsFromSupabase,
@@ -20,16 +20,11 @@ import {
 } from "@/lib/trips-api"
 import {
   memberPalette,
-  members as seedMembers,
   type Member,
   type ScheduleItem,
   type Trip,
 } from "@/lib/trip-data"
 import {
-  seedFlights,
-  seedScheduleItems,
-  seedStays,
-  seedWishlist,
   type FlightEntry,
   type StayEntry,
   type WishlistEntry,
@@ -102,22 +97,6 @@ function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }
 
-function resolveSeedTemplateId(trip: Trip): string | null {
-  if (seedFlights[trip.id] || seedStays[trip.id] || seedWishlist[trip.id]) return trip.id
-  const hay = `${trip.title} ${trip.region} ${trip.country}`.toLowerCase()
-  if (/osaka|kyoto|오사카|교토/.test(hay)) return "osaka-kyoto"
-  if (/danang|da nang|다낭|호이안/.test(hay)) return "danang"
-  if (/taipei|타이베이|대만/.test(hay)) return "taipei"
-  return null
-}
-
-function cloneWithPrefix<T extends { id: string }>(items: T[] | undefined, tripId: string): T[] {
-  return (items ?? []).map((item) => ({
-    ...item,
-    id: `${tripId}__${item.id}`,
-  }))
-}
-
 function initialsFromInvite(invite: string) {
   const handle = invite.includes("@") ? invite.split("@")[0] : invite
   const cleaned = handle.replace(/[^a-zA-Z가-힣]/g, "")
@@ -128,17 +107,28 @@ function initialsFromInvite(invite: string) {
 
 export function TripsProvider({ children }: { children: ReactNode }) {
   const [trips, setTrips] = useState<Trip[]>([])
-  const [members, setMembers] = useState<Member[]>(seedMembers)
+  const [members, setMembers] = useState<Member[]>([])
   const [query, setQuery] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [notifications, setNotifications] = useState<AppNotification[]>(initialNotifications)
-  const [flightsByTrip, setFlightsByTrip] = useState<Record<string, FlightEntry[]>>(seedFlights)
-  const [staysByTrip, setStaysByTrip] = useState<Record<string, StayEntry[]>>(seedStays)
-  const [wishlistByTrip, setWishlistByTrip] =
-    useState<Record<string, WishlistEntry[]>>(seedWishlist)
+  const [notifications, setNotifications] = useState<AppNotification[]>([])
+  const [flightsByTrip, setFlightsByTrip] = useState<Record<string, FlightEntry[]>>({})
+  const [staysByTrip, setStaysByTrip] = useState<Record<string, StayEntry[]>>({})
+  const [wishlistByTrip, setWishlistByTrip] = useState<Record<string, WishlistEntry[]>>({})
   const [scheduleByTrip, setScheduleByTrip] =
-    useState<Record<string, Record<string, ScheduleItem[]>>>(seedScheduleItems)
+    useState<Record<string, Record<string, ScheduleItem[]>>>({})
+
+  const resetClientTripState = useCallback(() => {
+    setTrips([])
+    setMembers([])
+    setNotifications([])
+    setFlightsByTrip({})
+    setStaysByTrip({})
+    setWishlistByTrip({})
+    setScheduleByTrip({})
+    setQuery("")
+    setError(null)
+  }, [])
 
   const refreshTrips = useCallback(async (options?: { silent?: boolean }) => {
     if (!options?.silent) setLoading(true)
@@ -148,7 +138,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       setTrips(next)
     } catch (err) {
       setError(err instanceof Error ? err.message : "여행 목록을 불러오지 못했어요.")
-      if (!options?.silent) setTrips([])
+      setTrips([])
     } finally {
       if (!options?.silent) setLoading(false)
     }
@@ -168,17 +158,26 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       const supabase = createClient()
       const {
         data: { subscription },
-      } = supabase.auth.onAuthStateChange(() => {
+      } = supabase.auth.onAuthStateChange((event) => {
+        if (event === "SIGNED_OUT") {
+          resetClientTripState()
+        }
         void refreshTrips({ silent: true })
       })
       unsubscribe = () => subscription.unsubscribe()
     })
 
+    const onSessionCleared = () => {
+      resetClientTripState()
+    }
+    window.addEventListener("withtrip:session-cleared", onSessionCleared)
+
     return () => {
       mounted = false
       unsubscribe?.()
+      window.removeEventListener("withtrip:session-cleared", onSessionCleared)
     }
-  }, [refreshTrips])
+  }, [refreshTrips, resetClientTripState])
 
   const createTrip = useCallback(
     async (input: CreateTripInput) => {
@@ -266,34 +265,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     }))
   }, [])
 
-  const ensureTripBundle = useCallback((trip: Trip) => {
-    const templateId = resolveSeedTemplateId(trip)
-    if (!templateId) return
-    const tripId = trip.id
-
-    setFlightsByTrip((current) => {
-      if ((current[tripId] ?? []).length > 0) return current
-      return { ...current, [tripId]: cloneWithPrefix(seedFlights[templateId], tripId) }
-    })
-    setStaysByTrip((current) => {
-      if ((current[tripId] ?? []).length > 0) return current
-      return { ...current, [tripId]: cloneWithPrefix(seedStays[templateId], tripId) }
-    })
-    setWishlistByTrip((current) => {
-      if ((current[tripId] ?? []).length > 0) return current
-      return { ...current, [tripId]: cloneWithPrefix(seedWishlist[templateId], tripId) }
-    })
-    setScheduleByTrip((current) => {
-      if (current[tripId] && Object.keys(current[tripId]).length > 0) return current
-      const template = seedScheduleItems[templateId] ?? {}
-      const cloned = Object.fromEntries(
-        Object.entries(template).map(([dayId, items]) => [
-          dayId,
-          items.map((item) => ({ ...item, id: `${tripId}__${item.id}` })),
-        ])
-      )
-      return { ...current, [tripId]: cloned }
-    })
+  const ensureTripBundle = useCallback((_trip: Trip) => {
+    // No mock/seed fallback — trip detail loads only real Supabase data.
   }, [])
 
   const setTripSettledStatus = useCallback((tripId: string, isSettled: boolean) => {

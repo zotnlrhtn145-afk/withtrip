@@ -228,7 +228,6 @@ export async function fetchCoTravelers(currentUserId: string): Promise<CoTravele
   if (!uid) return []
 
   const supabase = createClient()
-  const { PARIS_TRIP_ID, PARIS_TRIP_TITLE, PARIS_GROUP_TAG } = await import("@/lib/trip-group")
 
   const { data: myMemberships, error: mineError } = await supabase
     .from("trip_members")
@@ -247,11 +246,6 @@ export async function fetchCoTravelers(currentUserId: string): Promise<CoTravele
         .filter(Boolean)
     ),
   ]
-
-  // Always try Paris trip so the group shows even if membership row is pending.
-  if (!tripIds.includes(PARIS_TRIP_ID)) {
-    tripIds = [PARIS_TRIP_ID, ...tripIds]
-  }
 
   if (tripIds.length === 0) return []
 
@@ -346,18 +340,11 @@ export async function fetchCoTravelers(currentUserId: string): Promise<CoTravele
     const id = String(row.id ?? "").trim()
     if (id) tripTitleById[id] = String(row.title ?? "").trim() || "여행"
   }
-  tripTitleById[PARIS_TRIP_ID] = tripTitleById[PARIS_TRIP_ID] || PARIS_TRIP_TITLE
 
   const result: CoTraveler[] = []
   const seen = new Set<string>()
 
-  // Paris members first
-  const ordered = [
-    ...peers.filter((row) => String(row.trip_id) === PARIS_TRIP_ID),
-    ...peers.filter((row) => String(row.trip_id) !== PARIS_TRIP_ID),
-  ]
-
-  for (const row of ordered) {
+  for (const row of peers) {
     const userId = String(row.user_id ?? "").trim()
     const tripId = String(row.trip_id ?? "").trim()
     if (!userId || !tripId || seen.has(userId)) continue
@@ -371,8 +358,7 @@ export async function fetchCoTravelers(currentUserId: string): Promise<CoTravele
       "멤버"
     const avatarUrl = String(profile?.avatar_url ?? "").trim() || undefined
     const tripTitle = tripTitleById[tripId] || "여행"
-    const groupTag =
-      tripId === PARIS_TRIP_ID || /파리/.test(tripTitle) ? PARIS_GROUP_TAG : `${tripTitle} 그룹`
+    const groupTag = `${tripTitle} 그룹`
 
     result.push({
       userId,

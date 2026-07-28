@@ -37,12 +37,12 @@ drop policy if exists "trips_insert_own" on public.trips;
 drop policy if exists "trips_update_own" on public.trips;
 drop policy if exists "trips_delete_own" on public.trips;
 
--- Authenticated users see/manage their own trips; allow reading null-owner legacy rows while migrating
+-- Authenticated users see only their own trips (no null-owner leak)
 create policy "trips_select_own"
   on public.trips
   for select
   to authenticated
-  using (user_id = auth.uid() or user_id is null);
+  using (user_id = auth.uid());
 
 -- Members can also read trips they joined via trip_members
 drop policy if exists "trips_select_member" on public.trips;

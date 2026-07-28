@@ -2,7 +2,6 @@ import { getCurrentUserId } from "@/lib/auth-session"
 import { supabase, type TripRow } from "@/lib/supabase"
 import { FALLBACK_TRIP_COVER, getCityImage, withUnsplashQuality } from "@/lib/getCityImage"
 import { type Trip } from "@/lib/trip-data"
-import { PARIS_TRIP_ID } from "@/lib/trip-group"
 import { fetchGroupMembersByTripIds } from "@/lib/trip-members-api"
 import { createClient } from "@/utils/supabase/client"
 
@@ -178,33 +177,16 @@ export async function fetchTripsFromSupabase(): Promise<Trip[]> {
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
 
-  let ownedRows: TripRow[] = []
-
   if (owned.error) {
-    // Fallback for DBs that do not yet have user_id (run supabase/trips.sql alter).
-    if (/user_id|column .* does not exist/i.test(owned.error.message)) {
-      console.warn(
-        "[fetchTripsFromSupabase] user_id column missing — fetching all trips. Run supabase/trips.sql."
-      )
-      const fallback = await client
-        .from("trips")
-        .select("*")
-        .order("created_at", { ascending: false })
-      if (fallback.error) {
-        console.error("[fetchTripsFromSupabase] Supabase error:", fallback.error)
-        throw fallback.error
-      }
-      ownedRows = (fallback.data as TripRow[] | null) ?? []
-    } else {
-      console.error("[fetchTripsFromSupabase] Supabase error:", owned.error)
-      console.error("[fetchTripsFromSupabase] error.message:", owned.error.message)
-      throw owned.error
-    }
-  } else {
-    ownedRows = (owned.data as TripRow[] | null) ?? []
+    console.error("[fetchTripsFromSupabase] Supabase error:", owned.error)
+    console.error("[fetchTripsFromSupabase] error.message:", owned.error.message)
+    // Fail closed — never fall back to fetching every trip in the table.
+    return []
   }
 
-  // Also include trips where the user is a member (e.g. Paris group).
+  const ownedRows = (owned.data as TripRow[] | null) ?? []
+
+  // Also include trips where the user is an invited member.
   const memberTripIds = await fetchMemberTripIds(userId)
   const missingIds = memberTripIds.filter((id) => !ownedRows.some((row) => row.id === id))
 
@@ -219,11 +201,7 @@ export async function fetchTripsFromSupabase(): Promise<Trip[]> {
   }
 
   const merged = mergeTripsById([...ownedRows, ...memberRows])
-  merged.sort((a, b) => {
-    if (a.id === PARIS_TRIP_ID) return -1
-    if (b.id === PARIS_TRIP_ID) return 1
-    return 0
-  })
+  merged.sort((a, b) => a.title.localeCompare(b.title, "ko"))
 
   return enrichTripsWithGroupMembers(merged)
 }
@@ -232,15 +210,28 @@ export async function fetchTripById(id: string): Promise<Trip | null> {
   const tripId = String(id ?? "").trim()
   if (!tripId) return null
 
-  const { data, error } = await supabase.from("trips").select("*").eq("id", tripId).maybeSingle()
+  const userId = await getCurrentUserId()
+  if (!userId) return null
+
+  const client = createClient()
+  const { data, error } = await client.from("trips").select("*").eq("id", tripId).maybeSingle()
 
   if (error) {
     console.error("[fetchTripById] Supabase error:", error)
     console.error("[fetchTripById] error.message:", error.message)
-    throw error
+    return null
   }
   if (!data) return null
-  const [enriched] = await enrichTripsWithGroupMembers([mapTripRowToTrip(data as TripRow)])
+
+  const row = data as TripRow
+  const ownerId = String(row.user_id ?? "").trim()
+  const isOwner = ownerId === userId
+  if (!isOwner) {
+    const memberIds = await fetchMemberTripIds(userId)
+    if (!memberIds.includes(tripId)) return null
+  }
+
+  const [enriched] = await enrichTripsWithGroupMembers([mapTripRowToTrip(row)])
   return enriched ?? null
 }
 
@@ -250,16 +241,17 @@ export async function insertTripToSupabase(input: CreateTripInput): Promise<Trip
     throw new Error("여행 제목은 필수입니다.")
   }
 
+  const userId = await getCurrentUserId()
+  if (!userId) {
+    throw new Error("로그인이 필요해요. 로그인 후 여행을 만들어 주세요.")
+  }
+
   const payload: Record<string, unknown> = {
     title,
     start_date: input.startDate,
     end_date: input.endDate,
     members: [],
-  }
-
-  const userId = await getCurrentUserId()
-  if (userId) {
-    payload.user_id = userId
+    user_id: userId,
   }
 
   const location = buildTripLocation(input)
@@ -279,16 +271,6 @@ export async function insertTripToSupabase(input: CreateTripInput): Promise<Trip
   const { data, error } = await supabase.from("trips").insert(payload).select("*").single()
 
   if (error) {
-    if (payload.user_id && /user_id|column .* does not exist/i.test(error.message)) {
-      console.warn("[insertTripToSupabase] user_id column missing — inserting without owner.")
-      delete payload.user_id
-      const retry = await supabase.from("trips").insert(payload).select("*").single()
-      if (retry.error) {
-        console.error("[insertTripToSupabase] Supabase error:", retry.error)
-        throw retry.error
-      }
-      return mapTripRowToTrip(retry.data as TripRow)
-    }
     console.error("[insertTripToSupabase] Supabase error:", error)
     console.error("[insertTripToSupabase] error.message:", error.message)
     console.error("[insertTripToSupabase] insert payload:", payload)

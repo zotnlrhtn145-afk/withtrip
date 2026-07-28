@@ -43,14 +43,88 @@ create index if not exists trip_accommodations_check_in_idx
 
 alter table public.trip_accommodations enable row level security;
 
-create policy "trip_accommodations_select_public"
-  on public.trip_accommodations for select to anon, authenticated using (true);
+drop policy if exists "trip_accommodations_select_public" on public.trip_accommodations;
+drop policy if exists "trip_accommodations_insert_public" on public.trip_accommodations;
+drop policy if exists "trip_accommodations_update_public" on public.trip_accommodations;
+drop policy if exists "trip_accommodations_delete_public" on public.trip_accommodations;
+drop policy if exists "trip_accommodations_select_member" on public.trip_accommodations;
+drop policy if exists "trip_accommodations_insert_member" on public.trip_accommodations;
+drop policy if exists "trip_accommodations_update_member" on public.trip_accommodations;
+drop policy if exists "trip_accommodations_delete_member" on public.trip_accommodations;
 
-create policy "trip_accommodations_insert_public"
-  on public.trip_accommodations for insert to anon, authenticated with check (true);
+create policy "trip_accommodations_select_member"
+  on public.trip_accommodations for select to authenticated
+  using (
+    exists (
+      select 1 from public.trips t
+      where t.id = trip_accommodations.trip_id
+        and (
+          t.user_id = auth.uid()
+          or exists (
+            select 1 from public.trip_members tm
+            where tm.trip_id = t.id and tm.user_id = auth.uid()
+          )
+        )
+    )
+  );
 
-create policy "trip_accommodations_update_public"
-  on public.trip_accommodations for update to anon, authenticated using (true) with check (true);
+create policy "trip_accommodations_insert_member"
+  on public.trip_accommodations for insert to authenticated
+  with check (
+    exists (
+      select 1 from public.trips t
+      where t.id = trip_accommodations.trip_id
+        and (
+          t.user_id = auth.uid()
+          or exists (
+            select 1 from public.trip_members tm
+            where tm.trip_id = t.id and tm.user_id = auth.uid()
+          )
+        )
+    )
+  );
 
-create policy "trip_accommodations_delete_public"
-  on public.trip_accommodations for delete to anon, authenticated using (true);
+create policy "trip_accommodations_update_member"
+  on public.trip_accommodations for update to authenticated
+  using (
+    exists (
+      select 1 from public.trips t
+      where t.id = trip_accommodations.trip_id
+        and (
+          t.user_id = auth.uid()
+          or exists (
+            select 1 from public.trip_members tm
+            where tm.trip_id = t.id and tm.user_id = auth.uid()
+          )
+        )
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.trips t
+      where t.id = trip_accommodations.trip_id
+        and (
+          t.user_id = auth.uid()
+          or exists (
+            select 1 from public.trip_members tm
+            where tm.trip_id = t.id and tm.user_id = auth.uid()
+          )
+        )
+    )
+  );
+
+create policy "trip_accommodations_delete_member"
+  on public.trip_accommodations for delete to authenticated
+  using (
+    exists (
+      select 1 from public.trips t
+      where t.id = trip_accommodations.trip_id
+        and (
+          t.user_id = auth.uid()
+          or exists (
+            select 1 from public.trip_members tm
+            where tm.trip_id = t.id and tm.user_id = auth.uid()
+          )
+        )
+    )
+  );

@@ -1,5 +1,6 @@
 import type { AuthError, Provider } from "@supabase/supabase-js"
 
+import { clearWithTripClientCaches } from "@/lib/client-session-reset"
 import { createClient } from "@/utils/supabase/client"
 
 export type AuthProviderId = "kakao" | "google"
@@ -103,5 +104,6 @@ export async function resetPasswordForEmail(email: string) {
 export async function signOutAuth() {
   const supabase = getBrowserSupabase()
   const { error } = await supabase.auth.signOut()
+  clearWithTripClientCaches()
   if (error) throw error
 }

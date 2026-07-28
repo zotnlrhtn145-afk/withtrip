@@ -28,19 +28,20 @@ alter table public.spots enable row level security;
 
 drop policy if exists "spots_select_authenticated" on public.spots;
 drop policy if exists "spots_select_public" on public.spots;
+drop policy if exists "spots_select_own" on public.spots;
 drop policy if exists "spots_insert_own" on public.spots;
 drop policy if exists "spots_update_own" on public.spots;
 drop policy if exists "spots_delete_own" on public.spots;
 
-create policy "spots_select_public"
+create policy "spots_select_own"
   on public.spots for select
-  to anon, authenticated
-  using (true);
+  to authenticated
+  using (user_id = auth.uid());
 
 create policy "spots_insert_own"
   on public.spots for insert
   to authenticated
-  with check (user_id = auth.uid() or user_id is null);
+  with check (user_id = auth.uid());
 
 create policy "spots_update_own"
   on public.spots for update
@@ -53,58 +54,4 @@ create policy "spots_delete_own"
   to authenticated
   using (user_id = auth.uid());
 
--- Seed sample Osaka / Kobe spots (no author → default avatar on map)
-insert into public.spots (name, name_local, category, address, lat, lng, rating, image_url)
-select * from (values
-  (
-    'Hajime',
-    'ハジメ',
-    '미슐랭 · 프렌치',
-    '1-9-11 Edobori, Nishi-ku, Osaka',
-    34.69142,
-    135.49028,
-    4.8,
-    '/images/place-sushi.png'
-  ),
-  (
-    'Bar Nayuta',
-    'バー ナユタ',
-    '칵테일 바',
-    '2-3-18 Sonezaki, Kita-ku, Osaka',
-    34.70052,
-    135.50048,
-    4.6,
-    '/images/place-bar.png'
-  ),
-  (
-    'Koryu',
-    '弧柳',
-    '가이세키',
-    '1-1-14 Higashi-Shinsaibashi, Chuo-ku, Osaka',
-    34.67198,
-    135.50152,
-    4.7,
-    '/images/place-sushi.png'
-  ),
-  (
-    'The Bar Sazanka',
-    'ザ・バー サザンカ',
-    '루프탑 바',
-    '5-15 Kitanagasadori, Chuo-ku, Kobe',
-    34.68948,
-    135.19205,
-    4.5,
-    '/images/place-bar.png'
-  ),
-  (
-    '도톤보리',
-    '道頓堀',
-    '관광 · 먹거리',
-    'Dotonbori, Chuo-ku, Osaka',
-    34.66869,
-    135.50129,
-    4.4,
-    '/images/osaka-kyoto-hero.png'
-  )
-) as seed(name, name_local, category, address, lat, lng, rating, image_url)
-where not exists (select 1 from public.spots limit 1);
+-- No global demo seed — new users start with an empty spots map.

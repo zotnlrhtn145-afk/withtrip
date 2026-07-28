@@ -53,14 +53,88 @@ create index if not exists saved_places_user_id_idx
 
 alter table public.saved_places enable row level security;
 
-create policy "saved_places_select_public"
-  on public.saved_places for select to anon, authenticated using (true);
+drop policy if exists "saved_places_select_public" on public.saved_places;
+drop policy if exists "saved_places_insert_public" on public.saved_places;
+drop policy if exists "saved_places_update_public" on public.saved_places;
+drop policy if exists "saved_places_delete_public" on public.saved_places;
+drop policy if exists "saved_places_select_member" on public.saved_places;
+drop policy if exists "saved_places_insert_member" on public.saved_places;
+drop policy if exists "saved_places_update_member" on public.saved_places;
+drop policy if exists "saved_places_delete_member" on public.saved_places;
 
-create policy "saved_places_insert_public"
-  on public.saved_places for insert to anon, authenticated with check (true);
+create policy "saved_places_select_member"
+  on public.saved_places for select to authenticated
+  using (
+    exists (
+      select 1 from public.trips t
+      where t.id = saved_places.trip_id
+        and (
+          t.user_id = auth.uid()
+          or exists (
+            select 1 from public.trip_members tm
+            where tm.trip_id = t.id and tm.user_id = auth.uid()
+          )
+        )
+    )
+  );
 
-create policy "saved_places_update_public"
-  on public.saved_places for update to anon, authenticated using (true) with check (true);
+create policy "saved_places_insert_member"
+  on public.saved_places for insert to authenticated
+  with check (
+    exists (
+      select 1 from public.trips t
+      where t.id = saved_places.trip_id
+        and (
+          t.user_id = auth.uid()
+          or exists (
+            select 1 from public.trip_members tm
+            where tm.trip_id = t.id and tm.user_id = auth.uid()
+          )
+        )
+    )
+  );
 
-create policy "saved_places_delete_public"
-  on public.saved_places for delete to anon, authenticated using (true);
+create policy "saved_places_update_member"
+  on public.saved_places for update to authenticated
+  using (
+    exists (
+      select 1 from public.trips t
+      where t.id = saved_places.trip_id
+        and (
+          t.user_id = auth.uid()
+          or exists (
+            select 1 from public.trip_members tm
+            where tm.trip_id = t.id and tm.user_id = auth.uid()
+          )
+        )
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.trips t
+      where t.id = saved_places.trip_id
+        and (
+          t.user_id = auth.uid()
+          or exists (
+            select 1 from public.trip_members tm
+            where tm.trip_id = t.id and tm.user_id = auth.uid()
+          )
+        )
+    )
+  );
+
+create policy "saved_places_delete_member"
+  on public.saved_places for delete to authenticated
+  using (
+    exists (
+      select 1 from public.trips t
+      where t.id = saved_places.trip_id
+        and (
+          t.user_id = auth.uid()
+          or exists (
+            select 1 from public.trip_members tm
+            where tm.trip_id = t.id and tm.user_id = auth.uid()
+          )
+        )
+    )
+  );

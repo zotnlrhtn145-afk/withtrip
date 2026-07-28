@@ -1,3 +1,4 @@
+import { getCurrentUserId } from "@/lib/auth-session"
 import { createClient } from "@/utils/supabase/client"
 import { type NearbySpot } from "@/lib/spots-data"
 
@@ -79,15 +80,19 @@ const SPOT_SELECT = `
 `
 
 /**
- * Fetch nearby spots with author profile (avatar_url, nickname) joined.
- * Returns [] when the table is empty or unavailable so the UI can show Empty State.
+ * Fetch nearby spots owned by the current user (with author profile).
+ * Logged-out / empty → [] so the UI shows Empty State (no global seed dump).
  */
 export async function fetchNearbySpots(): Promise<NearbySpot[]> {
   try {
+    const userId = await getCurrentUserId()
+    if (!userId) return []
+
     const client = createClient()
     const { data, error } = await client
       .from("spots")
       .select(SPOT_SELECT)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false })
 
     if (error) {

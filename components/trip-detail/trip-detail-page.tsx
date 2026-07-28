@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Loader2, Search } from "lucide-react"
 
@@ -14,32 +14,11 @@ import { type ViewMode } from "@/components/view-switcher"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { fetchTripById, getErrorMessage } from "@/lib/trips-api"
-import { trips as seedTrips, type Trip } from "@/lib/trip-data"
-
-function enrichTrip(trip: Trip): Trip {
-  const seed =
-    seedTrips.find((item) => item.id === trip.id) ??
-    seedTrips.find((item) => item.title === trip.title)
-  if (!seed) return trip
-  return {
-    ...trip,
-    weather: trip.weather === "예보 준비 중" ? seed.weather : trip.weather,
-    weatherIcon: trip.weather === "예보 준비 중" ? seed.weatherIcon : trip.weatherIcon,
-    readiness: trip.readiness <= 5 ? seed.readiness : trip.readiness,
-    memberIds: trip.groupMembers?.length
-      ? trip.memberIds
-      : trip.memberIds.length <= 1
-        ? seed.memberIds
-        : trip.memberIds,
-    groupMembers: trip.groupMembers,
-    flight: trip.flight === "항공편 미정" ? seed.flight : trip.flight,
-    heroImageAlt: trip.heroImageAlt || seed.heroImageAlt,
-  }
-}
+import { type Trip } from "@/lib/trip-data"
 
 function TripDetailComplete({ tripId }: { tripId: string }) {
   const router = useRouter()
-  const { trips, ensureTripBundle } = useTrips()
+  const { trips } = useTrips()
   const [trip, setTrip] = useState<Trip | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -70,7 +49,7 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
       try {
         const fromStore = trips.find((item) => item.id === tripId)
         if (fromStore) {
-          if (!cancelled) setTrip(enrichTrip(fromStore))
+          if (!cancelled) setTrip(fromStore)
           return
         }
 
@@ -81,7 +60,7 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
           setError("여행을 찾을 수 없어요.")
           return
         }
-        setTrip(enrichTrip(remote))
+        setTrip(remote)
       } catch (err) {
         if (cancelled) return
         console.error("[TripDetailComplete] fetch failed:", err)
@@ -98,11 +77,7 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
     }
   }, [tripId, trips])
 
-  useEffect(() => {
-    if (trip) ensureTripBundle(trip)
-  }, [trip, ensureTripBundle])
-
-  const displayTrip = useMemo(() => (trip ? enrichTrip(trip) : null), [trip])
+  const displayTrip = trip
 
   const goHome = () => router.push("/")
   const openTrip = (next: Trip) => router.push(`/settlement/${next.id}`)
