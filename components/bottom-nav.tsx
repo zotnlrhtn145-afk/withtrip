@@ -62,19 +62,29 @@ export function BottomNav({
   return (
     <nav
       aria-label="주요 메뉴"
+      style={{
+        position: "fixed",
+        bottom: "1rem",
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 99999,
+        width: "92%",
+        maxWidth: "400px",
+        pointerEvents: "auto",
+      }}
       className={cn(
-        "fixed bottom-4 left-1/2 z-[99999] w-[90%] max-w-[400px] -translate-x-1/2 md:hidden",
+        "fixed bottom-4 left-1/2 z-[99999] w-[92%] max-w-[400px] -translate-x-1/2 md:hidden",
         "pointer-events-auto",
         "rounded-full border border-white/20 bg-white/80 shadow-xl backdrop-blur-md",
         "transition-all duration-300 ease-in-out transform",
         compact ? "scale-90 opacity-90 py-1.5" : "scale-100 opacity-100 py-3"
       )}
     >
-      <ul className="relative flex items-center justify-around px-2">
+      <ul className="relative m-0 flex list-none items-center justify-around px-2 py-0">
         {navItems.map((item) => {
           const isActive = item.key === active
           return (
-            <li key={item.key} className="relative flex-1">
+            <li key={item.key} className="relative m-0 list-none flex-1 p-0">
               <motion.button
                 type="button"
                 onClick={(event) => handleTabClick(event, item.key)}
