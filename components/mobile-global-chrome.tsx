@@ -22,6 +22,7 @@ export function MobileGlobalChrome() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const viewParam = searchParams.get("view")
 
   const active = useMemo(
     () => resolveActive(pathname, searchParams.get("nav")),
@@ -39,6 +40,14 @@ export function MobileGlobalChrome() {
     }
     router.push(`/?nav=${key}`)
   }
+
+  const hideBottomNav =
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/forgot-password" ||
+    viewParam === "login" ||
+    viewParam === "signup" ||
+    viewParam === "forgot-password"
 
   return (
     <>
@@ -62,7 +71,7 @@ export function MobileGlobalChrome() {
         </div>
       </header>
 
-      <BottomNav active={active} onSelect={navigate} />
+      {!hideBottomNav ? <BottomNav active={active} onSelect={navigate} /> : null}
     </>
   )
 }

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Compass, Search } from "lucide-react"
+import { Search } from "lucide-react"
 
 import { AccountMenu } from "@/components/account-menu"
 import { ForgotPasswordView } from "@/components/auth/forgot-password-view"
@@ -171,12 +171,6 @@ function WithtripShell() {
     window.scrollTo({ top: 0 })
   }
 
-  const goHome = () => {
-    setSelectedTripId(null)
-    setActiveNav("home")
-    goTo("home")
-  }
-
   const openTripDetail = (trip: Trip) => {
     // Home planned-trip cards → trip schedule/detail page.
     setSelectedTripId(trip.id)
@@ -279,24 +273,6 @@ function WithtripShell() {
   if (currentView === "login" || currentView === "signup" || currentView === "forgot-password") {
     return (
       <div className="flex min-h-screen flex-col bg-background">
-        <header className="flex items-center justify-between gap-2 px-4 py-3 sm:px-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={goHome}
-            className="-ml-2 gap-2 font-extrabold tracking-tight"
-          >
-            <span className="flex size-6 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Compass className="size-3.5" />
-            </span>
-            WITHTRIP
-          </Button>
-          <Button variant="ghost" size="sm" onClick={goHome} className="font-semibold">
-            <ArrowLeft data-icon="inline-start" />
-            여행 목록으로
-          </Button>
-        </header>
-
         {currentView === "login" ? (
           <LoginView
             onLogin={handleLogin}
