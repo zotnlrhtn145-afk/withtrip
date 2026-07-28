@@ -1,117 +1,237 @@
 "use client"
 
-import { Bell, BellOff, CalendarClock, CheckCheck, CloudSun, Plane, UserRoundPlus } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
+import { Bell, BellOff, Loader2, UserRoundPlus } from "lucide-react"
 
 import { useTrips } from "@/components/trips-store"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Separator } from "@/components/ui/separator"
-import type { NotificationKind } from "@/lib/notifications"
-import type { Trip } from "@/lib/trip-data"
+import {
+  acceptTripInvitation,
+  fetchPendingInvitations,
+  rejectTripInvitation,
+  type TripInvitation,
+} from "@/lib/trip-members-api"
 import { cn } from "@/lib/utils"
 
-const kindIcons: Record<NotificationKind, typeof CloudSun> = {
-  weather: CloudSun,
-  member: UserRoundPlus,
-  flight: Plane,
-  schedule: CalendarClock,
+function initialsFromName(name: string) {
+  const cleaned = String(name ?? "").replace(/\s+/g, "")
+  if (!cleaned) return "WT"
+  return cleaned.slice(0, 2).toUpperCase()
 }
 
-export function NotificationMenu({ onSelectTrip }: { onSelectTrip: (trip: Trip) => void }) {
-  const { notifications, unreadCount, markAllRead, markRead, trips } = useTrips()
+/**
+ * GNB notification bell — pending trip invitations with accept / decline.
+ */
+export function NotificationMenu({
+  onSelectTrip,
+}: {
+  onSelectTrip?: (trip: { id: string }) => void
+}) {
+  const { refreshTrips } = useTrips()
+  const [open, setOpen] = useState(false)
+  const [invites, setInvites] = useState<TripInvitation[]>([])
+  const [loading, setLoading] = useState(false)
+  const [actingId, setActingId] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  const showNotice = useCallback((message: string) => {
+    setNotice(message)
+    window.setTimeout(() => {
+      setNotice((current) => (current === message ? null : current))
+    }, 2200)
+  }, [])
+
+  const loadInvites = useCallback(async () => {
+    setLoading(true)
+    try {
+      const rows = await fetchPendingInvitations()
+      setInvites(rows)
+    } catch (err) {
+      console.error(
+        "[NotificationMenu] load failed:",
+        err instanceof Error ? err.message : err
+      )
+      setInvites([])
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadInvites()
+  }, [loadInvites])
+
+  useEffect(() => {
+    if (open) void loadInvites()
+  }, [open, loadInvites])
+
+  // Refresh badge when invites may change (focus / session events)
+  useEffect(() => {
+    const onFocus = () => void loadInvites()
+    const onCleared = () => setInvites([])
+    window.addEventListener("focus", onFocus)
+    window.addEventListener("withtrip:session-cleared", onCleared)
+    return () => {
+      window.removeEventListener("focus", onFocus)
+      window.removeEventListener("withtrip:session-cleared", onCleared)
+    }
+  }, [loadInvites])
+
+  const handleAccept = async (invite: TripInvitation) => {
+    if (actingId) return
+    setActingId(invite.id)
+    try {
+      const { tripTitle } = await acceptTripInvitation(invite.id)
+      setInvites((current) => current.filter((item) => item.id !== invite.id))
+      await refreshTrips({ silent: true })
+      showNotice(`'${tripTitle}' 여행에 참여했습니다!`)
+      onSelectTrip?.({ id: invite.tripId })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "수락에 실패했어요."
+      console.error("[NotificationMenu] accept failed:", message)
+      showNotice(message)
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  const handleReject = async (invite: TripInvitation) => {
+    if (actingId) return
+    setActingId(invite.id)
+    try {
+      await rejectTripInvitation(invite.id)
+      setInvites((current) => current.filter((item) => item.id !== invite.id))
+      showNotice("초대를 거절했어요.")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "거절에 실패했어요."
+      console.error("[NotificationMenu] reject failed:", message)
+      showNotice(message)
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  const pendingCount = invites.length
 
   return (
-    <Popover>
-      <PopoverTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={unreadCount > 0 ? `알림 ${unreadCount}개 읽지 않음` : "알림"}
-            className="relative"
-          />
-        }
-      >
-        <Bell />
-        {unreadCount > 0 ? (
-          <span className="absolute -top-0.5 -right-0.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] leading-4 font-bold text-background tabular-nums">
-            {unreadCount}
-          </span>
-        ) : null}
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-[calc(100vw-2rem)] gap-0 p-0 sm:w-88">
-        <div className="flex items-center justify-between gap-2 px-3 py-2.5">
-          <span className="flex items-center gap-2 text-sm font-bold">
-            알림
-            {unreadCount > 0 ? (
-              <Badge className="tabular-nums">{unreadCount}</Badge>
-            ) : null}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={markAllRead}
-            disabled={unreadCount === 0}
-            className="font-semibold"
-          >
-            <CheckCheck data-icon="inline-start" />
-            모두 읽음
-          </Button>
-        </div>
-        <Separator />
-
-        <ul className="flex max-h-96 flex-col overflow-y-auto p-1.5">
-          {notifications.length === 0 ? (
-            <li className="flex flex-col items-center gap-2 px-3 py-10 text-sm text-muted-foreground">
-              <BellOff className="size-5" />
-              새로운 알림이 없어요.
-            </li>
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          render={
+            <button
+              type="button"
+              aria-label={
+                pendingCount > 0 ? `알림 ${pendingCount}개` : "알림"
+              }
+              className="relative flex size-9 items-center justify-center rounded-full text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900"
+            />
+          }
+        >
+          <Bell className="size-5" />
+          {pendingCount > 0 ? (
+            <span
+              aria-hidden="true"
+              className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-white"
+            />
           ) : null}
-          {notifications.map((item) => {
-            const Icon = kindIcons[item.kind]
-            return (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    markRead(item.id)
-                    const trip = trips.find((entry) => entry.id === item.tripId)
-                    if (trip) onSelectTrip(trip)
-                  }}
-                  className={cn(
-                    "flex w-full items-start gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition-colors hover:bg-secondary",
-                    !item.read && "bg-primary/10 hover:bg-primary/15"
-                  )}
-                >
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
-                    <Icon className="size-4" />
-                  </span>
-                  <span className="flex min-w-0 flex-col gap-0.5">
-                    <span className="flex items-start gap-1.5">
-                      <span className="text-sm leading-snug font-semibold text-pretty">
-                        {item.title}
-                      </span>
-                      {!item.read ? (
-                        <span
-                          aria-hidden="true"
-                          className="mt-1.5 size-1.5 shrink-0 rounded-full bg-destructive"
-                        />
-                      ) : null}
-                    </span>
-                    <span className="text-xs leading-relaxed text-muted-foreground text-pretty">
-                      {item.body}
-                    </span>
-                    <span className="text-[11px] text-muted-foreground tabular-nums">
-                      {item.time}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      </PopoverContent>
-    </Popover>
+        </PopoverTrigger>
+
+        <PopoverContent
+          align="end"
+          sideOffset={8}
+          className={cn(
+            "w-80 gap-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-xl",
+            "ring-0"
+          )}
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-bold text-slate-900">알림</p>
+            {pendingCount > 0 ? (
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 tabular-nums">
+                {pendingCount}
+              </span>
+            ) : null}
+          </div>
+
+          {loading ? (
+            <div className="flex flex-col items-center gap-2 py-10 text-sm text-slate-400">
+              <Loader2 className="size-5 animate-spin text-amber-500" />
+              알림을 불러오는 중…
+            </div>
+          ) : invites.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-10 text-sm text-slate-400">
+              <BellOff className="size-5" />
+              새로운 초대 알림이 없어요.
+            </div>
+          ) : (
+            <ul className="flex max-h-80 flex-col gap-3 overflow-y-auto">
+              {invites.map((invite) => {
+                const busy = actingId === invite.id
+                return (
+                  <li
+                    key={invite.id}
+                    className="rounded-xl border border-slate-100 bg-slate-50/60 p-3"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <Avatar className="size-9 shrink-0 ring-2 ring-white">
+                        {invite.inviterAvatarUrl ? (
+                          <AvatarImage src={invite.inviterAvatarUrl} alt="" />
+                        ) : null}
+                        <AvatarFallback className="bg-amber-50 text-[10px] font-bold text-amber-700">
+                          {invite.inviterAvatarUrl ? (
+                            initialsFromName(invite.inviterName)
+                          ) : (
+                            <UserRoundPlus className="size-3.5" />
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
+                      <p className="min-w-0 flex-1 text-xs leading-relaxed text-slate-700">
+                        <span className="font-bold text-slate-900">
+                          {invite.inviterName}
+                        </span>
+                        님이{" "}
+                        <span className="font-bold text-slate-900">
+                          &apos;{invite.tripTitle}&apos;
+                        </span>{" "}
+                        여행에 초대했습니다.
+                      </p>
+                    </div>
+                    <div className="mt-3 flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void handleReject(invite)}
+                        className="rounded-full bg-slate-100 px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition-all hover:bg-slate-200 disabled:opacity-50"
+                      >
+                        거절
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void handleAccept(invite)}
+                        className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-3.5 py-1.5 text-xs font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 disabled:opacity-50"
+                      >
+                        {busy ? <Loader2 className="size-3 animate-spin" /> : null}
+                        수락
+                      </button>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </PopoverContent>
+      </Popover>
+
+      {notice ? (
+        <div className="pointer-events-none fixed right-4 bottom-4 z-[70] rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-lg">
+          {notice}
+        </div>
+      ) : null}
+    </>
   )
 }
+
+/** Alias matching the product naming in the design brief. */
+export const NotificationPopover = NotificationMenu

@@ -45,7 +45,9 @@ import {
   addTripMember,
   fetchTripInviteCode,
   fetchTripMembers,
+  fetchTripMembershipStates,
   type TripMember,
+  type TripMemberStatus,
 } from "@/lib/trip-members-api"
 import { getTripMembers, formatTripDuration, type Trip } from "@/lib/trip-data"
 import { formatMemberSummary } from "@/lib/trip-group"
@@ -132,6 +134,9 @@ export function TripHeroCard({
   const [flightLabel, setFlightLabel] = useState(EMPTY_FLIGHT_LABEL)
   const [coverSrc, setCoverSrc] = useState(trip.heroImage || FALLBACK_TRIP_COVER)
   const [joinedMembers, setJoinedMembers] = useState<TripMember[]>([])
+  const [membershipStates, setMembershipStates] = useState<Record<string, TripMemberStatus>>(
+    {}
+  )
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteCode, setInviteCode] = useState<string | null>(trip.inviteCode ?? null)
   const [inviteLoading, setInviteLoading] = useState(false)
@@ -195,8 +200,12 @@ export function TripHeroCard({
   )
 
   const reloadJoinedMembers = useCallback(async () => {
-    const loaded = await fetchTripMembers(trip.id)
+    const [loaded, states] = await Promise.all([
+      fetchTripMembers(trip.id),
+      fetchTripMembershipStates(trip.id),
+    ])
     setJoinedMembers(loaded)
+    setMembershipStates(states)
   }, [trip.id])
 
   const fetchHeroFlightData = useCallback(async () => {
@@ -265,7 +274,10 @@ export function TripHeroCard({
   const handleInviteFriend = useCallback(
     async (friend: UserSummary) => {
       const userId = String(friend.userId ?? "").trim()
-      if (!userId) return
+      if (!userId) {
+        showNotice("초대할 친구 정보가 없어요.")
+        return
+      }
       setInvitingUserId(userId)
       try {
         await addTripMember({
@@ -276,10 +288,31 @@ export function TripHeroCard({
           avatarUrl: friend.avatarUrl,
         })
         await reloadJoinedMembers()
-        showNotice("초대 완료")
+        showNotice(`${friend.nickname || "친구"}님을 초대했어요`)
       } catch (err) {
-        console.error("[TripHeroCard] invite friend failed:", err)
-        showNotice("초대 처리에 실패했어요.")
+        const message =
+          err && typeof err === "object"
+            ? String(
+                (err as { message?: unknown }).message ||
+                  (err as { details?: unknown }).details ||
+                  ""
+              ).trim()
+            : ""
+        console.error(
+          "[TripHeroCard] invite friend failed:",
+          message || (err instanceof Error ? err.message : err)
+        )
+        if (err && typeof err === "object") {
+          const row = err as { details?: unknown; hint?: unknown; code?: unknown }
+          if (row.details || row.hint || row.code) {
+            console.error("[TripHeroCard] invite error details:", {
+              details: row.details,
+              hint: row.hint,
+              code: row.code,
+            })
+          }
+        }
+        showNotice(message || "초대 처리에 실패했어요. 잠시 후 다시 시도해 주세요.")
       } finally {
         setInvitingUserId(null)
       }
@@ -441,7 +474,9 @@ export function TripHeroCard({
               <ul className="flex flex-col gap-2">
                 {acceptedFriends.map((friend) => {
                   const member = toTripMember(friend)
-                  const isJoined = joinedUserIds.has(member.userId)
+                  const inviteState = membershipStates[member.userId]
+                  const isJoined = inviteState === "accepted" || joinedUserIds.has(member.userId)
+                  const isPending = inviteState === "pending"
                   const isInviting = invitingUserId === member.userId
 
                   return (
@@ -465,6 +500,10 @@ export function TripHeroCard({
                       </div>
                       {isJoined ? (
                         <Badge variant="secondary">참여 중</Badge>
+                      ) : isPending ? (
+                        <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                          초대됨
+                        </Badge>
                       ) : (
                         <Button
                           type="button"

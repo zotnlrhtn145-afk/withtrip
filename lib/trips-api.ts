@@ -50,13 +50,36 @@ function memberIdsFromRow(members: unknown): string[] {
 
 async function fetchMemberTripIds(userId: string): Promise<string[]> {
   const client = createClient()
+  // Prefer accepted memberships only (pending invites must not appear as joined trips)
+  const accepted = await client
+    .from("trip_members")
+    .select("trip_id")
+    .eq("user_id", userId)
+    .eq("status", "accepted")
+
+  if (!accepted.error) {
+    return [
+      ...new Set(
+        ((accepted.data as Array<{ trip_id?: string }> | null) ?? [])
+          .map((row) => String(row.trip_id ?? "").trim())
+          .filter(Boolean)
+      ),
+    ]
+  }
+
+  // Legacy DBs without status column — fall back to all memberships
+  if (!/status|column .* does not exist/i.test(accepted.error.message ?? "")) {
+    console.error("[fetchMemberTripIds]", accepted.error.message)
+    return []
+  }
+
   const { data, error } = await client
     .from("trip_members")
     .select("trip_id")
     .eq("user_id", userId)
 
   if (error) {
-    console.error("[fetchMemberTripIds]", error.message)
+    console.error("[fetchMemberTripIds] legacy:", error.message)
     return []
   }
 
@@ -288,9 +311,38 @@ export function toIsoDate(date: Date) {
 }
 
 export function getErrorMessage(err: unknown) {
-  if (err && typeof err === "object" && "message" in err) {
-    return String((err as { message: unknown }).message ?? "알 수 없는 오류")
+  if (err == null) return "알 수 없는 오류"
+
+  if (typeof err === "string") {
+    const trimmed = err.trim()
+    return trimmed || "알 수 없는 오류"
   }
-  if (err instanceof Error) return err.message
+
+  if (err instanceof Error && err.message) {
+    return err.message
+  }
+
+  if (typeof err === "object") {
+    const row = err as {
+      message?: unknown
+      details?: unknown
+      hint?: unknown
+      code?: unknown
+      error_description?: unknown
+    }
+    const parts = [row.message, row.details, row.hint, row.error_description, row.code]
+      .map((part) => String(part ?? "").trim())
+      .filter(Boolean)
+    if (parts.length > 0) return parts.join(" | ")
+  }
+
+  try {
+    const json = JSON.stringify(err)
+    if (json && json !== "{}" && json !== "null") return json
+  } catch {
+    // ignore
+  }
+
   return "알 수 없는 오류"
 }
+
