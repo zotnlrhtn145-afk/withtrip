@@ -1,17 +1,11 @@
 import {
-  bars,
-  hotel,
-  restaurants,
-  scheduleDays,
   type Place,
   type ScheduleDay,
   type ScheduleItem,
   type Trip,
 } from '@/lib/trip-data'
 
-export const seedSchedule: Record<string, ScheduleDay[]> = {
-  'osaka-kyoto': scheduleDays,
-}
+export const seedSchedule: Record<string, ScheduleDay[]> = {}
 
 export type FlightEntry = {
   id: string
@@ -163,51 +157,9 @@ export function guessArrivalCode(trip: Trip) {
   return hit && hit.code !== "ICN" ? hit.code : "KIX"
 }
 
-export const seedFlights: Record<string, FlightEntry[]> = {
-  'osaka-kyoto': [
-    {
-      id: 'f-osaka-1',
-      airlineId: 'korean-air',
-      airlineName: '',
-      flightNo: 'KE721',
-      fromCode: 'ICN',
-      toCode: 'KIX',
-      departDate: '2026.08.27',
-      departTime: '09:20',
-      arriveDate: '2026.08.27',
-      arriveTime: '11:15',
-    },
-    {
-      id: 'f-osaka-2',
-      airlineId: 'asiana',
-      airlineName: '',
-      flightNo: 'OZ112',
-      fromCode: 'KIX',
-      toCode: 'ICN',
-      departDate: '2026.09.02',
-      departTime: '12:40',
-      arriveDate: '2026.09.02',
-      arriveTime: '14:35',
-    },
-  ],
-}
+export const seedFlights: Record<string, FlightEntry[]> = {}
 
-export const seedStays: Record<string, StayEntry[]> = {
-  'osaka-kyoto': [
-    {
-      id: 's-osaka-1',
-      name: hotel.name,
-      address: hotel.address,
-      checkInDate: '2026.08.27',
-      checkInTime: '15:00',
-      checkOutDate: '2026.09.02',
-      checkOutTime: '11:00',
-      phone: hotel.phone,
-      memo: hotel.room,
-      imageUrl: DEFAULT_STAY_IMAGE,
-    },
-  ],
-}
+export const seedStays: Record<string, StayEntry[]> = {}
 
 /* ── 가고 싶은 곳 (Wishlist) ───────────────────────────────────────── */
 
@@ -241,12 +193,7 @@ export function toWishlistKind(category: unknown): WishlistKind {
   return 'restaurant'
 }
 
-export const seedWishlist: Record<string, WishlistEntry[]> = {
-  'osaka-kyoto': [
-    ...restaurants.map((place) => ({ ...place, kind: 'restaurant' as const })),
-    ...bars.map((place) => ({ ...place, kind: 'bar' as const })),
-  ],
-}
+export const seedWishlist: Record<string, WishlistEntry[]> = {}
 
 export const wishlistSuggestions: (Omit<Place, 'id' | 'savedBy'> & { kind: WishlistKind })[] = [
   {

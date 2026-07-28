@@ -104,10 +104,10 @@ export function HomeView({
             </span>
           </div>
           <h3 className="mt-6 mb-2 text-xl font-bold tracking-tight text-gray-900 md:text-2xl">
-            첫 번째 여행을 기록해 보세요
+            등록된 여행이 없습니다
           </h3>
           <p className="mx-auto mb-8 max-w-sm text-sm leading-relaxed text-gray-500">
-            친구들과 함께 일정을 계획하고 정산까지 한곳에서 스마트하게 관리할 수
+            새로운 여행을 추가해 보세요! 친구들과 일정·정산을 한곳에서 관리할 수
             있어요.
           </p>
           <button

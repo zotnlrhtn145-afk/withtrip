@@ -69,12 +69,6 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
       setLoading(true)
       setError(null)
       try {
-        const seeded = seedTrips.find((item) => item.id === tripId)
-        if (seeded) {
-          if (!cancelled) setTrip(enrichTrip(seeded))
-          return
-        }
-
         const fromStore = trips.find((item) => item.id === tripId)
         if (fromStore) {
           if (!cancelled) setTrip(enrichTrip(fromStore))

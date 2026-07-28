@@ -72,62 +72,7 @@ export type Trip = {
   status?: string
 }
 
-export const trips: Trip[] = [
-  {
-    id: 'osaka-kyoto',
-    title: '오사카 · 교토 여행',
-    country: 'Japan',
-    region: 'Osaka & Kyoto',
-    startDate: '2026.08.27',
-    endDate: '2026.09.02',
-    nights: 6,
-    days: 7,
-    dDay: 33,
-    heroImage: '/images/osaka-kyoto-hero.png',
-    heroImageAlt: '골든 아워의 교토 전통 목조 거리와 멀리 보이는 오층탑',
-    weather: '맑음 31°C',
-    weatherIcon: 'sun',
-    flight: 'ICN 09:20 → KIX 11:15',
-    memberIds: ['m1', 'm2', 'm3', 'm4'],
-    readiness: 68,
-  },
-  {
-    id: 'danang',
-    title: '다낭 워케이션',
-    country: 'Vietnam',
-    region: 'Da Nang & Hoi An',
-    startDate: '2026.11.14',
-    endDate: '2026.11.21',
-    nights: 7,
-    days: 8,
-    dDay: 112,
-    heroImage: '/images/trip-danang.png',
-    heroImageAlt: '야자수가 늘어선 다낭 해변과 에메랄드빛 바다',
-    weather: '구름 조금 29°C',
-    weatherIcon: 'cloud-sun',
-    flight: 'ICN 19:40 → DAD 22:50',
-    memberIds: ['m1', 'm3'],
-    readiness: 24,
-  },
-  {
-    id: 'taipei',
-    title: '타이베이 미식투어',
-    country: 'Taiwan',
-    region: 'Taipei & Jiufen',
-    startDate: '2027.01.02',
-    endDate: '2027.01.06',
-    nights: 4,
-    days: 5,
-    dDay: 161,
-    heroImage: '/images/trip-taipei.png',
-    heroImageAlt: '타이베이 101 타워와 등불이 켜진 야시장 거리',
-    weather: '흐림 18°C',
-    weatherIcon: 'rain',
-    flight: 'ICN 08:05 → TPE 09:55',
-    memberIds: ['m2', 'm3', 'm4'],
-    readiness: 12,
-  },
-]
+export const trips: Trip[] = []
 
 export const members: Member[] = [
   { id: 'm1', name: '지훈', initials: 'JH', color: 'bg-primary text-primary-foreground' },
