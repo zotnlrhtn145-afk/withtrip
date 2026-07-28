@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, Loader2, Search } from "lucide-react"
 
 import { AccountMenu } from "@/components/account-menu"
-import { WishlistSection } from "@/components/itinerary/wishlist-section"
 import { NotificationMenu } from "@/components/notification-menu"
 import { TripHeroCard } from "@/components/trip-hero-card"
 import { TripSearchDialog } from "@/components/trip-search-dialog"
@@ -150,7 +149,6 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
         flightsRevision={flightsRevision}
       />
       <TripScheduleBoard trip={displayTrip} onFlightChange={handleFlightChange} />
-      <WishlistSection trip={displayTrip} />
     </>
   )
 
@@ -176,7 +174,7 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
               {accountMenu(true)}
             </div>
           </header>
-          <main className="flex flex-col gap-4 p-4">{mainBody}</main>
+          <main className="flex flex-col gap-5 p-4">{mainBody}</main>
         </div>
         <TripSearchDialog open={searchOpen} onOpenChange={setSearchOpen} onSelectTrip={openTrip} />
       </div>

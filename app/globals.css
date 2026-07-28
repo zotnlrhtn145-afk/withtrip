@@ -245,6 +245,16 @@
   .animate-fade-in {
     animation: withtrip-fade-in 0.45s ease-out both;
   }
+
+  /** Hide scrollbars while keeping scroll (Instagram-style chip bars). */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @keyframes withtrip-fade-in {

@@ -5,10 +5,8 @@ import { Heart, Loader2, Martini, Plus, BedDouble, Utensils } from "lucide-react
 
 import { AddSavedPlaceModal } from "@/components/itinerary/AddSavedPlaceModal"
 import { SavedPlaceCard } from "@/components/itinerary/SavedPlaceCard"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import {
   deleteSavedPlace,
   fetchSavedPlacesByTripId,
@@ -31,7 +29,6 @@ const KIND_ICON: Record<WishlistKind, typeof Utensils> = {
 function CategorySummary({
   kind,
   label,
-  guide,
   count,
   active,
   onSelect,
@@ -52,33 +49,17 @@ function CategorySummary({
       aria-selected={active}
       onClick={() => onSelect(kind)}
       className={cn(
-        "touch-press flex flex-1 items-center gap-3 rounded-2xl p-3.5 text-left transition-colors ring-1",
+        "flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition-all",
         active
-          ? "bg-amber-50 ring-amber-300 shadow-sm"
-          : "bg-secondary/60 ring-border hover:bg-secondary/80"
+          ? "border-amber-400 bg-amber-50 text-slate-900 shadow-sm"
+          : "border-slate-200/80 bg-slate-50 text-slate-700 hover:border-amber-400"
       )}
     >
-      <span
-        className={cn(
-          "flex size-10 shrink-0 items-center justify-center rounded-xl",
-          active ? "bg-amber-400 text-foreground" : "bg-primary text-primary-foreground"
-        )}
-      >
-        <Icon className="size-5" />
+      <Icon className={cn("size-3.5", active ? "text-amber-500" : "text-slate-500")} />
+      <span>{label}</span>
+      <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-[10px] text-slate-600 tabular-nums">
+        {count}
       </span>
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <p className="truncate text-sm font-bold">{label}</p>
-        <p className="truncate text-xs text-muted-foreground">{guide}</p>
-      </div>
-      <Badge
-        variant="outline"
-        className={cn(
-          "ml-auto shrink-0 font-semibold tabular-nums",
-          active ? "border-amber-300 bg-white" : "bg-card"
-        )}
-      >
-        {count}곳
-      </Badge>
     </button>
   )
 }
@@ -113,7 +94,7 @@ export function WishlistSection({ trip }: { trip: Trip }) {
     const restaurant = places.filter((place) => toWishlistKind(place.category) === "restaurant").length
     const bar = places.filter((place) => toWishlistKind(place.category) === "bar").length
     const stay = places.filter((place) => toWishlistKind(place.category) === "stay").length
-    return { restaurant, bar, stay } as Record<WishlistKind, number>
+    return { restaurant, bar, stay }
   }, [places])
 
   const visiblePlaces = useMemo(
@@ -138,7 +119,11 @@ export function WishlistSection({ trip }: { trip: Trip }) {
       defaultKind={selectedKind}
       onSaved={() => void load()}
       trigger={
-        <Button variant="outline" size="sm" className="rounded-full font-semibold">
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-full border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+        >
           <Plus data-icon="inline-start" />
           장소 추가
         </Button>
@@ -147,21 +132,26 @@ export function WishlistSection({ trip }: { trip: Trip }) {
   )
 
   return (
-    <Card>
+    <Card className="rounded-2xl border border-slate-100 bg-white shadow-sm ring-0 transition-all hover:shadow-md">
       <CardHeader>
-        <CardDescription className="flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
-          <Heart className="size-3.5" />
+        <CardDescription className="mb-1 text-[11px] font-bold tracking-wider text-slate-400 uppercase">
           Wishlist
         </CardDescription>
-        <CardTitle className="text-lg font-bold">가고 싶은 곳</CardTitle>
-        <CardDescription className="text-pretty">
+        <CardTitle className="text-lg font-bold tracking-tight text-slate-900">
+          가고 싶은 곳
+        </CardTitle>
+        <CardDescription className="text-pretty text-slate-500">
           멤버들이 저장한 레스토랑, 라운지 & 바, 숙소
         </CardDescription>
         <CardAction>{addButton}</CardAction>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-5">
-        <div role="tablist" aria-label="위시리스트 카테고리" className="flex flex-col gap-2.5 sm:flex-row">
+        <div
+          role="tablist"
+          aria-label="위시리스트 카테고리"
+          className="flex flex-wrap gap-2"
+        >
           {wishlistCategories.map((item) => (
             <CategorySummary
               key={item.kind}
@@ -176,12 +166,12 @@ export function WishlistSection({ trip }: { trip: Trip }) {
         </div>
 
         {loading ? (
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-6 py-14">
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 p-8 text-center">
             <Loader2 className="size-6 animate-spin text-amber-500" />
-            <p className="text-sm text-muted-foreground">저장된 장소를 불러오는 중…</p>
+            <p className="text-sm text-slate-500">저장된 장소를 불러오는 중…</p>
           </div>
         ) : visiblePlaces.length > 0 ? (
-          <ul className="grid gap-4 md:grid-cols-2">
+          <ul className="grid gap-4 md:grid-cols-1 xl:grid-cols-2">
             {visiblePlaces.map((place) => (
               <SavedPlaceCard
                 key={place.id}
@@ -192,30 +182,28 @@ export function WishlistSection({ trip }: { trip: Trip }) {
             ))}
           </ul>
         ) : (
-          <Empty className="border border-dashed border-border bg-secondary/40 py-10">
-            <EmptyHeader>
-              <EmptyMedia variant="icon" className="size-12 rounded-2xl bg-primary/15">
-                <Heart className="size-6 text-foreground" />
-              </EmptyMedia>
-              <EmptyTitle className="text-base font-bold">아직 저장된 장소가 없어요.</EmptyTitle>
-              <EmptyDescription className="text-xs">
-                레스토랑, 라운지, 숙소를 저장하면 멤버 모두가 함께 볼 수 있어요.
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <AddSavedPlaceModal
-                tripId={trip.id}
-                defaultKind={selectedKind}
-                onSaved={() => void load()}
-                trigger={
-                  <Button size="lg" className="w-full rounded-full font-semibold">
-                    <Plus data-icon="inline-start" />
-                    장소 추가
-                  </Button>
-                }
-              />
-            </EmptyContent>
-          </Empty>
+          <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 p-8 text-center">
+            <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-500">
+              <Heart className="size-5" />
+            </span>
+            <p className="text-sm font-bold text-slate-900">아직 저장된 장소가 없어요</p>
+            <p className="mt-1 mb-5 max-w-xs text-xs leading-relaxed text-slate-500">
+              레스토랑, 라운지, 숙소를 저장하면 멤버 모두가 함께 볼 수 있어요.
+            </p>
+            <AddSavedPlaceModal
+              tripId={trip.id}
+              defaultKind={selectedKind}
+              onSaved={() => void load()}
+              trigger={
+                <button
+                  type="button"
+                  className="rounded-full bg-amber-400 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 transition-all hover:bg-amber-500 active:scale-95"
+                >
+                  장소 추가
+                </button>
+              }
+            />
+          </div>
         )}
       </CardContent>
     </Card>

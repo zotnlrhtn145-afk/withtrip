@@ -37,6 +37,12 @@ type SegmentDraft = {
   duration: string
 }
 
+type TabFormData = {
+  outbound: SegmentDraft
+  inbound: SegmentDraft
+  multiCity: SegmentDraft[]
+}
+
 const DUPLICATE_TYPE_MESSAGE =
   "이미 출국(또는 귀국) 항공권이 등록되어 있습니다. 기존 티켓을 수정해 주세요."
 
@@ -50,6 +56,14 @@ function createEmptySegment(): SegmentDraft {
     departTime: "",
     arriveTime: "",
     duration: "",
+  }
+}
+
+function createEmptyFormData(): TabFormData {
+  return {
+    outbound: createEmptySegment(),
+    inbound: createEmptySegment(),
+    multiCity: [createEmptySegment(), createEmptySegment()],
   }
 }
 
@@ -83,6 +97,12 @@ function pickDefaultCreateType(existingFlights: TripFlight[]): FlightType {
   return "LAYOVER"
 }
 
+function tabKeyFromType(type: FlightType): keyof TabFormData {
+  if (type === "RETURN") return "inbound"
+  if (type === "LAYOVER") return "multiCity"
+  return "outbound"
+}
+
 function SegmentFields({
   segment,
   index,
@@ -109,34 +129,34 @@ function SegmentFields({
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-border bg-secondary/30 p-4">
+    <div className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-bold">
+        <p className="text-[13px] font-semibold tracking-tight text-gray-900">
           {total > 1 ? `구간 ${index + 1}` : "비행 정보"}
         </p>
         {showRemove ? (
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="icon-sm"
             aria-label={`구간 ${index + 1} 삭제`}
             onClick={() => onRemove(segment.key)}
-            className="text-muted-foreground hover:text-destructive"
+            className="flex size-8 items-center justify-center rounded-full text-gray-400 transition hover:bg-rose-50 hover:text-rose-500"
           >
-            <Trash2 />
-          </Button>
+            <Trash2 className="size-4" />
+          </button>
         ) : null}
       </div>
 
-      <FieldGroup>
+      <FieldGroup className="gap-3.5">
         <Field>
-          <FieldLabel htmlFor={`${baseId}-airline`}>항공사</FieldLabel>
+          <FieldLabel htmlFor={`${baseId}-airline`} className="text-xs text-gray-500">
+            항공사
+          </FieldLabel>
           <SearchableSelect
             id={`${baseId}-airline`}
             value={segment.airline}
             onChange={(value) => patch({ airline: value })}
             options={AIRLINE_PRESETS}
-            placeholder="항공사를 검색하거나 선택하세요"
+            placeholder="항공사 검색"
             emptyText="일치하는 항공사가 없어요"
             allowCustom
             customHint="목록에 없으면 입력한 이름을 그대로 저장해요."
@@ -144,80 +164,90 @@ function SegmentFields({
         </Field>
 
         <Field>
-          <FieldLabel htmlFor={`${baseId}-flight-no`}>편명</FieldLabel>
+          <FieldLabel htmlFor={`${baseId}-flight-no`} className="text-xs text-gray-500">
+            편명
+          </FieldLabel>
           <Input
             id={`${baseId}-flight-no`}
             value={segment.flightNo}
             onChange={(event) => patch({ flightNo: event.target.value.toUpperCase() })}
-            placeholder="예: KE721"
-            className="rounded-xl font-mono uppercase"
+            placeholder="KE721"
+            className="h-11 rounded-xl border-gray-200 bg-gray-50/80 font-mono uppercase tracking-wide focus-visible:bg-white"
           />
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
           <Field>
-            <FieldLabel htmlFor={`${baseId}-from`}>출발 공항</FieldLabel>
+            <FieldLabel htmlFor={`${baseId}-from`} className="text-xs text-gray-500">
+              출발
+            </FieldLabel>
             <SearchableSelect
               id={`${baseId}-from`}
               value={segment.departureAirport}
               onChange={(next) => patch({ departureAirport: next.toUpperCase().slice(0, 8) })}
               options={AIRPORT_OPTIONS}
-              placeholder="출발 공항 선택 (예: ICN, 인천)"
+              placeholder="ICN"
               emptyText="일치하는 공항이 없어요"
               allowCustom
-              customHint="코드 또는 공항명으로 검색 · 직접 입력도 가능"
+              customHint="코드 또는 공항명으로 검색"
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor={`${baseId}-depart-time`}>출발 시간</FieldLabel>
+            <FieldLabel htmlFor={`${baseId}-depart-time`} className="text-xs text-gray-500">
+              출발 시간
+            </FieldLabel>
             <Input
               id={`${baseId}-depart-time`}
               type="time"
               value={segment.departTime}
               onChange={(event) => patch({ departTime: event.target.value })}
-              placeholder="시간 선택"
-              className="rounded-xl tabular-nums"
+              className="h-11 rounded-xl border-gray-200 bg-gray-50/80 tabular-nums focus-visible:bg-white"
             />
           </Field>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <Field>
-            <FieldLabel htmlFor={`${baseId}-to`}>도착 공항</FieldLabel>
+            <FieldLabel htmlFor={`${baseId}-to`} className="text-xs text-gray-500">
+              도착
+            </FieldLabel>
             <SearchableSelect
               id={`${baseId}-to`}
               value={segment.arrivalAirport}
               onChange={(next) => patch({ arrivalAirport: next.toUpperCase().slice(0, 8) })}
               options={AIRPORT_OPTIONS}
-              placeholder="도착 공항 선택 (예: KIX, 간사이)"
+              placeholder="KIX"
               emptyText="일치하는 공항이 없어요"
               allowCustom
-              customHint="코드 또는 공항명으로 검색 · 직접 입력도 가능"
+              customHint="코드 또는 공항명으로 검색"
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor={`${baseId}-arrive-time`}>도착 시간</FieldLabel>
+            <FieldLabel htmlFor={`${baseId}-arrive-time`} className="text-xs text-gray-500">
+              도착 시간
+            </FieldLabel>
             <Input
               id={`${baseId}-arrive-time`}
               type="time"
               value={segment.arriveTime}
               onChange={(event) => patch({ arriveTime: event.target.value })}
-              placeholder="시간 선택"
-              className="rounded-xl tabular-nums"
+              className="h-11 rounded-xl border-gray-200 bg-gray-50/80 tabular-nums focus-visible:bg-white"
             />
           </Field>
         </div>
 
         <Field>
-          <FieldLabel htmlFor={`${baseId}-duration`}>소요 시간</FieldLabel>
+          <FieldLabel htmlFor={`${baseId}-duration`} className="text-xs text-gray-500">
+            소요 시간
+          </FieldLabel>
           <Input
             id={`${baseId}-duration`}
             value={segment.duration}
             onChange={(event) => patch({ duration: event.target.value })}
-            placeholder="시간 입력 시 자동 계산됩니다"
-            className="rounded-xl"
+            placeholder="자동 계산"
+            className="h-11 rounded-xl border-gray-200 bg-gray-50/80 focus-visible:bg-white"
           />
-          <FieldDescription>
+          <FieldDescription className="text-[11px] text-gray-400">
             출발·도착 시간으로 자동 계산되며, 직접 수정할 수도 있어요.
           </FieldDescription>
         </Field>
@@ -245,7 +275,7 @@ export function FlightRegisterModal({
   const excludeId = editingFlight?.id ?? null
 
   const [flightType, setFlightType] = useState<FlightType>("OUTBOUND")
-  const [segments, setSegments] = useState<SegmentDraft[]>([createEmptySegment()])
+  const [formData, setFormData] = useState<TabFormData>(() => createEmptyFormData())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -256,22 +286,31 @@ export function FlightRegisterModal({
     () => [
       {
         value: "OUTBOUND" as const,
-        label: outboundTaken ? "출국 (등록완료)" : "출국 (가는 편)",
+        label: outboundTaken ? "출국 완료" : "출국",
+        hint: "가는 편",
         disabled: outboundTaken,
       },
       {
         value: "RETURN" as const,
-        label: returnTaken ? "귀국 (등록완료)" : "귀국 (오는 편)",
+        label: returnTaken ? "귀국 완료" : "귀국",
+        hint: "오는 편",
         disabled: returnTaken,
       },
       {
         value: "LAYOVER" as const,
-        label: "경유 / 다구간",
+        label: "다구간",
+        hint: "경유",
         disabled: false,
       },
     ],
     [outboundTaken, returnTaken]
   )
+
+  const activeSegments: SegmentDraft[] = useMemo(() => {
+    if (flightType === "RETURN") return [formData.inbound]
+    if (flightType === "LAYOVER") return formData.multiCity
+    return [formData.outbound]
+  }, [flightType, formData])
 
   useEffect(() => {
     if (!open) return
@@ -280,63 +319,78 @@ export function FlightRegisterModal({
     setSaving(false)
 
     if (editingFlight) {
+      const segment = segmentFromFlight(editingFlight)
+      const next = createEmptyFormData()
+      if (editingFlight.flightType === "RETURN") next.inbound = segment
+      else if (editingFlight.flightType === "LAYOVER") next.multiCity = [segment]
+      else next.outbound = segment
       setFlightType(editingFlight.flightType)
-      setSegments([segmentFromFlight(editingFlight)])
+      setFormData(next)
       return
     }
 
-    const defaultType = pickDefaultCreateType(existingFlights)
-    setFlightType(defaultType)
-    setSegments(
-      defaultType === "LAYOVER"
-        ? [createEmptySegment(), createEmptySegment()]
-        : [createEmptySegment()]
-    )
+    setFlightType(pickDefaultCreateType(existingFlights))
+    setFormData(createEmptyFormData())
     // Prefill only when the dialog opens (or the edit target changes).
     // eslint-disable-next-line react-hooks/exhaustive-deps -- existingFlights snapshot at open
   }, [open, editingFlight])
 
+  /** Switch tabs without wiping other tabs' drafts. */
   const selectFlightType = (next: FlightType) => {
     const option = typeOptions.find((item) => item.value === next)
     if (option?.disabled) return
-
     setFlightType(next)
     setError(null)
-    if (isEditMode) {
-      // Edit keeps a single segment; type change only updates the badge/type.
-      return
-    }
-    if (next === "LAYOVER") {
-      setSegments((current) => (current.length >= 2 ? current : [...current, createEmptySegment()]))
-      return
-    }
-    setSegments((current) => [current[0] ?? createEmptySegment()])
   }
 
   const updateSegment = (key: string, patch: Partial<SegmentDraft>) => {
-    setSegments((current) =>
-      current.map((segment) => (segment.key === key ? { ...segment, ...patch } : segment))
-    )
+    const tab = tabKeyFromType(flightType)
+    setFormData((current) => {
+      if (tab === "multiCity") {
+        return {
+          ...current,
+          multiCity: current.multiCity.map((segment) =>
+            segment.key === key ? { ...segment, ...patch } : segment
+          ),
+        }
+      }
+      const single = current[tab]
+      if (single.key !== key) return current
+      return { ...current, [tab]: { ...single, ...patch } }
+    })
   }
 
   const removeSegment = (key: string) => {
-    if (isEditMode) return
-    setSegments((current) => {
-      if (current.length <= 1) return current
-      return current.filter((segment) => segment.key !== key)
+    if (isEditMode || flightType !== "LAYOVER") return
+    setFormData((current) => {
+      if (current.multiCity.length <= 1) return current
+      return {
+        ...current,
+        multiCity: current.multiCity.filter((segment) => segment.key !== key),
+      }
     })
   }
 
   const addSegment = () => {
     if (isEditMode) return
     setError(null)
-    if (flightType !== "LAYOVER") setFlightType("LAYOVER")
-    setSegments((current) => [...current, createEmptySegment()])
+    setFlightType("LAYOVER")
+    setFormData((current) => ({
+      ...current,
+      multiCity: [...current.multiCity, createEmptySegment()],
+    }))
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (saving) return
+
+    const segments =
+      flightType === "LAYOVER"
+        ? formData.multiCity
+        : flightType === "RETURN"
+          ? [formData.inbound]
+          : [formData.outbound]
 
     const invalid = segments.some(
       (segment) =>
@@ -351,11 +405,7 @@ export function FlightRegisterModal({
     }
 
     const resolvedType: FlightType =
-      !isEditMode && segments.length > 1
-        ? "LAYOVER"
-        : flightType === "LAYOVER"
-          ? "LAYOVER"
-          : flightType
+      !isEditMode && segments.length > 1 ? "LAYOVER" : flightType
 
     if (hasTypeTaken(existingFlights, resolvedType, excludeId)) {
       setError(DUPLICATE_TYPE_MESSAGE)
@@ -418,30 +468,32 @@ export function FlightRegisterModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90svh] gap-5 overflow-y-auto rounded-2xl sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Plane className="size-4" />
+      <DialogContent className="max-h-[90svh] gap-0 overflow-hidden rounded-3xl border-gray-100 bg-white p-0 sm:max-w-lg">
+        <DialogHeader className="gap-1 border-b border-gray-100 px-5 pt-5 pb-4 pr-12 text-left">
+          <DialogTitle className="flex items-center gap-2.5 text-base font-bold tracking-tight text-gray-900">
+            <span className="flex size-9 items-center justify-center rounded-full bg-gradient-to-tr from-amber-400 via-rose-400 to-amber-500 p-[2px]">
+              <span className="flex size-full items-center justify-center rounded-full bg-white">
+                <Plane className="size-4 text-amber-500" />
+              </span>
             </span>
-            {isEditMode ? "비행기 일정 수정" : "비행기 일정 등록"}
+            {isEditMode ? "비행 일정 수정" : "비행 일정 추가"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs text-gray-400">
             {isEditMode
-              ? "항공사·공항·시간 정보를 수정한 뒤 수정 완료를 눌러 주세요."
-              : "출국·귀국·경유를 구분해 등록하고, 다구간은 구간을 추가해 저장할 수 있어요."}
+              ? "탭을 바꿔도 입력한 내용은 유지돼요."
+              : "출국 · 귀국 · 다구간 입력값은 탭을 바꿔도 사라지지 않아요."}
           </DialogDescription>
         </DialogHeader>
 
         <form
           id="flight-register-form"
           onSubmit={(event) => void handleSubmit(event)}
-          className="flex flex-col gap-5"
+          className="flex max-h-[min(70svh,560px)] flex-col gap-4 overflow-y-auto px-5 py-4"
         >
           <div
             role="tablist"
             aria-label="여정 유형"
-            className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1"
+            className="grid grid-cols-3 gap-1 rounded-full bg-gray-100 p-1"
           >
             {typeOptions.map((option) => {
               const selected = flightType === option.value
@@ -455,27 +507,30 @@ export function FlightRegisterModal({
                   disabled={option.disabled}
                   onClick={() => selectFlightType(option.value)}
                   className={cn(
-                    "rounded-lg px-2 py-2 text-center text-xs font-semibold transition-colors sm:text-sm",
+                    "flex flex-col items-center rounded-full px-2 py-2 transition-all",
                     selected
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                    option.disabled && "cursor-not-allowed opacity-45 hover:text-muted-foreground"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500 hover:text-gray-800",
+                    option.disabled && "cursor-not-allowed opacity-40 hover:text-gray-500"
                   )}
                 >
-                  {option.label}
+                  <span className="text-[12px] font-semibold tracking-tight sm:text-[13px]">
+                    {option.label}
+                  </span>
+                  <span className="text-[10px] text-gray-400">{option.hint}</span>
                 </button>
               )
             })}
           </div>
 
           <div className="flex flex-col gap-3">
-            {segments.map((segment, index) => (
+            {activeSegments.map((segment, index) => (
               <SegmentFields
                 key={segment.key}
                 segment={segment}
                 index={index}
-                total={segments.length}
-                showRemove={!isEditMode && segments.length > 1}
+                total={activeSegments.length}
+                showRemove={!isEditMode && flightType === "LAYOVER" && activeSegments.length > 1}
                 onChange={updateSegment}
                 onRemove={removeSegment}
               />
@@ -483,35 +538,34 @@ export function FlightRegisterModal({
           </div>
 
           {!isEditMode ? (
-            <Button
+            <button
               type="button"
-              variant="outline"
               onClick={addSegment}
               disabled={saving}
-              className="rounded-full font-semibold"
+              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-dashed border-amber-300/80 bg-amber-50/40 px-4 py-2.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-50"
             >
-              <Plus data-icon="inline-start" />
-              경유지/구간 추가
-            </Button>
+              <Plus className="size-4" />
+              경유 구간 추가
+            </button>
           ) : null}
 
           {error ? (
             <div
               role="alert"
-              className="rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
+              className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-600"
             >
               <p className="break-words">{error}</p>
             </div>
           ) : null}
         </form>
 
-        <DialogFooter className="rounded-b-2xl">
+        <DialogFooter className="mx-0 mb-0 gap-2 rounded-b-3xl border-t border-gray-100 bg-white px-5 py-4 sm:justify-between">
           <Button
             type="button"
             variant="ghost"
             onClick={() => onOpenChange(false)}
             disabled={saving}
-            className="rounded-full font-semibold"
+            className="rounded-full font-semibold text-gray-500 hover:text-gray-900"
           >
             취소
           </Button>
@@ -519,7 +573,7 @@ export function FlightRegisterModal({
             type="submit"
             form="flight-register-form"
             disabled={saving}
-            className="rounded-full font-semibold"
+            className="rounded-full bg-amber-400 px-6 font-semibold text-black shadow-md shadow-amber-200/40 hover:bg-amber-500"
           >
             {saving ? (
               <Loader2 data-icon="inline-start" className="animate-spin" />

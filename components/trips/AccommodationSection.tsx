@@ -37,14 +37,12 @@ import {
   generateHotelImagePrompt,
   resolveHotelBannerSrc,
 } from "@/lib/hotel-image"
-import { cn } from "@/lib/utils"
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
 const TEXT = "#212121"
 const MUTED = "#616161"
 const ICON = "#424242"
 const PANEL = "#F8F9FA"
-const YELLOW_BTN = "#FFD54F"
 
 function formatStamp(dateValue: string, timeValue: string) {
   const match = String(dateValue ?? "").match(/^(\d{4})-(\d{2})-(\d{2})/)
@@ -81,10 +79,7 @@ function AccommodationCard({
   )}`
 
   return (
-    <li
-      className="group media-card overflow-hidden rounded-2xl ring-1 ring-border"
-      style={{ backgroundColor: ACCOMMODATION_CARD_BG }}
-    >
+    <li className="group media-card overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm ring-0 transition-all hover:shadow-md">
       {/* Banner — natural cool night tones, no sepia wash */}
       <div className="relative h-[132px] w-full overflow-hidden bg-[#E9ECEF]">
         <img
@@ -207,10 +202,9 @@ function AccommodationCard({
           render={<a href={mapHref} target="_blank" rel="noreferrer" />}
           nativeButton={false}
           size="sm"
-          className="w-fit rounded-full font-semibold text-[#212121] hover:brightness-95"
-          style={{ backgroundColor: YELLOW_BTN }}
+          className="w-fit rounded-full bg-amber-400 px-4 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 hover:bg-amber-500"
         >
-          <Navigation data-icon="inline-start" className="text-[#212121]" />
+          <Navigation data-icon="inline-start" />
           길찾기
         </Button>
       </div>
@@ -283,21 +277,19 @@ export function AccommodationSection({
   }
 
   return (
-    <Card>
+    <Card className="rounded-2xl border border-slate-100 bg-white shadow-sm ring-0 transition-all hover:shadow-md">
       <CardHeader>
-        <CardDescription className="flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
-          <BedDouble className="size-3.5" />
-          숙소 · 호텔
+        <CardDescription className="mb-1 text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+          Stay
         </CardDescription>
-        <CardTitle className="text-lg font-bold">숙소 정보</CardTitle>
+        <CardTitle className="text-lg font-bold tracking-tight text-slate-900">숙소 정보</CardTitle>
         {items.length > 0 ? (
           <CardAction>
             <Button
               type="button"
-              variant="outline"
               size="sm"
               onClick={openCreate}
-              className="rounded-full font-semibold"
+              className="rounded-full bg-amber-400 px-4 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 hover:bg-amber-500"
             >
               <Plus data-icon="inline-start" />
               숙소 추가
@@ -308,9 +300,9 @@ export function AccommodationSection({
 
       <CardContent>
         {loading ? (
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-6 py-10">
-            <Loader2 className="size-6 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">숙소 정보를 불러오는 중…</p>
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 px-6 py-10 text-center">
+            <Loader2 className="size-6 animate-spin text-amber-500" />
+            <p className="text-sm text-slate-500">숙소 정보를 불러오는 중…</p>
           </div>
         ) : items.length > 0 ? (
           <div className="flex flex-col gap-3">
@@ -329,37 +321,28 @@ export function AccommodationSection({
               type="button"
               variant="outline"
               onClick={openCreate}
-              className="w-full rounded-full font-semibold"
+              className="w-full rounded-full border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
               <Plus data-icon="inline-start" />
               숙소 추가
             </Button>
           </div>
         ) : (
-          <div
-            className={cn(
-              "flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border",
-              "bg-secondary/40 px-6 py-10 text-center"
-            )}
-          >
-            <span className="flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-              <BedDouble className="size-6" />
+          <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 p-8 text-center">
+            <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-500">
+              <BedDouble className="size-5" />
             </span>
-            <div className="flex flex-col gap-1.5">
-              <p className="text-base font-bold">아직 등록된 숙소 정보가 없어요.</p>
-              <p className="text-xs text-muted-foreground">
-                체크인·체크아웃만 입력하면 멤버 모두가 함께 확인할 수 있어요.
-              </p>
-            </div>
-            <Button
+            <p className="text-sm font-bold text-slate-900">아직 등록된 숙소 정보가 없어요</p>
+            <p className="mt-1 mb-5 max-w-xs text-xs leading-relaxed text-slate-500">
+              체크인·체크아웃만 입력하면 멤버 모두가 함께 확인할 수 있어요.
+            </p>
+            <button
               type="button"
-              size="lg"
               onClick={openCreate}
-              className="w-full max-w-xs rounded-full font-semibold"
+              className="rounded-full bg-amber-400 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 transition-all hover:bg-amber-500 active:scale-95"
             >
-              <Plus data-icon="inline-start" />
               숙소 등록
-            </Button>
+            </button>
           </div>
         )}
       </CardContent>

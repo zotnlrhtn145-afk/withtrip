@@ -38,7 +38,7 @@ export function SavedPlaceCard({
   )}`
 
   return (
-    <li className="group media-card flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+    <li className="group media-card flex flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-md">
       <div className="relative h-44 w-full shrink-0 overflow-hidden sm:h-[11.5rem]">
         <Image
           src={imgSrc}
@@ -59,11 +59,11 @@ export function SavedPlaceCard({
         />
         <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
           {place.guideBadge ? (
-            <Badge className="max-w-[70%] border-transparent bg-amber-400 text-foreground shadow-sm">
+            <Badge className="max-w-[70%] border-transparent bg-white/95 text-slate-800 shadow-sm backdrop-blur-sm">
               <span className="truncate font-bold">{place.guideBadge}</span>
             </Badge>
           ) : (
-            <Badge className="border-transparent bg-amber-400/90 text-foreground shadow-sm">
+            <Badge className="border-transparent bg-white/95 text-slate-800 shadow-sm backdrop-blur-sm">
               <span className="font-bold">{categoryLabel}</span>
             </Badge>
           )}
@@ -161,8 +161,8 @@ export function SavedPlaceCard({
             target="_blank"
             rel="noreferrer"
             className={cn(
-              "inline-flex h-7 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50",
-              "touch-press px-2.5 text-[0.8rem] font-semibold text-foreground transition-colors hover:bg-amber-100"
+              "inline-flex h-7 items-center gap-1.5 rounded-full border border-slate-200 bg-white",
+              "touch-press px-2.5 text-[0.8rem] font-semibold text-slate-700 transition-colors hover:border-amber-400 hover:bg-amber-50"
             )}
           >
             <Navigation className="size-3.5" />

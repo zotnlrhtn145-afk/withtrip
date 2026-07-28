@@ -19,7 +19,6 @@ import {
   type FlightType,
   type TripFlight,
 } from "@/lib/flights-api"
-import { cn } from "@/lib/utils"
 
 function airlineAccent(name: string) {
   const n = name.toLowerCase()
@@ -158,7 +157,7 @@ function FlightTicket({
   const badgeLabel = [flight.airlineName, flight.flightNo].filter(Boolean).join(" · ")
 
   return (
-    <li className="media-card relative overflow-hidden rounded-2xl bg-secondary/70 ring-1 ring-border">
+    <li className="media-card relative overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm ring-0 transition-all hover:shadow-md">
       {code ? (
         <span
           aria-hidden="true"
@@ -209,7 +208,7 @@ function LayoverJourney({
   onDelete: (id: string) => void
 }) {
   return (
-    <li className="media-card overflow-hidden rounded-2xl bg-secondary/70 ring-1 ring-border">
+    <li className="media-card overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm ring-0 transition-all hover:shadow-md">
       <div className="flex flex-col gap-0 px-5 py-4">
         {flights.map((flight, index) => {
           const accent = airlineAccent(flight.airlineName)
@@ -338,21 +337,21 @@ export function FlightSection({
   }, [flights])
 
   return (
-    <Card>
+    <Card className="rounded-2xl border border-slate-100 bg-white shadow-sm ring-0 transition-all hover:shadow-md">
       <CardHeader>
-        <CardDescription className="flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
-          <PlaneTakeoff className="size-3.5" />
-          항공권 · 이동 수단
+        <CardDescription className="mb-1 text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+          Flight
         </CardDescription>
-        <CardTitle className="text-lg font-bold">비행기 일정</CardTitle>
+        <CardTitle className="text-lg font-bold tracking-tight text-slate-900">
+          비행기 일정
+        </CardTitle>
         {flights.length > 0 ? (
           <CardAction>
             <Button
               type="button"
-              variant="outline"
               size="sm"
               onClick={openCreateModal}
-              className="rounded-full font-semibold"
+              className="rounded-full bg-amber-400 px-4 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 hover:bg-amber-500"
             >
               <Plus data-icon="inline-start" />
               항공권 추가
@@ -363,9 +362,9 @@ export function FlightSection({
 
       <CardContent>
         {loading ? (
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-6 py-10">
-            <Loader2 className="size-6 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">항공권을 불러오는 중…</p>
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 px-6 py-10 text-center">
+            <Loader2 className="size-6 animate-spin text-amber-500" />
+            <p className="text-sm text-slate-500">항공권을 불러오는 중…</p>
           </div>
         ) : flights.length > 0 ? (
           <ul className="flex flex-col gap-3">
@@ -409,30 +408,21 @@ export function FlightSection({
             ))}
           </ul>
         ) : (
-          <div
-            className={cn(
-              "flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border",
-              "bg-secondary/40 px-6 py-10 text-center"
-            )}
-          >
-            <span className="flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-              <PlaneTakeoff className="size-6" />
+          <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 p-8 text-center">
+            <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-500">
+              <PlaneTakeoff className="size-5" />
             </span>
-            <div className="flex flex-col gap-1.5">
-              <p className="text-base font-bold">아직 등록된 비행기 일정이 없어요.</p>
-              <p className="text-xs text-muted-foreground">
-                출국·귀국·경유를 구분해 등록하면 티켓 카드로 정리됩니다.
-              </p>
-            </div>
-            <Button
+            <p className="text-sm font-bold text-slate-900">아직 등록된 비행기 일정이 없어요</p>
+            <p className="mt-1 mb-5 max-w-xs text-xs leading-relaxed text-slate-500">
+              출국·귀국·경유를 구분해 등록하면 티켓 카드로 정리됩니다.
+            </p>
+            <button
               type="button"
-              size="lg"
               onClick={openCreateModal}
-              className="w-full max-w-xs rounded-full font-semibold"
+              className="rounded-full bg-amber-400 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 transition-all hover:bg-amber-500 active:scale-95"
             >
-              <Plus data-icon="inline-start" />
               비행기 일정 등록
-            </Button>
+            </button>
           </div>
         )}
       </CardContent>
