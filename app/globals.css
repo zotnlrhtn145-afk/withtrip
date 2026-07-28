@@ -165,13 +165,14 @@
   html {
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
-    overscroll-behavior: none;
+    overscroll-behavior-y: none;
   }
 
   body {
     @apply bg-background text-foreground;
     -webkit-tap-highlight-color: transparent;
-    overscroll-behavior: none;
+    overscroll-behavior-y: none;
+    min-height: 100dvh;
   }
 
   /* Defensive reset for nav/list fallback when utility CSS fails to hydrate. */

@@ -181,7 +181,7 @@ function SettlementShellInner({ children }: { children: ReactNode }) {
             {accountMenu(false)}
           </div>
         </header>
-        <main className="flex flex-col gap-5 overflow-hidden p-5">
+        <main className="flex flex-col gap-5 p-5">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTripId ?? "picker"}

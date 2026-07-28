@@ -52,10 +52,10 @@ export default function RootLayout({
   return (
     <html
       lang="ko"
-      className="max-w-full overflow-x-hidden bg-white"
+      className="min-h-dvh max-w-full overflow-x-clip overflow-y-auto bg-white"
       data-scroll-behavior="smooth"
     >
-      <body className="max-w-full overflow-x-hidden bg-white font-sans antialiased">
+      <body className="min-h-dvh max-w-full overflow-x-clip overflow-y-auto bg-white font-sans antialiased">
         <AppShell>{children}</AppShell>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
