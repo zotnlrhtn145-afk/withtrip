@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
-import { PlusSquare } from "lucide-react"
+import { LogIn, PlusSquare } from "lucide-react"
 
 import { AccountMenu } from "@/components/account-menu"
 import { BottomNav, type NavKey } from "@/components/bottom-nav"
 import { CreateTripDialog } from "@/components/create-trip-dialog"
+import { useNavigateToLogin } from "@/components/login-navigation"
 import { NotificationBellButton } from "@/components/notifications/NotificationBellButton"
 import { createClient } from "@/utils/supabase/client"
 
@@ -25,20 +26,25 @@ function resolveActive(pathname: string, nav: string | null): NavKey {
   return "home"
 }
 
+const loginIconButtonClassName =
+  "cursor-pointer rounded-full p-2 text-slate-800 transition-all hover:bg-slate-100/80 hover:text-black active:scale-95"
+
 function HeaderLoginButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="cursor-pointer rounded-full bg-slate-100 px-4 py-1.5 text-sm font-semibold text-slate-900 transition-all hover:bg-slate-200"
+      aria-label="로그인"
+      className={loginIconButtonClassName}
     >
-      로그인
+      <LogIn className="size-5 stroke-[1.5]" />
     </button>
   )
 }
 
 function HeaderAuthControl() {
   const router = useRouter()
+  const { navigateToLogin } = useNavigateToLogin()
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [ready, setReady] = useState(false)
@@ -68,7 +74,6 @@ function HeaderAuthControl() {
     }
   }, [supabase])
 
-  const goLogin = () => router.push("/login")
   const goMyPage = () => router.push("/mypage")
 
   if (!ready) {
@@ -76,19 +81,24 @@ function HeaderAuthControl() {
       <button
         type="button"
         disabled
-        className="cursor-pointer rounded-full bg-slate-100 px-4 py-1.5 text-sm font-semibold text-slate-900 opacity-60 transition-all"
+        aria-label="로그인"
+        className={`${loginIconButtonClassName} opacity-60`}
       >
-        로그인
+        <LogIn className="size-5 stroke-[1.5]" />
       </button>
     )
   }
 
   if (!user) {
-    return <HeaderLoginButton onClick={goLogin} />
+    return <HeaderLoginButton onClick={navigateToLogin} />
   }
 
   return (
-    <AccountMenu compact onLoginClick={goLogin} onMyPageClick={goMyPage} />
+    <AccountMenu
+      compact
+      onLoginClick={navigateToLogin}
+      onMyPageClick={goMyPage}
+    />
   )
 }
 
@@ -129,7 +139,7 @@ export function MobileGlobalChrome() {
               }
             />
 
-            <div className="flex flex-row items-center gap-3">
+            <div className="flex flex-row items-center gap-1.5">
               <HeaderAuthControl />
               <NotificationBellButton className="size-9" iconClassName="size-5" />
             </div>

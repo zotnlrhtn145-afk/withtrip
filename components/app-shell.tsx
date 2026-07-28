@@ -4,6 +4,7 @@ import { Suspense, useEffect, type ReactNode } from "react"
 import { usePathname, useRouter } from "next/navigation"
 
 import { MobileGlobalChrome } from "@/components/mobile-global-chrome"
+import { LoginNavigationProvider } from "@/components/login-navigation"
 import { MobileNotificationDrawer } from "@/components/notifications/MobileNotificationDrawer"
 import { NotificationDrawer } from "@/components/notifications/NotificationDrawer"
 import { NotificationsProvider } from "@/components/notifications/notifications-provider"
@@ -77,7 +78,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           }
         >
-          <AppShellInner>{children}</AppShellInner>
+          <LoginNavigationProvider>
+            <AppShellInner>{children}</AppShellInner>
+          </LoginNavigationProvider>
         </Suspense>
       </NotificationsProvider>
     </TripsProvider>
