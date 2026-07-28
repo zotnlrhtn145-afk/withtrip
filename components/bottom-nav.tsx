@@ -1,6 +1,8 @@
 "use client"
 
-import { Home, MapPin, Plus, UserRound, Users, Wallet, type LucideIcon } from "lucide-react"
+import { useEffect, useState } from "react"
+import { motion } from "framer-motion"
+import { Home, MapPin, UserRound, Users, Wallet, type LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -17,61 +19,59 @@ export const navItems: { key: NavKey; label: string; icon: LucideIcon }[] = [
 export function BottomNav({
   active,
   onSelect,
-  onQuickAdd,
 }: {
   active: NavKey
   onSelect: (key: NavKey) => void
-  onQuickAdd?: () => void
 }) {
+  const [compact, setCompact] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setCompact(window.scrollY > 20)
+    onScroll()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
+
   return (
     <nav
       aria-label="주요 메뉴"
-      className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-md border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
+      className={cn(
+        "fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 md:hidden",
+        "rounded-full border border-white/20 bg-white/80 shadow-xl backdrop-blur-md",
+        "transition-all duration-300 ease-in-out transform",
+        compact ? "scale-90 opacity-90 py-1.5" : "scale-100 opacity-100 py-3"
+      )}
     >
-      <div className="relative px-1">
-        <button
-          type="button"
-          onClick={onQuickAdd}
-          aria-label="퀵 등록"
-          className={cn(
-            "absolute left-1/2 z-10 flex size-[3.75rem] -translate-x-1/2 -translate-y-[55%] items-center justify-center rounded-full",
-            "bg-primary text-primary-foreground shadow-[0_8px_24px_rgba(255,193,7,0.45)]",
-            "ring-[6px] ring-card transform-gpu transition-transform duration-150 ease-out active:scale-[0.97]",
-            "hover:brightness-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/40"
-          )}
-        >
-          <Plus className="size-7 stroke-[2.5]" />
-        </button>
-
-        <ul className="flex items-stretch pt-3">
-          {navItems.map((item) => {
-            const isActive = item.key === active
-            return (
-              <li key={item.key} className="flex-1">
-                <button
-                  type="button"
-                  onClick={() => onSelect(item.key)}
-                  aria-current={isActive ? "page" : undefined}
-                  className={cn(
-                    "flex w-full flex-col items-center gap-1 py-2 text-[10px] font-medium transform-gpu transition-[color,transform] duration-150 ease-out active:scale-[0.97] sm:text-[11px]",
-                    isActive ? "text-foreground" : "text-muted-foreground"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex size-8 items-center justify-center rounded-full transition-colors",
-                      isActive ? "bg-primary text-primary-foreground" : "bg-transparent"
-                    )}
-                  >
-                    <item.icon className="size-4 stroke-[1.35]" />
-                  </span>
-                  {item.label}
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      </div>
+      <ul className="relative flex items-center justify-around px-2">
+        {navItems.map((item) => {
+          const isActive = item.key === active
+          return (
+            <li key={item.key} className="relative flex-1">
+              <motion.button
+                type="button"
+                onClick={() => onSelect(item.key)}
+                aria-current={isActive ? "page" : undefined}
+                whileTap={{ scale: 1.1 }}
+                transition={{ type: "spring", stiffness: 460, damping: 28 }}
+                className={cn(
+                  "relative z-10 flex w-full flex-col items-center gap-1 py-1 text-[10px] font-medium",
+                  isActive ? "text-foreground" : "text-muted-foreground"
+                )}
+              >
+                {isActive ? (
+                  <motion.div
+                    layoutId="activeTabIndicator"
+                    transition={{ type: "spring", stiffness: 520, damping: 34 }}
+                    className="absolute top-0 left-1/2 -z-10 h-9 w-[3.1rem] -translate-x-1/2 rounded-full bg-primary/25"
+                  />
+                ) : null}
+                <item.icon className="size-4.5 stroke-[1.8]" />
+                <span>{item.label}</span>
+              </motion.button>
+            </li>
+          )
+        })}
+      </ul>
     </nav>
   )
 }

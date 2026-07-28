@@ -84,7 +84,7 @@ function WithtripShell() {
   }, [trips, selectedTripId])
 
   useEffect(() => {
-    const query = window.matchMedia("(min-width: 1024px)")
+    const query = window.matchMedia("(min-width: 768px)")
     const sync = () => {
       if (manualOverride.current) return
       setView(query.matches ? "desktop" : "mobile")
