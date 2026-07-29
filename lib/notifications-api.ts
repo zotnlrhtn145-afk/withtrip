@@ -160,7 +160,11 @@ export async function resolveInviteeUserId(input: {
 }
 
 /**
- * Insert a notification via SECURITY DEFINER RPC (bypasses INSERT RLS 42501).
+ * Sole write path for creating notifications.
+ * Uses SECURITY DEFINER RPC `create_notification_safe` (never direct table INSERT)
+ * so inviters can notify other users without hitting RLS 42501.
+ *
+ * Call sites: createTripInviteNotification (trip-members-api), sendFriendRequest (friends-api).
  *
  * Canonical columns:
  * - `user_id`  = recipient (피초대자 / 친구요청 수신자)

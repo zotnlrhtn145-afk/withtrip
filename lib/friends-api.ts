@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/client"
+import { createNotification, resolveActorDisplayName } from "@/lib/notifications-api"
 
 export type UserSummary = {
   userId: string
@@ -115,12 +116,10 @@ export async function sendFriendRequest(currentUserId: string, targetUserId: str
   }
 
   try {
-    const { createNotification, resolveActorDisplayName } = await import(
-      "@/lib/notifications-api"
-    )
     const actorName = await resolveActorDisplayName(currentUserId)
     const friendshipId = String((data as { id?: string } | null)?.id ?? "").trim() || null
     // user_id = 수신자(target), actor_id = 발신자(current)
+    // Always goes through createNotification → create_notification_safe RPC
     await createNotification(
       {
         userId: targetUserId,

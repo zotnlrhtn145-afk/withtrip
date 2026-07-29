@@ -1,5 +1,10 @@
 import { createClient } from "@/utils/supabase/client"
 import { getCurrentUserId } from "@/lib/auth-session"
+import {
+  createNotification,
+  resolveActorDisplayName,
+  resolveInviteeUserId,
+} from "@/lib/notifications-api"
 import { toTripGroupMember, type TripGroupMember } from "@/lib/trip-group"
 
 function formatMemberError(err: unknown) {
@@ -357,7 +362,6 @@ export async function addTripMember(input: {
   }
 
   // 1) Resolve invitee UUID from userId / email / nickname
-  const { resolveInviteeUserId } = await import("@/lib/notifications-api")
   let invitedUserId: string
   try {
     invitedUserId = await resolveInviteeUserId({
@@ -563,13 +567,11 @@ async function createTripInviteNotification(input: {
     throw new Error("trip_member_id가 없어 알림을 만들 수 없어요.")
   }
 
-  const { createNotification, resolveActorDisplayName } = await import(
-    "@/lib/notifications-api"
-  )
   const actorName = await resolveActorDisplayName(input.senderId)
   const message = `${actorName}님이 '${input.tripTitle}'에 초대했습니다.`
 
   // user_id = 피초대자, actor_id = 초대한 사람, trip_member_id = trip_members.id
+  // Always goes through createNotification → create_notification_safe RPC
   console.info("[createTripInviteNotification] inserting", {
     user_id: input.inviteeUserId,
     actor_id: input.senderId,
