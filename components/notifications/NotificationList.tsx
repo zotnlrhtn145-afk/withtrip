@@ -85,7 +85,19 @@ function ActionButtons({
   onReject: () => void
 }) {
   if (item.actionState === "accepted") {
-    return <span className="text-xs font-medium text-slate-400">참여 중</span>
+    return (
+      <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-400">
+        수락됨
+      </span>
+    )
+  }
+
+  if (item.actionState === "declined") {
+    return (
+      <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-400">
+        거절됨
+      </span>
+    )
   }
 
   const needsAcceptReject =
@@ -101,7 +113,7 @@ function ActionButtons({
         onClick={onReject}
         className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600 transition-all hover:bg-slate-200 disabled:opacity-50"
       >
-        삭제
+        닫기
       </button>
     )
   }
@@ -141,7 +153,6 @@ export function NotificationList({
   const [filter, setFilter] = useState<NotificationFilter>("all")
   const [actingId, setActingId] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const [exitingIds, setExitingIds] = useState<Set<string>>(new Set())
 
   const showNotice = useCallback((message: string) => {
     setNotice(message)
@@ -151,40 +162,24 @@ export function NotificationList({
   }, [])
 
   const visible = useMemo(
-    () =>
-      filterNotifications(items, filter).filter((item) => !exitingIds.has(item.id)),
-    [items, filter, exitingIds]
+    () => filterNotifications(items, filter),
+    [items, filter]
   )
   const sections = useMemo(() => groupNotificationsByTime(visible), [visible])
 
-  const removeWithFade = useCallback((id: string) => {
-    setExitingIds((current) => new Set(current).add(id))
-    window.setTimeout(() => {
-      setItems((current) => current.filter((item) => item.id !== id))
-      setExitingIds((current) => {
-        const next = new Set(current)
-        next.delete(id)
-        return next
-      })
-    }, 220)
-  }, [setItems])
-
   const handleAccept = async (item: FeedNotification) => {
-    if (actingId) return
+    if (actingId || item.actionState !== "pending") return
     setActingId(item.id)
     try {
       const result = await acceptFeedNotification(item)
-      if (item.type === "trip_invite" || item.type === "clip_invite") {
-        setItems((current) =>
-          current.map((row) =>
-            row.id === item.id ? { ...row, actionState: "accepted" } : row
-          )
+      setItems((current) =>
+        current.map((row) =>
+          row.id === item.id ? { ...row, actionState: "accepted" } : row
         )
+      )
+      if (item.type === "trip_invite" || item.type === "clip_invite") {
         await refreshTrips({ silent: true })
-        window.setTimeout(() => removeWithFade(item.id), 900)
         if (result.tripId) onSelectTrip?.({ id: result.tripId })
-      } else {
-        removeWithFade(item.id)
       }
       showNotice(result.toast)
       void refresh()
@@ -198,12 +193,17 @@ export function NotificationList({
   }
 
   const handleReject = async (item: FeedNotification) => {
-    if (actingId) return
+    if (actingId || item.actionState !== "pending") return
     setActingId(item.id)
     try {
       const result = await rejectFeedNotification(item)
-      removeWithFade(item.id)
+      setItems((current) =>
+        current.map((row) =>
+          row.id === item.id ? { ...row, actionState: "declined" } : row
+        )
+      )
       showNotice(result.toast)
+      void refresh()
     } catch (err) {
       const message = err instanceof Error ? err.message : "처리에 실패했어요."
       console.error("[NotificationList] reject failed:", message)
@@ -257,22 +257,21 @@ export function NotificationList({
                 <AnimatePresence initial={false}>
                   {section.items.map((item) => {
                     const busy = actingId === item.id
-                    const fading = exitingIds.has(item.id)
                     return (
                       <motion.li
                         key={item.id}
                         layout
-                        initial={{ opacity: 1, height: "auto" }}
-                        animate={{
-                          opacity: fading ? 0 : 1,
-                          height: fading ? 0 : "auto",
-                          marginBottom: fading ? 0 : undefined,
-                        }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.22, ease: "easeInOut" }}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.18, ease: "easeOut" }}
                         className="overflow-hidden"
                       >
-                        <div className="flex items-center gap-3 rounded-2xl px-1 py-2.5 transition-colors hover:bg-slate-50/80">
+                        <div
+                          className={cn(
+                            "flex items-center gap-3 rounded-2xl px-1 py-2.5 transition-colors hover:bg-slate-50/80",
+                            item.actionState !== "pending" && "opacity-80"
+                          )}
+                        >
                           <NotificationAvatars item={item} />
                           <div className="min-w-0 flex-1">
                             <p className="text-[13px] leading-snug text-slate-800">

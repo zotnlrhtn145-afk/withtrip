@@ -6,9 +6,8 @@ import {
   resolveUsersByIds,
 } from "@/lib/friends-api"
 import {
-  deleteNotification,
+  updateNotificationStatus,
   fetchMyNotifications,
-  markNotificationRead,
   type NotificationType,
 } from "@/lib/notifications-api"
 import {
@@ -22,7 +21,7 @@ export type NotificationFilter = "all" | "trip" | "friend" | "clip"
 
 export type NotificationCategory = "trip" | "friend" | "clip"
 
-export type NotificationActionState = "pending" | "accepted" | "dismissed"
+export type NotificationActionState = "pending" | "accepted" | "declined" | "dismissed"
 
 export type FeedNotification = {
   id: string
@@ -59,9 +58,7 @@ export function filterNotifications(
 ): FeedNotification[] {
   if (filter === "all") return items
   if (filter === "trip") {
-    return items.filter(
-      (item) => item.type === "trip_invite" && item.actionState === "pending"
-    )
+    return items.filter((item) => item.type === "trip_invite")
   }
   if (filter === "friend") {
     return items.filter((item) => item.type === "friend_request")
@@ -250,6 +247,11 @@ function mapDbNotification(row: Awaited<ReturnType<typeof fetchMyNotifications>>
     row.referenceId ||
     row.id
 
+  let actionState: NotificationActionState = "pending"
+  if (row.status === "accepted") actionState = "accepted"
+  else if (row.status === "declined" || row.status === "rejected") actionState = "declined"
+  else if (row.status === "dismissed") actionState = "dismissed"
+
   return {
     id: `notif:${row.id}`,
     type,
@@ -260,7 +262,7 @@ function mapDbNotification(row: Awaited<ReturnType<typeof fetchMyNotifications>>
     tripTitle: row.tripTitle,
     message: row.message || `${actorName}님의 알림`,
     createdAt: row.createdAt,
-    actionState: row.status === "accepted" ? "accepted" : "pending",
+    actionState,
     actionId: String(actionId ?? "").trim(),
     notificationId: row.id,
   }
@@ -320,7 +322,7 @@ export async function acceptFeedNotification(
     if (!item.actionId) throw new Error("초대 정보가 없어요.")
     await acceptTripInvitation(item.actionId)
     if (item.notificationId) {
-      await markNotificationRead(item.notificationId, "accepted")
+      await updateNotificationStatus(item.notificationId, "accepted")
     }
     return {
       toast: "여행 멤버로 합류했습니다!",
@@ -331,14 +333,14 @@ export async function acceptFeedNotification(
   if (item.type === "friend_request") {
     await acceptFriendRequest(item.actionId)
     if (item.notificationId) {
-      await markNotificationRead(item.notificationId, "accepted")
+      await updateNotificationStatus(item.notificationId, "accepted")
     }
     return { toast: `${item.actorName}님과 친구가 되었어요.` }
   }
 
-  // clip_like / clip_comment — mark read
+  // clip_like / clip_comment — mark accepted/read, keep row
   if (item.notificationId) {
-    await markNotificationRead(item.notificationId, "dismissed")
+    await updateNotificationStatus(item.notificationId, "accepted")
   }
   return { toast: "확인했습니다." }
 }
@@ -351,7 +353,7 @@ export async function rejectFeedNotification(
       await rejectTripInvitation(item.actionId)
     }
     if (item.notificationId) {
-      await deleteNotification(item.notificationId)
+      await updateNotificationStatus(item.notificationId, "declined")
     }
     return { toast: "초대를 거절했어요." }
   }
@@ -359,15 +361,15 @@ export async function rejectFeedNotification(
   if (item.type === "friend_request") {
     await rejectFriendRequest(item.actionId)
     if (item.notificationId) {
-      await deleteNotification(item.notificationId)
+      await updateNotificationStatus(item.notificationId, "declined")
     }
     return { toast: "친구 요청을 거절했어요." }
   }
 
   if (item.notificationId) {
-    await deleteNotification(item.notificationId)
+    await updateNotificationStatus(item.notificationId, "declined")
   }
-  return { toast: "알림을 삭제했어요." }
+  return { toast: "알림을 거절했어요." }
 }
 
 /** Pending actionable count (trip/clip invites + friend requests). */

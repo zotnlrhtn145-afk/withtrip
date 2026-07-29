@@ -8,7 +8,12 @@ export type NotificationType =
   | "clip_like"
   | "clip_comment"
 
-export type NotificationRowStatus = "pending" | "accepted" | "rejected" | "dismissed"
+export type NotificationRowStatus =
+  | "pending"
+  | "accepted"
+  | "declined"
+  | "rejected"
+  | "dismissed"
 
 export type AppNotificationRow = {
   id: string
@@ -319,14 +324,15 @@ export async function fetchMyNotifications(): Promise<AppNotificationRow[]> {
   let data: DbNotificationRow[] | null = null
   let error: { message?: string } | null = null
 
+  // Keep history: pending + accepted + declined (and legacy rejected)
   {
     const result = await client
       .from("notifications")
       .select(selectFull)
       .eq("user_id", userId)
-      .or("status.eq.pending,status.is.null")
+      .in("status", ["pending", "accepted", "declined", "rejected", "dismissed"])
       .order("created_at", { ascending: false })
-      .limit(80)
+      .limit(100)
     data = result.data as DbNotificationRow[] | null
     error = result.error
   }
@@ -336,23 +342,27 @@ export async function fetchMyNotifications(): Promise<AppNotificationRow[]> {
       .from("notifications")
       .select(selectBasic)
       .eq("user_id", userId)
-      .eq("is_read", false)
       .order("created_at", { ascending: false })
-      .limit(80)
+      .limit(100)
     data = result.data as DbNotificationRow[] | null
     error = result.error
   }
 
-  // Final fallback: all rows for user (then filter client-side)
-  if (error && isMissingColumnError(formatError(error))) {
+  if (error) {
+    // Broad fetch without status filter
     const result = await client
       .from("notifications")
-      .select(selectBasic)
+      .select(selectFull)
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .limit(80)
-    data = result.data as DbNotificationRow[] | null
-    error = result.error
+      .limit(100)
+    if (!result.error) {
+      data = result.data as DbNotificationRow[] | null
+      error = null
+    } else {
+      data = null
+      error = result.error
+    }
   }
 
   if (error) {
@@ -370,7 +380,9 @@ export async function fetchMyNotifications(): Promise<AppNotificationRow[]> {
   const rows = ((data as DbNotificationRow[] | null) ?? [])
     .map(mapRow)
     .filter((row): row is AppNotificationRow => Boolean(row))
-    .filter((row) => row.status === "pending" || (!row.isRead && row.status !== "rejected"))
+    .filter((row) =>
+      ["pending", "accepted", "declined", "rejected"].includes(row.status)
+    )
 
   const actorIds = [
     ...new Set(rows.map((row) => String(row.actorId ?? "").trim()).filter(Boolean)),
@@ -441,9 +453,14 @@ export async function fetchMyNotifications(): Promise<AppNotificationRow[]> {
   })
 }
 
-export async function markNotificationRead(
+/**
+ * Update notification status without deleting the row (history preserved).
+ * - accept → status='accepted', is_read=true
+ * - decline → status='declined', is_read=true
+ */
+export async function updateNotificationStatus(
   notificationId: string,
-  status: NotificationRowStatus = "accepted"
+  status: NotificationRowStatus
 ): Promise<void> {
   const id = String(notificationId ?? "").trim()
   if (!id) return
@@ -452,21 +469,53 @@ export async function markNotificationRead(
   if (!userId) return
 
   const client = createClient()
+  const payload = { is_read: true, status }
+
   const { error } = await client
     .from("notifications")
-    .update({ is_read: true, status })
+    .update(payload)
     .eq("id", id)
     .eq("user_id", userId)
 
-  if (error && !isMissingTableError(formatError(error))) {
-    // Fallback without status column
+  if (!error) {
+    console.info("[updateNotificationStatus] ok", { id, status })
+    return
+  }
+
+  const messageText = formatError(error)
+  console.error("[updateNotificationStatus]", messageText)
+
+  // Legacy DBs that only allow 'rejected' instead of 'declined'
+  if (status === "declined" && /check|constraint|invalid/i.test(messageText)) {
+    const retry = await client
+      .from("notifications")
+      .update({ is_read: true, status: "rejected" })
+      .eq("id", id)
+      .eq("user_id", userId)
+    if (!retry.error) return
+    console.error("[updateNotificationStatus] rejected fallback:", formatError(retry.error))
+  }
+
+  // Fallback without status column
+  if (isMissingColumnError(messageText)) {
     const retry = await client
       .from("notifications")
       .update({ is_read: true })
       .eq("id", id)
       .eq("user_id", userId)
-    if (retry.error) console.error("[markNotificationRead]", formatError(retry.error))
+    if (retry.error) console.error("[updateNotificationStatus] is_read only:", formatError(retry.error))
+    return
   }
+
+  throw new Error(messageText || "알림 상태 업데이트에 실패했어요.")
+}
+
+/** @deprecated Prefer updateNotificationStatus */
+export async function markNotificationRead(
+  notificationId: string,
+  status: NotificationRowStatus = "accepted"
+): Promise<void> {
+  await updateNotificationStatus(notificationId, status)
 }
 
 export async function deleteNotification(notificationId: string): Promise<void> {

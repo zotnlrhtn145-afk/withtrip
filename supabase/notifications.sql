@@ -22,7 +22,7 @@ create table if not exists public.notifications (
   trip_member_id uuid references public.trip_members (id) on delete set null,
   is_read boolean not null default false,
   status text not null default 'pending'
-    check (status in ('pending', 'accepted', 'rejected', 'dismissed')),
+    check (status in ('pending', 'accepted', 'declined', 'rejected', 'dismissed')),
   created_at timestamptz not null default now()
 );
 
@@ -59,6 +59,32 @@ where sender_id is null and actor_id is not null;
 update public.notifications
 set actor_id = coalesce(actor_id, sender_id)
 where actor_id is null and sender_id is not null;
+
+-- Allow 'declined' status (history-preserving reject)
+do $$
+declare
+  constraint_name text;
+begin
+  select con.conname into constraint_name
+  from pg_constraint con
+  join pg_class rel on rel.oid = con.conrelid
+  join pg_namespace nsp on nsp.oid = rel.relnamespace
+  where nsp.nspname = 'public'
+    and rel.relname = 'notifications'
+    and con.contype = 'c'
+    and pg_get_constraintdef(con.oid) ilike '%status%';
+
+  if constraint_name is not null then
+    execute format('alter table public.notifications drop constraint %I', constraint_name);
+  end if;
+
+  alter table public.notifications
+    add constraint notifications_status_check
+    check (status in ('pending', 'accepted', 'declined', 'rejected', 'dismissed'));
+exception when others then
+  -- Constraint may already exist with the correct definition
+  null;
+end $$;
 
 create index if not exists notifications_user_id_idx on public.notifications (user_id);
 create index if not exists notifications_user_status_idx on public.notifications (user_id, status);
