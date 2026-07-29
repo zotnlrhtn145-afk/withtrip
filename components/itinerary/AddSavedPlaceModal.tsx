@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useState, type ReactNode } from "react"
 import { Loader2, MapPin, Search, Star, X } from "lucide-react"
 
 import {
@@ -16,8 +16,6 @@ import {
 } from "@/lib/saved-places-api"
 import { getCurrentUserId } from "@/lib/auth-session"
 import {
-  mergePlaceSearchResults,
-  searchCuratedPlaces,
   searchGooglePlaces,
   type PlaceSearchResult,
 } from "@/lib/places-search"
@@ -65,15 +63,7 @@ export function AddSavedPlaceModal({
   const [searchWarning, setSearchWarning] = useState<string | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(true)
 
-  const curatedResults = useMemo(
-    () => searchCuratedPlaces(searchQuery, kind),
-    [searchQuery, kind]
-  )
-
-  const suggestions = useMemo(
-    () => mergePlaceSearchResults(googleResults, curatedResults, 10),
-    [curatedResults, googleResults]
-  )
+  const suggestions = googleResults
 
   const reset = useCallback(() => {
     setKind(defaultKind)
@@ -350,7 +340,7 @@ export function AddSavedPlaceModal({
                 </p>
               ) : !searchQuery.trim() ? (
                 <p className="mt-1.5 text-xs text-zinc-400">
-                  Google Places에서 실시간 검색해요. 예: 정식당, La Cime, Park Hyatt
+                  Google Places에서 실시간 검색해요. 장소 이름을 입력해 주세요.
                 </p>
               ) : null}
             </div>
