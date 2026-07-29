@@ -1,8 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
-import Image from "next/image"
-import { Loader2, Search, Star, X } from "lucide-react"
+import { Loader2, MapPin, Search, Star, X } from "lucide-react"
 
 import {
   Dialog,
@@ -29,14 +28,6 @@ import {
 } from "@/lib/trip-itinerary"
 import { cn } from "@/lib/utils"
 
-const PRICE_OPTIONS = ["¥", "¥¥", "¥¥¥", "¥¥¥¥"] as const
-
-const FALLBACK_IMAGE: Record<WishlistKind, string> = {
-  restaurant: "/images/place-sushi.png",
-  bar: "/images/place-bar.png",
-  stay: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=400&q=80",
-}
-
 const inputClassName =
   "w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
 
@@ -61,7 +52,6 @@ export function AddSavedPlaceModal({
   const [localName, setLocalName] = useState("")
   const [subCategory, setSubCategory] = useState("")
   const [guideBadge, setGuideBadge] = useState("")
-  const [priceRange, setPriceRange] = useState<string>("¥¥¥")
   const [address, setAddress] = useState("")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [memo, setMemo] = useState("")
@@ -92,7 +82,6 @@ export function AddSavedPlaceModal({
     setLocalName("")
     setSubCategory("")
     setGuideBadge("")
-    setPriceRange("¥¥¥")
     setAddress("")
     setPhoneNumber("")
     setMemo("")
@@ -156,7 +145,6 @@ export function AddSavedPlaceModal({
     setLocalName(String(place.localName ?? "").trim() || name)
     setSubCategory(String(place.subCategory ?? "").trim())
     setGuideBadge(String(place.guideBadge ?? "").trim())
-    setPriceRange(String(place.priceRange ?? "").trim() || "¥¥¥")
     setAddress(String(place.address ?? "").trim())
     setPhoneNumber(String(place.phoneNumber ?? "").trim())
     setImageUrl(String(place.imageUrl ?? place.image ?? "").trim())
@@ -191,7 +179,7 @@ export function AddSavedPlaceModal({
         localName: localName.trim(),
         subCategory: subCategory.trim(),
         guideBadge: guideBadge.trim(),
-        priceRange: priceRange.trim(),
+        priceRange: "",
         address: address.trim(),
         phoneNumber: phoneNumber.trim(),
         memo: memo.trim(),
@@ -327,17 +315,11 @@ export function AddSavedPlaceModal({
                       key={item.id}
                       type="button"
                       onClick={() => handleSelectPlace(item)}
-                      className="group flex w-full items-center justify-between rounded-2xl border border-zinc-100 bg-zinc-50/50 p-3 text-left transition-all hover:border-zinc-200 hover:bg-zinc-100/80"
+                      className="group flex w-full items-center justify-between rounded-2xl border border-zinc-100 bg-zinc-50/50 p-3.5 text-left transition-all hover:border-zinc-200 hover:bg-zinc-100/80"
                     >
                       <div className="flex min-w-0 items-center gap-3">
-                        <span className="relative size-12 shrink-0 overflow-hidden rounded-xl transition-transform group-hover:scale-[1.03]">
-                          <Image
-                            src={item.imageUrl || item.image || FALLBACK_IMAGE[item.kind ?? kind]}
-                            alt={item.imageAlt || item.placeName}
-                            fill
-                            sizes="48px"
-                            className="object-cover"
-                          />
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-500 transition-all group-hover:bg-zinc-900 group-hover:text-white">
+                          <MapPin className="size-4" />
                         </span>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
@@ -412,46 +394,21 @@ export function AddSavedPlaceModal({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 items-end gap-3">
-                <div>
-                  <label
-                    htmlFor="wishlist-guide-badge"
-                    className="mb-1.5 block text-xs font-medium text-zinc-700"
-                  >
-                    가이드 뱃지
-                  </label>
-                  <input
-                    id="wishlist-guide-badge"
-                    type="text"
-                    value={guideBadge}
-                    onChange={(event) => setGuideBadge(event.target.value)}
-                    placeholder="Michelin 3 Stars"
-                    className={inputClassName}
-                  />
-                </div>
-                <div>
-                  <span className="mb-1.5 block text-xs font-medium text-zinc-700">가격대</span>
-                  <div className="flex items-center gap-1.5">
-                    {PRICE_OPTIONS.map((option) => {
-                      const active = priceRange === option
-                      return (
-                        <button
-                          key={option}
-                          type="button"
-                          onClick={() => setPriceRange(option)}
-                          className={cn(
-                            "flex-1 rounded-xl border py-2 text-xs font-medium transition-all",
-                            active
-                              ? "border-zinc-900 bg-zinc-900 text-white"
-                              : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300"
-                          )}
-                        >
-                          {option}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
+              <div>
+                <label
+                  htmlFor="wishlist-guide-badge"
+                  className="mb-1.5 block text-xs font-medium text-zinc-700"
+                >
+                  가이드 뱃지
+                </label>
+                <input
+                  id="wishlist-guide-badge"
+                  type="text"
+                  value={guideBadge}
+                  onChange={(event) => setGuideBadge(event.target.value)}
+                  placeholder="Michelin 3 Stars"
+                  className={inputClassName}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
