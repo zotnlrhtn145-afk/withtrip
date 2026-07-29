@@ -11,6 +11,7 @@ create table if not exists public.trip_schedules (
   address text,
   phone_number text,
   memo text,
+  created_by uuid references auth.users (id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -21,6 +22,7 @@ alter table public.trip_schedules add column if not exists visit_time text;
 alter table public.trip_schedules add column if not exists address text;
 alter table public.trip_schedules add column if not exists phone_number text;
 alter table public.trip_schedules add column if not exists memo text;
+alter table public.trip_schedules add column if not exists created_by uuid references auth.users (id) on delete set null;
 
 update public.trip_schedules set category = '관광' where category is null or category = '';
 
@@ -28,6 +30,7 @@ comment on table public.trip_schedules is '여행 일차별 일정(장소)';
 comment on column public.trip_schedules.day_number is '1-based Day N (1~7)';
 comment on column public.trip_schedules.category is '이동 | 숙소 | 관광 | 식사 | 카페';
 comment on column public.trip_schedules.visit_time is 'HH:MM (24h), optional';
+comment on column public.trip_schedules.created_by is '일정을 등록한 작성자 (auth.users.id)';
 
 -- Legacy rename support: day_index → day_number
 do $$
@@ -52,6 +55,9 @@ create index if not exists trip_schedules_trip_id_idx
 
 create index if not exists trip_schedules_trip_day_time_idx
   on public.trip_schedules (trip_id, day_number, visit_time);
+
+create index if not exists trip_schedules_created_by_idx
+  on public.trip_schedules (created_by);
 
 alter table public.trip_schedules enable row level security;
 

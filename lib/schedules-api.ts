@@ -1,3 +1,4 @@
+import { getCurrentUserId } from "@/lib/auth-session"
 import { supabase } from "@/lib/supabase"
 import { getErrorMessage } from "@/lib/trips-api"
 
@@ -7,6 +8,8 @@ export type ScheduleCategory = (typeof SCHEDULE_CATEGORIES)[number]
 export type TripSchedule = {
   id: string
   tripId: string
+  userId: string
+  createdBy: string
   dayNumber: number
   category: ScheduleCategory
   placeName: string
@@ -20,6 +23,8 @@ export type TripSchedule = {
 export type TripScheduleRow = {
   id: string
   trip_id: string
+  user_id?: string | null
+  created_by?: string | null
   day_number?: number | null
   category?: string | null
   place_name?: string | null
@@ -39,9 +44,17 @@ export type CreateTripScheduleInput = {
   address?: string
   phoneNumber?: string
   memo?: string
+  createdBy?: string | null
+  userId?: string | null
 }
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
+
+function isValidUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    value.trim()
+  )
+}
 
 function normalizeTime(value: string) {
   const raw = String(value ?? "").trim()
@@ -94,6 +107,18 @@ function logSupabaseError(scope: string, error: unknown, extra?: Record<string, 
   }
 }
 
+export function isScheduleAuthor(
+  schedule: Pick<TripSchedule, "userId" | "createdBy">,
+  authUserId: string | null | undefined
+): boolean {
+  const uid = String(authUserId ?? "").trim()
+  if (!uid) return false
+  return (
+    (Boolean(schedule.createdBy) && schedule.createdBy === uid) ||
+    (Boolean(schedule.userId) && schedule.userId === uid)
+  )
+}
+
 export function parseScheduleStartDate(value: string): Date | null {
   const raw = String(value ?? "").trim()
   const match = raw.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})/)
@@ -125,9 +150,14 @@ export function getScheduleDayMeta(tripStartDate: string, dayNumber: number) {
 }
 
 export function mapScheduleRow(row: TripScheduleRow): TripSchedule {
+  const createdBy = String(row.created_by ?? "").trim()
+  const userId = createdBy || String(row.user_id ?? "").trim()
+
   return {
     id: row.id,
     tripId: row.trip_id,
+    userId,
+    createdBy: createdBy || userId,
     dayNumber: clampDayNumber(row.day_number),
     category: normalizeCategory(row.category),
     placeName: String(row.place_name ?? "").trim(),
@@ -149,7 +179,7 @@ export function sortSchedules(items: TripSchedule[]): TripSchedule[] {
   })
 }
 
-function buildPayload(input: CreateTripScheduleInput) {
+function buildPayload(input: CreateTripScheduleInput, authorUserId: string | null) {
   return {
     trip_id: String(input.tripId ?? "").trim(),
     day_number: clampDayNumber(input.dayNumber),
@@ -159,7 +189,16 @@ function buildPayload(input: CreateTripScheduleInput) {
     address: String(input.address ?? "").trim() || null,
     phone_number: String(input.phoneNumber ?? "").trim() || null,
     memo: String(input.memo ?? "").trim() || null,
+    created_by: authorUserId,
   }
+}
+
+async function resolveAuthorUserId(explicit?: string | null): Promise<string | null> {
+  const fromInput = String(explicit ?? "").trim()
+  if (fromInput && isValidUuid(fromInput)) return fromInput
+  const authId = await getCurrentUserId()
+  if (authId && isValidUuid(authId)) return authId
+  return null
 }
 
 export async function fetchSchedulesByTripId(tripId: string): Promise<TripSchedule[]> {
@@ -191,7 +230,12 @@ export async function insertSchedule(input: CreateTripScheduleInput): Promise<Tr
   if (!tripId) throw new Error("tripId가 필요합니다.")
   if (!String(input.placeName ?? "").trim()) throw new Error("장소명을 입력해 주세요.")
 
-  const payload = buildPayload({ ...input, tripId })
+  const authorUserId = await resolveAuthorUserId(input.createdBy ?? input.userId)
+  if (!authorUserId) {
+    throw new Error("로그인이 필요해요. 로그인 후 일정을 등록해 주세요.")
+  }
+
+  const payload = buildPayload({ ...input, tripId }, authorUserId)
   const { data, error } = await supabase
     .from("trip_schedules")
     .insert(payload)
@@ -206,11 +250,78 @@ export async function insertSchedule(input: CreateTripScheduleInput): Promise<Tr
   return mapScheduleRow(data as TripScheduleRow)
 }
 
+export async function updateSchedule(
+  scheduleId: string,
+  input: CreateTripScheduleInput
+): Promise<TripSchedule> {
+  const id = String(scheduleId ?? "").trim()
+  if (!id) throw new Error("scheduleId가 필요합니다.")
+
+  const tripId = String(input.tripId ?? "").trim()
+  if (!tripId) throw new Error("tripId가 필요합니다.")
+  if (!String(input.placeName ?? "").trim()) throw new Error("장소명을 입력해 주세요.")
+
+  const authUserId = await getCurrentUserId()
+  const { data: existing, error: lookupError } = await supabase
+    .from("trip_schedules")
+    .select("id, created_by")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (lookupError) {
+    logSupabaseError("updateSchedule lookup", lookupError, { schedule_id: id })
+    throw lookupError
+  }
+  if (!existing) throw new Error("일정을 찾을 수 없어요.")
+
+  const authorId = String((existing as { created_by?: string | null }).created_by ?? "").trim()
+  const authorFields = { createdBy: authorId, userId: authorId }
+  if (!isScheduleAuthor(authorFields, authUserId)) {
+    throw new Error("작성자만 일정을 수정할 수 있어요.")
+  }
+
+  const payload = buildPayload({ ...input, tripId }, authorId || authUserId)
+
+  const { data, error } = await supabase
+    .from("trip_schedules")
+    .update(payload)
+    .eq("id", id)
+    .select("*")
+    .single()
+
+  if (error) {
+    logSupabaseError("updateSchedule", error, { schedule_id: id, payload })
+    throw error
+  }
+
+  return mapScheduleRow(data as TripScheduleRow)
+}
+
 export async function deleteSchedule(scheduleId: string): Promise<boolean> {
   const id = String(scheduleId ?? "").trim()
   if (!id) return false
 
   try {
+    const authUserId = await getCurrentUserId()
+    const { data: existing, error: lookupError } = await supabase
+      .from("trip_schedules")
+      .select("id, created_by")
+      .eq("id", id)
+      .maybeSingle()
+
+    if (lookupError) {
+      logSupabaseError("deleteSchedule lookup", lookupError, { schedule_id: id })
+      return false
+    }
+    if (!existing) return false
+
+    const authorId = String((existing as { created_by?: string | null }).created_by ?? "").trim()
+    const authorFields = { createdBy: authorId, userId: authorId }
+    if (!isScheduleAuthor(authorFields, authUserId)) {
+      console.warn("[deleteSchedule] blocked: not schedule author")
+      return false
+    }
+
     const { error } = await supabase.from("trip_schedules").delete().eq("id", id)
     if (error) {
       logSupabaseError("deleteSchedule", error, { schedule_id: id })

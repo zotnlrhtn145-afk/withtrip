@@ -5,11 +5,13 @@ import {
   BedDouble,
   Calendar,
   Camera,
+  Check,
   ChevronDown,
   Clock,
   Coffee,
   Loader2,
   MapPin,
+  Pencil,
   Phone,
   Plane,
   Plus,
@@ -41,8 +43,10 @@ import {
   getErrorMessage,
   getScheduleDayMeta,
   insertSchedule,
+  isScheduleAuthor,
   SCHEDULE_CATEGORIES,
   sortSchedules,
+  updateSchedule,
   type ScheduleCategory,
   type TripSchedule,
 } from "@/lib/schedules-api"
@@ -53,6 +57,7 @@ import {
   type WishlistKind,
 } from "@/lib/trip-itinerary"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/utils/supabase/client"
 
 const DAY_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const
 
@@ -78,6 +83,7 @@ function ScheduleRegisterModal({
   tripId,
   tripStartDate,
   defaultDayIndex,
+  editingSchedule = null,
   onSaved,
 }: {
   open: boolean
@@ -85,8 +91,10 @@ function ScheduleRegisterModal({
   tripId: string
   tripStartDate: string
   defaultDayIndex: number
+  editingSchedule?: TripSchedule | null
   onSaved: (item: TripSchedule) => void
 }) {
+  const isEditMode = Boolean(editingSchedule)
   const [dayNumber, setDayNumber] = useState(1)
   const [category, setCategory] = useState<ScheduleCategory>("관광")
   const [placeName, setPlaceName] = useState("")
@@ -136,18 +144,30 @@ function ScheduleRegisterModal({
 
   useEffect(() => {
     if (!open) return
-    setDayNumber(Math.min(7, Math.max(1, defaultDayIndex || 1)))
-    setCategory("관광")
-    setPlaceName("")
-    setVisitTime("12:00")
-    setAddress("")
-    setPhoneNumber("")
-    setMemo("")
+
+    if (editingSchedule) {
+      setDayNumber(Math.min(7, Math.max(1, editingSchedule.dayNumber || 1)))
+      setCategory(editingSchedule.category)
+      setPlaceName(editingSchedule.placeName)
+      setVisitTime(editingSchedule.visitTime || "12:00")
+      setAddress(editingSchedule.address)
+      setPhoneNumber(editingSchedule.phoneNumber)
+      setMemo(editingSchedule.memo)
+    } else {
+      setDayNumber(Math.min(7, Math.max(1, defaultDayIndex || 1)))
+      setCategory("관광")
+      setPlaceName("")
+      setVisitTime("12:00")
+      setAddress("")
+      setPhoneNumber("")
+      setMemo("")
+    }
+
     setError(null)
     setSaving(false)
     setWishlistOpen(false)
     void loadSavedPlaces()
-  }, [open, defaultDayIndex, loadSavedPlaces])
+  }, [open, defaultDayIndex, editingSchedule, loadSavedPlaces])
 
   const toggleWishlist = () => {
     setWishlistOpen((current) => {
@@ -179,7 +199,7 @@ function ScheduleRegisterModal({
     setSaving(true)
     setError(null)
     try {
-      const saved = await insertSchedule({
+      const payload = {
         tripId,
         dayNumber,
         category,
@@ -188,7 +208,11 @@ function ScheduleRegisterModal({
         address: address.trim(),
         phoneNumber: phoneNumber.trim(),
         memo: memo.trim(),
-      })
+      }
+      const saved =
+        isEditMode && editingSchedule
+          ? await updateSchedule(editingSchedule.id, payload)
+          : await insertSchedule(payload)
       onSaved(saved)
       onOpenChange(false)
     } catch (err) {
@@ -222,10 +246,12 @@ function ScheduleRegisterModal({
         <DialogHeader className="gap-1.5 border-b border-zinc-100 px-5 pt-5 pr-12 pb-4 text-left">
           <DialogTitle className="flex items-center gap-2 text-base font-semibold tracking-tight text-zinc-900">
             <Calendar className="size-5 text-zinc-900" strokeWidth={1.75} />
-            일정 등록
+            {isEditMode ? "일정 수정" : "일정 등록"}
           </DialogTitle>
           <DialogDescription className="text-sm leading-relaxed text-zinc-500">
-            {dayNumber}일차 ({visitDateLabel})에 추가할 일정을 입력하면 타임라인에 정리해 드려요.
+            {isEditMode
+              ? `${dayNumber}일차 (${visitDateLabel}) 일정 정보를 수정해요.`
+              : `${dayNumber}일차 (${visitDateLabel})에 추가할 일정을 입력하면 타임라인에 정리해 드려요.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -448,10 +474,12 @@ function ScheduleRegisterModal({
           >
             {saving ? (
               <Loader2 className="size-3.5 animate-spin" />
+            ) : isEditMode ? (
+              <Check className="size-3.5" />
             ) : (
               <Plus className="size-3.5" />
             )}
-            등록하기
+            {saving ? "저장 중…" : isEditMode ? "수정 완료" : "등록하기"}
           </button>
         </DialogFooter>
       </DialogContent>
@@ -462,12 +490,16 @@ function ScheduleRegisterModal({
 function TimelineItem({
   item,
   isLast,
+  isAuthor,
   deleting,
+  onEdit,
   onDelete,
 }: {
   item: TripSchedule
   isLast: boolean
+  isAuthor: boolean
   deleting: boolean
+  onEdit: (item: TripSchedule) => void
   onDelete: (id: string) => void
 }) {
   const Icon = CATEGORY_ICON[item.category] ?? MapPin
@@ -536,17 +568,32 @@ function TimelineItem({
               </p>
             ) : null}
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="일정 삭제"
-            disabled={deleting}
-            onClick={() => onDelete(item.id)}
-            className="shrink-0 text-gray-400 hover:text-destructive"
-          >
-            {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
-          </Button>
+          {isAuthor ? (
+            <div className="flex shrink-0 items-center gap-0.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="일정 수정"
+                disabled={deleting}
+                onClick={() => onEdit(item)}
+                className="text-gray-400 hover:text-amber-600"
+              >
+                <Pencil />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="일정 삭제"
+                disabled={deleting}
+                onClick={() => onDelete(item.id)}
+                className="text-gray-400 hover:text-destructive"
+              >
+                {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+              </Button>
+            </div>
+          ) : null}
         </div>
       </div>
     </li>
@@ -570,7 +617,10 @@ export function ScheduleSection({
   const [items, setItems] = useState<TripSchedule[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editingSchedule, setEditingSchedule] = useState<TripSchedule | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [authReady, setAuthReady] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -589,6 +639,41 @@ export function ScheduleSection({
     void load()
   }, [load])
 
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createClient()
+
+    void (async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (!cancelled) {
+          setCurrentUserId(user?.id ?? null)
+          setAuthReady(true)
+        }
+      } catch {
+        if (!cancelled) {
+          setCurrentUserId(null)
+          setAuthReady(true)
+        }
+      }
+    })()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return
+      setCurrentUserId(session?.user?.id ?? null)
+      setAuthReady(true)
+    })
+
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
+  }, [])
+
   const visibleItems = useMemo(() => {
     return sortSchedules(items.filter((item) => item.dayNumber === selectedDay))
   }, [items, selectedDay])
@@ -604,6 +689,8 @@ export function ScheduleSection({
   ].filter(Boolean)
 
   const handleDelete = async (id: string) => {
+    const target = items.find((item) => item.id === id)
+    if (!target || !authReady || !isScheduleAuthor(target, currentUserId)) return
     if (!window.confirm("이 일정을 삭제할까요?")) return
     setDeletingId(id)
     try {
@@ -614,7 +701,21 @@ export function ScheduleSection({
     }
   }
 
-  const openAdd = () => setModalOpen(true)
+  const openAdd = () => {
+    setEditingSchedule(null)
+    setModalOpen(true)
+  }
+
+  const openEdit = (item: TripSchedule) => {
+    if (!authReady || !isScheduleAuthor(item, currentUserId)) return
+    setEditingSchedule(item)
+    setModalOpen(true)
+  }
+
+  const handleModalOpenChange = (next: boolean) => {
+    setModalOpen(next)
+    if (!next) setEditingSchedule(null)
+  }
 
   return (
     <section className="flex flex-col gap-4">
@@ -630,7 +731,7 @@ export function ScheduleSection({
           type="button"
           aria-label="일정 추가"
           onClick={openAdd}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white shadow-sm transition-all hover:bg-slate-800"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-400 text-zinc-900 shadow-sm transition-all hover:bg-amber-500"
         >
           <Plus className="size-4" />
         </button>
@@ -654,7 +755,7 @@ export function ScheduleSection({
               className={cn(
                 "touch-press inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs transition-all",
                 active
-                  ? "bg-slate-900 font-bold text-white shadow-sm"
+                  ? "bg-amber-400 font-semibold text-zinc-900 shadow-sm"
                   : "bg-slate-100 font-medium text-slate-500 hover:bg-slate-200/70"
               )}
             >
@@ -663,7 +764,7 @@ export function ScheduleSection({
                 <span
                   className={cn(
                     "tabular-nums",
-                    active ? "text-white/70" : "text-slate-400"
+                    active ? "text-zinc-900/70" : "text-slate-400"
                   )}
                 >
                   {meta.dateLabel}
@@ -694,7 +795,9 @@ export function ScheduleSection({
               key={item.id}
               item={item}
               isLast={index === visibleItems.length - 1}
+              isAuthor={authReady && isScheduleAuthor(item, currentUserId)}
               deleting={deletingId === item.id}
+              onEdit={openEdit}
               onDelete={(id) => void handleDelete(id)}
             />
           ))}
@@ -705,7 +808,7 @@ export function ScheduleSection({
         type="button"
         variant="outline"
         onClick={openAdd}
-        className="h-11 w-full rounded-full border-dashed border-slate-200 bg-slate-50/40 text-xs font-semibold text-slate-700 hover:border-amber-400 hover:bg-white"
+        className="h-11 w-full rounded-full border-dashed border-amber-200 bg-amber-50/40 text-xs font-semibold text-amber-700 hover:border-amber-400 hover:bg-amber-50 hover:text-amber-800"
       >
         <Plus data-icon="inline-start" />
         사용자 정의 일정 추가
@@ -713,16 +816,18 @@ export function ScheduleSection({
 
       <ScheduleRegisterModal
         open={modalOpen}
-        onOpenChange={setModalOpen}
+        onOpenChange={handleModalOpenChange}
         tripId={tripId}
         tripStartDate={tripStartDate}
         defaultDayIndex={selectedDay}
+        editingSchedule={editingSchedule}
         onSaved={(item) => {
           setItems((current) => {
             const without = current.filter((row) => row.id !== item.id)
             return sortSchedules([...without, item])
           })
           setSelectedDay(item.dayNumber)
+          setEditingSchedule(null)
           void load()
         }}
       />
