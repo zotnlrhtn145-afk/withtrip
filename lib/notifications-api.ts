@@ -221,22 +221,36 @@ export async function createNotification(
 
   const client = createClient()
 
-  // Primary payload — standardized on actor_id (DB column now present)
-  const primaryPayload = {
+  // Primary payload includes trip_member_id when the invite row id is known
+  const withTripMember = Boolean(tripMemberId)
+  const primaryPayload: Record<string, unknown> = {
     user_id: recipientUserId,
     actor_id: actorUserId,
     sender_id: actorUserId,
     type: input.type,
     message,
     reference_id: referenceId,
-    trip_member_id: tripMemberId || null,
     is_read: false,
-    status: "pending" as const,
+    status: "pending",
+  }
+  if (withTripMember) {
+    primaryPayload.trip_member_id = tripMemberId
   }
 
-  // Fallbacks only for older schemas missing optional columns
+  // Prefer payloads that keep trip_member_id; only drop it if the column is missing
   const payloads: Record<string, unknown>[] = [
     primaryPayload,
+    {
+      user_id: recipientUserId,
+      actor_id: actorUserId,
+      type: input.type,
+      message,
+      reference_id: referenceId,
+      ...(withTripMember ? { trip_member_id: tripMemberId } : {}),
+      is_read: false,
+      status: "pending",
+    },
+    // Last-resort fallbacks without trip_member_id (legacy schema)
     {
       user_id: recipientUserId,
       actor_id: actorUserId,
@@ -261,18 +275,42 @@ export async function createNotification(
     actor_id: actorUserId,
     type: input.type,
     reference_id: referenceId,
+    trip_member_id: tripMemberId,
   })
 
   let lastError: unknown = null
 
   for (const payload of payloads) {
-    const { data, error } = await client
-      .from("notifications")
-      .insert(payload)
-      .select(
-        "id, user_id, actor_id, sender_id, type, message, reference_id, trip_member_id, is_read, status, created_at"
-      )
-      .maybeSingle()
+    const selectWithMember =
+      "id, user_id, actor_id, sender_id, type, message, reference_id, trip_member_id, is_read, status, created_at"
+    const selectBasic =
+      "id, user_id, actor_id, sender_id, type, message, reference_id, is_read, status, created_at"
+
+    let data: unknown = null
+    let error: unknown = null
+
+    {
+      const result = await client
+        .from("notifications")
+        .insert(payload)
+        .select(selectWithMember)
+        .maybeSingle()
+      data = result.data
+      error = result.error
+    }
+
+    // Insert may succeed while select fails if trip_member_id is absent from schema cache
+    if (error && isMissingColumnError(formatError(error)) && "trip_member_id" in (payload as object)) {
+      // retry insert without trip_member_id handled by next payload
+    } else if (error && isMissingColumnError(formatError(error))) {
+      const result = await client
+        .from("notifications")
+        .insert(payload)
+        .select(selectBasic)
+        .maybeSingle()
+      data = result.data
+      error = result.error
+    }
 
     if (!error) {
       const mapped = data ? mapRow(data as DbNotificationRow) : null
@@ -280,6 +318,7 @@ export async function createNotification(
         id: mapped?.id,
         user_id: mapped?.userId,
         actor_id: mapped?.actorId,
+        trip_member_id: mapped?.tripMemberId ?? tripMemberId,
         type: mapped?.type,
       })
       return mapped
@@ -290,6 +329,7 @@ export async function createNotification(
     console.error("notification insert error:", error)
     console.error("[createNotification] insert failed:", messageText, payload)
 
+    // Only continue to stripped payloads when the failure is a missing-column schema mismatch
     if (!isMissingColumnError(messageText) && !isMissingTableError(messageText)) {
       break
     }

@@ -521,6 +521,14 @@ export async function addTripMember(input: {
     memberId = String((lookup.data as { id?: string } | null)?.id ?? "").trim()
   }
 
+  if (!memberId) {
+    console.error("[addTripMember] trip_members id missing after insert", {
+      tripId,
+      invitedUserId,
+    })
+    throw new Error("초대 멤버 ID를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.")
+  }
+
   console.info("[addTripMember] trip_members pending ready", {
     tripId,
     invitedUserId,
@@ -548,21 +556,26 @@ async function createTripInviteNotification(input: {
   tripTitle: string
   inviteeUserId: string
   senderId: string
-  tripMemberId?: string
+  tripMemberId: string
 }) {
+  const tripMemberId = String(input.tripMemberId ?? "").trim()
+  if (!tripMemberId) {
+    throw new Error("trip_member_id가 없어 알림을 만들 수 없어요.")
+  }
+
   const { createNotification, resolveActorDisplayName } = await import(
     "@/lib/notifications-api"
   )
   const actorName = await resolveActorDisplayName(input.senderId)
   const message = `${actorName}님이 '${input.tripTitle}'에 초대했습니다.`
 
-  // user_id = 피초대자, actor_id = 초대한 사람
+  // user_id = 피초대자, actor_id = 초대한 사람, trip_member_id = trip_members.id
   console.info("[createTripInviteNotification] inserting", {
     user_id: input.inviteeUserId,
     actor_id: input.senderId,
     type: "trip_invite",
     reference_id: input.tripId,
-    trip_member_id: input.tripMemberId || null,
+    trip_member_id: tripMemberId,
     message,
   })
 
@@ -574,7 +587,7 @@ async function createTripInviteNotification(input: {
         type: "trip_invite",
         message,
         referenceId: input.tripId,
-        tripMemberId: input.tripMemberId || null,
+        tripMemberId,
       },
       { throwOnError: true }
     )
@@ -582,6 +595,7 @@ async function createTripInviteNotification(input: {
       id: row?.id,
       user_id: row?.userId,
       actor_id: row?.actorId,
+      trip_member_id: row?.tripMemberId ?? tripMemberId,
     })
   } catch (err) {
     console.error("notification insert error:", err)
