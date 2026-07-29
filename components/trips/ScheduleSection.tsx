@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   BedDouble,
-  CalendarDays,
+  Calendar,
   Camera,
   ChevronDown,
   Clock,
@@ -13,7 +13,6 @@ import {
   Phone,
   Plane,
   Plus,
-  Star,
   Trash2,
   Utensils,
   type LucideIcon,
@@ -211,17 +210,18 @@ function ScheduleRegisterModal({
 
   const visitDateLabel = dayMeta.visitDate || dayMeta.dateLabel || "—"
 
+  const inputClassName =
+    "rounded-xl border border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus-visible:border-zinc-900 focus-visible:ring-1 focus-visible:ring-zinc-900"
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90svh] gap-0 overflow-y-auto rounded-2xl p-0 sm:max-w-lg">
-        <DialogHeader className="gap-2 px-5 pt-5 pr-12 pb-0">
-          <DialogTitle className="flex items-center gap-2.5 text-lg font-bold">
-            <span className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-              <CalendarDays className="size-5" />
-            </span>
+      <DialogContent className="max-h-[90svh] gap-0 overflow-y-auto rounded-2xl border-zinc-200 bg-white p-0 sm:max-w-lg">
+        <DialogHeader className="gap-1.5 border-b border-zinc-100 px-5 pt-5 pr-12 pb-4 text-left">
+          <DialogTitle className="flex items-center gap-2 text-base font-semibold tracking-tight text-zinc-900">
+            <Calendar className="size-5 text-zinc-900" strokeWidth={1.75} />
             일정 등록
           </DialogTitle>
-          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+          <DialogDescription className="text-sm leading-relaxed text-zinc-500">
             {dayNumber}일차 ({visitDateLabel})에 추가할 일정을 입력하면 타임라인에 정리해 드려요.
           </DialogDescription>
         </DialogHeader>
@@ -229,11 +229,11 @@ function ScheduleRegisterModal({
         <form
           id="schedule-register-form"
           onSubmit={(event) => void handleSubmit(event)}
-          className="flex flex-col gap-5 px-5 py-5"
+          className="flex flex-col gap-5 bg-white px-5 py-5"
         >
           <FieldGroup>
             <Field>
-              <FieldLabel>카테고리</FieldLabel>
+              <FieldLabel className="text-zinc-700">카테고리</FieldLabel>
               <div className="flex flex-wrap gap-2">
                 {SCHEDULE_CATEGORIES.map((item) => {
                   const active = category === item
@@ -243,10 +243,10 @@ function ScheduleRegisterModal({
                       type="button"
                       onClick={() => setCategory(item)}
                       className={cn(
-                        "rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors",
+                        "rounded-full px-3.5 py-1.5 text-sm transition-colors",
                         active
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                          ? "bg-zinc-900 font-medium text-white"
+                          : "bg-zinc-100 font-medium text-zinc-600 hover:bg-zinc-200"
                       )}
                     >
                       {item}
@@ -257,37 +257,42 @@ function ScheduleRegisterModal({
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="schedule-time">시간</FieldLabel>
+              <FieldLabel htmlFor="schedule-time" className="text-zinc-700">
+                시간
+              </FieldLabel>
               <div className="relative">
                 <Input
                   id="schedule-time"
                   type="time"
                   value={visitTime}
                   onChange={(event) => setVisitTime(event.target.value)}
-                  className="rounded-xl pr-10 tabular-nums"
+                  className={cn(inputClassName, "pr-10 tabular-nums")}
                 />
                 <Clock
                   aria-hidden="true"
-                  className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground"
+                  className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-zinc-400"
                 />
               </div>
-              <FieldDescription>등록하면 시간 순서대로 자동 정렬됩니다.</FieldDescription>
+              <FieldDescription className="text-zinc-400">
+                등록하면 시간 순서대로 자동 정렬됩니다.
+              </FieldDescription>
             </Field>
 
             <Field>
               <div className="flex items-center justify-between gap-2">
-                <FieldLabel htmlFor="schedule-place">장소</FieldLabel>
+                <FieldLabel htmlFor="schedule-place" className="text-zinc-700">
+                  장소
+                </FieldLabel>
                 <button
                   type="button"
                   onClick={toggleWishlist}
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors",
+                    "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
                     wishlistOpen
-                      ? "bg-amber-400 text-foreground"
-                      : "bg-amber-50 text-amber-900 hover:bg-amber-100"
+                      ? "bg-zinc-900 text-white"
+                      : "bg-zinc-100 text-zinc-800 hover:bg-zinc-200"
                   )}
                 >
-                  <Star className="size-3.5 fill-current" />
                   가고 싶은 곳에서 가져오기
                   <ChevronDown
                     className={cn("size-3.5 transition-transform", wishlistOpen && "rotate-180")}
@@ -296,14 +301,14 @@ function ScheduleRegisterModal({
               </div>
 
               {wishlistOpen ? (
-                <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-amber-100 bg-amber-50/40 shadow-sm">
+                <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
                   {wishlistLoading ? (
-                    <div className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-muted-foreground">
+                    <div className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-zinc-400">
                       <Loader2 className="size-4 animate-spin" />
                       불러오는 중…
                     </div>
                   ) : savedPlaces.length === 0 ? (
-                    <p className="px-3 py-6 text-center text-sm text-muted-foreground">
+                    <p className="px-3 py-6 text-center text-sm text-zinc-400">
                       저장된 가고 싶은 곳이 없어요.
                       <br />
                       아래에서 위시리스트에 먼저 추가해 주세요.
@@ -315,32 +320,32 @@ function ScheduleRegisterModal({
                         if (items.length === 0) return null
                         return (
                           <div key={group.kind}>
-                            <p className="sticky top-0 bg-amber-100/80 px-3 py-1.5 text-[11px] font-bold tracking-wide text-amber-900 uppercase">
+                            <p className="sticky top-0 bg-zinc-50 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-zinc-500 uppercase">
                               {group.label}
                             </p>
-                            <ul className="divide-y divide-amber-100/80">
+                            <ul className="divide-y divide-zinc-100">
                               {items.map((place) => (
                                 <li key={place.id}>
                                   <button
                                     type="button"
                                     onClick={() => applySavedPlace(place)}
-                                    className="flex w-full flex-col gap-0.5 px-3 py-2.5 text-left transition-colors hover:bg-amber-100/60"
+                                    className="flex w-full flex-col gap-0.5 px-3 py-2.5 text-left transition-colors hover:bg-zinc-50"
                                   >
                                     <span className="flex items-center justify-between gap-2">
-                                      <span className="truncate text-sm font-bold text-foreground">
+                                      <span className="truncate text-sm font-semibold text-zinc-900">
                                         {place.placeName}
                                       </span>
-                                      <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-amber-900">
+                                      <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-600">
                                         {WISHLIST_CATEGORY_VALUE[toWishlistKind(place.category)]}
                                       </span>
                                     </span>
                                     {place.address ? (
-                                      <span className="truncate text-xs text-muted-foreground">
+                                      <span className="truncate text-xs text-zinc-400">
                                         {place.address}
                                       </span>
                                     ) : null}
                                     {place.phoneNumber ? (
-                                      <span className="truncate text-xs tabular-nums text-muted-foreground">
+                                      <span className="truncate text-xs tabular-nums text-zinc-400">
                                         {place.phoneNumber}
                                       </span>
                                     ) : null}
@@ -361,43 +366,49 @@ function ScheduleRegisterModal({
                 value={placeName}
                 onChange={(event) => setPlaceName(event.target.value)}
                 placeholder="예) 간사이 국제공항"
-                className="mt-2 rounded-xl"
+                className={cn(inputClassName, "mt-2")}
                 required
               />
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="schedule-address">주소</FieldLabel>
+              <FieldLabel htmlFor="schedule-address" className="text-zinc-700">
+                주소
+              </FieldLabel>
               <Input
                 id="schedule-address"
                 value={address}
                 onChange={(event) => setAddress(event.target.value)}
                 placeholder="예) 1-1 Senshu-kuko Naka, Izumisano"
-                className="rounded-xl"
+                className={inputClassName}
               />
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="schedule-phone">전화번호</FieldLabel>
+              <FieldLabel htmlFor="schedule-phone" className="text-zinc-700">
+                전화번호
+              </FieldLabel>
               <Input
                 id="schedule-phone"
                 type="tel"
                 value={phoneNumber}
                 onChange={(event) => setPhoneNumber(event.target.value)}
                 placeholder="예) +81 72-455-2500"
-                className="rounded-xl"
+                className={inputClassName}
               />
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="schedule-memo">메모</FieldLabel>
+              <FieldLabel htmlFor="schedule-memo" className="text-zinc-700">
+                메모
+              </FieldLabel>
               <Textarea
                 id="schedule-memo"
                 value={memo}
                 onChange={(event) => setMemo(event.target.value)}
                 placeholder="예) 입국 심사 후 하루카 특급 탑승"
                 rows={3}
-                className="resize-none rounded-xl"
+                className={cn(inputClassName, "resize-none")}
               />
             </Field>
           </FieldGroup>
@@ -405,36 +416,40 @@ function ScheduleRegisterModal({
           {error ? (
             <div
               role="alert"
-              className="rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
+              className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-600"
             >
               {error}
             </div>
           ) : null}
         </form>
 
-        <DialogFooter className="mx-0 mb-0 rounded-b-2xl border-t bg-secondary/60 p-4 sm:justify-end">
-          <Button
+        <DialogFooter
+          className={cn(
+            "mx-0 mb-0 gap-2 border-t border-zinc-100 bg-white p-4 sm:justify-end",
+            "rounded-b-2xl"
+          )}
+        >
+          <button
             type="button"
-            variant="ghost"
             onClick={() => onOpenChange(false)}
             disabled={saving}
-            className="rounded-full font-semibold text-foreground"
+            className="rounded-full px-4 py-2.5 text-xs font-semibold text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-50"
           >
             취소
-          </Button>
-          <Button
+          </button>
+          <button
             type="submit"
             form="schedule-register-form"
             disabled={saving}
-            className="rounded-full font-semibold"
+            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-zinc-900 px-5 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-800 disabled:opacity-60"
           >
             {saving ? (
-              <Loader2 data-icon="inline-start" className="animate-spin" />
+              <Loader2 className="size-3.5 animate-spin" />
             ) : (
-              <Plus data-icon="inline-start" />
+              <Plus className="size-3.5" />
             )}
             등록하기
-          </Button>
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

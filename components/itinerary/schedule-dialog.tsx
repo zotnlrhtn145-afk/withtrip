@@ -1,10 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { CalendarClock, Plus } from "lucide-react"
+import { Calendar, Plus } from "lucide-react"
 
 import { useTrips } from "@/components/trips-store"
-import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -18,6 +17,10 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import type { ScheduleItem } from "@/lib/trip-data"
 import { scheduleCategories } from "@/lib/trip-itinerary"
+import { cn } from "@/lib/utils"
+
+const inputClassName =
+  "rounded-xl border border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus-visible:border-zinc-900 focus-visible:ring-1 focus-visible:ring-zinc-900"
 
 export function ScheduleDialog({
   tripId,
@@ -58,95 +61,109 @@ export function ScheduleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90svh] gap-5 overflow-y-auto rounded-2xl sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <CalendarClock className="size-4" />
-            </span>
+      <DialogContent className="max-h-[90svh] gap-0 overflow-y-auto rounded-2xl border-zinc-200 bg-white p-0 sm:max-w-lg">
+        <DialogHeader className="gap-1.5 border-b border-zinc-100 px-5 pt-5 pr-12 pb-4 text-left">
+          <DialogTitle className="flex items-center gap-2 text-base font-semibold tracking-tight text-zinc-900">
+            <Calendar className="size-5 text-zinc-900" strokeWidth={1.75} />
             일정 등록
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm leading-relaxed text-zinc-500">
             {dayLabel}에 추가할 일정을 입력하면 타임라인에 정리해 드려요.
           </DialogDescription>
         </DialogHeader>
 
-        <form id="schedule-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <form id="schedule-form" onSubmit={handleSubmit} className="flex flex-col gap-5 bg-white px-5 py-5">
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="schedule-category">카테고리</FieldLabel>
+              <FieldLabel htmlFor="schedule-category" className="text-zinc-700">
+                카테고리
+              </FieldLabel>
               <div id="schedule-category" className="flex flex-wrap gap-2">
-                {scheduleCategories.map((item) => (
-                  <Button
-                    key={item}
-                    type="button"
-                    variant={category === item ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCategory(item)}
-                    className="rounded-full font-semibold"
-                  >
-                    {item}
-                  </Button>
-                ))}
+                {scheduleCategories.map((item) => {
+                  const active = category === item
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setCategory(item)}
+                      className={cn(
+                        "rounded-full px-3.5 py-1.5 text-sm transition-colors",
+                        active
+                          ? "bg-zinc-900 font-medium text-white"
+                          : "bg-zinc-100 font-medium text-zinc-600 hover:bg-zinc-200"
+                      )}
+                    >
+                      {item}
+                    </button>
+                  )
+                })}
               </div>
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="schedule-time">시간</FieldLabel>
+              <FieldLabel htmlFor="schedule-time" className="text-zinc-700">
+                시간
+              </FieldLabel>
               <Input
                 id="schedule-time"
                 type="time"
                 value={time}
                 onChange={(event) => setTime(event.target.value)}
-                className="w-32 rounded-xl tabular-nums"
+                className={cn(inputClassName, "w-32 tabular-nums")}
                 required
               />
-              <FieldDescription>등록하면 시간 순서대로 자동 정렬됩니다.</FieldDescription>
+              <FieldDescription className="text-zinc-400">
+                등록하면 시간 순서대로 자동 정렬됩니다.
+              </FieldDescription>
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="schedule-place">장소</FieldLabel>
+              <FieldLabel htmlFor="schedule-place" className="text-zinc-700">
+                장소
+              </FieldLabel>
               <Input
                 id="schedule-place"
                 value={place}
                 onChange={(event) => setPlace(event.target.value)}
                 placeholder="예) 간사이 국제공항"
+                className={inputClassName}
                 required
               />
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="schedule-activity">메모</FieldLabel>
+              <FieldLabel htmlFor="schedule-activity" className="text-zinc-700">
+                메모
+              </FieldLabel>
               <Textarea
                 id="schedule-activity"
                 value={activity}
                 onChange={(event) => setActivity(event.target.value)}
                 placeholder="예) 입국 심사 후 하루카 특급 탑승"
                 rows={3}
-                className="resize-none"
+                className={cn(inputClassName, "resize-none")}
               />
             </Field>
           </FieldGroup>
         </form>
 
-        <DialogFooter className="rounded-b-2xl">
-          <Button
+        <DialogFooter className="mx-0 mb-0 gap-2 rounded-b-2xl border-t border-zinc-100 bg-white p-4 sm:justify-end">
+          <button
             type="button"
-            variant="ghost"
             onClick={() => onOpenChange(false)}
-            className="rounded-full font-semibold"
+            className="rounded-full px-4 py-2.5 text-xs font-semibold text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
           >
             취소
-          </Button>
-          <Button
+          </button>
+          <button
             type="submit"
             form="schedule-form"
             disabled={!canSubmit}
-            className="rounded-full font-semibold"
+            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-zinc-900 px-5 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-800 disabled:opacity-60"
           >
-            <Plus data-icon="inline-start" />
+            <Plus className="size-3.5" />
             등록하기
-          </Button>
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
