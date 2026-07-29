@@ -20,8 +20,11 @@ comment on column public.spots.user_id is '등록한 사용자 (profiles.id) —
 comment on column public.spots.lat is 'WGS84 latitude';
 comment on column public.spots.lng is 'WGS84 longitude';
 
+alter table public.spots add column if not exists trip_id uuid references public.trips (id) on delete cascade;
+
 create index if not exists spots_geo_idx on public.spots (lat, lng);
 create index if not exists spots_user_id_idx on public.spots (user_id);
+create index if not exists spots_trip_id_idx on public.spots (trip_id);
 create index if not exists spots_created_at_idx on public.spots (created_at desc);
 
 alter table public.spots enable row level security;
@@ -36,7 +39,20 @@ drop policy if exists "spots_delete_own" on public.spots;
 create policy "spots_select_own"
   on public.spots for select
   to authenticated
-  using (user_id = auth.uid());
+  using (
+    user_id = auth.uid()
+    or exists (
+      select 1 from public.trip_members tm
+      where tm.trip_id = spots.trip_id
+        and tm.user_id = auth.uid()
+        and tm.status = 'accepted'
+    )
+    or exists (
+      select 1 from public.trips t
+      where t.id = spots.trip_id
+        and t.user_id = auth.uid()
+    )
+  );
 
 create policy "spots_insert_own"
   on public.spots for insert

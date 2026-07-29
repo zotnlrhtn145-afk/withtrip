@@ -80,8 +80,9 @@ const SPOT_SELECT = `
 `
 
 /**
- * Fetch nearby spots owned by the current user (with author profile).
- * Logged-out / empty → [] so the UI shows Empty State (no global seed dump).
+ * Fetch nearby spots from all trips the current user participates in.
+ * Falls back to user's own spots if trip_id is null.
+ * Logged-out / empty → [] so the UI shows Empty State.
  */
 export async function fetchNearbySpots(): Promise<NearbySpot[]> {
   try {
@@ -89,11 +90,33 @@ export async function fetchNearbySpots(): Promise<NearbySpot[]> {
     if (!userId) return []
 
     const client = createClient()
-    const { data, error } = await client
+
+    // Get all trip IDs where user is owner or accepted member
+    const [{ data: ownedTrips }, { data: memberTrips }] = await Promise.all([
+      client.from("trips").select("id").eq("user_id", userId),
+      client.from("trip_members").select("trip_id").eq("user_id", userId).eq("status", "accepted"),
+    ])
+
+    const tripIds = [
+      ...new Set([
+        ...(ownedTrips ?? []).map((t: { id: string }) => t.id),
+        ...(memberTrips ?? []).map((t: { trip_id: string }) => t.trip_id),
+      ]),
+    ]
+
+    // Fetch spots: from those trips OR user's own spots (trip_id null)
+    let query = client
       .from("spots")
       .select(SPOT_SELECT)
-      .eq("user_id", userId)
       .order("created_at", { ascending: false })
+
+    if (tripIds.length > 0) {
+      query = query.or(`trip_id.in.(${tripIds.join(",")}),user_id.eq.${userId}`)
+    } else {
+      query = query.eq("user_id", userId)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.warn("[fetchNearbySpots]", error.message)
