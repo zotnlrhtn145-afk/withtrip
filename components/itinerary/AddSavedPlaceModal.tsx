@@ -2,22 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import Image from "next/image"
-import { Heart, Loader2, Plus, Search, Star } from "lucide-react"
+import { Loader2, Search, Star, X } from "lucide-react"
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import {
   getErrorMessage,
   insertSavedPlace,
@@ -45,8 +37,11 @@ const FALLBACK_IMAGE: Record<WishlistKind, string> = {
   stay: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=400&q=80",
 }
 
+const inputClassName =
+  "w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+
 /**
- * '가고 싶은 곳 추가' 모달 — Google Places 실시간 검색 + Auto-fill.
+ * '가고 싶은 곳 추가' 모달 — Instagram-minimal UI + Google Places 검색.
  */
 export function AddSavedPlaceModal({
   tripId,
@@ -61,7 +56,6 @@ export function AddSavedPlaceModal({
 }) {
   const [open, setOpen] = useState(false)
   const [kind, setKind] = useState<WishlistKind>(defaultKind)
-  /** Search box query (debounced → Google Places). */
   const [searchQuery, setSearchQuery] = useState("")
   const [placeName, setPlaceName] = useState("")
   const [localName, setLocalName] = useState("")
@@ -118,7 +112,6 @@ export function AddSavedPlaceModal({
     reset()
   }, [open, reset])
 
-  /** Debounced Google Places Text Search (300ms). */
   useEffect(() => {
     if (!open) return
     const q = searchQuery.trim()
@@ -227,30 +220,41 @@ export function AddSavedPlaceModal({
     >
       <DialogTrigger render={trigger as React.ReactElement} />
       <DialogContent
-        showCloseButton
-        className="max-h-[90svh] gap-0 overflow-y-auto rounded-2xl p-0 sm:max-w-lg"
+        showCloseButton={false}
+        className="flex max-h-[90svh] max-w-lg flex-col gap-0 overflow-hidden rounded-3xl border-zinc-100 bg-white p-0 shadow-2xl sm:max-w-lg"
       >
-        <DialogHeader className="gap-2 px-5 pt-5 pr-12 pb-0">
-          <DialogTitle className="flex items-center gap-2.5 text-lg font-bold">
-            <span className="flex size-9 items-center justify-center rounded-full bg-amber-400 text-foreground shadow-sm">
-              <Heart className="size-5 fill-current" />
-            </span>
-            가고 싶은 곳 추가
-          </DialogTitle>
-          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
-            멤버들과 공유할 미식·라운지 스폿을 저장해 두세요.
-          </DialogDescription>
-        </DialogHeader>
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-zinc-100 px-6 pt-6 pb-4">
+          <div>
+            <DialogTitle className="text-xl font-bold tracking-tight text-zinc-900">
+              가고 싶은 곳 추가
+            </DialogTitle>
+            <p className="mt-0.5 text-xs text-zinc-400">
+              멤버들과 공유할 미식·라운지 스폿을 저장해 두세요.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="닫기"
+            className="rounded-full p-2 text-zinc-400 transition-all hover:bg-zinc-100 hover:text-zinc-900"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
 
         <form
           id="wishlist-form"
           onSubmit={(event) => void handleSubmit(event)}
-          className="flex flex-col gap-5 px-5 py-5"
+          className="flex min-h-0 flex-1 flex-col"
         >
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="wishlist-kind">카테고리</FieldLabel>
-              <div id="wishlist-kind" className="flex flex-wrap gap-2">
+          <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+            {/* Category */}
+            <div>
+              <label className="mb-2 block text-xs font-semibold tracking-wider text-zinc-400 uppercase">
+                카테고리
+              </label>
+              <div className="flex flex-wrap items-center gap-2">
                 {wishlistCategories.map((item) => {
                   const active = kind === item.kind
                   return (
@@ -262,10 +266,10 @@ export function AddSavedPlaceModal({
                         setDropdownOpen(true)
                       }}
                       className={cn(
-                        "rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors",
+                        "rounded-full px-4 py-2 text-xs font-medium transition-all",
                         active
-                          ? "bg-amber-400 text-foreground shadow-sm"
-                          : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                          ? "bg-zinc-900 text-white shadow-sm"
+                          : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
                       )}
                     >
                       {item.label}
@@ -273,17 +277,21 @@ export function AddSavedPlaceModal({
                   )
                 })}
               </div>
-            </Field>
+            </div>
 
-            <Field>
-              <FieldLabel htmlFor="wishlist-search">장소 검색</FieldLabel>
+            {/* Search */}
+            <div>
+              <label
+                htmlFor="wishlist-search"
+                className="mb-2 block text-xs font-semibold tracking-wider text-zinc-400 uppercase"
+              >
+                장소 검색
+              </label>
               <div className="relative">
-                <Search
-                  aria-hidden="true"
-                  className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-                />
-                <Input
+                <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-zinc-400" />
+                <input
                   id="wishlist-search"
+                  type="text"
                   value={searchQuery}
                   onChange={(event) => {
                     setSearchQuery(event.target.value)
@@ -292,206 +300,245 @@ export function AddSavedPlaceModal({
                   }}
                   onFocus={() => setDropdownOpen(true)}
                   placeholder="레스토랑, 바 또는 숙소 이름 (예: 파크 하얏트)"
-                  className="rounded-xl pl-9 pr-10"
+                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 py-3 pr-10 pl-10 text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-900 focus:bg-white focus:outline-none"
                   required
                   autoComplete="off"
                 />
                 {searchingGoogle ? (
-                  <Loader2 className="absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-amber-500" />
+                  <Loader2 className="absolute top-1/2 right-3.5 size-4 -translate-y-1/2 animate-spin text-zinc-400" />
                 ) : null}
               </div>
 
               {searchWarning ? (
-                <p className="mt-1.5 text-xs text-amber-700">{searchWarning}</p>
+                <p className="mt-1.5 text-xs text-zinc-500">{searchWarning}</p>
               ) : null}
 
               {dropdownOpen && searchingGoogle && suggestions.length === 0 ? (
-                <div className="mt-1.5 flex items-center justify-center gap-2 rounded-xl border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin text-amber-500" />
+                <div className="mt-2 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-zinc-200 px-3 py-4 text-sm text-zinc-400">
+                  <Loader2 className="size-4 animate-spin" />
                   Google에서 장소를 찾는 중…
                 </div>
               ) : null}
 
               {dropdownOpen && suggestions.length > 0 ? (
-                <div className="mt-1.5 flex max-h-56 flex-col gap-1.5 overflow-y-auto rounded-xl border border-border/70 bg-card p-1.5 shadow-sm">
+                <div className="mt-2 max-h-56 space-y-2 overflow-y-auto">
                   {suggestions.map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => handleSelectPlace(item)}
-                      className="flex items-center gap-3 rounded-xl bg-secondary/50 p-2 text-left transition-colors hover:bg-secondary"
+                      className="group flex w-full items-center justify-between rounded-2xl border border-zinc-100 bg-zinc-50/50 p-3 text-left transition-all hover:border-zinc-200 hover:bg-zinc-100/80"
                     >
-                      <span className="relative size-11 shrink-0 overflow-hidden rounded-lg">
-                        <Image
-                          src={item.imageUrl || item.image || FALLBACK_IMAGE[item.kind ?? kind]}
-                          alt={item.imageAlt || item.placeName}
-                          fill
-                          sizes="44px"
-                          className="object-cover"
-                        />
-                      </span>
-                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="flex items-center gap-1.5">
-                          <span className="truncate text-sm font-semibold">{item.placeName}</span>
-                          {typeof item.rating === "number" ? (
-                            <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold tabular-nums">
-                              <Star className="size-3 fill-amber-400 text-amber-400" />
-                              {item.rating}
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="relative size-12 shrink-0 overflow-hidden rounded-xl transition-transform group-hover:scale-[1.03]">
+                          <Image
+                            src={item.imageUrl || item.image || FALLBACK_IMAGE[item.kind ?? kind]}
+                            alt={item.imageAlt || item.placeName}
+                            fill
+                            sizes="48px"
+                            className="object-cover"
+                          />
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate text-sm font-semibold text-zinc-900">
+                              {item.placeName}
                             </span>
-                          ) : null}
-                        </span>
-                        <span className="truncate text-xs text-muted-foreground">
-                          {item.address || item.subCategory || "검색 결과"}
-                        </span>
-                      </span>
-                      <Badge variant="outline" className="shrink-0 bg-card text-[10px]">
+                            {typeof item.rating === "number" ? (
+                              <span className="inline-flex shrink-0 items-center text-xs font-medium text-amber-500">
+                                <Star className="mr-0.5 size-3 fill-amber-400 stroke-none" />
+                                {item.rating}
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-0.5 truncate text-xs text-zinc-400">
+                            {item.address || item.subCategory || "검색 결과"}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="ml-2 shrink-0 rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-medium whitespace-nowrap text-zinc-500">
                         {item.guideBadge || (item.source === "google" ? "Google" : "추천")}
-                      </Badge>
+                      </span>
                     </button>
                   ))}
                 </div>
               ) : searchQuery.trim() && !searchingGoogle ? (
-                <FieldDescription>
+                <p className="mt-1.5 text-xs text-zinc-400">
                   검색 결과가 없어요. 다른 키워드를 입력하거나 아래 항목을 직접 작성해 주세요.
-                </FieldDescription>
+                </p>
               ) : !searchQuery.trim() ? (
-                <FieldDescription>
+                <p className="mt-1.5 text-xs text-zinc-400">
                   Google Places에서 실시간 검색해요. 예: 정식당, La Cime, Park Hyatt
-                </FieldDescription>
+                </p>
               ) : null}
-            </Field>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="wishlist-local-name">현지 표기</FieldLabel>
-                <Input
-                  id="wishlist-local-name"
-                  value={localName}
-                  onChange={(event) => setLocalName(event.target.value)}
-                  placeholder="예: ハジメ"
-                  className="rounded-xl"
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="wishlist-sub-category">세부 카테고리</FieldLabel>
-                <Input
-                  id="wishlist-sub-category"
-                  value={subCategory}
-                  onChange={(event) => setSubCategory(event.target.value)}
-                  placeholder="이노베이티브 프렌치 · 코스"
-                  className="rounded-xl"
-                />
-              </Field>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="wishlist-guide-badge">가이드 뱃지</FieldLabel>
-                <Input
-                  id="wishlist-guide-badge"
-                  value={guideBadge}
-                  onChange={(event) => setGuideBadge(event.target.value)}
-                  placeholder="Michelin 3 Stars"
-                  className="rounded-xl"
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="wishlist-price">가격대</FieldLabel>
-                <div id="wishlist-price" className="flex gap-1.5">
-                  {PRICE_OPTIONS.map((option) => {
-                    const active = priceRange === option
-                    return (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => setPriceRange(option)}
-                        className={cn(
-                          "flex-1 rounded-full px-2 py-1.5 text-sm font-semibold transition-colors",
-                          active
-                            ? "bg-amber-400 text-foreground shadow-sm"
-                            : "border border-border bg-card text-foreground hover:bg-secondary"
-                        )}
-                      >
-                        {option}
-                      </button>
-                    )
-                  })}
+            <hr className="border-zinc-100" />
+
+            {/* Detail form */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label
+                    htmlFor="wishlist-local-name"
+                    className="mb-1.5 block text-xs font-medium text-zinc-700"
+                  >
+                    현지 표기
+                  </label>
+                  <input
+                    id="wishlist-local-name"
+                    type="text"
+                    value={localName}
+                    onChange={(event) => setLocalName(event.target.value)}
+                    placeholder="예: ハジメ"
+                    className={inputClassName}
+                  />
                 </div>
-              </Field>
+                <div>
+                  <label
+                    htmlFor="wishlist-sub-category"
+                    className="mb-1.5 block text-xs font-medium text-zinc-700"
+                  >
+                    세부 카테고리
+                  </label>
+                  <input
+                    id="wishlist-sub-category"
+                    type="text"
+                    value={subCategory}
+                    onChange={(event) => setSubCategory(event.target.value)}
+                    placeholder="이노베이티브 프렌치·코스"
+                    className={inputClassName}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 items-end gap-3">
+                <div>
+                  <label
+                    htmlFor="wishlist-guide-badge"
+                    className="mb-1.5 block text-xs font-medium text-zinc-700"
+                  >
+                    가이드 뱃지
+                  </label>
+                  <input
+                    id="wishlist-guide-badge"
+                    type="text"
+                    value={guideBadge}
+                    onChange={(event) => setGuideBadge(event.target.value)}
+                    placeholder="Michelin 3 Stars"
+                    className={inputClassName}
+                  />
+                </div>
+                <div>
+                  <span className="mb-1.5 block text-xs font-medium text-zinc-700">가격대</span>
+                  <div className="flex items-center gap-1.5">
+                    {PRICE_OPTIONS.map((option) => {
+                      const active = priceRange === option
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => setPriceRange(option)}
+                          className={cn(
+                            "flex-1 rounded-xl border py-2 text-xs font-medium transition-all",
+                            active
+                              ? "border-zinc-900 bg-zinc-900 text-white"
+                              : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300"
+                          )}
+                        >
+                          {option}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label
+                    htmlFor="wishlist-address"
+                    className="mb-1.5 block text-xs font-medium text-zinc-700"
+                  >
+                    주소
+                  </label>
+                  <input
+                    id="wishlist-address"
+                    type="text"
+                    value={address}
+                    onChange={(event) => setAddress(event.target.value)}
+                    placeholder="선택 입력"
+                    className={inputClassName}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="wishlist-phone"
+                    className="mb-1.5 block text-xs font-medium text-zinc-700"
+                  >
+                    전화번호
+                  </label>
+                  <input
+                    id="wishlist-phone"
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(event) => setPhoneNumber(event.target.value)}
+                    placeholder="선택 입력"
+                    className={inputClassName}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="wishlist-memo"
+                  className="mb-1.5 block text-xs font-medium text-zinc-700"
+                >
+                  메모
+                </label>
+                <textarea
+                  id="wishlist-memo"
+                  rows={2}
+                  value={memo}
+                  onChange={(event) => setMemo(event.target.value)}
+                  placeholder="예) 예약 필수 · 런치 코스 추천"
+                  className={cn(inputClassName, "resize-none")}
+                />
+              </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="wishlist-address">주소</FieldLabel>
-                <Input
-                  id="wishlist-address"
-                  value={address}
-                  onChange={(event) => setAddress(event.target.value)}
-                  placeholder="선택 입력"
-                  className="rounded-xl"
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="wishlist-phone">전화번호</FieldLabel>
-                <Input
-                  id="wishlist-phone"
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(event) => setPhoneNumber(event.target.value)}
-                  placeholder="선택 입력"
-                  className="rounded-xl"
-                />
-              </Field>
-            </div>
+            {error ? (
+              <div
+                role="alert"
+                className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-600"
+              >
+                {error}
+              </div>
+            ) : null}
+          </div>
 
-            <Field>
-              <FieldLabel htmlFor="wishlist-memo">메모</FieldLabel>
-              <Textarea
-                id="wishlist-memo"
-                value={memo}
-                onChange={(event) => setMemo(event.target.value)}
-                placeholder="예) 예약 필수 · 런치 코스 추천"
-                rows={2}
-                className="resize-none rounded-xl"
-              />
-            </Field>
-          </FieldGroup>
-
-          {error ? (
-            <div
-              role="alert"
-              className="rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
+          {/* Sticky CTA */}
+          <div className="border-t border-zinc-100 bg-white p-4">
+            <button
+              type="submit"
+              disabled={saving || !(placeName || searchQuery).trim()}
+              className="w-full rounded-2xl bg-zinc-900 py-3.5 text-sm font-semibold text-white shadow-lg shadow-zinc-900/10 transition-all hover:bg-zinc-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {error}
-            </div>
-          ) : null}
+              {saving ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="size-4 animate-spin" />
+                  저장 중…
+                </span>
+              ) : (
+                "장소 저장하기"
+              )}
+            </button>
+          </div>
         </form>
-
-        <DialogFooter className="mx-0 mb-0 rounded-b-2xl border-t bg-secondary/60 p-4 sm:justify-end">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setOpen(false)}
-            disabled={saving}
-            className="rounded-full font-semibold text-foreground"
-          >
-            취소
-          </Button>
-          <Button
-            type="submit"
-            form="wishlist-form"
-            disabled={saving || !(placeName || searchQuery).trim()}
-            className="rounded-full bg-amber-400 font-semibold text-foreground hover:bg-amber-400/90"
-          >
-            {saving ? (
-              <Loader2 data-icon="inline-start" className="animate-spin" />
-            ) : (
-              <Plus data-icon="inline-start" />
-            )}
-            등록하기
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
 }
+
+/** Alias matching the design brief naming. */
+export { AddSavedPlaceModal as AddPlaceModal }
