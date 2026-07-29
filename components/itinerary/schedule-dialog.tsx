@@ -19,8 +19,11 @@ import type { ScheduleItem } from "@/lib/trip-data"
 import { scheduleCategories } from "@/lib/trip-itinerary"
 import { cn } from "@/lib/utils"
 
+const labelClassName = "mb-0 text-sm font-medium text-zinc-700"
 const inputClassName =
-  "rounded-xl border border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus-visible:border-amber-400 focus-visible:ring-1 focus-visible:ring-amber-400"
+  "h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus-visible:border-amber-400 focus-visible:ring-1 focus-visible:ring-amber-400"
+const textareaClassName =
+  "min-h-28 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus-visible:border-amber-400 focus-visible:ring-1 focus-visible:ring-amber-400"
 
 export function ScheduleDialog({
   tripId,
@@ -73,9 +76,9 @@ export function ScheduleDialog({
         </DialogHeader>
 
         <form id="schedule-form" onSubmit={handleSubmit} className="flex flex-col gap-5 bg-white px-5 py-5">
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="schedule-category" className="text-zinc-700">
+          <FieldGroup className="gap-5">
+            <Field className="gap-1.5">
+              <FieldLabel htmlFor="schedule-category" className={labelClassName}>
                 카테고리
               </FieldLabel>
               <div id="schedule-category" className="flex flex-wrap gap-2">
@@ -100,8 +103,8 @@ export function ScheduleDialog({
               </div>
             </Field>
 
-            <Field>
-              <FieldLabel htmlFor="schedule-time" className="text-zinc-700">
+            <Field className="gap-1.5">
+              <FieldLabel htmlFor="schedule-time" className={labelClassName}>
                 시간
               </FieldLabel>
               <Input
@@ -109,7 +112,7 @@ export function ScheduleDialog({
                 type="time"
                 value={time}
                 onChange={(event) => setTime(event.target.value)}
-                className={cn(inputClassName, "w-32 tabular-nums")}
+                className={cn(inputClassName, "w-full max-w-[10rem] tabular-nums")}
                 required
               />
               <FieldDescription className="text-zinc-400">
@@ -117,8 +120,8 @@ export function ScheduleDialog({
               </FieldDescription>
             </Field>
 
-            <Field>
-              <FieldLabel htmlFor="schedule-place" className="text-zinc-700">
+            <Field className="gap-1.5">
+              <FieldLabel htmlFor="schedule-place" className={labelClassName}>
                 장소
               </FieldLabel>
               <Input
@@ -131,8 +134,8 @@ export function ScheduleDialog({
               />
             </Field>
 
-            <Field>
-              <FieldLabel htmlFor="schedule-activity" className="text-zinc-700">
+            <Field className="gap-1.5">
+              <FieldLabel htmlFor="schedule-activity" className={labelClassName}>
                 메모
               </FieldLabel>
               <Textarea
@@ -140,8 +143,8 @@ export function ScheduleDialog({
                 value={activity}
                 onChange={(event) => setActivity(event.target.value)}
                 placeholder="예) 입국 심사 후 하루카 특급 탑승"
-                rows={3}
-                className={cn(inputClassName, "resize-none")}
+                rows={4}
+                className={cn(textareaClassName, "resize-none")}
               />
             </Field>
           </FieldGroup>

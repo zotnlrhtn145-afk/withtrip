@@ -210,8 +210,11 @@ function ScheduleRegisterModal({
 
   const visitDateLabel = dayMeta.visitDate || dayMeta.dateLabel || "—"
 
+  const labelClassName = "mb-0 text-sm font-medium text-zinc-700"
   const inputClassName =
-    "rounded-xl border border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus-visible:border-amber-400 focus-visible:ring-1 focus-visible:ring-amber-400"
+    "h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus-visible:border-amber-400 focus-visible:ring-1 focus-visible:ring-amber-400"
+  const textareaClassName =
+    "min-h-28 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus-visible:border-amber-400 focus-visible:ring-1 focus-visible:ring-amber-400"
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -231,9 +234,9 @@ function ScheduleRegisterModal({
           onSubmit={(event) => void handleSubmit(event)}
           className="flex flex-col gap-5 bg-white px-5 py-5"
         >
-          <FieldGroup>
-            <Field>
-              <FieldLabel className="text-zinc-700">카테고리</FieldLabel>
+          <FieldGroup className="gap-5">
+            <Field className="gap-1.5">
+              <FieldLabel className={labelClassName}>카테고리</FieldLabel>
               <div className="flex flex-wrap gap-2">
                 {SCHEDULE_CATEGORIES.map((item) => {
                   const active = category === item
@@ -256,8 +259,8 @@ function ScheduleRegisterModal({
               </div>
             </Field>
 
-            <Field>
-              <FieldLabel htmlFor="schedule-time" className="text-zinc-700">
+            <Field className="gap-1.5">
+              <FieldLabel htmlFor="schedule-time" className={labelClassName}>
                 시간
               </FieldLabel>
               <div className="relative">
@@ -278,9 +281,9 @@ function ScheduleRegisterModal({
               </FieldDescription>
             </Field>
 
-            <Field>
+            <Field className="gap-1.5">
               <div className="flex items-center justify-between gap-2">
-                <FieldLabel htmlFor="schedule-place" className="text-zinc-700">
+                <FieldLabel htmlFor="schedule-place" className={labelClassName}>
                   장소
                 </FieldLabel>
                 <button
@@ -301,7 +304,7 @@ function ScheduleRegisterModal({
               </div>
 
               {wishlistOpen ? (
-                <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
+                <div className="max-h-56 overflow-y-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
                   {wishlistLoading ? (
                     <div className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-zinc-400">
                       <Loader2 className="size-4 animate-spin" />
@@ -366,13 +369,13 @@ function ScheduleRegisterModal({
                 value={placeName}
                 onChange={(event) => setPlaceName(event.target.value)}
                 placeholder="예) 간사이 국제공항"
-                className={cn(inputClassName, "mt-2")}
+                className={inputClassName}
                 required
               />
             </Field>
 
-            <Field>
-              <FieldLabel htmlFor="schedule-address" className="text-zinc-700">
+            <Field className="gap-1.5">
+              <FieldLabel htmlFor="schedule-address" className={labelClassName}>
                 주소
               </FieldLabel>
               <Input
@@ -384,8 +387,8 @@ function ScheduleRegisterModal({
               />
             </Field>
 
-            <Field>
-              <FieldLabel htmlFor="schedule-phone" className="text-zinc-700">
+            <Field className="gap-1.5">
+              <FieldLabel htmlFor="schedule-phone" className={labelClassName}>
                 전화번호
               </FieldLabel>
               <Input
@@ -398,8 +401,8 @@ function ScheduleRegisterModal({
               />
             </Field>
 
-            <Field>
-              <FieldLabel htmlFor="schedule-memo" className="text-zinc-700">
+            <Field className="gap-1.5">
+              <FieldLabel htmlFor="schedule-memo" className={labelClassName}>
                 메모
               </FieldLabel>
               <Textarea
@@ -407,8 +410,8 @@ function ScheduleRegisterModal({
                 value={memo}
                 onChange={(event) => setMemo(event.target.value)}
                 placeholder="예) 입국 심사 후 하루카 특급 탑승"
-                rows={3}
-                className={cn(inputClassName, "resize-none")}
+                rows={4}
+                className={cn(textareaClassName, "resize-none")}
               />
             </Field>
           </FieldGroup>
