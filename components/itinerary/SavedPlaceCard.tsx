@@ -3,30 +3,27 @@
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import { Loader2, MapPin, Navigation, Phone, Star, Trash2 } from "lucide-react"
+import type { User } from "@supabase/supabase-js"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { resolveCoverImageUrl } from "@/lib/place-cover-image"
-import type { SavedPlace } from "@/lib/saved-places-api"
+import { isSavedPlaceAuthor, type SavedPlace } from "@/lib/saved-places-api"
 import { toWishlistKind, WISHLIST_CATEGORY_VALUE } from "@/lib/trip-itinerary"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/utils/supabase/client"
 
 export function SavedPlaceCard({
   place,
-  currentUserId,
   deleting,
   onDelete,
 }: {
   place: SavedPlace
-  currentUserId: string | null
   deleting: boolean
   onDelete: (id: string) => void
 }) {
   const kind = toWishlistKind(place.category)
   const categoryLabel = WISHLIST_CATEGORY_VALUE[kind]
-  const authorId = String(place.userId ?? "").trim()
-  const isAuthor =
-    Boolean(currentUserId) && Boolean(authorId) && currentUserId === authorId
   const coverSrc = resolveCoverImageUrl({
     imageUrl: place.imageUrl,
     category: place.category,
@@ -34,10 +31,52 @@ export function SavedPlaceCard({
     kind,
   })
   const [imgSrc, setImgSrc] = useState(coverSrc)
+  const [user, setUser] = useState<User | null>(null)
+  const [authReady, setAuthReady] = useState(false)
 
   useEffect(() => {
     setImgSrc(coverSrc)
   }, [coverSrc])
+
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createClient()
+
+    void (async () => {
+      try {
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser()
+        if (!cancelled) {
+          setUser(authUser ?? null)
+          setAuthReady(true)
+        }
+      } catch {
+        if (!cancelled) {
+          setUser(null)
+          setAuthReady(true)
+        }
+      }
+    })()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return
+      setUser(session?.user ?? null)
+      setAuthReady(true)
+    })
+
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  // Never show delete while auth is loading / missing, or for non-authors.
+  const isAuthor =
+    authReady && Boolean(user?.id && isSavedPlaceAuthor(place, user.id))
+
   const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
     place.address || place.placeName
   )}`

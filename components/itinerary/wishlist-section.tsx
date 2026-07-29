@@ -11,6 +11,7 @@ import { getCurrentUserId } from "@/lib/auth-session"
 import {
   deleteSavedPlace,
   fetchSavedPlacesByTripId,
+  isSavedPlaceAuthor,
   type SavedPlace,
 } from "@/lib/saved-places-api"
 import type { Trip } from "@/lib/trip-data"
@@ -73,7 +74,6 @@ export function WishlistSection({ trip }: { trip: Trip }) {
   const [loading, setLoading] = useState(true)
   const [selectedKind, setSelectedKind] = useState<WishlistKind>("restaurant")
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -92,21 +92,6 @@ export function WishlistSection({ trip }: { trip: Trip }) {
     void load()
   }, [load])
 
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      try {
-        const userId = await getCurrentUserId()
-        if (!cancelled) setCurrentUserId(userId)
-      } catch {
-        if (!cancelled) setCurrentUserId(null)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
   const counts = useMemo(() => {
     const restaurant = places.filter((place) => toWishlistKind(place.category) === "restaurant").length
     const bar = places.filter((place) => toWishlistKind(place.category) === "bar").length
@@ -120,6 +105,15 @@ export function WishlistSection({ trip }: { trip: Trip }) {
   )
 
   const handleDelete = async (id: string) => {
+    const target = places.find((place) => place.id === id)
+    if (!target) return
+
+    const authUserId = await getCurrentUserId()
+    if (!isSavedPlaceAuthor(target, authUserId)) {
+      console.warn("[WishlistSection] delete blocked: not place author")
+      return
+    }
+
     if (!window.confirm("이 장소를 삭제할까요?")) return
     setDeletingId(id)
     try {
@@ -193,7 +187,6 @@ export function WishlistSection({ trip }: { trip: Trip }) {
               <SavedPlaceCard
                 key={place.id}
                 place={place}
-                currentUserId={currentUserId}
                 deleting={deletingId === place.id}
                 onDelete={(id) => void handleDelete(id)}
               />

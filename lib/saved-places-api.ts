@@ -12,6 +12,8 @@ export type SavedPlace = {
   id: string
   tripId: string
   userId: string
+  createdBy: string
+  authorId: string
   placeName: string
   category: string
   localName: string
@@ -32,6 +34,8 @@ export type SavedPlaceRow = {
   id: string
   trip_id: string
   user_id?: string | null
+  created_by?: string | null
+  author_id?: string | null
   place_name?: string | null
   name?: string | null
   category?: string | null
@@ -109,6 +113,8 @@ export function mapSavedPlaceRow(row: SavedPlaceRow): SavedPlace {
     id: row.id,
     tripId: row.trip_id,
     userId: String(row.user_id ?? "").trim(),
+    createdBy: String(row.created_by ?? "").trim(),
+    authorId: String(row.author_id ?? "").trim(),
     placeName: String(row.place_name ?? row.name ?? "").trim(),
     category,
     localName: String(row.local_name ?? row.name_local ?? "").trim(),
@@ -124,6 +130,20 @@ export function mapSavedPlaceRow(row: SavedPlaceRow): SavedPlace {
     distanceKm: typeof row.distance_km === "number" ? row.distance_km : null,
     createdAt: String(row.created_at ?? ""),
   }
+}
+
+/** True only when auth user id exactly matches a non-empty place author field. */
+export function isSavedPlaceAuthor(
+  place: Pick<SavedPlace, "userId" | "createdBy" | "authorId">,
+  authUserId: string | null | undefined
+): boolean {
+  const uid = String(authUserId ?? "").trim()
+  if (!uid) return false
+  return (
+    (Boolean(place.userId) && place.userId === uid) ||
+    (Boolean(place.createdBy) && place.createdBy === uid) ||
+    (Boolean(place.authorId) && place.authorId === uid)
+  )
 }
 
 function isBlankUserId(value: unknown): boolean {
