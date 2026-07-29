@@ -51,6 +51,7 @@ type ProfileJoin = {
   id?: string
   email?: string | null
   nickname?: string | null
+  full_name?: string | null
   avatar_url?: string | null
 }
 
@@ -117,16 +118,35 @@ function unwrapProfile(
   return Array.isArray(profiles) ? profiles[0] ?? null : profiles
 }
 
+/** Prefer nickname / full_name; never expose raw email as the label. */
+export function resolveProfileDisplayName(profile: {
+  nickname?: string | null
+  full_name?: string | null
+  name?: string | null
+  email?: string | null
+} | null | undefined): string {
+  const nickname = String(profile?.nickname ?? "").trim()
+  if (nickname && !nickname.includes("@")) return nickname
+
+  const fullName = String(profile?.full_name ?? profile?.name ?? "").trim()
+  if (fullName && !fullName.includes("@")) return fullName
+
+  // Nickname may incorrectly store an email — strip domain.
+  if (nickname.includes("@")) return nickname.split("@")[0] || "멤버"
+
+  const email = String(profile?.email ?? "").trim()
+  if (email.includes("@")) return email.split("@")[0] || "멤버"
+  if (email) return email
+  return "멤버"
+}
+
 function mapJoinedRow(row: TripMemberJoinedRow): TripMember | null {
   const userId = String(row.user_id ?? "").trim()
   if (!userId) return null
 
   const profile = unwrapProfile(row.profiles)
   const email = String(profile?.email ?? "").trim()
-  const name =
-    String(profile?.nickname ?? "").trim() ||
-    (email ? email.split("@")[0] : "") ||
-    "멤버"
+  const name = resolveProfileDisplayName(profile)
   const avatarUrl = String(profile?.avatar_url ?? "").trim() || undefined
   const role = String(row.role ?? "").trim() || undefined
 
@@ -314,10 +334,7 @@ export async function fetchTripRoster(tripId: string): Promise<TripMember[]> {
     }
 
     const row = profile as ProfileJoin | null
-    const name =
-      String(row?.nickname ?? "").trim() ||
-      String(row?.email ?? "").trim() ||
-      "여행 호스트"
+    const name = resolveProfileDisplayName(row) || "여행 호스트"
 
     byId.set(ownerId, {
       id: `owner:${ownerId}`,
@@ -334,6 +351,65 @@ export async function fetchTripRoster(tripId: string): Promise<TripMember[]> {
   }
 
   return Array.from(byId.values())
+}
+
+/**
+ * Batch-load profiles for flight author / passenger chips.
+ * Falls back gracefully when `full_name` column is missing.
+ */
+export async function fetchProfilesByIds(userIds: string[]): Promise<TripMember[]> {
+  const ids = [
+    ...new Set(userIds.map((id) => String(id ?? "").trim()).filter(Boolean)),
+  ]
+  if (ids.length === 0) return []
+
+  const client = createClient()
+  const mapRow = (row: ProfileJoin): TripMember | null => {
+    const userId = String(row.id ?? "").trim()
+    if (!userId) return null
+    return {
+      id: userId,
+      userId,
+      email: String(row.email ?? "").trim(),
+      name: resolveProfileDisplayName(row),
+      avatarUrl: String(row.avatar_url ?? "").trim() || undefined,
+      status: "accepted",
+    }
+  }
+
+  try {
+    const withFullName = await client
+      .from("profiles")
+      .select("id, nickname, full_name, email, avatar_url")
+      .in("id", ids)
+
+    if (!withFullName.error) {
+      return ((withFullName.data as ProfileJoin[] | null) ?? [])
+        .map(mapRow)
+        .filter((row): row is TripMember => Boolean(row))
+    }
+
+    if (!/full_name|column .* does not exist/i.test(withFullName.error.message ?? "")) {
+      console.error("[fetchProfilesByIds]", withFullName.error.message)
+    }
+
+    const basic = await client
+      .from("profiles")
+      .select("id, nickname, email, avatar_url")
+      .in("id", ids)
+
+    if (basic.error) {
+      console.error("[fetchProfilesByIds] basic:", basic.error.message)
+      return []
+    }
+
+    return ((basic.data as ProfileJoin[] | null) ?? [])
+      .map(mapRow)
+      .filter((row): row is TripMember => Boolean(row))
+  } catch (err) {
+    console.error("[fetchProfilesByIds] unexpected:", err)
+    return []
+  }
 }
 
 /** All non-rejected membership states for invite UI (accepted + pending). */

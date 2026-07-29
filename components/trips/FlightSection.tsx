@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { User } from "@supabase/supabase-js"
-import { Loader2, Pencil, Plane, PlaneTakeoff, Plus, Trash2 } from "lucide-react"
+import { Loader2, Pencil, Plane, PlaneTakeoff, Plus, Trash2, UserRound } from "lucide-react"
 
 import { FlightRegisterModal } from "@/components/trips/FlightRegisterModal"
 import { Button } from "@/components/ui/button"
@@ -21,7 +21,12 @@ import {
   type FlightType,
   type TripFlight,
 } from "@/lib/flights-api"
-import { fetchTripRoster, type TripMember } from "@/lib/trip-members-api"
+import {
+  fetchProfilesByIds,
+  fetchTripRoster,
+  type TripMember,
+} from "@/lib/trip-members-api"
+import { cn } from "@/lib/utils"
 import { createClient } from "@/utils/supabase/client"
 
 function airlineAccent(name: string) {
@@ -43,6 +48,105 @@ function memberLabel(memberById: Map<string, TripMember>, userId: string) {
   const member = memberById.get(userId)
   if (member?.name) return member.name
   return "멤버"
+}
+
+function profileInitials(name: string) {
+  const compact = name.replace(/\s+/g, "").trim()
+  if (!compact) return "?"
+  return compact.slice(0, 1).toUpperCase()
+}
+
+function PersonChip({
+  label,
+  name,
+  avatarUrl,
+  tone = "neutral",
+}: {
+  label: string
+  name: string
+  avatarUrl?: string
+  tone?: "neutral" | "amber"
+}) {
+  const [imgFailed, setImgFailed] = useState(false)
+  const showImage = Boolean(avatarUrl) && !imgFailed
+
+  return (
+    <span
+      className={cn(
+        "inline-flex max-w-full items-center gap-1.5 rounded-full py-1 pr-2.5 pl-1 text-[11px] font-medium",
+        tone === "amber"
+          ? "bg-amber-50 text-amber-900/80"
+          : "bg-zinc-100 text-zinc-700"
+      )}
+    >
+      <span className="relative flex size-5 shrink-0 overflow-hidden rounded-full bg-white ring-1 ring-black/5">
+        {showImage ? (
+          // Kakao CDN / external avatar — plain img (not next/image)
+          <img
+            src={avatarUrl}
+            alt=""
+            className="size-full object-cover"
+            referrerPolicy="no-referrer"
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <span className="flex size-full items-center justify-center bg-zinc-200 text-[9px] font-bold text-zinc-600">
+            {name && name !== "멤버" ? (
+              profileInitials(name)
+            ) : (
+              <UserRound className="size-3 text-zinc-500" aria-hidden="true" />
+            )}
+          </span>
+        )}
+      </span>
+      <span className="truncate">
+        {label} · {name}
+      </span>
+    </span>
+  )
+}
+
+function FlightPeople({
+  flight,
+  memberById,
+}: {
+  flight: TripFlight
+  memberById: Map<string, TripMember>
+}) {
+  const authorId = flight.createdBy || flight.userId
+  const author = authorId ? memberById.get(authorId) : undefined
+  const authorName = authorId ? memberLabel(memberById, authorId) : ""
+  const passengers = flight.passengerIds
+    .filter((id) => id && id !== authorId)
+    .map((id) => ({
+      id,
+      name: memberLabel(memberById, id),
+      avatarUrl: memberById.get(id)?.avatarUrl,
+    }))
+
+  if (!authorName && passengers.length === 0) return null
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+      {authorName ? (
+        <PersonChip
+          label="작성"
+          name={authorName}
+          avatarUrl={author?.avatarUrl}
+          tone="neutral"
+        />
+      ) : null}
+      {passengers.map((passenger) => (
+        <PersonChip
+          key={`${flight.id}-${passenger.id}`}
+          label="동승"
+          name={passenger.name}
+          avatarUrl={passenger.avatarUrl}
+          tone="amber"
+        />
+      ))}
+    </div>
+  )
 }
 
 function TypeBadge({ flightType, segmentOrder }: { flightType: FlightType; segmentOrder: number }) {
@@ -106,40 +210,6 @@ function TicketRoute({ flight }: { flight: TripFlight }) {
           <span className="text-xs text-muted-foreground tabular-nums">{flight.arriveDate}</span>
         ) : null}
       </div>
-    </div>
-  )
-}
-
-function FlightPeople({
-  flight,
-  memberById,
-}: {
-  flight: TripFlight
-  memberById: Map<string, TripMember>
-}) {
-  const authorId = flight.userId || flight.createdBy
-  const authorName = authorId ? memberLabel(memberById, authorId) : ""
-  const passengerNames = flight.passengerIds
-    .filter((id) => id && id !== authorId)
-    .map((id) => ({ id, name: memberLabel(memberById, id) }))
-
-  if (!authorName && passengerNames.length === 0) return null
-
-  return (
-    <div className="mt-3 flex flex-wrap items-center gap-1.5">
-      {authorName ? (
-        <span className="inline-flex max-w-full items-center rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600">
-          <span className="truncate">작성 · {authorName}</span>
-        </span>
-      ) : null}
-      {passengerNames.map((passenger) => (
-        <span
-          key={`${flight.id}-${passenger.id}`}
-          className="inline-flex max-w-full items-center rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800/80"
-        >
-          <span className="truncate">동승 · {passenger.name}</span>
-        </span>
-      ))}
     </div>
   )
 }
@@ -356,8 +426,77 @@ export function FlightSection({
         fetchFlightsByTripId(tripId),
         fetchTripRoster(tripId),
       ])
+
+      const profileIds = new Set<string>()
+      for (const flight of data) {
+        const authorId = String(flight.createdBy || flight.userId || "").trim()
+        if (authorId) profileIds.add(authorId)
+        for (const passengerId of flight.passengerIds) {
+          const id = String(passengerId ?? "").trim()
+          if (id) profileIds.add(id)
+        }
+      }
+      for (const member of members) {
+        if (member.userId) profileIds.add(member.userId)
+      }
+
+      const profiles = await fetchProfilesByIds([...profileIds])
+      const byId = new Map<string, TripMember>()
+      for (const member of members) byId.set(member.userId, member)
+      for (const profile of profiles) {
+        const prev = byId.get(profile.userId)
+        byId.set(profile.userId, {
+          ...prev,
+          ...profile,
+          // Prefer freshly loaded profile nickname/avatar over roster email fallbacks.
+          name: profile.name || prev?.name || "멤버",
+          avatarUrl: profile.avatarUrl || prev?.avatarUrl,
+          email: profile.email || prev?.email || "",
+          id: prev?.id || profile.id,
+          userId: profile.userId,
+          status: prev?.status ?? "accepted",
+          role: prev?.role,
+        })
+      }
+
+      // Enrich current session user (Kakao user_metadata) when profiles row is thin.
+      try {
+        const supabase = createClient()
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser()
+        if (authUser?.id && byId.has(authUser.id)) {
+          const meta = (authUser.user_metadata ?? {}) as Record<string, unknown>
+          const metaName = [
+            meta.full_name,
+            meta.name,
+            meta.nickname,
+            meta.preferred_username,
+          ]
+            .map((value) => String(value ?? "").trim())
+            .find((value) => Boolean(value) && !value.includes("@"))
+          const metaAvatar = [meta.avatar_url, meta.picture, meta.profile_image]
+            .map((value) => String(value ?? "").trim())
+            .find(Boolean)
+          const current = byId.get(authUser.id)!
+          const looksLikeEmailLocal =
+            Boolean(authUser.email) &&
+            current.name === String(authUser.email).split("@")[0]
+          byId.set(authUser.id, {
+            ...current,
+            name:
+              metaName ||
+              (!looksLikeEmailLocal && current.name !== "멤버" ? current.name : "") ||
+              current.name,
+            avatarUrl: metaAvatar || current.avatarUrl,
+          })
+        }
+      } catch {
+        // ignore auth metadata enrichment failures
+      }
+
       setFlights(data)
-      setRoster(members)
+      setRoster(Array.from(byId.values()))
     } catch (err) {
       console.error("[FlightSection] load failed:", err)
       setFlights([])
