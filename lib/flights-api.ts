@@ -68,6 +68,7 @@ export type CreateTripFlightInput = {
   flightType?: FlightType
   segmentOrder?: number
   userId?: string | null
+  createdBy?: string | null
   passengerIds?: string[] | null
 }
 
@@ -163,14 +164,15 @@ export function mapFlightRow(row: TripFlightRow): TripFlight {
   const arriveTime = normalizeTime(row.arrive_time ?? row.arrival_time ?? "")
   const storedDuration = String(row.duration ?? row.duration_label ?? "").trim()
   const segmentOrder = Number(row.segment_order)
-  const userId = String(row.user_id ?? "").trim()
   const createdBy = String(row.created_by ?? "").trim()
+  // Prefer created_by (current schema); fall back to legacy user_id if present.
+  const userId = createdBy || String(row.user_id ?? "").trim()
 
   return {
     id: row.id,
     tripId: row.trip_id,
     userId,
-    createdBy,
+    createdBy: createdBy || userId,
     passengerIds: normalizePassengerIds(row.passenger_ids ?? row.passengers),
     airlineName: String(row.airline_name ?? row.airline ?? "").trim(),
     flightNo: String(row.flight_no ?? row.flight_number ?? "").trim().toUpperCase(),
@@ -205,6 +207,7 @@ function buildInsertPayload(
     computeDurationLabel(departTimeValue, arriveTimeValue)
   const flightType = normalizeFlightType(input.flightType ?? "OUTBOUND")
 
+  // Schema: created_by (author) + passenger_ids (uuid[])
   return {
     trip_id: tripId,
     airline: airlineValue,
@@ -220,9 +223,36 @@ function buildInsertPayload(
     duration: durationValue || null,
     flight_type: flightType,
     segment_order: segmentOrder,
-    user_id: authorUserId,
+    created_by: authorUserId,
     passenger_ids: passengerIds,
   }
+}
+
+function formatFlightDbError(error: unknown): string {
+  const message = getErrorMessage(error)
+  const raw = [
+    message,
+    error && typeof error === "object"
+      ? String((error as { details?: unknown }).details ?? "")
+      : "",
+    error && typeof error === "object"
+      ? String((error as { hint?: unknown }).hint ?? "")
+      : "",
+    error && typeof error === "object"
+      ? String((error as { code?: unknown }).code ?? "")
+      : "",
+  ]
+    .join(" ")
+    .toLowerCase()
+
+  if (
+    /schema cache|could not find.*(created_by|passenger_ids|user_id)|pgrst204|column .* does not exist/.test(
+      raw
+    )
+  ) {
+    return "항공권 스키마가 아직 반영되지 않았어요. Supabase에서 created_by·passenger_ids 컬럼과 API 스키마 캐시를 확인해 주세요."
+  }
+  return message || "항공권 저장에 실패했어요."
 }
 
 async function resolveAuthorUserId(explicit?: string | null): Promise<string | null> {
@@ -272,10 +302,16 @@ export async function insertTripFlights(inputs: CreateTripFlightInput[]): Promis
   const tripId = String(inputs[0]?.tripId ?? "").trim()
   if (!tripId) throw new Error("tripId가 필요합니다.")
 
-  const authorUserId = await resolveAuthorUserId(inputs[0]?.userId)
+  const authorUserId = await resolveAuthorUserId(
+    inputs[0]?.createdBy ?? inputs[0]?.userId
+  )
   const passengerIds = normalizePassengerIds(
     inputs[0]?.passengerIds ?? (authorUserId ? [authorUserId] : [])
   )
+
+  if (!authorUserId) {
+    throw new Error("로그인이 필요해요. 로그인 후 항공권을 등록해 주세요.")
+  }
 
   const payloads = inputs.map((input, index) =>
     buildInsertPayload(
@@ -286,6 +322,9 @@ export async function insertTripFlights(inputs: CreateTripFlightInput[]): Promis
     )
   )
 
+  console.info("[insertTripFlights] created_by:", authorUserId)
+  console.info("[insertTripFlights] passenger_ids:", passengerIds)
+
   const { data, error } = await supabase.from("trip_flights").insert(payloads).select("*")
 
   if (error) {
@@ -295,7 +334,7 @@ export async function insertTripFlights(inputs: CreateTripFlightInput[]): Promis
     console.error("[insertTripFlights] error.hint:", (error as { hint?: unknown }).hint)
     console.error("[insertTripFlights] error.code:", (error as { code?: unknown }).code)
     console.error("[insertTripFlights] payloads:", payloads)
-    throw error
+    throw new Error(formatFlightDbError(error))
   }
 
   return sortTripFlights(((data as TripFlightRow[] | null) ?? []).map(mapFlightRow))
@@ -314,19 +353,20 @@ export async function updateTripFlight(
   const authUserId = await getCurrentUserId()
   const { data: existing, error: lookupError } = await supabase
     .from("trip_flights")
-    .select("id, user_id, created_by")
+    .select("id, created_by")
     .eq("id", id)
     .maybeSingle()
 
   if (lookupError) {
     console.error("[updateTripFlight] lookup:", lookupError.message)
-    throw lookupError
+    throw new Error(formatFlightDbError(lookupError))
   }
   if (!existing) throw new Error("항공권을 찾을 수 없어요.")
 
+  const authorId = String((existing as { created_by?: string | null }).created_by ?? "").trim()
   const authorFields = {
-    userId: String((existing as { user_id?: string | null }).user_id ?? "").trim(),
-    createdBy: String((existing as { created_by?: string | null }).created_by ?? "").trim(),
+    userId: authorId,
+    createdBy: authorId,
   }
   if (!isFlightAuthor(authorFields, authUserId)) {
     throw new Error("작성자만 항공권을 수정할 수 있어요.")
@@ -338,9 +378,12 @@ export async function updateTripFlight(
   const payload = buildInsertPayload(
     { ...input, tripId },
     segmentOrder,
-    authorFields.userId || authorFields.createdBy || authUserId,
+    authorId || authUserId,
     passengerIds
   )
+
+  console.info("[updateTripFlight] created_by:", payload.created_by)
+  console.info("[updateTripFlight] passenger_ids:", payload.passenger_ids)
 
   const { data, error } = await supabase
     .from("trip_flights")
@@ -356,7 +399,7 @@ export async function updateTripFlight(
     console.error("[updateTripFlight] error.hint:", (error as { hint?: unknown }).hint)
     console.error("[updateTripFlight] error.code:", (error as { code?: unknown }).code)
     console.error("[updateTripFlight] payload:", payload)
-    throw error
+    throw new Error(formatFlightDbError(error))
   }
 
   return mapFlightRow(data as TripFlightRow)
@@ -370,7 +413,7 @@ export async function deleteTripFlight(flightId: string): Promise<boolean> {
     const authUserId = await getCurrentUserId()
     const { data: existing, error: lookupError } = await supabase
       .from("trip_flights")
-      .select("id, user_id, created_by")
+      .select("id, created_by")
       .eq("id", id)
       .maybeSingle()
 
@@ -380,9 +423,10 @@ export async function deleteTripFlight(flightId: string): Promise<boolean> {
     }
     if (!existing) return false
 
+    const authorId = String((existing as { created_by?: string | null }).created_by ?? "").trim()
     const existingMapped = {
-      userId: String((existing as { user_id?: string | null }).user_id ?? "").trim(),
-      createdBy: String((existing as { created_by?: string | null }).created_by ?? "").trim(),
+      userId: authorId,
+      createdBy: authorId,
     }
     if (!isFlightAuthor(existingMapped, authUserId)) {
       console.warn("[deleteTripFlight] blocked: not flight author")
@@ -402,4 +446,4 @@ export async function deleteTripFlight(flightId: string): Promise<boolean> {
   }
 }
 
-export { getErrorMessage }
+export { getErrorMessage, formatFlightDbError as getFlightErrorMessage }

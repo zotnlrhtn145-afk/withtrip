@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input"
 import { AIRLINE_PRESETS, AIRPORT_OPTIONS } from "@/lib/flight-presets"
 import {
   computeDurationLabel,
-  getErrorMessage,
+  getFlightErrorMessage,
   insertTripFlights,
   updateTripFlight,
   type FlightType,
@@ -336,10 +336,11 @@ export function FlightRegisterModal({
         setRoster(members)
 
         if (editingFlight) {
+          const authorId = editingFlight.createdBy || editingFlight.userId
           const selected = editingFlight.passengerIds.length
             ? editingFlight.passengerIds
-            : editingFlight.userId
-              ? [editingFlight.userId]
+            : authorId
+              ? [authorId]
               : authUserId
                 ? [authUserId]
                 : []
@@ -504,7 +505,7 @@ export function FlightRegisterModal({
         console.error("[FlightRegisterModal] error.hint:", (err as { hint?: unknown }).hint)
         console.error("[FlightRegisterModal] error.code:", (err as { code?: unknown }).code)
       }
-      const message = getErrorMessage(err)
+      const message = getFlightErrorMessage(err)
       setError(message || "항공권 저장에 실패했어요. 잠시 후 다시 시도해 주세요.")
     } finally {
       setSaving(false)
