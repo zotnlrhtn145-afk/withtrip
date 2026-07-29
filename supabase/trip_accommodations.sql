@@ -41,6 +41,13 @@ create index if not exists trip_accommodations_trip_id_idx
 create index if not exists trip_accommodations_check_in_idx
   on public.trip_accommodations (trip_id, check_in_date);
 
+-- 작성자 및 투숙 멤버
+alter table public.trip_accommodations add column if not exists created_by uuid references auth.users (id) on delete set null;
+alter table public.trip_accommodations add column if not exists guest_ids uuid[] not null default '{}';
+
+create index if not exists trip_accommodations_created_by_idx
+  on public.trip_accommodations (created_by);
+
 alter table public.trip_accommodations enable row level security;
 
 drop policy if exists "trip_accommodations_select_public" on public.trip_accommodations;

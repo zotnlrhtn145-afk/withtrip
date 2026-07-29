@@ -13,6 +13,8 @@ export type Accommodation = {
   phoneNumber: string
   memo: string
   createdAt: string
+  createdBy: string
+  guestIds: string[]
 }
 
 export type AccommodationRow = {
@@ -29,6 +31,8 @@ export type AccommodationRow = {
   booking_code?: string | null
   memo?: string | null
   created_at?: string | null
+  created_by?: string | null
+  guest_ids?: string[] | null
 }
 
 export type CreateAccommodationInput = {
@@ -41,6 +45,8 @@ export type CreateAccommodationInput = {
   checkOutTime?: string
   phoneNumber?: string
   memo?: string
+  createdBy?: string | null
+  guestIds?: string[]
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -104,7 +110,18 @@ export function mapAccommodationRow(row: AccommodationRow): Accommodation {
     phoneNumber: String(row.phone_number ?? row.booking_code ?? "").trim(),
     memo: String(row.memo ?? "").trim(),
     createdAt: String(row.created_at ?? ""),
+    createdBy: String(row.created_by ?? "").trim(),
+    guestIds: Array.isArray(row.guest_ids) ? row.guest_ids.filter(Boolean) : [],
   }
+}
+
+export function isAccommodationAuthor(
+  item: Pick<Accommodation, "createdBy">,
+  authUserId: string | null | undefined
+): boolean {
+  const uid = String(authUserId ?? "").trim()
+  if (!uid) return false
+  return Boolean(item.createdBy) && item.createdBy === uid
 }
 
 function buildPayload(input: CreateAccommodationInput) {
@@ -119,6 +136,8 @@ function buildPayload(input: CreateAccommodationInput) {
     check_out_time: normalizeTime(input.checkOutTime ?? "") || null,
     phone_number: String(input.phoneNumber ?? "").trim() || null,
     memo: String(input.memo ?? "").trim() || null,
+    created_by: input.createdBy ?? null,
+    guest_ids: Array.isArray(input.guestIds) ? input.guestIds.filter(Boolean) : [],
   }
 }
 

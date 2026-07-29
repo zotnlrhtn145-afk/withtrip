@@ -14,6 +14,7 @@ import {
   Phone,
   Plus,
   Trash2,
+  UserRound,
 } from "lucide-react"
 
 import { AccommodationRegisterModal } from "@/components/trips/AccommodationRegisterModal"
@@ -30,13 +31,16 @@ import {
   deleteAccommodation,
   fetchAccommodationsByTripId,
   formatStayDuration,
+  isAccommodationAuthor,
   type Accommodation,
 } from "@/lib/accommodations-api"
+import { getCurrentUserId } from "@/lib/auth-session"
 import {
   ACCOMMODATION_CARD_BG,
   generateHotelImagePrompt,
   resolveHotelBannerSrc,
 } from "@/lib/hotel-image"
+import { fetchProfilesByIds, type TripMember } from "@/lib/trip-members-api"
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
 const TEXT = "#212121"
@@ -58,14 +62,42 @@ function formatStamp(dateValue: string, timeValue: string) {
   return timeValue ? `${dateLabel} ${timeValue}` : dateLabel
 }
 
+function GuestChip({ member }: { member: TripMember }) {
+  const [imgFailed, setImgFailed] = useState(false)
+  const initials = (member.name || "?").slice(0, 1)
+
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 py-1 pr-2.5 pl-1 text-xs font-medium text-slate-700">
+      {member.avatarUrl && !imgFailed ? (
+        <img
+          src={member.avatarUrl}
+          alt=""
+          referrerPolicy="no-referrer"
+          className="size-5 rounded-full object-cover"
+          onError={() => setImgFailed(true)}
+        />
+      ) : (
+        <span className="flex size-5 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-500">
+          {initials}
+        </span>
+      )}
+      <span className="max-w-[72px] truncate">투숙 · {member.name}</span>
+    </span>
+  )
+}
+
 function AccommodationCard({
   item,
   deleting,
+  isAuthor,
+  guests,
   onEdit,
   onDelete,
 }: {
   item: Accommodation
   deleting: boolean
+  isAuthor: boolean
+  guests: TripMember[]
   onEdit: (item: Accommodation) => void
   onDelete: (id: string) => void
 }) {
@@ -97,34 +129,36 @@ function AccommodationCard({
           className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"
         />
 
-        <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-end gap-0.5 p-2.5">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="숙소 수정"
-            disabled={deleting}
-            onClick={() => onEdit(item)}
-            className="bg-white/90 text-[#212121] backdrop-blur-sm hover:bg-white hover:text-black"
-          >
-            <Pencil className="text-[#424242]" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="숙소 삭제"
-            disabled={deleting}
-            onClick={() => onDelete(item.id)}
-            className="bg-white/90 text-[#212121] backdrop-blur-sm hover:bg-white hover:text-destructive"
-          >
-            {deleting ? (
-              <Loader2 className="animate-spin text-[#424242]" />
-            ) : (
-              <Trash2 className="text-[#424242]" />
-            )}
-          </Button>
-        </div>
+        {isAuthor ? (
+          <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-end gap-0.5 p-2.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="숙소 수정"
+              disabled={deleting}
+              onClick={() => onEdit(item)}
+              className="bg-white/90 text-[#212121] backdrop-blur-sm hover:bg-white hover:text-black"
+            >
+              <Pencil className="text-[#424242]" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="숙소 삭제"
+              disabled={deleting}
+              onClick={() => onDelete(item.id)}
+              className="bg-white/90 text-[#212121] backdrop-blur-sm hover:bg-white hover:text-destructive"
+            >
+              {deleting ? (
+                <Loader2 className="animate-spin text-[#424242]" />
+              ) : (
+                <Trash2 className="text-[#424242]" />
+              )}
+            </Button>
+          </div>
+        ) : null}
 
         <div className="absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-3 p-4">
           <p className="min-w-0 flex-1 truncate text-lg font-extrabold text-white drop-shadow-sm">
@@ -207,6 +241,14 @@ function AccommodationCard({
           <Navigation data-icon="inline-start" />
           길찾기
         </Button>
+
+        {guests.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {guests.map((g) => (
+              <GuestChip key={g.userId} member={g} />
+            ))}
+          </div>
+        ) : null}
       </div>
     </li>
   )
@@ -229,12 +271,26 @@ export function AccommodationSection({
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Accommodation | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [memberById, setMemberById] = useState<Map<string, TripMember>>(new Map())
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await fetchAccommodationsByTripId(tripId)
+      const [data, authId] = await Promise.all([
+        fetchAccommodationsByTripId(tripId),
+        getCurrentUserId(),
+      ])
+      setCurrentUserId(authId)
       setItems(data)
+
+      const allGuestIds = [...new Set(data.flatMap((d) => d.guestIds))]
+      if (allGuestIds.length > 0) {
+        const profiles = await fetchProfilesByIds(allGuestIds)
+        const map = new Map<string, TripMember>()
+        profiles.forEach((p) => map.set(p.userId, p))
+        setMemberById(map)
+      }
     } catch (err) {
       console.error("[AccommodationSection] load failed:", err)
       setItems([])
@@ -312,6 +368,8 @@ export function AccommodationSection({
                   key={item.id}
                   item={item}
                   deleting={deletingId === item.id}
+                  isAuthor={isAccommodationAuthor(item, currentUserId)}
+                  guests={item.guestIds.map((id) => memberById.get(id)).filter(Boolean) as TripMember[]}
                   onEdit={openEdit}
                   onDelete={(id) => void handleDelete(id)}
                 />

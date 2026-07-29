@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { BedDouble, Check, Loader2, Plus, X } from "lucide-react"
 
 import { SearchableSelect, type SearchableOption } from "@/components/searchable-select"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogClose,
@@ -23,8 +24,10 @@ import {
   updateAccommodation,
   type Accommodation,
 } from "@/lib/accommodations-api"
+import { getCurrentUserId } from "@/lib/auth-session"
 import { placeResultToSearchOption } from "@/lib/hotel-presets"
 import { searchGooglePlaces, type PlaceSearchResult } from "@/lib/places-search"
+import { fetchTripRoster, type TripMember } from "@/lib/trip-members-api"
 import { cn } from "@/lib/utils"
 
 const labelClass =
@@ -64,6 +67,10 @@ export function AccommodationRegisterModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [guestIds, setGuestIds] = useState<string[]>([])
+  const [roster, setRoster] = useState<TripMember[]>([])
+  const [rosterLoading, setRosterLoading] = useState(false)
+
   const [hotelQuery, setHotelQuery] = useState("")
   const [hotelResults, setHotelResults] = useState<PlaceSearchResult[]>([])
   const [searchingHotels, setSearchingHotels] = useState(false)
@@ -101,6 +108,7 @@ export function AccommodationRegisterModal({
       setPhoneNumber(editing.phoneNumber)
       setMemo(editing.memo)
       setHotelQuery(editing.name)
+      setGuestIds(editing.guestIds ?? [])
       return
     }
 
@@ -112,7 +120,20 @@ export function AccommodationRegisterModal({
     setCheckOutTime("11:00")
     setPhoneNumber("")
     setMemo("")
+    setGuestIds([])
   }, [open, editing, defaultCheckInDate, defaultCheckOutDate])
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    setRosterLoading(true)
+    void fetchTripRoster(tripId).then((members) => {
+      if (cancelled) return
+      setRoster(members)
+      setRosterLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [open, tripId])
 
   useEffect(() => {
     if (!open) return
@@ -175,6 +196,7 @@ export function AccommodationRegisterModal({
     setSaving(true)
     setError(null)
     try {
+      const authUserId = await getCurrentUserId()
       const payload = {
         tripId,
         name: name.trim(),
@@ -185,6 +207,8 @@ export function AccommodationRegisterModal({
         checkOutTime,
         phoneNumber: phoneNumber.trim(),
         memo: memo.trim(),
+        createdBy: isEditMode ? undefined : authUserId,
+        guestIds,
       }
 
       const saved =
@@ -384,6 +408,46 @@ export function AccommodationRegisterModal({
                   "placeholder:text-slate-400 focus-visible:border-amber-400 focus-visible:ring-4 focus-visible:ring-amber-400/15"
                 )}
               />
+            </Field>
+
+            <Field>
+              <FieldLabel className={labelClass}>투숙 멤버</FieldLabel>
+              {rosterLoading ? (
+                <p className="flex items-center gap-2 text-xs text-slate-400">
+                  <Loader2 className="size-3.5 animate-spin" /> 멤버 불러오는 중…
+                </p>
+              ) : roster.length === 0 ? (
+                <p className="text-xs text-slate-400">여행에 참여 중인 멤버가 없어요.</p>
+              ) : (
+                <ul className="mt-1 flex flex-col gap-1.5">
+                  {roster.map((member) => {
+                    const checked = guestIds.includes(member.userId)
+                    return (
+                      <li key={member.userId}>
+                        <label className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-slate-50">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(next) => {
+                              setGuestIds((cur) =>
+                                next
+                                  ? cur.includes(member.userId) ? cur : [...cur, member.userId]
+                                  : cur.filter((id) => id !== member.userId)
+                              )
+                            }}
+                            className="data-[state=checked]:border-amber-400 data-[state=checked]:bg-amber-400 data-[state=checked]:text-slate-900"
+                          />
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">
+                            {member.name}
+                          </span>
+                          {member.role === "owner" ? (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">방장</span>
+                          ) : null}
+                        </label>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
             </Field>
           </FieldGroup>
 
