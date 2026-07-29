@@ -492,10 +492,53 @@ function ScheduleRegisterModal({
   )
 }
 
+function profileInitials(name: string) {
+  const compact = name.replace(/\s+/g, "").trim()
+  if (!compact) return "?"
+  return compact.slice(0, 1).toUpperCase()
+}
+
+function CreatorBadge({
+  name,
+  avatarUrl,
+}: {
+  name: string
+  avatarUrl?: string
+}) {
+  const [imgFailed, setImgFailed] = useState(false)
+  const showImage = Boolean(avatarUrl) && !imgFailed
+
+  return (
+    <span className="inline-flex max-w-full items-center gap-1.5 text-xs text-zinc-500">
+      <span className="relative flex size-5 shrink-0 overflow-hidden rounded-full bg-zinc-100 ring-1 ring-zinc-200/80">
+        {showImage ? (
+          <img
+            src={avatarUrl}
+            alt=""
+            className="size-full object-cover"
+            referrerPolicy="no-referrer"
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <span className="flex size-full items-center justify-center bg-zinc-200 text-[9px] font-semibold text-zinc-600">
+            {name && name !== "멤버" ? (
+              profileInitials(name)
+            ) : (
+              <UserRound className="size-3 text-zinc-500" aria-hidden="true" />
+            )}
+          </span>
+        )}
+      </span>
+      <span className="truncate font-medium">{name}</span>
+    </span>
+  )
+}
+
 function TimelineItem({
   item,
   isLast,
   isAuthor,
+  authorProfile,
   deleting,
   onEdit,
   onDelete,
@@ -503,12 +546,15 @@ function TimelineItem({
   item: TripSchedule
   isLast: boolean
   isAuthor: boolean
+  authorProfile?: TripMember | null
   deleting: boolean
   onEdit: (item: TripSchedule) => void
   onDelete: (id: string) => void
 }) {
   const Icon = CATEGORY_ICON[item.category] ?? MapPin
   const timeLabel = item.visitTime || "--:--"
+  const authorName = authorProfile?.name || "멤버"
+  const showAuthor = Boolean(item.createdBy || item.userId)
 
   return (
     <li className="relative flex gap-3 pb-6 last:pb-0 sm:gap-4">
@@ -548,6 +594,11 @@ function TimelineItem({
                 {item.category}
               </span>
             </div>
+            {showAuthor ? (
+              <div className="mt-2">
+                <CreatorBadge name={authorName} avatarUrl={authorProfile?.avatarUrl} />
+              </div>
+            ) : null}
             {item.memo ? (
               <p className="mt-1.5 text-xs leading-relaxed text-pretty text-gray-500">{item.memo}</p>
             ) : null}
