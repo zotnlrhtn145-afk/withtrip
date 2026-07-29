@@ -17,6 +17,8 @@ create table if not exists public.trip_flights (
   duration text,
   flight_type text not null default 'OUTBOUND',
   segment_order integer not null default 1,
+  user_id uuid references auth.users (id) on delete set null,
+  passenger_ids uuid[] not null default '{}',
   created_at timestamptz not null default now()
 );
 
@@ -34,20 +36,26 @@ alter table public.trip_flights add column if not exists arrival_time text;
 alter table public.trip_flights add column if not exists duration text;
 alter table public.trip_flights add column if not exists flight_type text;
 alter table public.trip_flights add column if not exists segment_order integer;
+alter table public.trip_flights add column if not exists user_id uuid references auth.users (id) on delete set null;
+alter table public.trip_flights add column if not exists passenger_ids uuid[] not null default '{}';
 
 update public.trip_flights set flight_type = 'OUTBOUND' where flight_type is null;
 update public.trip_flights set segment_order = 1 where segment_order is null;
 
 alter table public.trip_flights alter column flight_type set default 'OUTBOUND';
 alter table public.trip_flights alter column segment_order set default 1;
+alter table public.trip_flights alter column passenger_ids set default '{}';
 
 comment on table public.trip_flights is '여행별 항공권(비행기 일정)';
 comment on column public.trip_flights.flight_type is 'OUTBOUND | RETURN | LAYOVER';
 comment on column public.trip_flights.segment_order is '다구간 내 순서 (1-based)';
+comment on column public.trip_flights.user_id is '항공권을 등록한 작성자 (auth.users.id)';
+comment on column public.trip_flights.passenger_ids is '함께 탑승하는 여행 멤버 user id 목록';
 
 create index if not exists trip_flights_trip_id_idx on public.trip_flights (trip_id);
 create index if not exists trip_flights_trip_type_order_idx
   on public.trip_flights (trip_id, flight_type, segment_order);
+create index if not exists trip_flights_user_id_idx on public.trip_flights (user_id);
 
 alter table public.trip_flights enable row level security;
 

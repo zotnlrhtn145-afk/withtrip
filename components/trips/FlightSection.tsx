@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import type { User } from "@supabase/supabase-js"
 import { Loader2, Pencil, Plane, PlaneTakeoff, Plus, Trash2 } from "lucide-react"
 
 import { FlightRegisterModal } from "@/components/trips/FlightRegisterModal"
@@ -16,9 +17,12 @@ import {
 import {
   deleteTripFlight,
   fetchFlightsByTripId,
+  isFlightAuthor,
   type FlightType,
   type TripFlight,
 } from "@/lib/flights-api"
+import { fetchTripRoster, type TripMember } from "@/lib/trip-members-api"
+import { createClient } from "@/utils/supabase/client"
 
 function airlineAccent(name: string) {
   const n = name.toLowerCase()
@@ -33,6 +37,12 @@ function airlineAccent(name: string) {
 function airlineCodeHint(flight: TripFlight) {
   if (flight.flightNo.trim().length >= 2) return flight.flightNo.trim().slice(0, 2).toUpperCase()
   return ""
+}
+
+function memberLabel(memberById: Map<string, TripMember>, userId: string) {
+  const member = memberById.get(userId)
+  if (member?.name) return member.name
+  return "멤버"
 }
 
 function TypeBadge({ flightType, segmentOrder }: { flightType: FlightType; segmentOrder: number }) {
@@ -100,6 +110,40 @@ function TicketRoute({ flight }: { flight: TripFlight }) {
   )
 }
 
+function FlightPeople({
+  flight,
+  memberById,
+}: {
+  flight: TripFlight
+  memberById: Map<string, TripMember>
+}) {
+  const authorId = flight.userId || flight.createdBy
+  const authorName = authorId ? memberLabel(memberById, authorId) : ""
+  const passengerNames = flight.passengerIds
+    .filter((id) => id && id !== authorId)
+    .map((id) => ({ id, name: memberLabel(memberById, id) }))
+
+  if (!authorName && passengerNames.length === 0) return null
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+      {authorName ? (
+        <span className="inline-flex max-w-full items-center rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600">
+          <span className="truncate">작성 · {authorName}</span>
+        </span>
+      ) : null}
+      {passengerNames.map((passenger) => (
+        <span
+          key={`${flight.id}-${passenger.id}`}
+          className="inline-flex max-w-full items-center rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800/80"
+        >
+          <span className="truncate">동승 · {passenger.name}</span>
+        </span>
+      ))}
+    </div>
+  )
+}
+
 function TicketActions({
   deleting,
   onEdit,
@@ -143,11 +187,15 @@ function TicketActions({
 
 function FlightTicket({
   flight,
+  memberById,
+  isAuthor,
   onEdit,
   onDelete,
   deleting,
 }: {
   flight: TripFlight
+  memberById: Map<string, TripMember>
+  isAuthor: boolean
   onEdit: (flight: TripFlight) => void
   onDelete: (id: string) => void
   deleting: boolean
@@ -182,15 +230,18 @@ function FlightTicket({
             </span>
           ) : null}
         </div>
-        <TicketActions
-          deleting={deleting}
-          onEdit={() => onEdit(flight)}
-          onDelete={() => onDelete(flight.id)}
-        />
+        {isAuthor ? (
+          <TicketActions
+            deleting={deleting}
+            onEdit={() => onEdit(flight)}
+            onDelete={() => onDelete(flight.id)}
+          />
+        ) : null}
       </div>
 
       <div className="relative px-5 pt-3 pb-5">
         <TicketRoute flight={flight} />
+        <FlightPeople flight={flight} memberById={memberById} />
       </div>
     </li>
   )
@@ -198,11 +249,17 @@ function FlightTicket({
 
 function LayoverJourney({
   flights,
+  memberById,
+  currentUserId,
+  authReady,
   deletingId,
   onEdit,
   onDelete,
 }: {
   flights: TripFlight[]
+  memberById: Map<string, TripMember>
+  currentUserId: string | null
+  authReady: boolean
   deletingId: string | null
   onEdit: (flight: TripFlight) => void
   onDelete: (id: string) => void
@@ -214,6 +271,7 @@ function LayoverJourney({
           const accent = airlineAccent(flight.airlineName)
           const badgeLabel = [flight.airlineName, flight.flightNo].filter(Boolean).join(" · ")
           const deleting = deletingId === flight.id
+          const isAuthor = authReady && isFlightAuthor(flight, currentUserId)
 
           return (
             <div key={flight.id} className="relative">
@@ -242,15 +300,18 @@ function LayoverJourney({
                       </span>
                     ) : null}
                   </div>
-                  <TicketActions
-                    deleting={deleting}
-                    editLabel={`경유 ${flight.segmentOrder} 수정`}
-                    deleteLabel={`경유 ${flight.segmentOrder} 삭제`}
-                    onEdit={() => onEdit(flight)}
-                    onDelete={() => onDelete(flight.id)}
-                  />
+                  {isAuthor ? (
+                    <TicketActions
+                      deleting={deleting}
+                      editLabel={`경유 ${flight.segmentOrder} 수정`}
+                      deleteLabel={`경유 ${flight.segmentOrder} 삭제`}
+                      onEdit={() => onEdit(flight)}
+                      onDelete={() => onDelete(flight.id)}
+                    />
+                  ) : null}
                 </div>
                 <TicketRoute flight={flight} />
+                <FlightPeople flight={flight} memberById={memberById} />
               </div>
             </div>
           )
@@ -272,19 +333,35 @@ export function FlightSection({
   onFlightChange?: () => void
 }) {
   const [flights, setFlights] = useState<TripFlight[]>([])
+  const [roster, setRoster] = useState<TripMember[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingFlight, setEditingFlight] = useState<TripFlight | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [authReady, setAuthReady] = useState(false)
+
+  const memberById = useMemo(() => {
+    const map = new Map<string, TripMember>()
+    for (const member of roster) map.set(member.userId, member)
+    return map
+  }, [roster])
+
+  const currentUserId = user?.id ?? null
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await fetchFlightsByTripId(tripId)
+      const [data, members] = await Promise.all([
+        fetchFlightsByTripId(tripId),
+        fetchTripRoster(tripId),
+      ])
       setFlights(data)
+      setRoster(members)
     } catch (err) {
       console.error("[FlightSection] load failed:", err)
       setFlights([])
+      setRoster([])
     } finally {
       setLoading(false)
     }
@@ -294,12 +371,48 @@ export function FlightSection({
     void load()
   }, [load])
 
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createClient()
+
+    void (async () => {
+      try {
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser()
+        if (!cancelled) {
+          setUser(authUser ?? null)
+          setAuthReady(true)
+        }
+      } catch {
+        if (!cancelled) {
+          setUser(null)
+          setAuthReady(true)
+        }
+      }
+    })()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return
+      setUser(session?.user ?? null)
+      setAuthReady(true)
+    })
+
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
+  }, [])
+
   const openCreateModal = () => {
     setEditingFlight(null)
     setModalOpen(true)
   }
 
   const openEditModal = (flight: TripFlight) => {
+    if (!authReady || !isFlightAuthor(flight, currentUserId)) return
     setEditingFlight(flight)
     setModalOpen(true)
   }
@@ -310,6 +423,10 @@ export function FlightSection({
   }
 
   const handleDelete = async (id: string) => {
+    const target = flights.find((flight) => flight.id === id)
+    if (!target || !authReady || !isFlightAuthor(target, currentUserId)) return
+    if (!window.confirm("이 항공권을 삭제할까요?")) return
+
     setDeletingId(id)
     try {
       const ok = await deleteTripFlight(id)
@@ -372,6 +489,8 @@ export function FlightSection({
               <FlightTicket
                 key={flight.id}
                 flight={flight}
+                memberById={memberById}
+                isAuthor={authReady && isFlightAuthor(flight, currentUserId)}
                 deleting={deletingId === flight.id}
                 onEdit={openEditModal}
                 onDelete={(id) => void handleDelete(id)}
@@ -381,6 +500,9 @@ export function FlightSection({
             {listBlocks.layover.length > 0 ? (
               <LayoverJourney
                 flights={listBlocks.layover}
+                memberById={memberById}
+                currentUserId={currentUserId}
+                authReady={authReady}
                 deletingId={deletingId}
                 onEdit={openEditModal}
                 onDelete={(id) => void handleDelete(id)}
@@ -391,6 +513,8 @@ export function FlightSection({
               <FlightTicket
                 key={flight.id}
                 flight={flight}
+                memberById={memberById}
+                isAuthor={authReady && isFlightAuthor(flight, currentUserId)}
                 deleting={deletingId === flight.id}
                 onEdit={openEditModal}
                 onDelete={(id) => void handleDelete(id)}
@@ -401,6 +525,8 @@ export function FlightSection({
               <FlightTicket
                 key={flight.id}
                 flight={flight}
+                memberById={memberById}
+                isAuthor={authReady && isFlightAuthor(flight, currentUserId)}
                 deleting={deletingId === flight.id}
                 onEdit={openEditModal}
                 onDelete={(id) => void handleDelete(id)}

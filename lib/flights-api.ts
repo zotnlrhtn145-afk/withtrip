@@ -1,3 +1,4 @@
+import { getCurrentUserId } from "@/lib/auth-session"
 import { supabase } from "@/lib/supabase"
 import { getErrorMessage } from "@/lib/trips-api"
 
@@ -6,6 +7,9 @@ export type FlightType = "OUTBOUND" | "RETURN" | "LAYOVER"
 export type TripFlight = {
   id: string
   tripId: string
+  userId: string
+  createdBy: string
+  passengerIds: string[]
   airlineName: string
   flightNo: string
   fromCode: string
@@ -23,6 +27,10 @@ export type TripFlight = {
 export type TripFlightRow = {
   id: string
   trip_id: string
+  user_id?: string | null
+  created_by?: string | null
+  passenger_ids?: string[] | null
+  passengers?: string[] | null
   airline_name?: string | null
   airline?: string | null
   flight_no?: string | null
@@ -59,12 +67,20 @@ export type CreateTripFlightInput = {
   arriveDate?: string
   flightType?: FlightType
   segmentOrder?: number
+  userId?: string | null
+  passengerIds?: string[] | null
 }
 
 const FLIGHT_TYPE_RANK: Record<FlightType, number> = {
   OUTBOUND: 0,
   LAYOVER: 1,
   RETURN: 2,
+}
+
+function isValidUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    value.trim()
+  )
 }
 
 function normalizeCode(value: string) {
@@ -90,6 +106,32 @@ function normalizeFlightType(value: unknown): FlightType {
     .toUpperCase()
   if (raw === "RETURN" || raw === "LAYOVER" || raw === "OUTBOUND") return raw
   return "OUTBOUND"
+}
+
+export function normalizePassengerIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const item of value) {
+    const id = String(item ?? "").trim()
+    if (!id || !isValidUuid(id) || seen.has(id)) continue
+    seen.add(id)
+    out.push(id)
+  }
+  return out
+}
+
+/** True only when auth user id matches a non-empty flight author field. */
+export function isFlightAuthor(
+  flight: Pick<TripFlight, "userId" | "createdBy">,
+  authUserId: string | null | undefined
+): boolean {
+  const uid = String(authUserId ?? "").trim()
+  if (!uid) return false
+  return (
+    (Boolean(flight.userId) && flight.userId === uid) ||
+    (Boolean(flight.createdBy) && flight.createdBy === uid)
+  )
 }
 
 /** Derive "1시간 55분" from clock times when duration is empty. */
@@ -121,10 +163,15 @@ export function mapFlightRow(row: TripFlightRow): TripFlight {
   const arriveTime = normalizeTime(row.arrive_time ?? row.arrival_time ?? "")
   const storedDuration = String(row.duration ?? row.duration_label ?? "").trim()
   const segmentOrder = Number(row.segment_order)
+  const userId = String(row.user_id ?? "").trim()
+  const createdBy = String(row.created_by ?? "").trim()
 
   return {
     id: row.id,
     tripId: row.trip_id,
+    userId,
+    createdBy,
+    passengerIds: normalizePassengerIds(row.passenger_ids ?? row.passengers),
     airlineName: String(row.airline_name ?? row.airline ?? "").trim(),
     flightNo: String(row.flight_no ?? row.flight_number ?? "").trim().toUpperCase(),
     fromCode: normalizeCode(row.from_code ?? row.departure_airport ?? ""),
@@ -140,7 +187,12 @@ export function mapFlightRow(row: TripFlightRow): TripFlight {
   }
 }
 
-function buildInsertPayload(input: CreateTripFlightInput, segmentOrder: number) {
+function buildInsertPayload(
+  input: CreateTripFlightInput,
+  segmentOrder: number,
+  authorUserId: string | null,
+  passengerIds: string[]
+) {
   const tripId = String(input.tripId ?? "").trim()
   const airlineValue = String(input.airlineName ?? "").trim()
   const flightNoValue = String(input.flightNo ?? "").trim().toUpperCase()
@@ -168,7 +220,17 @@ function buildInsertPayload(input: CreateTripFlightInput, segmentOrder: number) 
     duration: durationValue || null,
     flight_type: flightType,
     segment_order: segmentOrder,
+    user_id: authorUserId,
+    passenger_ids: passengerIds,
   }
+}
+
+async function resolveAuthorUserId(explicit?: string | null): Promise<string | null> {
+  const fromInput = String(explicit ?? "").trim()
+  if (fromInput && isValidUuid(fromInput)) return fromInput
+  const authId = await getCurrentUserId()
+  if (authId && isValidUuid(authId)) return authId
+  return null
 }
 
 export async function fetchFlightsByTripId(tripId: string): Promise<TripFlight[]> {
@@ -210,10 +272,17 @@ export async function insertTripFlights(inputs: CreateTripFlightInput[]): Promis
   const tripId = String(inputs[0]?.tripId ?? "").trim()
   if (!tripId) throw new Error("tripId가 필요합니다.")
 
+  const authorUserId = await resolveAuthorUserId(inputs[0]?.userId)
+  const passengerIds = normalizePassengerIds(
+    inputs[0]?.passengerIds ?? (authorUserId ? [authorUserId] : [])
+  )
+
   const payloads = inputs.map((input, index) =>
     buildInsertPayload(
       { ...input, tripId },
-      input.segmentOrder && input.segmentOrder > 0 ? input.segmentOrder : index + 1
+      input.segmentOrder && input.segmentOrder > 0 ? input.segmentOrder : index + 1,
+      authorUserId,
+      normalizePassengerIds(input.passengerIds ?? passengerIds)
     )
   )
 
@@ -242,9 +311,36 @@ export async function updateTripFlight(
   const tripId = String(input.tripId ?? "").trim()
   if (!tripId) throw new Error("tripId가 필요합니다.")
 
+  const authUserId = await getCurrentUserId()
+  const { data: existing, error: lookupError } = await supabase
+    .from("trip_flights")
+    .select("id, user_id, created_by")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (lookupError) {
+    console.error("[updateTripFlight] lookup:", lookupError.message)
+    throw lookupError
+  }
+  if (!existing) throw new Error("항공권을 찾을 수 없어요.")
+
+  const authorFields = {
+    userId: String((existing as { user_id?: string | null }).user_id ?? "").trim(),
+    createdBy: String((existing as { created_by?: string | null }).created_by ?? "").trim(),
+  }
+  if (!isFlightAuthor(authorFields, authUserId)) {
+    throw new Error("작성자만 항공권을 수정할 수 있어요.")
+  }
+
   const segmentOrder =
     input.segmentOrder && input.segmentOrder > 0 ? input.segmentOrder : 1
-  const payload = buildInsertPayload({ ...input, tripId }, segmentOrder)
+  const passengerIds = normalizePassengerIds(input.passengerIds)
+  const payload = buildInsertPayload(
+    { ...input, tripId },
+    segmentOrder,
+    authorFields.userId || authorFields.createdBy || authUserId,
+    passengerIds
+  )
 
   const { data, error } = await supabase
     .from("trip_flights")
@@ -271,6 +367,28 @@ export async function deleteTripFlight(flightId: string): Promise<boolean> {
   if (!id) return false
 
   try {
+    const authUserId = await getCurrentUserId()
+    const { data: existing, error: lookupError } = await supabase
+      .from("trip_flights")
+      .select("id, user_id, created_by")
+      .eq("id", id)
+      .maybeSingle()
+
+    if (lookupError) {
+      console.error("[deleteTripFlight] lookup:", lookupError.message)
+      return false
+    }
+    if (!existing) return false
+
+    const existingMapped = {
+      userId: String((existing as { user_id?: string | null }).user_id ?? "").trim(),
+      createdBy: String((existing as { created_by?: string | null }).created_by ?? "").trim(),
+    }
+    if (!isFlightAuthor(existingMapped, authUserId)) {
+      console.warn("[deleteTripFlight] blocked: not flight author")
+      return false
+    }
+
     const { error } = await supabase.from("trip_flights").delete().eq("id", id)
     if (error) {
       console.error("[deleteTripFlight] Supabase error:", error)

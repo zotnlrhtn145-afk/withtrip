@@ -23,7 +23,10 @@ import {
   type FlightType,
   type TripFlight,
 } from "@/lib/flights-api"
+import { getCurrentUserId } from "@/lib/auth-session"
+import { fetchTripRoster, type TripMember } from "@/lib/trip-members-api"
 import { cn } from "@/lib/utils"
+import { Checkbox } from "@/components/ui/checkbox"
 
 type SegmentDraft = {
   key: string
@@ -277,6 +280,9 @@ export function FlightRegisterModal({
   const [formData, setFormData] = useState<TabFormData>(() => createEmptyFormData())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [roster, setRoster] = useState<TripMember[]>([])
+  const [passengerIds, setPassengerIds] = useState<string[]>([])
+  const [rosterLoading, setRosterLoading] = useState(false)
 
   const outboundTaken = hasTypeTaken(existingFlights, "OUTBOUND", excludeId)
   const returnTaken = hasTypeTaken(existingFlights, "RETURN", excludeId)
@@ -317,6 +323,41 @@ export function FlightRegisterModal({
     setError(null)
     setSaving(false)
 
+    let cancelled = false
+    setRosterLoading(true)
+
+    void (async () => {
+      try {
+        const [members, authUserId] = await Promise.all([
+          fetchTripRoster(tripId),
+          getCurrentUserId(),
+        ])
+        if (cancelled) return
+        setRoster(members)
+
+        if (editingFlight) {
+          const selected = editingFlight.passengerIds.length
+            ? editingFlight.passengerIds
+            : editingFlight.userId
+              ? [editingFlight.userId]
+              : authUserId
+                ? [authUserId]
+                : []
+          setPassengerIds(selected)
+        } else {
+          setPassengerIds(authUserId ? [authUserId] : [])
+        }
+      } catch (err) {
+        console.error("[FlightRegisterModal] roster load failed:", err)
+        if (!cancelled) {
+          setRoster([])
+          setPassengerIds([])
+        }
+      } finally {
+        if (!cancelled) setRosterLoading(false)
+      }
+    })()
+
     if (editingFlight) {
       const segment = segmentFromFlight(editingFlight)
       const next = createEmptyFormData()
@@ -325,14 +366,17 @@ export function FlightRegisterModal({
       else next.outbound = segment
       setFlightType(editingFlight.flightType)
       setFormData(next)
-      return
+    } else {
+      setFlightType(pickDefaultCreateType(existingFlights))
+      setFormData(createEmptyFormData())
     }
 
-    setFlightType(pickDefaultCreateType(existingFlights))
-    setFormData(createEmptyFormData())
+    return () => {
+      cancelled = true
+    }
     // Prefill only when the dialog opens (or the edit target changes).
     // eslint-disable-next-line react-hooks/exhaustive-deps -- existingFlights snapshot at open
-  }, [open, editingFlight])
+  }, [open, editingFlight, tripId])
 
   /** Switch tabs without wiping other tabs' drafts. */
   const selectFlightType = (next: FlightType) => {
@@ -428,6 +472,7 @@ export function FlightRegisterModal({
           duration: segment.duration.trim(),
           flightType: resolvedType,
           segmentOrder: resolvedType === "LAYOVER" ? editingFlight.segmentOrder : 1,
+          passengerIds,
         })
         onSaved([updated])
         onOpenChange(false)
@@ -446,6 +491,7 @@ export function FlightRegisterModal({
           duration: segment.duration.trim(),
           flightType: resolvedType,
           segmentOrder: index + 1,
+          passengerIds,
         }))
       )
       onSaved(flights)
@@ -547,6 +593,55 @@ export function FlightRegisterModal({
               경유 구간 추가
             </button>
           ) : null}
+
+          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+            <p className="text-[13px] font-semibold tracking-tight text-gray-900">동승자</p>
+            <p className="mt-0.5 text-[11px] text-gray-400">
+              함께 탑승하는 여행 멤버를 선택해 주세요.
+            </p>
+            {rosterLoading ? (
+              <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
+                <Loader2 className="size-3.5 animate-spin" />
+                멤버를 불러오는 중…
+              </div>
+            ) : roster.length === 0 ? (
+              <p className="mt-3 text-xs text-gray-400">선택할 수 있는 여행 멤버가 없어요.</p>
+            ) : (
+              <ul className="mt-3 flex flex-col gap-2">
+                {roster.map((member) => {
+                  const checked = passengerIds.includes(member.userId)
+                  return (
+                    <li key={member.userId}>
+                      <label className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-gray-50">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(next) => {
+                            setPassengerIds((current) => {
+                              if (next) {
+                                return current.includes(member.userId)
+                                  ? current
+                                  : [...current, member.userId]
+                              }
+                              return current.filter((id) => id !== member.userId)
+                            })
+                          }}
+                          aria-label={`${member.name} 동승 선택`}
+                        />
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800">
+                          {member.name}
+                        </span>
+                        {member.role === "owner" ? (
+                          <span className="shrink-0 text-[10px] font-semibold text-gray-400">
+                            호스트
+                          </span>
+                        ) : null}
+                      </label>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
 
           {error ? (
             <div

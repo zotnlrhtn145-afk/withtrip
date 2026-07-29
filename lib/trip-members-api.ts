@@ -276,6 +276,66 @@ export async function fetchTripMembers(tripId: string): Promise<TripMember[]> {
   return result
 }
 
+/**
+ * Accepted members + trip owner (owner may not be in trip_members).
+ * Used for flight passenger pickers and author display.
+ */
+export async function fetchTripRoster(tripId: string): Promise<TripMember[]> {
+  const id = String(tripId ?? "").trim()
+  if (!id) return []
+
+  const members = await fetchTripMembers(id)
+  const byId = new Map(members.map((member) => [member.userId, member]))
+
+  try {
+    const client = createClient()
+    const { data: tripRow, error: tripError } = await client
+      .from("trips")
+      .select("user_id")
+      .eq("id", id)
+      .maybeSingle()
+
+    if (tripError) {
+      console.error("[fetchTripRoster] trip lookup:", tripError.message)
+      return members
+    }
+
+    const ownerId = String((tripRow as { user_id?: string | null } | null)?.user_id ?? "").trim()
+    if (!ownerId || byId.has(ownerId)) return members
+
+    const { data: profile, error: profileError } = await client
+      .from("profiles")
+      .select("id, nickname, email, avatar_url")
+      .eq("id", ownerId)
+      .maybeSingle()
+
+    if (profileError) {
+      console.error("[fetchTripRoster] owner profile:", profileError.message)
+    }
+
+    const row = profile as ProfileJoin | null
+    const name =
+      String(row?.nickname ?? "").trim() ||
+      String(row?.email ?? "").trim() ||
+      "여행 호스트"
+
+    byId.set(ownerId, {
+      id: `owner:${ownerId}`,
+      userId: ownerId,
+      email: String(row?.email ?? "").trim(),
+      name,
+      avatarUrl: String(row?.avatar_url ?? "").trim() || undefined,
+      role: "owner",
+      status: "accepted",
+    })
+  } catch (err) {
+    console.error("[fetchTripRoster] unexpected:", err)
+    return members
+  }
+
+  return Array.from(byId.values())
+}
+
 /** All non-rejected membership states for invite UI (accepted + pending). */
 export async function fetchTripMembershipStates(
   tripId: string
