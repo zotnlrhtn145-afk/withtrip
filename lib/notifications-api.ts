@@ -160,18 +160,17 @@ export async function resolveInviteeUserId(input: {
 }
 
 /**
- * Insert a notification row.
+ * Insert a notification via SECURITY DEFINER RPC (bypasses INSERT RLS 42501).
  *
  * Canonical columns:
  * - `user_id`  = recipient (피초대자 / 친구요청 수신자)
  * - `actor_id` = sender (초대한 사람 / 친구요청 발신자)
- * - `sender_id` = same as actor_id (compat mirror)
  */
 export async function createNotification(
   input: {
     /** Recipient — notifications.user_id */
     userId: string
-    /** Sender — notifications.actor_id (and sender_id mirror) */
+    /** Sender — notifications.actor_id */
     actorId: string
     /** @deprecated Use actorId. Kept for call-site compat. */
     senderId?: string | null
@@ -182,10 +181,8 @@ export async function createNotification(
   },
   options?: { throwOnError?: boolean }
 ): Promise<AppNotificationRow | null> {
-  // user_id = 수신자, actor_id = 발신자 (절대 뒤바꾸지 않음)
   const recipientUserId = String(input.userId ?? "").trim()
-  const actorUserId =
-    String(input.actorId ?? input.senderId ?? "").trim() || null
+  const actorUserId = String(input.actorId ?? input.senderId ?? "").trim()
   const message = String(input.message ?? "").trim()
   const referenceId = String(input.referenceId ?? "").trim() || null
   const tripMemberId = String(input.tripMemberId ?? "").trim() || null
@@ -196,7 +193,9 @@ export async function createNotification(
       actor_id: actorUserId,
       message,
     })
-    if (options?.throwOnError) throw new Error("알림 생성에 필요한 정보가 없어요.")
+    if (options?.throwOnError !== false) {
+      throw new Error("알림 생성에 필요한 정보가 없어요.")
+    }
     return null
   }
 
@@ -204,7 +203,9 @@ export async function createNotification(
     console.error("[createNotification] missing actor_id (sender)", {
       user_id: recipientUserId,
     })
-    if (options?.throwOnError) throw new Error("알림 발신자(actor_id)가 없어요.")
+    if (options?.throwOnError !== false) {
+      throw new Error("알림 발신자(actor_id)가 없어요.")
+    }
     return null
   }
 
@@ -213,7 +214,7 @@ export async function createNotification(
       user_id: recipientUserId,
       actor_id: actorUserId,
     })
-    if (options?.throwOnError) {
+    if (options?.throwOnError !== false) {
       throw new Error("알림 발신자와 수신자가 같을 수 없어요.")
     }
     return null
@@ -221,134 +222,62 @@ export async function createNotification(
 
   const client = createClient()
 
-  // Primary payload includes trip_member_id when the invite row id is known
-  const withTripMember = Boolean(tripMemberId)
-  const primaryPayload: Record<string, unknown> = {
-    user_id: recipientUserId,
-    actor_id: actorUserId,
-    sender_id: actorUserId,
-    type: input.type,
-    message,
-    reference_id: referenceId,
-    is_read: false,
-    status: "pending",
-  }
-  if (withTripMember) {
-    primaryPayload.trip_member_id = tripMemberId
-  }
-
-  // Prefer payloads that keep trip_member_id; only drop it if the column is missing
-  const payloads: Record<string, unknown>[] = [
-    primaryPayload,
-    {
-      user_id: recipientUserId,
-      actor_id: actorUserId,
-      type: input.type,
-      message,
-      reference_id: referenceId,
-      ...(withTripMember ? { trip_member_id: tripMemberId } : {}),
-      is_read: false,
-      status: "pending",
-    },
-    // Last-resort fallbacks without trip_member_id (legacy schema)
-    {
-      user_id: recipientUserId,
-      actor_id: actorUserId,
-      type: input.type,
-      message,
-      reference_id: referenceId,
-      is_read: false,
-      status: "pending",
-    },
-    {
-      user_id: recipientUserId,
-      actor_id: actorUserId,
-      type: input.type,
-      message,
-      reference_id: referenceId,
-      is_read: false,
-    },
-  ]
-
-  console.info("[createNotification] insert attempt", {
-    user_id: recipientUserId,
-    actor_id: actorUserId,
-    type: input.type,
-    reference_id: referenceId,
-    trip_member_id: tripMemberId,
+  console.info("[createNotification] RPC attempt", {
+    p_user_id: recipientUserId,
+    p_actor_id: actorUserId,
+    p_type: input.type,
+    p_reference_id: referenceId,
+    p_trip_member_id: tripMemberId,
   })
 
-  let lastError: unknown = null
+  const { data, error } = await client.rpc("create_notification_safe", {
+    p_user_id: recipientUserId,
+    p_actor_id: actorUserId,
+    p_type: input.type,
+    p_message: message,
+    p_reference_id: referenceId,
+    p_trip_member_id: tripMemberId,
+  })
 
-  for (const payload of payloads) {
-    const selectWithMember =
-      "id, user_id, actor_id, sender_id, type, message, reference_id, trip_member_id, is_read, status, created_at"
-    const selectBasic =
-      "id, user_id, actor_id, sender_id, type, message, reference_id, is_read, status, created_at"
+  if (error) {
+    console.error("[createNotification] RPC insert failed:", error)
+    const messageText = formatError(error)
+    if (options?.throwOnError === false) return null
+    throw new Error(
+      messageText ||
+        "알림 생성에 실패했어요. Supabase에서 create_notification_safe RPC를 확인해 주세요."
+    )
+  }
 
-    let data: unknown = null
-    let error: unknown = null
-
-    {
-      const result = await client
-        .from("notifications")
-        .insert(payload)
-        .select(selectWithMember)
-        .maybeSingle()
-      data = result.data
-      error = result.error
-    }
-
-    // Insert may succeed while select fails if trip_member_id is absent from schema cache
-    if (error && isMissingColumnError(formatError(error)) && "trip_member_id" in (payload as object)) {
-      // retry insert without trip_member_id handled by next payload
-    } else if (error && isMissingColumnError(formatError(error))) {
-      const result = await client
-        .from("notifications")
-        .insert(payload)
-        .select(selectBasic)
-        .maybeSingle()
-      data = result.data
-      error = result.error
-    }
-
-    if (!error) {
-      const mapped = data ? mapRow(data as DbNotificationRow) : null
+  // RPC may return a row object, an id uuid, or an array depending on definition
+  const row = Array.isArray(data) ? data[0] : data
+  if (row && typeof row === "object") {
+    const mapped = mapRow(row as DbNotificationRow)
+    if (mapped) {
       console.info("[createNotification] ok", {
-        id: mapped?.id,
-        user_id: mapped?.userId,
-        actor_id: mapped?.actorId,
-        trip_member_id: mapped?.tripMemberId ?? tripMemberId,
-        type: mapped?.type,
+        id: mapped.id,
+        user_id: mapped.userId,
+        actor_id: mapped.actorId,
+        trip_member_id: mapped.tripMemberId ?? tripMemberId,
+        type: mapped.type,
       })
       return mapped
     }
-
-    lastError = error
-    const messageText = formatError(error)
-    console.error("notification insert error:", error)
-    console.error("[createNotification] insert failed:", messageText, payload)
-
-    // Only continue to stripped payloads when the failure is a missing-column schema mismatch
-    if (!isMissingColumnError(messageText) && !isMissingTableError(messageText)) {
-      break
-    }
   }
 
-  const messageText = formatError(lastError)
-  if (isMissingTableError(messageText)) {
-    console.warn(
-      "[createNotification] notifications table missing — run supabase/notifications.sql"
-    )
+  console.info("[createNotification] ok (rpc raw)", data)
+  return {
+    id: String(row ?? "").trim() || crypto.randomUUID(),
+    userId: recipientUserId,
+    actorId: actorUserId,
+    type: input.type,
+    message,
+    referenceId: referenceId || undefined,
+    tripMemberId: tripMemberId || undefined,
+    isRead: false,
+    status: "pending",
+    createdAt: new Date().toISOString(),
   }
-
-  if (options?.throwOnError) {
-    throw new Error(
-      messageText ||
-        "알림 생성에 실패했어요. Supabase notifications 테이블/RLS를 확인해 주세요."
-    )
-  }
-  return null
 }
 
 export async function fetchMyNotifications(): Promise<AppNotificationRow[]> {
