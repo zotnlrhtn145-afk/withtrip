@@ -16,6 +16,7 @@ import {
   Plane,
   Plus,
   Trash2,
+  UserRound,
   Utensils,
   type LucideIcon,
 } from "lucide-react"
@@ -32,6 +33,7 @@ import {
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { getCurrentUserId } from "@/lib/auth-session"
 import {
   fetchSavedPlacesByTripId,
   toScheduleCategory,
@@ -50,7 +52,7 @@ import {
   type ScheduleCategory,
   type TripSchedule,
 } from "@/lib/schedules-api"
-import { getCurrentUserId } from "@/lib/auth-session"
+import { fetchProfilesByIds, type TripMember } from "@/lib/trip-members-api"
 import {
   toWishlistKind,
   wishlistCategories,
@@ -624,15 +626,60 @@ export function ScheduleSection({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [authReady, setAuthReady] = useState(false)
+  const [profileById, setProfileById] = useState<Map<string, TripMember>>(new Map())
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const data = await fetchSchedulesByTripId(tripId)
       setItems(data)
+
+      const authorIds = [
+        ...new Set(
+          data
+            .map((item) => String(item.createdBy || item.userId || "").trim())
+            .filter(Boolean)
+        ),
+      ]
+      const profiles = await fetchProfilesByIds(authorIds)
+      const next = new Map<string, TripMember>()
+      for (const profile of profiles) next.set(profile.userId, profile)
+
+      // Enrich current Kakao session metadata when profiles row is thin
+      try {
+        const supabase = createClient()
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser()
+        if (authUser?.id && next.has(authUser.id)) {
+          const meta = (authUser.user_metadata ?? {}) as Record<string, unknown>
+          const metaName = [
+            meta.full_name,
+            meta.name,
+            meta.nickname,
+            meta.preferred_username,
+          ]
+            .map((value) => String(value ?? "").trim())
+            .find((value) => Boolean(value) && !value.includes("@"))
+          const metaAvatar = [meta.avatar_url, meta.picture, meta.profile_image]
+            .map((value) => String(value ?? "").trim())
+            .find(Boolean)
+          const current = next.get(authUser.id)!
+          next.set(authUser.id, {
+            ...current,
+            name: metaName || current.name,
+            avatarUrl: metaAvatar || current.avatarUrl,
+          })
+        }
+      } catch {
+        // ignore metadata enrichment failures
+      }
+
+      setProfileById(next)
     } catch (err) {
       console.error("[ScheduleSection] load failed:", err)
       setItems([])
+      setProfileById(new Map())
     } finally {
       setLoading(false)
     }
@@ -799,6 +846,9 @@ export function ScheduleSection({
               item={item}
               isLast={index === visibleItems.length - 1}
               isAuthor={authReady && isScheduleAuthor(item, currentUserId)}
+              authorProfile={
+                profileById.get(String(item.createdBy || item.userId || "").trim()) ?? null
+              }
               deleting={deletingId === item.id}
               onEdit={openEdit}
               onDelete={(id) => void handleDelete(id)}
