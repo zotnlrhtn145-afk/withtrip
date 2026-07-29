@@ -119,16 +119,21 @@ export async function sendFriendRequest(currentUserId: string, targetUserId: str
       "@/lib/notifications-api"
     )
     const actorName = await resolveActorDisplayName(currentUserId)
-    await createNotification({
-      userId: targetUserId,
-      actorId: currentUserId,
-      type: "friend_request",
-      message: `${actorName}님이 친구 요청을 보냈습니다.`,
-      referenceId: String((data as { id?: string } | null)?.id ?? "").trim() || null,
-    })
+    const friendshipId = String((data as { id?: string } | null)?.id ?? "").trim() || null
+    // user_id = 수신자(target), actor_id = 발신자(current)
+    await createNotification(
+      {
+        userId: targetUserId,
+        actorId: currentUserId,
+        type: "friend_request",
+        message: `${actorName}님이 친구 요청을 보냈습니다.`,
+        referenceId: friendshipId,
+      },
+      { throwOnError: false }
+    )
   } catch (err) {
-    console.warn(
-      "[sendFriendRequest] notification skipped:",
+    console.error(
+      "[sendFriendRequest] notification insert error:",
       err instanceof Error ? err.message : err
     )
   }

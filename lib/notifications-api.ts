@@ -29,6 +29,7 @@ export type AppNotificationRow = {
 type DbNotificationRow = {
   id?: string
   user_id?: string
+  sender_id?: string | null
   actor_id?: string | null
   type?: string
   message?: string | null
@@ -43,8 +44,17 @@ function formatError(err: unknown) {
   if (err == null) return "알 수 없는 오류"
   if (typeof err === "string") return err
   if (err instanceof Error) return err.message
-  if (typeof err === "object" && "message" in err) {
-    return String((err as { message?: unknown }).message ?? "알 수 없는 오류")
+  if (typeof err === "object") {
+    const row = err as {
+      message?: unknown
+      details?: unknown
+      hint?: unknown
+      code?: unknown
+    }
+    const parts = [row.message, row.details, row.hint, row.code]
+      .map((part) => String(part ?? "").trim())
+      .filter(Boolean)
+    if (parts.length > 0) return parts.join(" | ")
   }
   return "알 수 없는 오류"
 }
@@ -53,15 +63,22 @@ function isMissingTableError(message: string) {
   return /notifications|relation .* does not exist|could not find the table/i.test(message)
 }
 
+function isMissingColumnError(message: string) {
+  return /column .* does not exist|Could not find the/i.test(message)
+}
+
 function mapRow(row: DbNotificationRow): AppNotificationRow | null {
   const id = String(row.id ?? "").trim()
   const userId = String(row.user_id ?? "").trim()
   const type = String(row.type ?? "").trim() as NotificationType
   if (!id || !userId || !type) return null
+  // Prefer actor_id (canonical sender); fall back to sender_id for legacy rows
+  const actorId =
+    String(row.actor_id ?? "").trim() || String(row.sender_id ?? "").trim() || undefined
   return {
     id,
     userId,
-    actorId: String(row.actor_id ?? "").trim() || undefined,
+    actorId,
     type,
     message: String(row.message ?? "").trim(),
     referenceId: String(row.reference_id ?? "").trim() || undefined,
@@ -72,65 +89,221 @@ function mapRow(row: DbNotificationRow): AppNotificationRow | null {
   }
 }
 
-export async function createNotification(input: {
-  /** Recipient (invited user) */
-  userId: string
-  actorId?: string | null
-  type: NotificationType
-  message: string
-  referenceId?: string | null
-  tripMemberId?: string | null
-}): Promise<AppNotificationRow | null> {
-  const userId = String(input.userId ?? "").trim()
-  const message = String(input.message ?? "").trim()
-  if (!userId || !message) return null
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
+/**
+ * Resolve invitee auth UUID from userId / email / nickname via `profiles`.
+ */
+export async function resolveInviteeUserId(input: {
+  userId?: string | null
+  email?: string | null
+  nickname?: string | null
+  name?: string | null
+}): Promise<string> {
   const client = createClient()
-  const actorId = String(input.actorId ?? "").trim() || null
+  const directId = String(input.userId ?? "").trim()
+  const email = String(input.email ?? "").trim().toLowerCase()
+  const nickname = String(input.nickname ?? input.name ?? "").trim()
+
+  if (directId && UUID_RE.test(directId)) {
+    const { data, error } = await client
+      .from("profiles")
+      .select("id")
+      .eq("id", directId)
+      .maybeSingle()
+    if (error) {
+      console.error("[resolveInviteeUserId] profiles by id:", formatError(error))
+    }
+    const found = String((data as { id?: string } | null)?.id ?? "").trim()
+    if (found) return found
+    // Auth UUID may exist even if profile row is missing — still usable for trip_members FK
+    console.warn(
+      "[resolveInviteeUserId] profile missing for UUID — using provided userId:",
+      directId
+    )
+    return directId
+  }
+
+  if (email) {
+    const { data, error } = await client
+      .from("profiles")
+      .select("id, email")
+      .ilike("email", email)
+      .limit(1)
+      .maybeSingle()
+    if (error) console.error("[resolveInviteeUserId] profiles by email:", formatError(error))
+    const found = String((data as { id?: string } | null)?.id ?? "").trim()
+    if (found) return found
+  }
+
+  if (nickname) {
+    const { data, error } = await client
+      .from("profiles")
+      .select("id, nickname")
+      .ilike("nickname", nickname)
+      .limit(1)
+      .maybeSingle()
+    if (error) console.error("[resolveInviteeUserId] profiles by nickname:", formatError(error))
+    const found = String((data as { id?: string } | null)?.id ?? "").trim()
+    if (found) return found
+  }
+
+  throw new Error(
+    "초대 대상 사용자를 찾지 못했어요. 이메일/닉네임으로 가입된 계정인지 확인해 주세요."
+  )
+}
+
+/**
+ * Insert a notification row.
+ *
+ * Canonical columns:
+ * - `user_id`  = recipient (피초대자 / 친구요청 수신자)
+ * - `actor_id` = sender (초대한 사람 / 친구요청 발신자)
+ * - `sender_id` = same as actor_id (compat mirror)
+ */
+export async function createNotification(
+  input: {
+    /** Recipient — notifications.user_id */
+    userId: string
+    /** Sender — notifications.actor_id (and sender_id mirror) */
+    actorId: string
+    /** @deprecated Use actorId. Kept for call-site compat. */
+    senderId?: string | null
+    type: NotificationType
+    message: string
+    referenceId?: string | null
+    tripMemberId?: string | null
+  },
+  options?: { throwOnError?: boolean }
+): Promise<AppNotificationRow | null> {
+  // user_id = 수신자, actor_id = 발신자 (절대 뒤바꾸지 않음)
+  const recipientUserId = String(input.userId ?? "").trim()
+  const actorUserId =
+    String(input.actorId ?? input.senderId ?? "").trim() || null
+  const message = String(input.message ?? "").trim()
   const referenceId = String(input.referenceId ?? "").trim() || null
   const tripMemberId = String(input.tripMemberId ?? "").trim() || null
 
-  // Replace prior pending invite of the same type + reference for this user
-  if (referenceId && (input.type === "trip_invite" || input.type === "clip_invite")) {
-    await client
-      .from("notifications")
-      .delete()
-      .eq("user_id", userId)
-      .eq("type", input.type)
-      .eq("reference_id", referenceId)
-      .eq("status", "pending")
-  }
-
-  const { data, error } = await client
-    .from("notifications")
-    .insert({
-      user_id: userId,
-      actor_id: actorId,
-      type: input.type,
+  if (!recipientUserId || !message) {
+    console.error("[createNotification] missing user_id (recipient) or message", {
+      user_id: recipientUserId,
+      actor_id: actorUserId,
       message,
-      reference_id: referenceId,
-      trip_member_id: tripMemberId,
-      is_read: false,
-      status: "pending",
     })
-    .select(
-      "id, user_id, actor_id, type, message, reference_id, trip_member_id, is_read, status, created_at"
-    )
-    .maybeSingle()
-
-  if (error) {
-    const messageText = formatError(error)
-    if (isMissingTableError(messageText)) {
-      console.warn(
-        "[createNotification] notifications table missing — run supabase/notifications.sql"
-      )
-      return null
-    }
-    console.error("[createNotification]", messageText)
+    if (options?.throwOnError) throw new Error("알림 생성에 필요한 정보가 없어요.")
     return null
   }
 
-  return data ? mapRow(data as DbNotificationRow) : null
+  if (!actorUserId) {
+    console.error("[createNotification] missing actor_id (sender)", {
+      user_id: recipientUserId,
+    })
+    if (options?.throwOnError) throw new Error("알림 발신자(actor_id)가 없어요.")
+    return null
+  }
+
+  if (recipientUserId === actorUserId) {
+    console.error("[createNotification] actor_id and user_id must differ", {
+      user_id: recipientUserId,
+      actor_id: actorUserId,
+    })
+    if (options?.throwOnError) {
+      throw new Error("알림 발신자와 수신자가 같을 수 없어요.")
+    }
+    return null
+  }
+
+  const client = createClient()
+
+  // Primary payload — standardized on actor_id (DB column now present)
+  const primaryPayload = {
+    user_id: recipientUserId,
+    actor_id: actorUserId,
+    sender_id: actorUserId,
+    type: input.type,
+    message,
+    reference_id: referenceId,
+    trip_member_id: tripMemberId || null,
+    is_read: false,
+    status: "pending" as const,
+  }
+
+  // Fallbacks only for older schemas missing optional columns
+  const payloads: Record<string, unknown>[] = [
+    primaryPayload,
+    {
+      user_id: recipientUserId,
+      actor_id: actorUserId,
+      type: input.type,
+      message,
+      reference_id: referenceId,
+      is_read: false,
+      status: "pending",
+    },
+    {
+      user_id: recipientUserId,
+      actor_id: actorUserId,
+      type: input.type,
+      message,
+      reference_id: referenceId,
+      is_read: false,
+    },
+  ]
+
+  console.info("[createNotification] insert attempt", {
+    user_id: recipientUserId,
+    actor_id: actorUserId,
+    type: input.type,
+    reference_id: referenceId,
+  })
+
+  let lastError: unknown = null
+
+  for (const payload of payloads) {
+    const { data, error } = await client
+      .from("notifications")
+      .insert(payload)
+      .select(
+        "id, user_id, actor_id, sender_id, type, message, reference_id, trip_member_id, is_read, status, created_at"
+      )
+      .maybeSingle()
+
+    if (!error) {
+      const mapped = data ? mapRow(data as DbNotificationRow) : null
+      console.info("[createNotification] ok", {
+        id: mapped?.id,
+        user_id: mapped?.userId,
+        actor_id: mapped?.actorId,
+        type: mapped?.type,
+      })
+      return mapped
+    }
+
+    lastError = error
+    const messageText = formatError(error)
+    console.error("notification insert error:", error)
+    console.error("[createNotification] insert failed:", messageText, payload)
+
+    if (!isMissingColumnError(messageText) && !isMissingTableError(messageText)) {
+      break
+    }
+  }
+
+  const messageText = formatError(lastError)
+  if (isMissingTableError(messageText)) {
+    console.warn(
+      "[createNotification] notifications table missing — run supabase/notifications.sql"
+    )
+  }
+
+  if (options?.throwOnError) {
+    throw new Error(
+      messageText ||
+        "알림 생성에 실패했어요. Supabase notifications 테이블/RLS를 확인해 주세요."
+    )
+  }
+  return null
 }
 
 export async function fetchMyNotifications(): Promise<AppNotificationRow[]> {
@@ -138,15 +311,49 @@ export async function fetchMyNotifications(): Promise<AppNotificationRow[]> {
   if (!userId) return []
 
   const client = createClient()
-  const { data, error } = await client
-    .from("notifications")
-    .select(
-      "id, user_id, actor_id, type, message, reference_id, trip_member_id, is_read, status, created_at"
-    )
-    .eq("user_id", userId)
-    .in("status", ["pending"])
-    .order("created_at", { ascending: false })
-    .limit(80)
+  const selectFull =
+    "id, user_id, sender_id, actor_id, type, message, reference_id, trip_member_id, is_read, status, created_at"
+  const selectBasic =
+    "id, user_id, sender_id, actor_id, type, message, reference_id, is_read, created_at"
+
+  let data: DbNotificationRow[] | null = null
+  let error: { message?: string } | null = null
+
+  {
+    const result = await client
+      .from("notifications")
+      .select(selectFull)
+      .eq("user_id", userId)
+      .or("status.eq.pending,status.is.null")
+      .order("created_at", { ascending: false })
+      .limit(80)
+    data = result.data as DbNotificationRow[] | null
+    error = result.error
+  }
+
+  if (error && isMissingColumnError(formatError(error))) {
+    const result = await client
+      .from("notifications")
+      .select(selectBasic)
+      .eq("user_id", userId)
+      .eq("is_read", false)
+      .order("created_at", { ascending: false })
+      .limit(80)
+    data = result.data as DbNotificationRow[] | null
+    error = result.error
+  }
+
+  // Final fallback: all rows for user (then filter client-side)
+  if (error && isMissingColumnError(formatError(error))) {
+    const result = await client
+      .from("notifications")
+      .select(selectBasic)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(80)
+    data = result.data as DbNotificationRow[] | null
+    error = result.error
+  }
 
   if (error) {
     const messageText = formatError(error)
@@ -163,6 +370,7 @@ export async function fetchMyNotifications(): Promise<AppNotificationRow[]> {
   const rows = ((data as DbNotificationRow[] | null) ?? [])
     .map(mapRow)
     .filter((row): row is AppNotificationRow => Boolean(row))
+    .filter((row) => row.status === "pending" || (!row.isRead && row.status !== "rejected"))
 
   const actorIds = [
     ...new Set(rows.map((row) => String(row.actorId ?? "").trim()).filter(Boolean)),
@@ -194,7 +402,6 @@ export async function fetchMyNotifications(): Promise<AppNotificationRow[]> {
     if (id) profileMap.set(id, profile)
   }
 
-  // Resolve trip titles for invite notifications
   const tripIds = [
     ...new Set(
       rows
@@ -252,7 +459,13 @@ export async function markNotificationRead(
     .eq("user_id", userId)
 
   if (error && !isMissingTableError(formatError(error))) {
-    console.error("[markNotificationRead]", formatError(error))
+    // Fallback without status column
+    const retry = await client
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("id", id)
+      .eq("user_id", userId)
+    if (retry.error) console.error("[markNotificationRead]", formatError(retry.error))
   }
 }
 
@@ -277,8 +490,22 @@ export async function deleteNotification(notificationId: string): Promise<void> 
 
 export async function resolveActorDisplayName(userId: string): Promise<string> {
   const id = String(userId ?? "").trim()
-  if (!id) return "친구"
+  if (!id) return "누군가"
   const client = createClient()
+
+  try {
+    const { data: authData } = await client.auth.getUser()
+    if (authData.user?.id === id) {
+      const meta = (authData.user.user_metadata ?? {}) as Record<string, unknown>
+      const metaName = [meta.full_name, meta.name, meta.nickname, meta.preferred_username]
+        .map((value) => String(value ?? "").trim())
+        .find(Boolean)
+      if (metaName) return metaName
+    }
+  } catch {
+    // ignore
+  }
+
   const { data } = await client
     .from("profiles")
     .select("nickname, email")
@@ -288,6 +515,6 @@ export async function resolveActorDisplayName(userId: string): Promise<string> {
   return (
     String((data as { nickname?: string } | null)?.nickname ?? "").trim() ||
     (email ? email.split("@")[0] : "") ||
-    "친구"
+    "누군가"
   )
 }

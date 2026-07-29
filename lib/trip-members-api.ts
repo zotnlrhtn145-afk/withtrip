@@ -339,15 +339,15 @@ export async function fetchGroupMembersByTripIds(
 
 export async function addTripMember(input: {
   tripId: string
-  userId: string
+  userId?: string | null
   email?: string | null
   name?: string | null
+  nickname?: string | null
   avatarUrl?: string | null
 }) {
   const tripId = String(input.tripId ?? "").trim()
-  const inviteeUserId = String(input.userId ?? "").trim()
-  if (!tripId || !inviteeUserId) {
-    throw new Error("tripId와 userId가 필요합니다.")
+  if (!tripId) {
+    throw new Error("tripId가 필요합니다.")
   }
 
   const client = createClient()
@@ -356,10 +356,35 @@ export async function addTripMember(input: {
     throw new Error("로그인이 필요해요. 다시 로그인한 뒤 초대해 주세요.")
   }
 
+  // 1) Resolve invitee UUID from userId / email / nickname
+  const { resolveInviteeUserId } = await import("@/lib/notifications-api")
+  let invitedUserId: string
+  try {
+    invitedUserId = await resolveInviteeUserId({
+      userId: input.userId,
+      email: input.email,
+      nickname: input.nickname ?? input.name,
+      name: input.name,
+    })
+  } catch (err) {
+    console.error("[addTripMember] resolveInviteeUserId failed:", err)
+    throw err instanceof Error
+      ? err
+      : new Error("초대 대상 사용자를 찾지 못했어요.")
+  }
+
+  console.info("[addTripMember] resolved invitee", {
+    tripId,
+    invitedUserId,
+    inputUserId: input.userId,
+    email: input.email,
+    name: input.name,
+  })
+
   // Owner (or existing member) may invite; verify trip is reachable under RLS.
   const { data: tripRow, error: tripError } = await client
     .from("trips")
-    .select("id, user_id")
+    .select("id, user_id, title")
     .eq("id", tripId)
     .maybeSingle()
 
@@ -379,7 +404,6 @@ export async function addTripMember(input: {
 
   const ownerId = String((tripRow as { user_id?: string | null }).user_id ?? "").trim()
   if (ownerId && ownerId !== authUserId) {
-    // Allow if current user is already a member of the trip
     const { data: membership, error: membershipError } = await client
       .from("trip_members")
       .select("id, status")
@@ -402,142 +426,89 @@ export async function addTripMember(input: {
     }
   }
 
-  if (inviteeUserId === authUserId) {
+  if (invitedUserId === authUserId) {
     throw new Error("자기 자신은 초대할 수 없어요.")
   }
 
-  // Pending invite — invitee must accept before joining the trip list
-  const payload = {
-    trip_id: tripId,
-    user_id: inviteeUserId,
-    status: "pending" as const,
-  }
+  // 2) Dual write: trip_members (pending) + notifications (recipient = invitedUserId)
+  let memberId = ""
 
-  console.info("[addTripMember] upsert", {
-    tripId,
-    inviteeUserId,
-    authUserId,
-    ownerId: ownerId || null,
-    status: "pending",
-  })
-
-  const upsert = await client
+  const existing = await client
     .from("trip_members")
-    .upsert(payload, { onConflict: "trip_id,user_id" })
-    .select("id")
+    .select("id, status")
+    .eq("trip_id", tripId)
+    .eq("user_id", invitedUserId)
     .maybeSingle()
 
-  let memberId = String((upsert.data as { id?: string } | null)?.id ?? "").trim()
+  if (existing.error) {
+    console.error("trip_members error:", existing.error)
+  }
 
-  if (upsert.error) {
-    console.error(
-      "[addTripMember] upsert failed:",
-      upsert.error.message || upsert.error.details || upsert.error.code || upsert.error
+  if (existing.data) {
+    memberId = String((existing.data as { id?: string }).id ?? "").trim()
+    const currentStatus = normalizeStatus(
+      (existing.data as { status?: string }).status
     )
-
-    // Legacy DB without status column
-    if (/status|column .* does not exist/i.test(upsert.error.message ?? "")) {
-      const legacyPayload = { trip_id: tripId, user_id: inviteeUserId }
-      const legacy = await client
-        .from("trip_members")
-        .upsert(legacyPayload, {
-          onConflict: "trip_id,user_id",
-          ignoreDuplicates: true,
-        })
-        .select("id")
-        .maybeSingle()
-      if (!legacy.error) {
-        memberId = String((legacy.data as { id?: string } | null)?.id ?? "").trim()
-        await createTripInviteNotification({
-          tripId,
-          inviteeUserId,
-          actorId: authUserId,
-          tripMemberId: memberId,
-        })
-        return { tripId, userId: inviteeUserId, status: "pending" as const, memberId }
-      }
-      const legacyInsert = await client
-        .from("trip_members")
-        .insert(legacyPayload)
-        .select("id")
-        .maybeSingle()
-      if (legacyInsert.error) throw new Error(formatMemberError(legacyInsert.error))
-      memberId = String((legacyInsert.data as { id?: string } | null)?.id ?? "").trim()
-      await createTripInviteNotification({
-        tripId,
-        inviteeUserId,
-        actorId: authUserId,
-        tripMemberId: memberId,
-      })
-      return { tripId, userId: inviteeUserId, status: "pending" as const, memberId }
+    if (currentStatus === "accepted") {
+      throw new Error("이미 참여 중인 멤버예요.")
     }
-
-    // Fallback for DBs without unique(trip_id, user_id) for onConflict
-    const existing = await client
+    const { error: updateError } = await client
       .from("trip_members")
-      .select("id, status")
-      .eq("trip_id", tripId)
-      .eq("user_id", inviteeUserId)
-      .maybeSingle()
-
-    if (!existing.error && existing.data) {
-      memberId = String((existing.data as { id?: string }).id ?? "").trim()
-      const update = await client
-        .from("trip_members")
-        .update({ status: "pending" })
-        .eq("id", memberId)
-      if (update.error && !/status|column .* does not exist/i.test(update.error.message ?? "")) {
-        throw new Error(formatMemberError(update.error))
+      .update({ status: "pending" })
+      .eq("id", memberId)
+    if (updateError) {
+      console.error("trip_members error:", updateError)
+      if (!/status|column .* does not exist/i.test(updateError.message ?? "")) {
+        throw new Error(formatMemberError(updateError))
       }
-      await createTripInviteNotification({
-        tripId,
-        inviteeUserId,
-        actorId: authUserId,
-        tripMemberId: memberId,
-      })
-      return { tripId, userId: inviteeUserId, status: "pending" as const, memberId }
     }
-
-    const insert = await client
+  } else {
+    const { data: inserted, error: memberError } = await client
       .from("trip_members")
-      .insert(payload)
+      .insert({
+        trip_id: tripId,
+        user_id: invitedUserId,
+        status: "pending",
+      })
       .select("id")
       .maybeSingle()
-    if (insert.error) {
-      console.error(
-        "[addTripMember] insert failed:",
-        insert.error.message || insert.error.details || insert.error.code || insert.error
-      )
-      const message = formatMemberError(insert.error)
-      if (/row-level security|rls|permission|policy/i.test(message)) {
-        throw new Error(
-          "멤버 초대 권한이 없어요. Supabase에서 trip_members RLS 정책(소유자 INSERT 허용)을 확인해 주세요."
-        )
-      }
-      if (/foreign key|violates foreign key/i.test(message)) {
-        throw new Error(
-          "초대 대상 계정이 profiles에 없어요. 친구가 한 번 로그인한 뒤 다시 초대해 주세요."
-        )
-      }
-      if (/duplicate|unique/i.test(message)) {
+
+    if (memberError) {
+      console.error("trip_members error:", memberError)
+      // Upsert fallback for unique conflicts
+      if (/duplicate|unique/i.test(memberError.message ?? "")) {
         const again = await client
           .from("trip_members")
           .select("id")
           .eq("trip_id", tripId)
-          .eq("user_id", inviteeUserId)
+          .eq("user_id", invitedUserId)
           .maybeSingle()
         memberId = String((again.data as { id?: string } | null)?.id ?? "").trim()
-        await createTripInviteNotification({
-          tripId,
-          inviteeUserId,
-          actorId: authUserId,
-          tripMemberId: memberId,
-        })
-        return { tripId, userId: inviteeUserId, status: "pending" as const, memberId }
+      } else if (/status|column .* does not exist/i.test(memberError.message ?? "")) {
+        const legacy = await client
+          .from("trip_members")
+          .insert({ trip_id: tripId, user_id: invitedUserId })
+          .select("id")
+          .maybeSingle()
+        if (legacy.error) {
+          console.error("trip_members error:", legacy.error)
+          throw new Error(formatMemberError(legacy.error))
+        }
+        memberId = String((legacy.data as { id?: string } | null)?.id ?? "").trim()
+      } else if (/row-level security|rls|permission|policy/i.test(memberError.message ?? "")) {
+        throw new Error(
+          "멤버 초대 권한이 없어요. Supabase에서 trip_members RLS 정책(소유자 INSERT 허용)을 확인해 주세요."
+        )
+      } else if (/foreign key|violates foreign key/i.test(memberError.message ?? "")) {
+        throw new Error(
+          "초대 대상 계정이 profiles/auth에 없어요. 친구가 한 번 로그인한 뒤 다시 초대해 주세요."
+        )
+      } else {
+        throw new Error(formatMemberError(memberError) || "멤버 초대에 실패했어요.")
       }
-      throw new Error(message || "멤버 초대에 실패했어요.")
+    } else {
+      memberId = String((inserted as { id?: string } | null)?.id ?? "").trim()
     }
-    memberId = String((insert.data as { id?: string } | null)?.id ?? "").trim()
   }
 
   if (!memberId) {
@@ -545,47 +516,79 @@ export async function addTripMember(input: {
       .from("trip_members")
       .select("id")
       .eq("trip_id", tripId)
-      .eq("user_id", inviteeUserId)
+      .eq("user_id", invitedUserId)
       .maybeSingle()
     memberId = String((lookup.data as { id?: string } | null)?.id ?? "").trim()
   }
 
+  console.info("[addTripMember] trip_members pending ready", {
+    tripId,
+    invitedUserId,
+    memberId,
+  })
+
   await createTripInviteNotification({
     tripId,
-    inviteeUserId,
-    actorId: authUserId,
+    tripTitle: String((tripRow as { title?: string | null }).title ?? "").trim() || "여행",
+    inviteeUserId: invitedUserId,
+    senderId: authUserId,
     tripMemberId: memberId,
   })
 
-  return { tripId, userId: inviteeUserId, status: "pending" as const, memberId }
+  return {
+    tripId,
+    userId: invitedUserId,
+    status: "pending" as const,
+    memberId,
+  }
 }
 
 async function createTripInviteNotification(input: {
   tripId: string
+  tripTitle: string
   inviteeUserId: string
-  actorId: string
+  senderId: string
   tripMemberId?: string
 }) {
   const { createNotification, resolveActorDisplayName } = await import(
     "@/lib/notifications-api"
   )
-  const client = createClient()
-  const { data: trip } = await client
-    .from("trips")
-    .select("title")
-    .eq("id", input.tripId)
-    .maybeSingle()
-  const tripTitle =
-    String((trip as { title?: string } | null)?.title ?? "").trim() || "여행"
-  const actorName = await resolveActorDisplayName(input.actorId)
-  await createNotification({
-    userId: input.inviteeUserId,
-    actorId: input.actorId,
+  const actorName = await resolveActorDisplayName(input.senderId)
+  const message = `${actorName}님이 '${input.tripTitle}'에 초대했습니다.`
+
+  // user_id = 피초대자, actor_id = 초대한 사람
+  console.info("[createTripInviteNotification] inserting", {
+    user_id: input.inviteeUserId,
+    actor_id: input.senderId,
     type: "trip_invite",
-    message: `${actorName}님이 '${tripTitle}'에 초대했습니다.`,
-    referenceId: input.tripId,
-    tripMemberId: input.tripMemberId || null,
+    reference_id: input.tripId,
+    trip_member_id: input.tripMemberId || null,
+    message,
   })
+
+  try {
+    const row = await createNotification(
+      {
+        userId: input.inviteeUserId,
+        actorId: input.senderId,
+        type: "trip_invite",
+        message,
+        referenceId: input.tripId,
+        tripMemberId: input.tripMemberId || null,
+      },
+      { throwOnError: true }
+    )
+    console.info("[createTripInviteNotification] success", {
+      id: row?.id,
+      user_id: row?.userId,
+      actor_id: row?.actorId,
+    })
+  } catch (err) {
+    console.error("notification insert error:", err)
+    throw err instanceof Error
+      ? err
+      : new Error("알림 생성에 실패했어요. notifications 테이블/RLS를 확인해 주세요.")
+  }
 }
 
 /** Pending invitations addressed to the current user. */
