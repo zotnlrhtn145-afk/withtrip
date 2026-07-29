@@ -40,8 +40,8 @@ import {
 import {
   deleteSchedule,
   fetchSchedulesByTripId,
-  getErrorMessage,
   getScheduleDayMeta,
+  getScheduleErrorMessage,
   insertSchedule,
   isScheduleAuthor,
   SCHEDULE_CATEGORIES,
@@ -50,6 +50,7 @@ import {
   type ScheduleCategory,
   type TripSchedule,
 } from "@/lib/schedules-api"
+import { getCurrentUserId } from "@/lib/auth-session"
 import {
   toWishlistKind,
   wishlistCategories,
@@ -199,6 +200,7 @@ function ScheduleRegisterModal({
     setSaving(true)
     setError(null)
     try {
+      const authUserId = await getCurrentUserId()
       const payload = {
         tripId,
         dayNumber,
@@ -208,6 +210,7 @@ function ScheduleRegisterModal({
         address: address.trim(),
         phoneNumber: phoneNumber.trim(),
         memo: memo.trim(),
+        createdBy: authUserId,
       }
       const saved =
         isEditMode && editingSchedule
@@ -220,13 +223,13 @@ function ScheduleRegisterModal({
       if (err && typeof err === "object") {
         console.error(
           "[ScheduleRegisterModal] error.message:",
-          (err as { message?: unknown }).message ?? getErrorMessage(err)
+          (err as { message?: unknown }).message ?? getScheduleErrorMessage(err)
         )
         console.error("[ScheduleRegisterModal] error.details:", (err as { details?: unknown }).details)
         console.error("[ScheduleRegisterModal] error.hint:", (err as { hint?: unknown }).hint)
         console.error("[ScheduleRegisterModal] error.code:", (err as { code?: unknown }).code)
       }
-      setError(getErrorMessage(err) || "일정 저장에 실패했어요.")
+      setError(getScheduleErrorMessage(err) || "일정 저장에 실패했어요.")
     } finally {
       setSaving(false)
     }

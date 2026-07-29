@@ -180,24 +180,61 @@ export function sortSchedules(items: TripSchedule[]): TripSchedule[] {
 }
 
 function buildPayload(input: CreateTripScheduleInput, authorUserId: string | null) {
+  const tripId = String(input.tripId ?? "").trim()
+  const placeName = String(input.placeName ?? "").trim()
+
   return {
-    trip_id: String(input.tripId ?? "").trim(),
+    trip_id: tripId,
     day_number: clampDayNumber(input.dayNumber),
     category: normalizeCategory(input.category),
-    place_name: String(input.placeName ?? "").trim(),
+    place_name: placeName,
     visit_time: normalizeTime(input.visitTime ?? "") || null,
     address: String(input.address ?? "").trim() || null,
     phone_number: String(input.phoneNumber ?? "").trim() || null,
     memo: String(input.memo ?? "").trim() || null,
+    // Always send created_by (trip_schedules schema)
     created_by: authorUserId,
   }
+}
+
+function formatScheduleDbError(error: unknown): string {
+  const message = getErrorMessage(error)
+  const raw = [
+    message,
+    error && typeof error === "object"
+      ? String((error as { details?: unknown }).details ?? "")
+      : "",
+    error && typeof error === "object"
+      ? String((error as { hint?: unknown }).hint ?? "")
+      : "",
+    error && typeof error === "object"
+      ? String((error as { code?: unknown }).code ?? "")
+      : "",
+  ]
+    .join(" ")
+    .toLowerCase()
+
+  if (
+    /schema cache|could not find.*created_by|pgrst204|column .*created_by.* does not exist/.test(
+      raw
+    )
+  ) {
+    return "일정 스키마가 아직 반영되지 않았어요. Supabase에서 trip_schedules.created_by 컬럼과 API 스키마 캐시를 확인해 주세요."
+  }
+  return message || "일정 저장에 실패했어요."
 }
 
 async function resolveAuthorUserId(explicit?: string | null): Promise<string | null> {
   const fromInput = String(explicit ?? "").trim()
   if (fromInput && isValidUuid(fromInput)) return fromInput
-  const authId = await getCurrentUserId()
-  if (authId && isValidUuid(authId)) return authId
+
+  try {
+    const authId = await getCurrentUserId()
+    if (authId && isValidUuid(authId)) return authId
+  } catch (err) {
+    console.warn("[resolveAuthorUserId] getCurrentUserId:", err)
+  }
+
   return null
 }
 
@@ -208,12 +245,28 @@ export async function fetchSchedulesByTripId(tripId: string): Promise<TripSchedu
   try {
     const { data, error } = await supabase
       .from("trip_schedules")
-      .select("*")
+      .select(
+        "id, trip_id, created_by, day_number, category, place_name, visit_time, address, phone_number, memo, created_at"
+      )
       .eq("trip_id", id)
       .order("day_number", { ascending: true })
       .order("visit_time", { ascending: true })
 
     if (error) {
+      // Fallback for older schema-cache snapshots without created_by in select list
+      if (/created_by|schema cache|pgrst204/i.test(error.message ?? "")) {
+        const fallback = await supabase
+          .from("trip_schedules")
+          .select("*")
+          .eq("trip_id", id)
+          .order("day_number", { ascending: true })
+          .order("visit_time", { ascending: true })
+        if (!fallback.error) {
+          return sortSchedules(
+            ((fallback.data as TripScheduleRow[] | null) ?? []).map(mapScheduleRow)
+          )
+        }
+      }
       logSupabaseError("fetchSchedulesByTripId", error, { trip_id: id })
       return []
     }
@@ -236,15 +289,19 @@ export async function insertSchedule(input: CreateTripScheduleInput): Promise<Tr
   }
 
   const payload = buildPayload({ ...input, tripId }, authorUserId)
+  console.info("[insertSchedule] created_by:", payload.created_by)
+
   const { data, error } = await supabase
     .from("trip_schedules")
     .insert(payload)
-    .select("*")
+    .select(
+      "id, trip_id, created_by, day_number, category, place_name, visit_time, address, phone_number, memo, created_at"
+    )
     .single()
 
   if (error) {
     logSupabaseError("insertSchedule", error, { payload })
-    throw error
+    throw new Error(formatScheduleDbError(error))
   }
 
   return mapScheduleRow(data as TripScheduleRow)
@@ -270,7 +327,7 @@ export async function updateSchedule(
 
   if (lookupError) {
     logSupabaseError("updateSchedule lookup", lookupError, { schedule_id: id })
-    throw lookupError
+    throw new Error(formatScheduleDbError(lookupError))
   }
   if (!existing) throw new Error("일정을 찾을 수 없어요.")
 
@@ -280,18 +337,22 @@ export async function updateSchedule(
     throw new Error("작성자만 일정을 수정할 수 있어요.")
   }
 
+  // Keep original author; never blank created_by on update
   const payload = buildPayload({ ...input, tripId }, authorId || authUserId)
+  console.info("[updateSchedule] created_by:", payload.created_by)
 
   const { data, error } = await supabase
     .from("trip_schedules")
     .update(payload)
     .eq("id", id)
-    .select("*")
+    .select(
+      "id, trip_id, created_by, day_number, category, place_name, visit_time, address, phone_number, memo, created_at"
+    )
     .single()
 
   if (error) {
     logSupabaseError("updateSchedule", error, { schedule_id: id, payload })
-    throw error
+    throw new Error(formatScheduleDbError(error))
   }
 
   return mapScheduleRow(data as TripScheduleRow)
@@ -334,4 +395,4 @@ export async function deleteSchedule(scheduleId: string): Promise<boolean> {
   }
 }
 
-export { getErrorMessage }
+export { getErrorMessage, formatScheduleDbError as getScheduleErrorMessage }
