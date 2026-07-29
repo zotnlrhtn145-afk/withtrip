@@ -13,15 +13,20 @@ import { cn } from "@/lib/utils"
 
 export function SavedPlaceCard({
   place,
+  currentUserId,
   deleting,
   onDelete,
 }: {
   place: SavedPlace
+  currentUserId: string | null
   deleting: boolean
   onDelete: (id: string) => void
 }) {
   const kind = toWishlistKind(place.category)
   const categoryLabel = WISHLIST_CATEGORY_VALUE[kind]
+  const authorId = String(place.userId ?? "").trim()
+  const isAuthor =
+    Boolean(currentUserId) && Boolean(authorId) && currentUserId === authorId
   const coverSrc = resolveCoverImageUrl({
     imageUrl: place.imageUrl,
     category: place.category,
@@ -126,17 +131,19 @@ export function SavedPlaceCard({
             </div>
           </div>
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="장소 삭제"
-            disabled={deleting}
-            onClick={() => onDelete(place.id)}
-            className="shrink-0 text-gray-400 hover:text-destructive"
-          >
-            {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
-          </Button>
+          {isAuthor ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="장소 삭제"
+              disabled={deleting}
+              onClick={() => onDelete(place.id)}
+              className="shrink-0 text-gray-400 hover:text-destructive"
+            >
+              {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+            </Button>
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-1.5 text-xs leading-relaxed text-gray-500">

@@ -7,6 +7,7 @@ import { AddSavedPlaceModal } from "@/components/itinerary/AddSavedPlaceModal"
 import { SavedPlaceCard } from "@/components/itinerary/SavedPlaceCard"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { getCurrentUserId } from "@/lib/auth-session"
 import {
   deleteSavedPlace,
   fetchSavedPlacesByTripId,
@@ -72,6 +73,7 @@ export function WishlistSection({ trip }: { trip: Trip }) {
   const [loading, setLoading] = useState(true)
   const [selectedKind, setSelectedKind] = useState<WishlistKind>("restaurant")
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -89,6 +91,21 @@ export function WishlistSection({ trip }: { trip: Trip }) {
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const userId = await getCurrentUserId()
+        if (!cancelled) setCurrentUserId(userId)
+      } catch {
+        if (!cancelled) setCurrentUserId(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const counts = useMemo(() => {
     const restaurant = places.filter((place) => toWishlistKind(place.category) === "restaurant").length
@@ -176,6 +193,7 @@ export function WishlistSection({ trip }: { trip: Trip }) {
               <SavedPlaceCard
                 key={place.id}
                 place={place}
+                currentUserId={currentUserId}
                 deleting={deletingId === place.id}
                 onDelete={(id) => void handleDelete(id)}
               />
