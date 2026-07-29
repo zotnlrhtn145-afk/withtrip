@@ -20,7 +20,7 @@ import { scheduleCategories } from "@/lib/trip-itinerary"
 import { cn } from "@/lib/utils"
 
 const inputClassName =
-  "rounded-xl border border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus-visible:border-zinc-900 focus-visible:ring-1 focus-visible:ring-zinc-900"
+  "rounded-xl border border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus-visible:border-amber-400 focus-visible:ring-1 focus-visible:ring-amber-400"
 
 export function ScheduleDialog({
   tripId,
@@ -89,7 +89,7 @@ export function ScheduleDialog({
                       className={cn(
                         "rounded-full px-3.5 py-1.5 text-sm transition-colors",
                         active
-                          ? "bg-zinc-900 font-medium text-white"
+                          ? "bg-amber-400 font-semibold text-zinc-900 shadow-sm"
                           : "bg-zinc-100 font-medium text-zinc-600 hover:bg-zinc-200"
                       )}
                     >
@@ -159,7 +159,7 @@ export function ScheduleDialog({
             type="submit"
             form="schedule-form"
             disabled={!canSubmit}
-            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-zinc-900 px-5 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-800 disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-amber-400 px-6 py-2.5 text-xs font-semibold text-zinc-900 transition-colors hover:bg-amber-500 disabled:opacity-60"
           >
             <Plus className="size-3.5" />
             등록하기
