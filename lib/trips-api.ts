@@ -1,6 +1,7 @@
 import { getCurrentUserId } from "@/lib/auth-session"
 import { supabase, type TripRow } from "@/lib/supabase"
 import { FALLBACK_TRIP_COVER, getCityImage, withUnsplashQuality } from "@/lib/getCityImage"
+import { generateTripCoverImage } from "@/lib/trip-cover-ai"
 import { type Trip } from "@/lib/trip-data"
 import { fetchGroupMembersByTripIds } from "@/lib/trip-members-api"
 import { createClient } from "@/utils/supabase/client"
@@ -284,13 +285,14 @@ export async function insertTripToSupabase(input: CreateTripInput): Promise<Trip
     payload.location = location
   }
 
-  // All-weather cinematic cover → persisted on trips.cover_image
-  payload.cover_image = getCityImage({
+  // Instant cinematic cover so trip creation never waits on AI generation.
+  const coverInput = {
     city: input.city,
     country: input.country,
     location: location ?? input.location,
     title,
-  })
+  }
+  payload.cover_image = getCityImage(coverInput)
 
   const { data, error } = await supabase.from("trips").insert(payload).select("*").single()
 
@@ -301,7 +303,45 @@ export async function insertTripToSupabase(input: CreateTripInput): Promise<Trip
     throw error
   }
 
+  // Upgrade to an AI-generated cinematic cover of the destination's most
+  // iconic spot in the background — never blocks trip creation. On success,
+  // the trip row is updated and a "cover ready" event lets the UI re-fetch.
+  const insertedTripId = String((data as TripRow)?.id ?? "").trim()
+  if (insertedTripId) {
+    void upgradeTripCoverWithAI(insertedTripId, coverInput)
+  }
+
   return mapTripRowToTrip(data as TripRow)
+}
+
+/**
+ * Background upgrade — generates the AI cinematic cover and swaps it in once
+ * ready. Never throws; failures just leave the instant fallback cover in place.
+ */
+async function upgradeTripCoverWithAI(
+  tripId: string,
+  coverInput: { city?: string; country?: string; location?: string; title: string }
+): Promise<void> {
+  try {
+    const aiCover = await generateTripCoverImage(coverInput)
+    if (!aiCover) return
+
+    const { error } = await supabase
+      .from("trips")
+      .update({ cover_image: aiCover })
+      .eq("id", tripId)
+
+    if (error) {
+      console.warn("[upgradeTripCoverWithAI] update failed:", error.message)
+      return
+    }
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("withtrip:trip-cover-ready", { detail: { tripId } }))
+    }
+  } catch (err) {
+    console.warn("[upgradeTripCoverWithAI] unexpected:", err)
+  }
 }
 
 export async function deleteTripFromSupabase(tripId: string): Promise<void> {

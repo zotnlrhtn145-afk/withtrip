@@ -251,6 +251,73 @@ export const CITY_IMAGES: Record<string, string> = {
   오키나와: U("photo-1542051841857-5f90071e7989"),
 }
 
+/**
+ * Explicit, real landmark names for AI cover generation. Image models
+ * hallucinate wildly when asked to infer "the most iconic spot" themselves —
+ * naming the exact landmark keeps the result geographically accurate.
+ * Only cities we're confident about are listed; unknown cities skip AI
+ * generation entirely rather than risk a wrong or bizarre image.
+ */
+export const ICONIC_LANDMARKS: Record<string, string> = {
+  jeju: "Seongsan Ilchulbong (Sunrise Peak) volcanic tuff cone",
+  seoul: "Gyeongbokgung Palace with Bukhansan mountains behind it",
+  busan: "Haeundae Beach and the Gwangan Bridge skyline at night",
+  gyeongju: "Bulguksa Temple's stone stairways and pagodas",
+  jeonju: "the traditional hanok rooftops of Jeonju Hanok Village",
+  tokyo: "Tokyo Tower rising above the Shibuya/Roppongi skyline",
+  osaka: "Osaka Castle surrounded by its moat and stone walls",
+  kyoto: "the endless vermillion torii gates of Fushimi Inari Shrine",
+  fukuoka: "Fukuoka Tower on the Momochi seaside",
+  sapporo: "the Sapporo TV Tower over Odori Park in snow",
+  okinawa: "Shurijo Castle's red gate above the turquoise Okinawan coast",
+  "da nang": "the Dragon Bridge over the Han River at night",
+  "ho chi minh": "the Bitexco Financial Tower skyline of Ho Chi Minh City",
+  hanoi: "Hoan Kiem Lake's red Huc Bridge and turtle tower",
+  bangkok: "Wat Arun (Temple of Dawn) on the Chao Phraya River",
+  "chiang mai": "the golden chedi of Wat Phra That Doi Suthep",
+  phuket: "the limestone karsts of Phi Phi Islands",
+  bali: "the sea temple of Tanah Lot at sunset",
+  singapore: "the Marina Bay Sands skyline with Gardens by the Bay's Supertrees",
+  taipei: "Taipei 101 skyscraper piercing the clouds",
+  paris: "the Eiffel Tower over the Seine river",
+  nice: "the turquoise Baie des Anges coastline of Nice",
+  london: "Big Ben and the Houses of Parliament beside Tower Bridge",
+  rome: "the ancient Colosseum",
+  florence: "the Duomo's dome over Florence's terracotta rooftops",
+  venice: "gondolas gliding through a Venetian canal at sunset",
+  barcelona: "Gaudi's Sagrada Familia basilica",
+  madrid: "the Royal Palace of Madrid",
+  zurich: "the Swiss Alps reflected in Lake Zurich",
+  interlaken: "the snow-capped Jungfrau peak above a turquoise alpine lake",
+  amsterdam: "canal houses lining an Amsterdam canal at dusk",
+  berlin: "the Brandenburg Gate",
+  prague: "Charles Bridge over the Vltava River with Prague Castle behind it",
+  budapest: "the Hungarian Parliament Building on the Danube at night",
+  vienna: "Schönbrunn Palace's grand facade and gardens",
+  athens: "the Parthenon atop the Acropolis at golden hour",
+  lisbon: "the yellow tram climbing Lisbon's tiled hillside streets",
+  istanbul: "the Hagia Sophia and Blue Mosque skyline over the Bosphorus",
+  santorini: "Santorini's white-and-blue clifftop villages over the caldera",
+  "new york": "the Statue of Liberty with the Manhattan skyline",
+  "los angeles": "the Hollywood Sign on a hillside at sunset",
+  "san francisco": "the Golden Gate Bridge in fog",
+  "las vegas": "the neon-lit Las Vegas Strip at night",
+  seattle: "the Space Needle over the Seattle skyline",
+  sydney: "the Sydney Opera House beside the Harbour Bridge",
+  melbourne: "Melbourne's laneway street art and city skyline",
+  uyuni: "the mirror-like reflections of the Salar de Uyuni salt flats",
+  cusco: "the Inca stone terraces of Machu Picchu",
+  "rio de janeiro": "the Christ the Redeemer statue over Rio's coastline",
+  "buenos aires": "the colorful houses of Caminito in La Boca",
+  cancun: "the turquoise Caribbean beaches of Cancun",
+  dubai: "the Burj Khalifa towering over the Dubai skyline",
+  cairo: "the Pyramids of Giza and the Sphinx",
+  "cape town": "Table Mountain overlooking Cape Town's coastline",
+  marrakech: "the maze of stalls and minarets in Marrakech's medina",
+  kathmandu: "the prayer flags and stupa of Boudhanath",
+  maldives: "overwater bungalows on a turquoise Maldivian lagoon",
+}
+
 export const COUNTRY_IMAGES: Record<string, string> = {
   "south korea": CITY_IMAGES.seoul,
   korea: CITY_IMAGES.seoul,
@@ -557,6 +624,37 @@ export function getCityImage(input: GetCityImageInput): string {
 
   // ── Stage 3: safety net ──
   return FALLBACK_TRIP_COVER
+}
+
+/**
+ * Look up a named, real landmark for AI cover generation. Only returns a
+ * result for cities in {@link ICONIC_LANDMARKS} — unknown destinations
+ * return null so callers skip AI generation instead of risking a
+ * geographically wrong or hallucinated image.
+ */
+export function getIconicLandmark(input: GetCityImageInput): {
+  destination: string
+  landmark: string
+} | null {
+  const { cityEn, countryEn } = toEnglishKeywords(input)
+  const cityHay = normalizeSearchKeyword(input.city ?? "")
+  const locationHay = normalizeSearchKeyword(input.location ?? "")
+  const titleHay = normalizeSearchKeyword(input.title ?? "")
+
+  const key =
+    (cityEn && ICONIC_LANDMARKS[cityEn] ? cityEn : null) ??
+    (cityHay ? Object.keys(ICONIC_LANDMARKS).find((k) => cityHay.includes(k)) : null) ??
+    [locationHay, titleHay]
+      .filter(Boolean)
+      .map((hay) => Object.keys(ICONIC_LANDMARKS).find((k) => hay.includes(k)))
+      .find(Boolean) ??
+    null
+
+  if (!key) return null
+  const landmark = ICONIC_LANDMARKS[key]
+  if (!landmark) return null
+
+  return { destination: countryEn ? `${key}, ${countryEn}` : key, landmark }
 }
 
 /** @deprecated Alias — use getCityImage */

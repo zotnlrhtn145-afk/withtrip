@@ -314,6 +314,16 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     }
   }, [refreshTrips])
 
+  // AI-generated trip cover finishes in the background — soft-refresh so the
+  // cinematic image swaps in without the user having to reload.
+  useEffect(() => {
+    const onCoverReady = () => {
+      void refreshTrips({ silent: true })
+    }
+    window.addEventListener("withtrip:trip-cover-ready", onCoverReady)
+    return () => window.removeEventListener("withtrip:trip-cover-ready", onCoverReady)
+  }, [refreshTrips])
+
   const addTrip = useCallback(
     async (draft: NewTripDraft) => {
       try {
