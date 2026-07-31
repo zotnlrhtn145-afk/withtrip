@@ -42,6 +42,7 @@ export function TripScheduleBoard({
           <ScheduleSection
             tripId={trip.id}
             tripStartDate={trip.startDate}
+            tripDays={trip.days}
             tripCity={trip.title.split(/[·•]/)[0]?.trim() || trip.region}
           />
         </div>

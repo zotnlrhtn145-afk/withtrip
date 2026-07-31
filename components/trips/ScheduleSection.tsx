@@ -62,8 +62,6 @@ import {
 import { cn } from "@/lib/utils"
 import { createClient } from "@/utils/supabase/client"
 
-const DAY_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const
-
 const CATEGORY_BADGE: Record<ScheduleCategory, string> = {
   이동: "bg-amber-100 text-amber-800",
   숙소: "bg-indigo-100 text-indigo-800",
@@ -85,6 +83,7 @@ function ScheduleRegisterModal({
   onOpenChange,
   tripId,
   tripStartDate,
+  tripDays,
   defaultDayIndex,
   editingSchedule = null,
   onSaved,
@@ -93,10 +92,12 @@ function ScheduleRegisterModal({
   onOpenChange: (next: boolean) => void
   tripId: string
   tripStartDate: string
+  tripDays: number
   defaultDayIndex: number
   editingSchedule?: TripSchedule | null
   onSaved: (item: TripSchedule) => void
 }) {
+  const maxDay = Math.max(1, tripDays)
   const isEditMode = Boolean(editingSchedule)
   const [dayNumber, setDayNumber] = useState(1)
   const [category, setCategory] = useState<ScheduleCategory>("관광")
@@ -149,7 +150,7 @@ function ScheduleRegisterModal({
     if (!open) return
 
     if (editingSchedule) {
-      setDayNumber(Math.min(7, Math.max(1, editingSchedule.dayNumber || 1)))
+      setDayNumber(Math.min(maxDay, Math.max(1, editingSchedule.dayNumber || 1)))
       setCategory(editingSchedule.category)
       setPlaceName(editingSchedule.placeName)
       setVisitTime(editingSchedule.visitTime || "12:00")
@@ -157,7 +158,7 @@ function ScheduleRegisterModal({
       setPhoneNumber(editingSchedule.phoneNumber)
       setMemo(editingSchedule.memo)
     } else {
-      setDayNumber(Math.min(7, Math.max(1, defaultDayIndex || 1)))
+      setDayNumber(Math.min(maxDay, Math.max(1, defaultDayIndex || 1)))
       setCategory("관광")
       setPlaceName("")
       setVisitTime("12:00")
@@ -170,7 +171,7 @@ function ScheduleRegisterModal({
     setSaving(false)
     setWishlistOpen(false)
     void loadSavedPlaces()
-  }, [open, defaultDayIndex, editingSchedule, loadSavedPlaces])
+  }, [open, defaultDayIndex, editingSchedule, loadSavedPlaces, maxDay])
 
   const toggleWishlist = () => {
     setWishlistOpen((current) => {
@@ -662,13 +663,20 @@ function TimelineItem({
 export function ScheduleSection({
   tripId,
   tripStartDate = "",
+  tripDays = 1,
   tripCity = "",
 }: {
   tripId: string
   tripStartDate?: string
+  /** Trip length in days (nights + 1) — controls how many day tabs render. */
+  tripDays?: number
   /** Shown in subtitle, e.g. 오사카 */
   tripCity?: string
 }) {
+  const dayOptions = useMemo(
+    () => Array.from({ length: Math.max(1, tripDays) }, (_, index) => index + 1),
+    [tripDays]
+  )
   const [selectedDay, setSelectedDay] = useState(1)
   const [items, setItems] = useState<TripSchedule[]>([])
   const [loading, setLoading] = useState(true)
@@ -739,6 +747,10 @@ export function ScheduleSection({
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    setSelectedDay((current) => Math.min(current, dayOptions.length))
+  }, [dayOptions.length])
 
   useEffect(() => {
     let cancelled = false
@@ -843,7 +855,7 @@ export function ScheduleSection({
         aria-label="일차 선택"
         className="no-scrollbar flex gap-2 overflow-x-auto pb-1"
       >
-        {DAY_OPTIONS.map((day) => {
+        {dayOptions.map((day) => {
           const meta = getScheduleDayMeta(tripStartDate, day)
           const active = selectedDay === day
           return (
@@ -923,6 +935,7 @@ export function ScheduleSection({
         onOpenChange={handleModalOpenChange}
         tripId={tripId}
         tripStartDate={tripStartDate}
+        tripDays={tripDays}
         defaultDayIndex={selectedDay}
         editingSchedule={editingSchedule}
         onSaved={(item) => {
