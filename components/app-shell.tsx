@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, type ReactNode } from "react"
 import { usePathname, useRouter } from "next/navigation"
+import { AnimatePresence, motion } from "framer-motion"
 
 import { MobileGlobalChrome } from "@/components/mobile-global-chrome"
 import { LoginNavigationProvider } from "@/components/login-navigation"
@@ -32,7 +33,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen w-full bg-white">
         {/* Desktop rail spacer — keeps layout width while Sidebar is position:fixed */}
         <div
-          className="relative hidden w-20 shrink-0 lg:block"
+          className="relative hidden w-20 shrink-0 md:block"
           style={{ width: SIDEBAR_WIDTH_PX }}
         >
           <Sidebar />
@@ -43,7 +44,18 @@ function AppShellInner({ children }: { children: ReactNode }) {
           style={{ ["--app-sidebar-width" as string]: `${SIDEBAR_WIDTH_PX}px` }}
         >
           <MobileGlobalChrome />
-          <div className="w-full flex-1 pb-24 md:pt-0 md:pb-0">{children}</div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname.split("/")[1] || "home"}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.24, ease: "easeOut" }}
+              className="w-full flex-1 pb-24 md:pt-0 md:pb-0"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
 
@@ -70,7 +82,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           fallback={
             <div className="flex min-h-screen w-full bg-white">
               <div
-                className="hidden h-screen w-20 shrink-0 border-r border-border/80 bg-[#F7F4EE] lg:block"
+                className="hidden h-screen w-20 shrink-0 border-r border-border/80 bg-[#F7F4EE] md:block"
                 style={{ width: SIDEBAR_WIDTH_PX }}
                 aria-hidden
               />

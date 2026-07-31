@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react"
+import { usePathname } from "next/navigation"
 
 import {
   countActionableNotifications,
@@ -37,10 +38,20 @@ type NotificationsContextValue = {
 const NotificationsContext = createContext<NotificationsContextValue | null>(null)
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname()
   const [items, setItems] = useState<FeedNotification[]>([])
   const [loading, setLoading] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [isMobileNotificationOpen, setMobileNotificationOpen] = useState(false)
+
+  // Close both notification drawers whenever the route changes (e.g. clicking
+  // another sidebar category while the drawer is open) instead of leaving the
+  // bell lit and the drawer parked over the new page.
+  useEffect(() => {
+    setDrawerOpen(false)
+    setMobileNotificationOpen(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
 
   const refresh = useCallback(async () => {
     setLoading(true)

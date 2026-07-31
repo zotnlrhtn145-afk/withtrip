@@ -690,7 +690,7 @@ export function FriendsView() {
       ) : null}
 
       {/* Search */}
-      <section className="overflow-hidden rounded-2xl border border-border bg-card">
+      <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
         <div className="relative border-b border-border px-3 py-2.5">
           <Search className="pointer-events-none absolute top-1/2 left-6 size-3.5 -translate-y-1/2 stroke-[1.5] text-muted-foreground" />
           <Input
@@ -816,7 +816,7 @@ export function FriendsView() {
 
       {/* Co-travelers (Paris group etc.) */}
       {!isSearchMode && coTravelers.length > 0 ? (
-        <section className="overflow-hidden rounded-2xl border border-border bg-card">
+        <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
           <div className="flex items-end justify-between gap-3 border-b border-border px-4 py-3">
             <div>
               <h3 className="text-sm font-bold">같이 여행 중인 친구</h3>
@@ -859,7 +859,7 @@ export function FriendsView() {
         <button
           type="button"
           onClick={openRequestsPanel}
-          className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-left transition-all duration-150 ease-in-out active:scale-[0.99] hover:bg-secondary/40"
+          className="flex w-full items-center gap-3 rounded-3xl border border-slate-100 bg-white shadow-sm px-4 py-3 text-left transition-all duration-150 ease-in-out active:scale-[0.99] hover:bg-secondary/40"
         >
           <div className="relative flex h-12 w-[3.25rem] shrink-0 items-center">
             {receivedRequests.slice(0, 2).map((row, index) => {
@@ -902,7 +902,7 @@ export function FriendsView() {
       ) : null}
 
       {/* Activity feed */}
-      <section ref={requestsSectionRef} className="overflow-hidden rounded-2xl border border-border bg-card">
+      <section ref={requestsSectionRef} className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
         {error ? (
           <div className="px-4 py-4">
             <FieldError>{error}</FieldError>
@@ -973,7 +973,7 @@ export function FriendsView() {
 
       {/* Received requests modal */}
       <Dialog open={requestsOpen} onOpenChange={setRequestsOpen}>
-        <DialogContent className="max-h-[85svh] overflow-y-auto rounded-2xl sm:max-w-md">
+        <DialogContent className="max-h-[85svh] overflow-y-auto rounded-3xl border-slate-100 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>친구 요청</DialogTitle>
             <DialogDescription>받은 친구 요청을 확인하고 수락하거나 거절하세요.</DialogDescription>

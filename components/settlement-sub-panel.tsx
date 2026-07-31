@@ -104,7 +104,7 @@ export function SettlementSubPanel({
       initial={{ x: -300, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 320, damping: 34, mass: 0.85 }}
-      className="sticky top-0 z-40 flex h-screen w-[19.5rem] shrink-0 flex-col border-r border-border bg-card"
+      className="sticky top-0 z-40 flex h-screen w-[19.5rem] shrink-0 flex-col border-r border-slate-100 bg-white"
     >
       <div className="flex flex-col gap-3 border-b border-border px-3 pb-3 pt-4">
         <div className="flex items-center justify-between px-1">

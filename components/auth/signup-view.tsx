@@ -1,28 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import { Eye, EyeOff, Loader2, MailCheck } from "lucide-react"
+import { Check, Eye, EyeOff, Loader2, MailCheck } from "lucide-react"
 
 import { AuthShell } from "@/components/auth/auth-shell"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "@/components/ui/input-group"
 import { mapAuthError, signUpWithEmailPassword } from "@/lib/auth-api"
+import { cn } from "@/lib/utils"
+
+const inputClass =
+  "h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/15 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-70"
+const labelClass = "mb-1.5 block text-xs font-bold text-slate-700"
 
 export function SignupView({
   onSignupComplete,
@@ -93,23 +80,24 @@ export function SignupView({
         }
         footer={
           needsConfirm ? (
-            <Button variant="link" size="sm" onClick={onLogin} className="font-semibold">
+            <button
+              type="button"
+              onClick={onLogin}
+              className="text-sm font-bold text-slate-900 underline-offset-2 hover:underline"
+            >
               로그인으로 이동
-            </Button>
+            </button>
           ) : null
         }
       >
-        <div
-          role="status"
-          className="flex flex-col items-center gap-3 rounded-xl bg-secondary px-4 py-6 text-center animate-in fade-in zoom-in-95 duration-200 ease-out"
-        >
-          <span className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <MailCheck className="size-5" />
+        <div className="flex flex-col items-center gap-3 rounded-2xl bg-amber-50/70 px-4 py-8 text-center">
+          <span className="flex size-12 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 via-amber-300 to-amber-200 text-slate-950 shadow-[0_8px_20px_rgba(255,193,7,0.35)]">
+            <MailCheck className="size-6" />
           </span>
-          <p className="text-sm font-semibold">
-            {needsConfirm ? "가입 확인 이메일을 확인해주세요" : "회원가입이 완료되었습니다"}
+          <p className="text-sm font-bold text-slate-900">
+            {needsConfirm ? "가입 확인 이메일을 보냈어요" : "회원가입이 완료되었습니다"}
           </p>
-          <p className="text-sm leading-relaxed text-muted-foreground">
+          <p className="text-sm leading-relaxed text-slate-400">
             {needsConfirm
               ? `${email.trim()} 으로 확인 메일을 보냈어요. 메일함(스팸함 포함)을 확인해 주세요.`
               : "잠시 후 여행 목록으로 이동해요."}
@@ -124,168 +112,191 @@ export function SignupView({
       title="회원가입"
       description="이메일로 가입하고 친구들과 여행을 계획해 보세요."
       footer={
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-slate-400">
           이미 계정이 있으신가요?{" "}
-          <Button
-            variant="link"
-            size="sm"
+          <button
             type="button"
             disabled={isSubmitting}
             onClick={onLogin}
-            className="h-auto px-0 font-semibold"
+            className="font-bold text-slate-900 underline-offset-2 hover:underline disabled:opacity-60"
           >
             로그인
-          </Button>
+          </button>
         </p>
       }
     >
-      <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-5">
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="signup-name">이름</FieldLabel>
-            <Input
-              id="signup-name"
-              autoComplete="name"
-              placeholder="오수환"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              disabled={isSubmitting}
-              required
-            />
-          </Field>
+      <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-4">
+        <div>
+          <label htmlFor="signup-name" className={labelClass}>
+            이름
+          </label>
+          <input
+            id="signup-name"
+            autoComplete="name"
+            placeholder="오수환"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            disabled={isSubmitting}
+            required
+            className={inputClass}
+          />
+        </div>
 
-          <Field>
-            <FieldLabel htmlFor="signup-email">이메일</FieldLabel>
-            <Input
-              id="signup-email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@withtrip.app"
-              value={email}
+        <div>
+          <label htmlFor="signup-email" className={labelClass}>
+            이메일
+          </label>
+          <input
+            id="signup-email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@withtrip.app"
+            value={email}
+            onChange={(event) => {
+              setEmail(event.target.value)
+              if (errorMessage) setErrorMessage(null)
+            }}
+            disabled={isSubmitting}
+            required
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="signup-password" className={labelClass}>
+            비밀번호
+          </label>
+          <div className="relative">
+            <input
+              id="signup-password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              placeholder="영문 · 숫자 조합 8자 이상"
+              value={password}
               onChange={(event) => {
-                setEmail(event.target.value)
+                setPassword(event.target.value)
                 if (errorMessage) setErrorMessage(null)
               }}
               disabled={isSubmitting}
               required
+              minLength={8}
+              className={`${inputClass} pr-11`}
             />
-          </Field>
+            <button
+              type="button"
+              aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+              disabled={isSubmitting}
+              onClick={() => setShowPassword((current) => !current)}
+              className="absolute top-1/2 right-3 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            >
+              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
+          <p className="mt-1.5 text-[11px] text-slate-400">영문, 숫자를 포함해 8자 이상 입력해 주세요.</p>
+        </div>
 
-          <Field>
-            <FieldLabel htmlFor="signup-password">비밀번호</FieldLabel>
-            <InputGroup>
-              <InputGroupInput
-                id="signup-password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="new-password"
-                placeholder="영문 · 숫자 조합 8자 이상"
-                value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value)
-                  if (errorMessage) setErrorMessage(null)
-                }}
-                disabled={isSubmitting}
-                required
-                minLength={8}
-              />
-              <InputGroupAddon align="inline-end">
-                <InputGroupButton
-                  type="button"
-                  size="icon-xs"
-                  aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
-                  disabled={isSubmitting}
-                  onClick={() => setShowPassword((current) => !current)}
-                >
-                  {showPassword ? <EyeOff /> : <Eye />}
-                </InputGroupButton>
-              </InputGroupAddon>
-            </InputGroup>
-            <FieldDescription>영문, 숫자를 포함해 8자 이상 입력해 주세요.</FieldDescription>
-          </Field>
+        <div>
+          <label htmlFor="signup-password-confirm" className={labelClass}>
+            비밀번호 확인
+          </label>
+          <div className="relative">
+            <input
+              id="signup-password-confirm"
+              type={showPasswordConfirm ? "text" : "password"}
+              autoComplete="new-password"
+              placeholder="비밀번호를 다시 입력하세요"
+              aria-invalid={passwordMismatch || undefined}
+              value={passwordConfirm}
+              onChange={(event) => setPasswordConfirm(event.target.value)}
+              disabled={isSubmitting}
+              required
+              className={cn(
+                inputClass,
+                "pr-11",
+                passwordMismatch && "border-red-300 focus:border-red-400 focus:ring-red-400/15"
+              )}
+            />
+            <button
+              type="button"
+              aria-label={showPasswordConfirm ? "비밀번호 숨기기" : "비밀번호 보기"}
+              disabled={isSubmitting}
+              onClick={() => setShowPasswordConfirm((current) => !current)}
+              className="absolute top-1/2 right-3 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            >
+              {showPasswordConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
+          {passwordMismatch ? (
+            <p className="mt-1.5 text-[11px] font-semibold text-red-500">비밀번호가 일치하지 않습니다.</p>
+          ) : null}
+        </div>
 
-          <Field data-invalid={passwordMismatch || undefined}>
-            <FieldLabel htmlFor="signup-password-confirm">비밀번호 확인</FieldLabel>
-            <InputGroup>
-              <InputGroupInput
-                id="signup-password-confirm"
-                type={showPasswordConfirm ? "text" : "password"}
-                autoComplete="new-password"
-                placeholder="비밀번호를 다시 입력하세요"
-                aria-invalid={passwordMismatch || undefined}
-                value={passwordConfirm}
-                onChange={(event) => setPasswordConfirm(event.target.value)}
-                disabled={isSubmitting}
-                required
-              />
-              <InputGroupAddon align="inline-end">
-                <InputGroupButton
-                  type="button"
-                  size="icon-xs"
-                  aria-label={showPasswordConfirm ? "비밀번호 숨기기" : "비밀번호 보기"}
-                  disabled={isSubmitting}
-                  onClick={() => setShowPasswordConfirm((current) => !current)}
-                >
-                  {showPasswordConfirm ? <EyeOff /> : <Eye />}
-                </InputGroupButton>
-              </InputGroupAddon>
-            </InputGroup>
-            {passwordMismatch ? <FieldError>비밀번호가 일치하지 않습니다.</FieldError> : null}
-          </Field>
-
-          <FieldSet>
-            <FieldLegend variant="label">약관 동의</FieldLegend>
-            <Field orientation="horizontal">
-              <Checkbox
-                id="signup-terms"
-                checked={agreeTerms}
-                disabled={isSubmitting}
-                onCheckedChange={(checked) => setAgreeTerms(checked === true)}
-              />
-              <FieldLabel htmlFor="signup-terms" className="font-normal">
-                (필수) 서비스 이용약관에 동의합니다.
-              </FieldLabel>
-            </Field>
-            <Field orientation="horizontal">
-              <Checkbox
-                id="signup-privacy"
-                checked={agreePrivacy}
-                disabled={isSubmitting}
-                onCheckedChange={(checked) => setAgreePrivacy(checked === true)}
-              />
-              <FieldLabel htmlFor="signup-privacy" className="font-normal">
-                (필수) 개인정보 수집 및 이용에 동의합니다.
-              </FieldLabel>
-            </Field>
-            {agreementMissing ? (
-              <FieldError>필수 약관에 모두 동의해 주세요.</FieldError>
-            ) : null}
-          </FieldSet>
-        </FieldGroup>
+        <div className="flex flex-col gap-2.5 rounded-2xl bg-slate-50 p-4">
+          <p className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">약관 동의</p>
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-700">
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={agreeTerms}
+              disabled={isSubmitting}
+              onClick={() => setAgreeTerms((v) => !v)}
+              className={cn(
+                "flex size-5 shrink-0 items-center justify-center rounded-md border transition-all",
+                agreeTerms
+                  ? "border-amber-400 bg-amber-400 text-slate-950"
+                  : "border-slate-300 bg-white text-transparent"
+              )}
+            >
+              <Check className="size-3.5 stroke-[3]" />
+            </button>
+            (필수) 서비스 이용약관에 동의합니다.
+          </label>
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-700">
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={agreePrivacy}
+              disabled={isSubmitting}
+              onClick={() => setAgreePrivacy((v) => !v)}
+              className={cn(
+                "flex size-5 shrink-0 items-center justify-center rounded-md border transition-all",
+                agreePrivacy
+                  ? "border-amber-400 bg-amber-400 text-slate-950"
+                  : "border-slate-300 bg-white text-transparent"
+              )}
+            >
+              <Check className="size-3.5 stroke-[3]" />
+            </button>
+            (필수) 개인정보 수집 및 이용에 동의합니다.
+          </label>
+          {agreementMissing ? (
+            <p className="text-[11px] font-semibold text-red-500">필수 약관에 모두 동의해 주세요.</p>
+          ) : null}
+        </div>
 
         {errorMessage ? (
           <div
             role="alert"
-            className="rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
+            className="rounded-2xl border border-red-100 bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-500"
           >
-            <FieldError>{errorMessage}</FieldError>
+            {errorMessage}
           </div>
         ) : null}
 
-        <Button
+        <button
           type="submit"
-          size="lg"
           disabled={isSubmitting}
-          className="w-full rounded-xl font-bold"
+          className="mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-amber-400 text-sm font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? (
             <>
-              <Loader2 data-icon="inline-start" className="animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
               가입 중…
             </>
           ) : (
             "회원가입 완료"
           )}
-        </Button>
+        </button>
       </form>
     </AuthShell>
   )

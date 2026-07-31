@@ -58,6 +58,8 @@ export function AccommodationRegisterModal({
 
   const [name, setName] = useState("")
   const [address, setAddress] = useState("")
+  const [lat, setLat] = useState<number | null>(null)
+  const [lng, setLng] = useState<number | null>(null)
   const [checkInDate, setCheckInDate] = useState("")
   const [checkInTime, setCheckInTime] = useState("15:00")
   const [checkOutDate, setCheckOutDate] = useState("")
@@ -101,6 +103,8 @@ export function AccommodationRegisterModal({
     if (editing) {
       setName(editing.name)
       setAddress(editing.address)
+      setLat(editing.lat)
+      setLng(editing.lng)
       setCheckInDate(toInputDate(editing.checkInDate))
       setCheckInTime(editing.checkInTime || "15:00")
       setCheckOutDate(toInputDate(editing.checkOutDate))
@@ -114,6 +118,8 @@ export function AccommodationRegisterModal({
 
     setName("")
     setAddress("")
+    setLat(null)
+    setLng(null)
     setCheckInDate(toInputDate(defaultCheckInDate))
     setCheckInTime("15:00")
     setCheckOutDate(toInputDate(defaultCheckOutDate))
@@ -169,11 +175,15 @@ export function AccommodationRegisterModal({
       setHotelQuery(place.placeName)
       setAddress(place.address)
       setPhoneNumber(place.phoneNumber)
+      setLat(typeof place.lat === "number" ? place.lat : null)
+      setLng(typeof place.lng === "number" ? place.lng : null)
       setError(null)
       return
     }
     setName(option.label)
     setHotelQuery(option.label)
+    setLat(null)
+    setLng(null)
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -201,6 +211,8 @@ export function AccommodationRegisterModal({
         tripId,
         name: name.trim(),
         address: address.trim(),
+        lat,
+        lng,
         checkInDate,
         checkInTime,
         checkOutDate,

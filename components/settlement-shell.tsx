@@ -16,7 +16,6 @@ import { TripBannerCard } from "@/components/trip-banner-card"
 import { TripSearchDialog } from "@/components/trip-search-dialog"
 import { useTrips } from "@/components/trips-store"
 import { type ViewMode } from "@/components/view-switcher"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { type Trip } from "@/lib/trip-data"
 
@@ -36,12 +35,12 @@ function SettlementTripPicker({
 
   if (trips.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-6 py-14 text-center">
-        <span className="flex size-11 items-center justify-center rounded-full bg-secondary">
-          <Plane className="size-5 text-muted-foreground" />
+      <div className="flex flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50/50 px-6 py-14 text-center">
+        <span className="flex size-12 items-center justify-center rounded-full border border-slate-100 bg-white shadow-sm">
+          <Plane className="size-5 text-slate-400" />
         </span>
-        <p className="text-sm font-semibold">참여 중인 여행이 없어요</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm font-bold text-slate-800">참여 중인 여행이 없어요</p>
+        <p className="text-sm text-slate-400">
           홈에서 새 여행을 만들면 여기에서 정산을 시작할 수 있어요.
         </p>
       </div>
@@ -51,8 +50,11 @@ function SettlementTripPicker({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">정산할 여행 선택</h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Settlement</p>
+        <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+          정산할 여행 선택
+        </h2>
+        <p className="text-sm text-slate-400">
           정산 진행 중인 여행을 고르면 내역이 바로 열립니다. 완료된 정산은 왼쪽 목록에서
           확인할 수 있어요.
         </p>
@@ -61,7 +63,9 @@ function SettlementTripPicker({
         {list.map((trip, index) => (
           <div key={trip.id} className="relative">
             {selectedTripId === trip.id ? (
-              <Badge className="absolute top-3 right-3 z-10">선택됨</Badge>
+              <span className="absolute top-3 right-3 z-10 rounded-full bg-amber-400 px-2.5 py-1 text-[11px] font-bold text-slate-950 shadow-sm">
+                선택됨
+              </span>
             ) : null}
             <TripBannerCard
               trip={trip}

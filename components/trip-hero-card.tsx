@@ -482,7 +482,7 @@ export function TripHeroCard({
                   return (
                     <li
                       key={member.id}
-                      className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2"
+                      className="flex items-center justify-between gap-2 rounded-2xl border border-slate-100 bg-white px-3 py-2"
                     >
                       <div className="flex min-w-0 items-center gap-2">
                         <Avatar className="size-8">

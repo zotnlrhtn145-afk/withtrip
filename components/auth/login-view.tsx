@@ -6,16 +6,11 @@ import { Eye, EyeOff, Loader2 } from "lucide-react"
 
 import { SocialLoginButtons } from "@/components/auth/social-login-buttons"
 import { AuthShell } from "@/components/auth/auth-shell"
-import { Button } from "@/components/ui/button"
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "@/components/ui/input-group"
 import { mapAuthError, signInWithEmailPassword } from "@/lib/auth-api"
+
+const inputClass =
+  "h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/15 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-70"
+const labelClass = "mb-1.5 block text-xs font-bold text-slate-700"
 
 export function LoginView({
   onLogin,
@@ -62,106 +57,103 @@ export function LoginView({
       title="로그인"
       description="여행 일정과 멤버를 한 곳에서 관리해 보세요."
       footer={
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-slate-400">
           아직 계정이 없으신가요?{" "}
-          <Button
-            variant="link"
-            size="sm"
+          <button
             type="button"
             disabled={isSubmitting}
             onClick={onSignup}
-            className="h-auto px-0 font-semibold"
+            className="font-bold text-slate-900 underline-offset-2 hover:underline disabled:opacity-60"
           >
             회원가입
-          </Button>
+          </button>
         </p>
       }
     >
-      <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-5">
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="login-email">이메일</FieldLabel>
-            <Input
-              id="login-email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@withtrip.app"
-              value={email}
+      <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-4">
+        <div>
+          <label htmlFor="login-email" className={labelClass}>
+            이메일
+          </label>
+          <input
+            id="login-email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@withtrip.app"
+            value={email}
+            onChange={(event) => {
+              setEmail(event.target.value)
+              if (errorMessage) setErrorMessage(null)
+            }}
+            disabled={isSubmitting}
+            required
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="login-password" className={labelClass}>
+            비밀번호
+          </label>
+          <div className="relative">
+            <input
+              id="login-password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              placeholder="비밀번호를 입력하세요"
+              value={password}
               onChange={(event) => {
-                setEmail(event.target.value)
+                setPassword(event.target.value)
                 if (errorMessage) setErrorMessage(null)
               }}
               disabled={isSubmitting}
               required
+              className={`${inputClass} pr-11`}
             />
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="login-password">비밀번호</FieldLabel>
-            <InputGroup>
-              <InputGroupInput
-                id="login-password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                placeholder="비밀번호를 입력하세요"
-                value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value)
-                  if (errorMessage) setErrorMessage(null)
-                }}
-                disabled={isSubmitting}
-                required
-              />
-              <InputGroupAddon align="inline-end">
-                <InputGroupButton
-                  type="button"
-                  size="icon-xs"
-                  aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
-                  disabled={isSubmitting}
-                  onClick={() => setShowPassword((current) => !current)}
-                >
-                  {showPassword ? <EyeOff /> : <Eye />}
-                </InputGroupButton>
-              </InputGroupAddon>
-            </InputGroup>
-          </Field>
-        </FieldGroup>
+            <button
+              type="button"
+              aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+              disabled={isSubmitting}
+              onClick={() => setShowPassword((current) => !current)}
+              className="absolute top-1/2 right-3 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            >
+              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
+        </div>
 
         {errorMessage ? (
           <div
             role="alert"
-            className="rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
+            className="rounded-2xl border border-red-100 bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-500"
           >
-            <FieldError>{errorMessage}</FieldError>
+            {errorMessage}
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-3">
-          <Button
+        <div className="flex flex-col gap-3 pt-1">
+          <button
             type="submit"
-            size="lg"
             disabled={isSubmitting}
-            className="w-full rounded-xl font-bold"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-amber-400 text-sm font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? (
               <>
-                <Loader2 data-icon="inline-start" className="animate-spin" />
+                <Loader2 className="size-4 animate-spin" />
                 로그인 중…
               </>
             ) : (
               "로그인"
             )}
-          </Button>
-          <Button
+          </button>
+          <button
             type="button"
-            variant="link"
-            size="sm"
             disabled={isSubmitting}
             onClick={onForgotPassword}
-            className="self-center font-medium text-muted-foreground"
+            className="self-center text-sm font-semibold text-slate-400 transition-colors hover:text-slate-700 disabled:opacity-60"
           >
             비밀번호 찾기
-          </Button>
+          </button>
         </div>
       </form>
 

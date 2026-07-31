@@ -3,17 +3,31 @@
 import { useState } from "react"
 import { Loader2 } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
-import { FieldSeparator } from "@/components/ui/field"
 import {
   mapAuthError,
   signInWithOAuthProvider,
   type AuthProviderId,
 } from "@/lib/auth-api"
+import { cn } from "@/lib/utils"
 
-const providers: { id: AuthProviderId; label: string; icon: string }[] = [
-  { id: "kakao", label: "카카오로 계속하기", icon: "/icons/kakao.svg" },
-  { id: "google", label: "구글로 계속하기", icon: "/icons/google.svg" },
+const providers: {
+  id: AuthProviderId
+  label: string
+  icon: string
+  className: string
+}[] = [
+  {
+    id: "kakao",
+    label: "카카오로 계속하기",
+    icon: "/icons/kakao.svg",
+    className: "border-transparent bg-[#FEE500] text-[#191600] hover:bg-[#FADA00]",
+  },
+  {
+    id: "google",
+    label: "구글로 계속하기",
+    icon: "/icons/google.svg",
+    className: "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+  },
 ]
 
 export function SocialLoginButtons({ disabled = false }: { disabled?: boolean }) {
@@ -41,20 +55,27 @@ export function SocialLoginButtons({ disabled = false }: { disabled?: boolean })
 
   return (
     <div className="flex flex-col gap-4">
-      <FieldSeparator>또는</FieldSeparator>
+      <div className="flex items-center gap-3">
+        <span className="h-px flex-1 bg-slate-100" />
+        <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+          또는
+        </span>
+        <span className="h-px flex-1 bg-slate-100" />
+      </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2.5">
         {providers.map((provider) => {
           const loading = pending === provider.id
           return (
-            <Button
+            <button
               key={provider.id}
               type="button"
-              variant="outline"
-              size="lg"
               disabled={disabled || pending !== null}
               onClick={() => void handleOAuth(provider.id)}
-              className="w-full justify-center rounded-xl font-semibold"
+              className={cn(
+                "flex h-12 w-full items-center justify-center gap-2.5 rounded-full border text-sm font-bold shadow-sm transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60",
+                provider.className
+              )}
             >
               {loading ? (
                 <Loader2 className="size-4.5 shrink-0 animate-spin" />
@@ -70,13 +91,13 @@ export function SocialLoginButtons({ disabled = false }: { disabled?: boolean })
                 />
               )}
               {provider.label}
-            </Button>
+            </button>
           )
         })}
       </div>
 
       {errorMessage ? (
-        <p role="alert" className="text-center text-xs text-destructive">
+        <p role="alert" className="text-center text-xs font-medium text-red-500">
           {errorMessage}
         </p>
       ) : null}

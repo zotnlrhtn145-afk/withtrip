@@ -15,6 +15,8 @@ import {
   type SavedPlace,
 } from "@/lib/saved-places-api"
 import { getCurrentUserId } from "@/lib/auth-session"
+import { fetchAccommodationsByTripId } from "@/lib/accommodations-api"
+import { distanceMeters } from "@/lib/geo"
 import {
   searchGooglePlaces,
   type PlaceSearchResult,
@@ -51,6 +53,8 @@ export function AddSavedPlaceModal({
   const [subCategory, setSubCategory] = useState("")
   const [guideBadge, setGuideBadge] = useState("")
   const [address, setAddress] = useState("")
+  const [lat, setLat] = useState<number | null>(null)
+  const [lng, setLng] = useState<number | null>(null)
   const [phoneNumber, setPhoneNumber] = useState("")
   const [memo, setMemo] = useState("")
   const [imageUrl, setImageUrl] = useState("")
@@ -73,6 +77,8 @@ export function AddSavedPlaceModal({
     setSubCategory("")
     setGuideBadge("")
     setAddress("")
+    setLat(null)
+    setLng(null)
     setPhoneNumber("")
     setMemo("")
     setImageUrl("")
@@ -136,6 +142,8 @@ export function AddSavedPlaceModal({
     setSubCategory(String(place.subCategory ?? "").trim())
     setGuideBadge(String(place.guideBadge ?? "").trim())
     setAddress(String(place.address ?? "").trim())
+    setLat(typeof place.lat === "number" ? place.lat : null)
+    setLng(typeof place.lng === "number" ? place.lng : null)
     setPhoneNumber(String(place.phoneNumber ?? "").trim())
     setImageUrl(String(place.imageUrl ?? place.image ?? "").trim())
     setRating(typeof place.rating === "number" ? place.rating : null)
@@ -161,6 +169,17 @@ export function AddSavedPlaceModal({
     try {
       const userId = (await getCurrentUserId()) || undefined
 
+      // Distance to the trip's (first) accommodation — only when both sides have coordinates.
+      let distanceKm: number | null = null
+      if (typeof lat === "number" && typeof lng === "number") {
+        const stays = await fetchAccommodationsByTripId(tripId)
+        const stay = stays.find((item) => item.lat != null && item.lng != null)
+        if (stay && stay.lat != null && stay.lng != null) {
+          const meters = distanceMeters({ lat, lng }, { lat: stay.lat, lng: stay.lng })
+          distanceKm = Math.round((meters / 1000) * 10) / 10
+        }
+      }
+
       const saved = await insertSavedPlace({
         tripId,
         ...(userId ? { userId } : {}),
@@ -176,6 +195,9 @@ export function AddSavedPlaceModal({
         imageUrl: imageUrl.trim(),
         rating,
         reviewCount,
+        lat,
+        lng,
+        distanceKm,
       })
       onSaved?.(saved)
       setOpen(false)

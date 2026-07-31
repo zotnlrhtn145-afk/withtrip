@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Search } from "lucide-react"
+import { Plus, Search } from "lucide-react"
 
 import { AccountMenu } from "@/components/account-menu"
 import { ForgotPasswordView } from "@/components/auth/forgot-password-view"
@@ -348,6 +348,85 @@ function WithtripShell() {
     />
   )
 
+  // Shared across mobile + desktop so quick-add (trip/expense/place) works on every viewport.
+  const quickAddOverlay = (
+    <>
+      <QuickMenuSheet
+        open={isQuickMenuOpen}
+        onOpenChange={setIsQuickMenuOpen}
+        onSelectTrip={() => {
+          setIsQuickMenuOpen(false)
+          setIsTripModalOpen(true)
+        }}
+        onSelectExpense={() => {
+          setIsQuickMenuOpen(false)
+          setIsExpenseModalOpen(true)
+        }}
+        onSelectPlace={() => {
+          setIsQuickMenuOpen(false)
+          setIsPlaceModalOpen(true)
+        }}
+      />
+      <TripRegisterModal
+        open={isTripModalOpen}
+        onOpenChange={setIsTripModalOpen}
+        onSaved={(trip) => {
+          // Stay on home dashboard — do not open trip detail.
+          setSelectedTripId(null)
+          setActiveNav("home")
+          goTo("home")
+          setQuickToast(`「${trip.title}」 여행이 등록되었어요.`)
+          window.setTimeout(() => setQuickToast(null), 2800)
+        }}
+      />
+      <ExpenseRegisterModal
+        open={isExpenseModalOpen}
+        onOpenChange={setIsExpenseModalOpen}
+        tripId={selectedTripId}
+        onSaved={(draft) => {
+          setActiveNav("settlement")
+          const targetTripId = selectedTripId
+          if (targetTripId) {
+            router.push(`/settlement/${targetTripId}`)
+          } else {
+            router.push("/settlement")
+          }
+          setQuickToast(`「${draft.storeName}」 지출이 등록되었어요.`)
+          window.setTimeout(() => setQuickToast(null), 2800)
+        }}
+      />
+      <PlaceRegisterModal
+        open={isPlaceModalOpen}
+        onOpenChange={setIsPlaceModalOpen}
+        onSaved={(draft) => {
+          setActiveNav("spots")
+          goTo("spots")
+          setQuickToast(`「${draft.name}」 장소가 저장되었어요.`)
+          window.setTimeout(() => setQuickToast(null), 2800)
+        }}
+      />
+      {quickToast ? (
+        <div className="fixed inset-x-0 bottom-24 z-[70] mx-auto w-full max-w-md px-4 md:right-6 md:left-auto md:max-w-sm">
+          <div className="rounded-2xl bg-foreground px-4 py-3 text-center text-sm font-semibold text-background shadow-lg animate-in fade-in-0 slide-in-from-bottom-2">
+            {quickToast}
+          </div>
+        </div>
+      ) : null}
+    </>
+  )
+
+  const quickAddFab = (
+    <button
+      type="button"
+      onClick={() => setIsQuickMenuOpen(true)}
+      aria-label="퀵 등록"
+      title="퀵 등록"
+      className="fixed right-5 bottom-24 z-[65] flex size-14 items-center justify-center rounded-full bg-amber-400 text-slate-950 shadow-lg shadow-amber-300/40 transition-all hover:scale-105 hover:bg-amber-500 active:scale-95 md:right-8 md:bottom-8"
+    >
+      <Plus className="size-6" strokeWidth={2.5} />
+    </button>
+  )
+
   if (currentView === "login" || currentView === "signup" || currentView === "forgot-password") {
     return (
       <div className="flex min-h-screen flex-col bg-background">
@@ -383,67 +462,8 @@ function WithtripShell() {
           </main>
         </div>
 
-        <QuickMenuSheet
-          open={isQuickMenuOpen}
-          onOpenChange={setIsQuickMenuOpen}
-          onSelectTrip={() => {
-            setIsQuickMenuOpen(false)
-            setIsTripModalOpen(true)
-          }}
-          onSelectExpense={() => {
-            setIsQuickMenuOpen(false)
-            setIsExpenseModalOpen(true)
-          }}
-          onSelectPlace={() => {
-            setIsQuickMenuOpen(false)
-            setIsPlaceModalOpen(true)
-          }}
-        />
-        <TripRegisterModal
-          open={isTripModalOpen}
-          onOpenChange={setIsTripModalOpen}
-          onSaved={(trip) => {
-            // Stay on home dashboard — do not open trip detail.
-            setSelectedTripId(null)
-            setActiveNav("home")
-            goTo("home")
-            setQuickToast(`「${trip.title}」 여행이 등록되었어요.`)
-            window.setTimeout(() => setQuickToast(null), 2800)
-          }}
-        />
-        <ExpenseRegisterModal
-          open={isExpenseModalOpen}
-          onOpenChange={setIsExpenseModalOpen}
-          tripId={selectedTripId}
-          onSaved={(draft) => {
-            setActiveNav("settlement")
-            const targetTripId = selectedTripId
-            if (targetTripId) {
-              router.push(`/settlement/${targetTripId}`)
-            } else {
-              router.push("/settlement")
-            }
-            setQuickToast(`「${draft.storeName}」 지출이 등록되었어요.`)
-            window.setTimeout(() => setQuickToast(null), 2800)
-          }}
-        />
-        <PlaceRegisterModal
-          open={isPlaceModalOpen}
-          onOpenChange={setIsPlaceModalOpen}
-          onSaved={(draft) => {
-            setActiveNav("spots")
-            goTo("spots")
-            setQuickToast(`「${draft.name}」 장소가 저장되었어요.`)
-            window.setTimeout(() => setQuickToast(null), 2800)
-          }}
-        />
-        {quickToast ? (
-          <div className="fixed inset-x-0 bottom-24 z-[70] mx-auto w-full max-w-md px-4">
-            <div className="rounded-2xl bg-foreground px-4 py-3 text-center text-sm font-semibold text-background shadow-lg animate-in fade-in-0 slide-in-from-bottom-2">
-              {quickToast}
-            </div>
-          </div>
-        ) : null}
+        {quickAddOverlay}
+        {quickAddFab}
         <TripSearchDialog
           open={searchOpen}
           onOpenChange={setSearchOpen}
@@ -487,6 +507,8 @@ function WithtripShell() {
         </main>
       </div>
 
+      {quickAddOverlay}
+      {quickAddFab}
       <TripSearchDialog open={searchOpen} onOpenChange={setSearchOpen} onSelectTrip={openTripDetail} />
     </div>
   )
