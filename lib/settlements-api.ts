@@ -189,6 +189,47 @@ export async function fetchSettlementMembers(tripId: string): Promise<Settlement
     })
   }
 
+  // Trip owner may not have a trip_members row (never invited themselves) —
+  // without this, a solo trip has zero settlement members and the payer picker is empty.
+  const { data: tripRow, error: tripError } = await supabase
+    .from("trips")
+    .select("user_id")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (tripError) {
+    logError("fetchSettlementMembers.trip", tripError)
+  } else {
+    const ownerId = String((tripRow as { user_id?: string | null } | null)?.user_id ?? "").trim()
+    if (ownerId && !seen.has(ownerId)) {
+      const { data: ownerProfile, error: ownerError } = await supabase
+        .from("profiles")
+        .select("id, email, nickname, avatar_url")
+        .eq("id", ownerId)
+        .maybeSingle()
+
+      if (ownerError) {
+        logError("fetchSettlementMembers.ownerProfile", ownerError)
+      }
+
+      const mapped = mapProfile(ownerProfile as ProfileJoin | null)
+      const email = mapped.email
+      const nickname =
+        mapped.nickname !== "사용자"
+          ? mapped.nickname
+          : email
+            ? email.split("@")[0]
+            : "여행 호스트"
+
+      result.unshift({
+        userId: ownerId,
+        email,
+        nickname,
+        avatarUrl: mapped.avatarUrl,
+      })
+    }
+  }
+
   return result
 }
 

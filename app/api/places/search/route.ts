@@ -4,6 +4,10 @@ import { buildGooglePlacePhotoUrl, resolveCoverImageUrl } from "@/lib/place-cove
 
 export const runtime = "nodejs"
 
+type GoogleGeometry = {
+  location?: { lat?: number; lng?: number }
+}
+
 type GoogleTextSearchItem = {
   place_id?: string
   name?: string
@@ -14,6 +18,7 @@ type GoogleTextSearchItem = {
   price_level?: number
   types?: string[]
   photos?: { photo_reference?: string }[]
+  geometry?: GoogleGeometry
 }
 
 type GoogleTextSearchResponse = {
@@ -34,6 +39,7 @@ type GoogleDetailsResult = {
   types?: string[]
   editorial_summary?: { overview?: string }
   photos?: { photo_reference?: string }[]
+  geometry?: GoogleGeometry
 }
 
 type GoogleDetailsResponse = {
@@ -58,6 +64,8 @@ export type PlaceSearchApiItem = {
   imageUrl: string
   image: string
   imageAlt: string
+  lat?: number
+  lng?: number
 }
 
 function getApiKey() {
@@ -169,6 +177,8 @@ function toApiItem(
     typeof details.user_ratings_total === "number" ? details.user_ratings_total : undefined
   const subCategory = mapSubCategory(details.types, kind)
   const imageUrl = pickPhotoUrl(details.photos, apiKey, kind, subCategory)
+  const lat = details.geometry?.location?.lat
+  const lng = details.geometry?.location?.lng
 
   return {
     id: `google:${details.place_id ?? placeName}`,
@@ -186,6 +196,8 @@ function toApiItem(
     imageUrl,
     image: imageUrl,
     imageAlt: placeName || "장소",
+    ...(typeof lat === "number" ? { lat } : {}),
+    ...(typeof lng === "number" ? { lng } : {}),
   }
 }
 
@@ -212,6 +224,7 @@ async function fetchPlaceDetails(
       "types",
       "editorial_summary",
       "photos",
+      "geometry",
     ].join(",")
   )
   url.searchParams.set("key", apiKey)
@@ -302,6 +315,7 @@ export async function GET(request: Request) {
               price_level: item.price_level,
               types: item.types,
               photos: basePhotos,
+              geometry: item.geometry,
             },
             apiKey,
             kind
@@ -330,6 +344,7 @@ export async function GET(request: Request) {
             price_level: item.price_level,
             types: item.types,
             photos: basePhotos,
+            geometry: item.geometry,
           },
           apiKey,
           kind

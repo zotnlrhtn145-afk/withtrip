@@ -21,6 +21,21 @@ type SpotRow = {
   profiles?: ProfileJoin | ProfileJoin[] | null
 }
 
+type SavedPlaceRow = {
+  id: string
+  trip_id?: string | null
+  place_name?: string | null
+  local_name?: string | null
+  category?: string | null
+  address?: string | null
+  lat?: number | string | null
+  lng?: number | string | null
+  rating?: number | null
+  image_url?: string | null
+  user_id?: string | null
+  profiles?: ProfileJoin | ProfileJoin[] | null
+}
+
 function unwrapProfile(
   profiles: ProfileJoin | ProfileJoin[] | null | undefined
 ): ProfileJoin | null {
@@ -29,8 +44,11 @@ function unwrapProfile(
 }
 
 function toNumber(value: number | string | null | undefined): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return value
-  const n = Number(value)
+  if (value == null) return null
+  if (typeof value === "number") return Number.isFinite(value) ? value : null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const n = Number(trimmed)
   return Number.isFinite(n) ? n : null
 }
 
@@ -79,9 +97,56 @@ const SPOT_SELECT = `
   )
 `
 
+const SAVED_PLACE_SELECT = `
+  id,
+  trip_id,
+  place_name,
+  local_name,
+  category,
+  address,
+  lat,
+  lng,
+  rating,
+  image_url,
+  user_id,
+  profiles:user_id (
+    nickname,
+    avatar_url
+  )
+`
+
+export function mapSavedPlaceRowToNearbySpot(row: SavedPlaceRow): NearbySpot | null {
+  const lat = toNumber(row.lat)
+  const lng = toNumber(row.lng)
+  if (lat == null || lng == null) return null
+
+  const profile = unwrapProfile(row.profiles)
+  const nickname = String(profile?.nickname ?? "").trim()
+  const avatarUrl = String(profile?.avatar_url ?? "").trim()
+  const image = String(row.image_url ?? "").trim() || "/images/place-sushi.png"
+  const name = String(row.place_name ?? "").trim() || "이름 없는 장소"
+
+  return {
+    id: String(row.id),
+    name,
+    nameLocal: String(row.local_name ?? "").trim() || name,
+    category: String(row.category ?? "").trim() || "스팟",
+    address: String(row.address ?? "").trim() || "주소 미정",
+    lat,
+    lng,
+    rating: typeof row.rating === "number" ? row.rating : 0,
+    image,
+    imageAlt: `${name} 사진`,
+    userId: String(row.user_id ?? "").trim() || null,
+    authorNickname: nickname || null,
+    authorAvatarUrl: avatarUrl || null,
+  }
+}
+
 /**
- * Fetch nearby spots from all trips the current user participates in.
- * Falls back to user's own spots if trip_id is null.
+ * Fetch nearby spots — every "가고 싶은 곳" (saved_places) with coordinates,
+ * across all trips the current user participates in (owner or accepted member).
+ * Legacy `spots` table rows (if any) are included too for backward compatibility.
  * Logged-out / empty → [] so the UI shows Empty State.
  */
 export async function fetchNearbySpots(): Promise<NearbySpot[]> {
@@ -104,29 +169,39 @@ export async function fetchNearbySpots(): Promise<NearbySpot[]> {
       ]),
     ]
 
-    // Fetch spots: from those trips OR user's own spots (trip_id null)
-    let query = client
-      .from("spots")
-      .select(SPOT_SELECT)
-      .order("created_at", { ascending: false })
+    if (tripIds.length === 0) return []
 
-    if (tripIds.length > 0) {
-      query = query.or(`trip_id.in.(${tripIds.join(",")}),user_id.eq.${userId}`)
-    } else {
-      query = query.eq("user_id", userId)
+    const [savedPlacesResult, legacySpotsResult] = await Promise.all([
+      client
+        .from("saved_places")
+        .select(SAVED_PLACE_SELECT)
+        .in("trip_id", tripIds)
+        .order("created_at", { ascending: false }),
+      client
+        .from("spots")
+        .select(SPOT_SELECT)
+        .or(`trip_id.in.(${tripIds.join(",")}),user_id.eq.${userId}`)
+        .order("created_at", { ascending: false }),
+    ])
+
+    if (savedPlacesResult.error) {
+      console.warn("[fetchNearbySpots] saved_places:", savedPlacesResult.error.message)
+    }
+    if (legacySpotsResult.error) {
+      console.warn("[fetchNearbySpots] spots:", legacySpotsResult.error.message)
     }
 
-    const { data, error } = await query
+    const savedRows = (savedPlacesResult.data as SavedPlaceRow[] | null) ?? []
+    const legacyRows = (legacySpotsResult.data as SpotRow[] | null) ?? []
 
-    if (error) {
-      console.warn("[fetchNearbySpots]", error.message)
-      return []
-    }
-
-    const rows = (data as SpotRow[] | null) ?? []
-    return rows
+    const fromSaved = savedRows
+      .map(mapSavedPlaceRowToNearbySpot)
+      .filter((spot): spot is NearbySpot => Boolean(spot))
+    const fromLegacy = legacyRows
       .map(mapSpotRowToNearbySpot)
       .filter((spot): spot is NearbySpot => Boolean(spot))
+
+    return [...fromSaved, ...fromLegacy]
   } catch (err) {
     console.warn("[fetchNearbySpots] unexpected:", err)
     return []

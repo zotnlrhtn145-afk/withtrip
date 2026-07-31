@@ -46,6 +46,8 @@ export type Place = {
 export type Trip = {
   id: string
   title: string
+  /** `trips.user_id` — who created the trip (for owner-only UI like edit/delete). */
+  ownerId?: string
   /** Share/invite code stored on `trips.invite_code`. */
   inviteCode?: string
   country: string

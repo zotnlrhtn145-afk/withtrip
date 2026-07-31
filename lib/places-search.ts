@@ -21,6 +21,8 @@ export type PlaceSearchResult = {
   imageUrl?: string
   image?: string
   imageAlt?: string
+  lat?: number
+  lng?: number
 }
 
 type PlacesSearchApiResponse = {

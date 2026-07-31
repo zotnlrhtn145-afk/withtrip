@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server"
+import type { User } from "@supabase/supabase-js"
 
 import { createClient } from "@/utils/supabase/server"
 
 export const runtime = "nodejs"
+
+function userExtra(user: User): { joinedAt: string | null; provider: string | null } {
+  return {
+    joinedAt: user.created_at ?? null,
+    provider: user.app_metadata?.provider ?? null,
+  }
+}
 
 type ProfilePayoutRow = {
   id: string
@@ -14,9 +22,13 @@ type ProfilePayoutRow = {
   account_holder?: string | null
   crypto_network?: string | null
   crypto_address?: string | null
+  deletion_requested_at?: string | null
 }
 
-function toUserPayload(row: ProfilePayoutRow) {
+function toUserPayload(
+  row: ProfilePayoutRow,
+  extra: { joinedAt: string | null; provider: string | null }
+) {
   return {
     id: row.id,
     email: row.email ?? null,
@@ -27,6 +39,9 @@ function toUserPayload(row: ProfilePayoutRow) {
     accountHolder: String(row.account_holder ?? "").trim(),
     cryptoNetwork: String(row.crypto_network ?? "").trim(),
     cryptoAddress: String(row.crypto_address ?? "").trim(),
+    deletionRequestedAt: row.deletion_requested_at ?? null,
+    joinedAt: extra.joinedAt,
+    provider: extra.provider,
   }
 }
 
@@ -53,10 +68,12 @@ export async function GET() {
     const { data, error: profileError } = await supabase
       .from("profiles")
       .select(
-        "id, email, nickname, avatar_url, bank_name, account_number, account_holder, crypto_network, crypto_address"
+        "id, email, nickname, avatar_url, bank_name, account_number, account_holder, crypto_network, crypto_address, deletion_requested_at"
       )
       .eq("id", user.id)
       .maybeSingle()
+
+    const extra = userExtra(user)
 
     if (profileError) {
       console.error("[GET /api/user]", profileError.message)
@@ -75,6 +92,8 @@ export async function GET() {
             accountHolder: "",
             cryptoNetwork: "",
             cryptoAddress: "",
+            deletionRequestedAt: null,
+            ...extra,
           },
           warning: "PROFILE_PAYOUT_COLUMNS_MISSING",
         })
@@ -94,11 +113,13 @@ export async function GET() {
           accountHolder: "",
           cryptoNetwork: "",
           cryptoAddress: "",
+          deletionRequestedAt: null,
+          ...extra,
         },
       })
     }
 
-    return NextResponse.json({ user: toUserPayload(data as ProfilePayoutRow) })
+    return NextResponse.json({ user: toUserPayload(data as ProfilePayoutRow, extra) })
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to load user"
     console.error("[GET /api/user]", message)
@@ -106,7 +127,12 @@ export async function GET() {
   }
 }
 
-/** PUT /api/user — update payout receiving account fields */
+/**
+ * PUT /api/user — update profile / payout receiving account fields.
+ * Partial update: only keys present in the request body are written, so
+ * saving the nickname alone never wipes an already-saved payout account
+ * (and vice versa).
+ */
 export async function PUT(request: Request) {
   try {
     const { supabase, user, error } = await requireUser()
@@ -115,6 +141,7 @@ export async function PUT(request: Request) {
     }
 
     const body = (await request.json()) as {
+      nickname?: string
       bankName?: string
       accountNumber?: string
       accountHolder?: string
@@ -122,21 +149,26 @@ export async function PUT(request: Request) {
       cryptoAddress?: string
     }
 
-    const payload = {
+    const payload: Record<string, string | null> = {
       id: user.id,
       email: user.email ?? null,
-      bank_name: String(body.bankName ?? "").trim() || null,
-      account_number: String(body.accountNumber ?? "").trim() || null,
-      account_holder: String(body.accountHolder ?? "").trim() || null,
-      crypto_network: String(body.cryptoNetwork ?? "").trim() || null,
-      crypto_address: String(body.cryptoAddress ?? "").trim() || null,
     }
+    if ("nickname" in body) payload.nickname = String(body.nickname ?? "").trim() || null
+    if ("bankName" in body) payload.bank_name = String(body.bankName ?? "").trim() || null
+    if ("accountNumber" in body)
+      payload.account_number = String(body.accountNumber ?? "").trim() || null
+    if ("accountHolder" in body)
+      payload.account_holder = String(body.accountHolder ?? "").trim() || null
+    if ("cryptoNetwork" in body)
+      payload.crypto_network = String(body.cryptoNetwork ?? "").trim() || null
+    if ("cryptoAddress" in body)
+      payload.crypto_address = String(body.cryptoAddress ?? "").trim() || null
 
     const { data, error: upsertError } = await supabase
       .from("profiles")
       .upsert(payload, { onConflict: "id" })
       .select(
-        "id, email, nickname, avatar_url, bank_name, account_number, account_holder, crypto_network, crypto_address"
+        "id, email, nickname, avatar_url, bank_name, account_number, account_holder, crypto_network, crypto_address, deletion_requested_at"
       )
       .single()
 
@@ -146,7 +178,7 @@ export async function PUT(request: Request) {
         return NextResponse.json(
           {
             error:
-              "profiles 수령 계좌 컬럼이 없습니다. supabase/payout-and-settle.sql을 실행해 주세요.",
+              "profiles 컬럼이 없습니다. supabase/payout-and-settle.sql, supabase/profiles-sync.sql을 실행해 주세요.",
           },
           { status: 503 }
         )
@@ -154,7 +186,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: upsertError.message }, { status: 500 })
     }
 
-    return NextResponse.json({ user: toUserPayload(data as ProfilePayoutRow) })
+    return NextResponse.json({ user: toUserPayload(data as ProfilePayoutRow, userExtra(user)) })
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to update user"
     console.error("[PUT /api/user]", message)

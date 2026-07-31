@@ -164,6 +164,7 @@ export function mapTripRowToTrip(row: TripRow): Trip {
   return {
     id: row.id,
     title: row.title,
+    ownerId: String(row.user_id ?? "").trim() || undefined,
     inviteCode: String(row.invite_code ?? "").trim() || undefined,
     country: countryLabel || "미정",
     region: city || location,

@@ -27,6 +27,8 @@ export type SavedPlace = {
   rating: number | null
   reviewCount: number | null
   distanceKm: number | null
+  lat: number | null
+  lng: number | null
   createdAt: string
 }
 
@@ -53,6 +55,8 @@ export type SavedPlaceRow = {
   rating?: number | null
   review_count?: number | null
   distance_km?: number | null
+  lat?: number | null
+  lng?: number | null
   created_at?: string | null
 }
 
@@ -72,6 +76,8 @@ export type CreateSavedPlaceInput = {
   rating?: number | null
   reviewCount?: number | null
   distanceKm?: number | null
+  lat?: number | null
+  lng?: number | null
 }
 
 function logSupabaseError(scope: string, error: unknown, extra?: Record<string, unknown>) {
@@ -128,6 +134,8 @@ export function mapSavedPlaceRow(row: SavedPlaceRow): SavedPlace {
     rating: typeof row.rating === "number" ? row.rating : null,
     reviewCount: typeof row.review_count === "number" ? row.review_count : null,
     distanceKm: typeof row.distance_km === "number" ? row.distance_km : null,
+    lat: typeof row.lat === "number" ? row.lat : null,
+    lng: typeof row.lng === "number" ? row.lng : null,
     createdAt: String(row.created_at ?? ""),
   }
 }
@@ -180,6 +188,8 @@ const SAVED_PLACE_INSERT_COLUMNS = new Set([
   "rating",
   "review_count",
   "distance_km",
+  "lat",
+  "lng",
 ])
 
 function hasInsertValue(value: unknown): boolean {
@@ -259,6 +269,8 @@ function buildPayload(input: CreateSavedPlaceInput & { userId?: string | null })
     // Always send a number — omit/undefined/null → 0 (avoids NOT NULL / type errors).
     review_count: toReviewCount(input.reviewCount),
     distance_km: toFiniteNumber(input.distanceKm),
+    lat: toFiniteNumber(input.lat),
+    lng: toFiniteNumber(input.lng),
   })
 }
 

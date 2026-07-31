@@ -10,14 +10,113 @@ export type { PayoutAccount }
 
 type UserApiPayload = {
   user?: {
+    id?: string
+    email?: string | null
+    nickname?: string | null
+    avatarUrl?: string | null
     bankName?: string | null
     accountNumber?: string | null
     accountHolder?: string | null
     cryptoNetwork?: string | null
     cryptoAddress?: string | null
+    deletionRequestedAt?: string | null
+    joinedAt?: string | null
+    provider?: string | null
   }
   error?: string
   warning?: string
+}
+
+export type UserProfile = {
+  id: string
+  email: string
+  nickname: string
+  avatarUrl: string | null
+  joinedAt: string | null
+  /** OAuth provider ("kakao" | "google") or "email" for password sign-up. */
+  provider: string | null
+  deletionRequestedAt: string | null
+}
+
+function profileFromUserPayload(user: NonNullable<UserApiPayload["user"]>): UserProfile {
+  return {
+    id: String(user.id ?? "").trim(),
+    email: String(user.email ?? "").trim(),
+    nickname: String(user.nickname ?? "").trim(),
+    avatarUrl: String(user.avatarUrl ?? "").trim() || null,
+    joinedAt: user.joinedAt ?? null,
+    provider: user.provider ?? null,
+    deletionRequestedAt: user.deletionRequestedAt ?? null,
+  }
+}
+
+/** Fetch the signed-in user's profile (nickname/avatar/join date/provider). */
+export async function fetchUserProfile(): Promise<{
+  profile: UserProfile | null
+  error?: string
+}> {
+  try {
+    const response = await fetch("/api/user", { method: "GET", cache: "no-store" })
+    const payload = (await response.json()) as UserApiPayload
+    if (!response.ok || !payload.user) {
+      return { profile: null, error: payload.error }
+    }
+    return { profile: profileFromUserPayload(payload.user) }
+  } catch {
+    return { profile: null, error: "네트워크 오류 — 프로필을 불러오지 못했어요." }
+  }
+}
+
+/** Persist a nickname change. Never touches payout fields (partial update). */
+export async function saveUserNickname(nickname: string): Promise<{
+  ok: boolean
+  profile: UserProfile | null
+  error?: string
+}> {
+  try {
+    const response = await fetch("/api/user", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nickname }),
+    })
+    const payload = (await response.json()) as UserApiPayload
+    if (!response.ok || !payload.user) {
+      return { ok: false, profile: null, error: payload.error || "닉네임 저장에 실패했어요." }
+    }
+    return { ok: true, profile: profileFromUserPayload(payload.user) }
+  } catch {
+    return { ok: false, profile: null, error: "네트워크 오류 — 닉네임을 저장하지 못했어요." }
+  }
+}
+
+/** Record a 회원 탈퇴 (account deletion) request for manual operator review. */
+export async function requestAccountDeletion(): Promise<{
+  ok: boolean
+  deletionRequestedAt: string | null
+  error?: string
+}> {
+  try {
+    const response = await fetch("/api/user/delete-request", { method: "POST" })
+    const payload = (await response.json()) as {
+      ok?: boolean
+      deletionRequestedAt?: string | null
+      error?: string
+    }
+    if (!response.ok || !payload.ok) {
+      return {
+        ok: false,
+        deletionRequestedAt: null,
+        error: payload.error || "탈퇴 요청에 실패했어요.",
+      }
+    }
+    return { ok: true, deletionRequestedAt: payload.deletionRequestedAt ?? null }
+  } catch {
+    return {
+      ok: false,
+      deletionRequestedAt: null,
+      error: "네트워크 오류 — 탈퇴 요청을 보내지 못했어요.",
+    }
+  }
 }
 
 function payoutFromUserPayload(user: NonNullable<UserApiPayload["user"]>): PayoutAccount {

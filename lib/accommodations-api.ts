@@ -15,6 +15,8 @@ export type Accommodation = {
   createdAt: string
   createdBy: string
   guestIds: string[]
+  lat: number | null
+  lng: number | null
 }
 
 export type AccommodationRow = {
@@ -33,6 +35,8 @@ export type AccommodationRow = {
   created_at?: string | null
   created_by?: string | null
   guest_ids?: string[] | null
+  lat?: number | null
+  lng?: number | null
 }
 
 export type CreateAccommodationInput = {
@@ -47,6 +51,8 @@ export type CreateAccommodationInput = {
   memo?: string
   createdBy?: string | null
   guestIds?: string[]
+  lat?: number | null
+  lng?: number | null
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -112,6 +118,8 @@ export function mapAccommodationRow(row: AccommodationRow): Accommodation {
     createdAt: String(row.created_at ?? ""),
     createdBy: String(row.created_by ?? "").trim(),
     guestIds: Array.isArray(row.guest_ids) ? row.guest_ids.filter(Boolean) : [],
+    lat: typeof row.lat === "number" ? row.lat : null,
+    lng: typeof row.lng === "number" ? row.lng : null,
   }
 }
 
@@ -138,6 +146,8 @@ function buildPayload(input: CreateAccommodationInput) {
     memo: String(input.memo ?? "").trim() || null,
     created_by: input.createdBy ?? null,
     guest_ids: Array.isArray(input.guestIds) ? input.guestIds.filter(Boolean) : [],
+    lat: typeof input.lat === "number" ? input.lat : null,
+    lng: typeof input.lng === "number" ? input.lng : null,
   }
 }
 
