@@ -13,6 +13,8 @@ export type NearbySpot = {
   userId?: string | null
   authorNickname?: string | null
   authorAvatarUrl?: string | null
+  /** Trip-less "나의 관심 맛집" — marker gets a distinct border color on the map. */
+  isInterest?: boolean
 }
 
 /** Fallback when `avatar_url` is missing. */

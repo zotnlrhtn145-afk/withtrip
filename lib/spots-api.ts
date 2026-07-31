@@ -115,7 +115,10 @@ const SAVED_PLACE_SELECT = `
   )
 `
 
-export function mapSavedPlaceRowToNearbySpot(row: SavedPlaceRow): NearbySpot | null {
+export function mapSavedPlaceRowToNearbySpot(
+  row: SavedPlaceRow,
+  options?: { isInterest?: boolean }
+): NearbySpot | null {
   const lat = toNumber(row.lat)
   const lng = toNumber(row.lng)
   if (lat == null || lng == null) return null
@@ -140,6 +143,7 @@ export function mapSavedPlaceRowToNearbySpot(row: SavedPlaceRow): NearbySpot | n
     userId: String(row.user_id ?? "").trim() || null,
     authorNickname: nickname || null,
     authorAvatarUrl: avatarUrl || null,
+    isInterest: options?.isInterest ?? false,
   }
 }
 
@@ -169,18 +173,27 @@ export async function fetchNearbySpots(): Promise<NearbySpot[]> {
       ]),
     ]
 
-    if (tripIds.length === 0) return []
-
-    const [savedPlacesResult, legacySpotsResult] = await Promise.all([
+    const [savedPlacesResult, legacySpotsResult, interestPlacesResult] = await Promise.all([
+      tripIds.length > 0
+        ? client
+            .from("saved_places")
+            .select(SAVED_PLACE_SELECT)
+            .in("trip_id", tripIds)
+            .order("created_at", { ascending: false })
+        : Promise.resolve({ data: [] as SavedPlaceRow[], error: null }),
+      tripIds.length > 0
+        ? client
+            .from("spots")
+            .select(SPOT_SELECT)
+            .or(`trip_id.in.(${tripIds.join(",")}),user_id.eq.${userId}`)
+            .order("created_at", { ascending: false })
+        : Promise.resolve({ data: [] as SpotRow[], error: null }),
+      // 여행에 속하지 않은 "나의 관심 맛집" — 지도에도 함께 표시 (테두리 색으로 구분).
       client
         .from("saved_places")
         .select(SAVED_PLACE_SELECT)
-        .in("trip_id", tripIds)
-        .order("created_at", { ascending: false }),
-      client
-        .from("spots")
-        .select(SPOT_SELECT)
-        .or(`trip_id.in.(${tripIds.join(",")}),user_id.eq.${userId}`)
+        .is("trip_id", null)
+        .eq("user_id", userId)
         .order("created_at", { ascending: false }),
     ])
 
@@ -190,18 +203,25 @@ export async function fetchNearbySpots(): Promise<NearbySpot[]> {
     if (legacySpotsResult.error) {
       console.warn("[fetchNearbySpots] spots:", legacySpotsResult.error.message)
     }
+    if (interestPlacesResult.error) {
+      console.warn("[fetchNearbySpots] interest saved_places:", interestPlacesResult.error.message)
+    }
 
     const savedRows = (savedPlacesResult.data as SavedPlaceRow[] | null) ?? []
     const legacyRows = (legacySpotsResult.data as SpotRow[] | null) ?? []
+    const interestRows = (interestPlacesResult.data as SavedPlaceRow[] | null) ?? []
 
     const fromSaved = savedRows
-      .map(mapSavedPlaceRowToNearbySpot)
+      .map((row) => mapSavedPlaceRowToNearbySpot(row))
       .filter((spot): spot is NearbySpot => Boolean(spot))
     const fromLegacy = legacyRows
       .map(mapSpotRowToNearbySpot)
       .filter((spot): spot is NearbySpot => Boolean(spot))
+    const fromInterest = interestRows
+      .map((row) => mapSavedPlaceRowToNearbySpot(row, { isInterest: true }))
+      .filter((spot): spot is NearbySpot => Boolean(spot))
 
-    return [...fromSaved, ...fromLegacy]
+    return [...fromSaved, ...fromLegacy, ...fromInterest]
   } catch (err) {
     console.warn("[fetchNearbySpots] unexpected:", err)
     return []

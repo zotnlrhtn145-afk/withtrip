@@ -155,7 +155,9 @@ function SpotAvatarPin({
             "relative flex size-11 items-center justify-center overflow-hidden rounded-full border-[3px] bg-white transition-[border-color,box-shadow] duration-150",
             active
               ? "border-amber-400 shadow-[0_0_0_3px_rgba(255,193,7,0.45)]"
-              : "border-white group-hover:border-amber-200"
+              : spot.isInterest
+                ? "border-sky-400 group-hover:border-sky-300"
+                : "border-white group-hover:border-amber-200"
           )}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -171,7 +173,11 @@ function SpotAvatarPin({
         <span
           className={cn(
             "-mt-0.5 h-0 w-0 border-x-[7px] border-t-[10px] border-x-transparent transition-colors duration-150",
-            active ? "border-t-amber-400" : "border-t-white"
+            active
+              ? "border-t-amber-400"
+              : spot.isInterest
+                ? "border-t-sky-400"
+                : "border-t-white"
           )}
           aria-hidden
         />
@@ -379,10 +385,16 @@ export function NearbyMap({
         <p className="text-xs text-muted-foreground">
           프로필 핀 또는 카드를 눌러 연동해 보세요
         </p>
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-          <span className="size-2 rounded-full bg-primary" />
-          내 위치
-        </span>
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+            <span className="size-2.5 rounded-full border-2 border-sky-400 bg-white" />
+            관심 맛집
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+            <span className="size-2 rounded-full bg-primary" />
+            내 위치
+          </span>
+        </div>
       </div>
     </div>
   )
