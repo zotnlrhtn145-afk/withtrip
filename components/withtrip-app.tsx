@@ -391,14 +391,11 @@ function WithtripShell() {
         open={isExpenseModalOpen}
         onOpenChange={setIsExpenseModalOpen}
         tripId={selectedTripId}
-        onSaved={(draft) => {
+        trips={trips.map((trip) => ({ id: trip.id, title: trip.title }))}
+        onSaved={(draft, usedTripId) => {
           setActiveNav("settlement")
-          const targetTripId = selectedTripId
-          if (targetTripId) {
-            router.push(`/settlement/${targetTripId}`)
-          } else {
-            router.push("/settlement")
-          }
+          if (!selectedTripId) setSelectedTripId(usedTripId)
+          router.push(`/settlement/${usedTripId}`)
           setQuickToast(`「${draft.storeName}」 지출이 등록되었어요.`)
           window.setTimeout(() => setQuickToast(null), 2800)
         }}
@@ -406,10 +403,13 @@ function WithtripShell() {
       <PlaceRegisterModal
         open={isPlaceModalOpen}
         onOpenChange={setIsPlaceModalOpen}
-        onSaved={(draft) => {
+        tripId={selectedTripId}
+        trips={trips.map((trip) => ({ id: trip.id, title: trip.title }))}
+        onSaved={(saved) => {
           setActiveNav("spots")
+          if (!selectedTripId) setSelectedTripId(saved.tripId)
           goTo("spots")
-          setQuickToast(`「${draft.name}」 장소가 저장되었어요.`)
+          setQuickToast(`「${saved.placeName}」 장소가 저장되었어요.`)
           window.setTimeout(() => setQuickToast(null), 2800)
         }}
       />

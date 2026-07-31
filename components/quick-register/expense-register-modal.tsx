@@ -34,6 +34,7 @@ import {
 import { calcPerPerson } from "@/lib/settlement-math"
 import { members as mockMembers } from "@/lib/trip-data"
 import { clearDocumentScrollLock } from "@/lib/clear-scroll-lock"
+import { parseReceiptImage } from "@/lib/parse-receipt"
 import { cn } from "@/lib/utils"
 
 export type ExpenseDraft = {
@@ -64,6 +65,14 @@ const CATEGORY_TO_DB: Record<string, ExpenseCategory> = {
   기타: "기타",
 }
 
+const DB_CATEGORY_TO_UI: Record<string, (typeof CATEGORIES)[number]> = {
+  식사: "식비",
+  숙소: "숙박",
+  교통: "교통",
+  쇼핑: "기타",
+  기타: "기타",
+}
+
 function toLocalDateTimeValue(date = new Date()) {
   const pad = (n: number) => `${n}`.padStart(2, "0")
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
@@ -90,34 +99,24 @@ function mapMockMembers(): MemberOption[] {
   }))
 }
 
-/** Mock OCR result — replaced later by real AI OCR. */
-function mockOcrFromImage(_file: File): Pick<
-  ExpenseDraft,
-  "amount" | "storeName" | "category" | "paidAt"
-> {
-  const sampleStores = ["도톤보리 타코야키", "세븐일레븐 우메다", "Kigawa", "JR 하루카"]
-  const sampleAmounts = ["12800", "2460", "42000", "18500"]
-  const idx = Math.floor(Math.random() * sampleStores.length)
-  return {
-    amount: sampleAmounts[idx],
-    storeName: sampleStores[idx],
-    category: idx === 3 ? "교통" : "식비",
-    paidAt: toLocalDateTimeValue(),
-  }
-}
+export type QuickTripOption = { id: string; title: string }
 
 export function ExpenseRegisterModal({
   open,
   onOpenChange,
   tripId = null,
+  trips = [],
   onSaved,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   tripId?: string | null
-  onSaved?: (draft: ExpenseDraft) => void
+  trips?: QuickTripOption[]
+  onSaved?: (draft: ExpenseDraft, tripId: string) => void
 }) {
-  const activeTripId = String(tripId ?? "").trim() || null
+  const fixedTripId = String(tripId ?? "").trim() || null
+  const [selectedTripId, setSelectedTripId] = useState<string>(fixedTripId ?? "")
+  const activeTripId = fixedTripId ?? (selectedTripId || null)
   const [tab, setTab] = useState<"scan" | "manual">("scan")
   const [memberOptions, setMemberOptions] = useState<MemberOption[]>(() => mapMockMembers())
   const [draft, setDraft] = useState<ExpenseDraft>(() =>
@@ -130,8 +129,12 @@ export function ExpenseRegisterModal({
   const [ocrNotice, setOcrNotice] = useState<string | null>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
-  const scanTimer = useRef<number | null>(null)
   const previewUrlRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    setSelectedTripId(fixedTripId ?? "")
+  }, [open, fixedTripId])
 
   useEffect(() => {
     if (!open) return
@@ -203,20 +206,20 @@ export function ExpenseRegisterModal({
     return () => {
       window.removeEventListener("keydown", onKey)
       clearDocumentScrollLock()
-      if (scanTimer.current) window.clearTimeout(scanTimer.current)
     }
   }, [open, onOpenChange])
 
   const canSubmit = useMemo(() => {
     const amount = Number(draft.amount.replace(/,/g, ""))
     return (
+      Boolean(activeTripId) &&
       Number.isFinite(amount) &&
       amount > 0 &&
       draft.storeName.trim().length > 0 &&
       draft.paidById &&
       draft.splitMemberIds.length > 0
     )
-  }, [draft])
+  }, [draft, activeTripId])
 
   const liveShare = useMemo(() => {
     const amount = Number(draft.amount.replace(/,/g, ""))
@@ -260,7 +263,6 @@ export function ExpenseRegisterModal({
 
   const processReceiptFile = (file: File | undefined) => {
     if (!file || !file.type.startsWith("image/")) return
-    if (scanTimer.current) window.clearTimeout(scanTimer.current)
 
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
     const previewUrl = URL.createObjectURL(file)
@@ -271,17 +273,30 @@ export function ExpenseRegisterModal({
     setOcrNotice(null)
     setFormError(null)
 
-    scanTimer.current = window.setTimeout(() => {
-      const extracted = mockOcrFromImage(file)
-      setDraft((current) => ({
-        ...current,
-        ...extracted,
-        receiptPreview: previewUrl,
-      }))
-      setScanning(false)
-      setOcrNotice("영수증에서 내용을 불러왔어요. 직접 수정할 수 있어요.")
-      setTab("manual")
-    }, 1400)
+    void (async () => {
+      try {
+        const parsed = await parseReceiptImage(file)
+        setDraft((current) => ({
+          ...current,
+          storeName: parsed.title || current.storeName,
+          amount: parsed.amount > 0 ? String(Math.round(parsed.amount)) : current.amount,
+          category: DB_CATEGORY_TO_UI[parsed.category] ?? current.category,
+          paidAt: /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)
+            ? `${parsed.date}T${current.paidAt.slice(11) || "12:00"}`
+            : current.paidAt,
+          receiptPreview: previewUrl,
+        }))
+        setOcrNotice("영수증에서 내용을 불러왔어요. 직접 수정할 수 있어요.")
+        setTab("manual")
+      } catch (err) {
+        const typed = err as { message?: string }
+        console.error("[ExpenseRegisterModal] OCR failed:", typed?.message)
+        setFormError(typed?.message || "영수증 정보를 읽지 못했어요. 직접 입력해 주세요.")
+        setTab("manual")
+      } finally {
+        setScanning(false)
+      }
+    })()
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -289,7 +304,7 @@ export function ExpenseRegisterModal({
     if (!canSubmit || scanning || saving) return
 
     if (!activeTripId) {
-      setFormError("지출을 저장하려면 사이드바에서 여행을 선택해 주세요.")
+      setFormError("여행을 선택해 주세요.")
       return
     }
 
@@ -314,7 +329,7 @@ export function ExpenseRegisterModal({
         participantIds: draft.splitMemberIds,
       })
 
-      onSaved?.(draft)
+      onSaved?.(draft, activeTripId)
       onOpenChange(false)
     } catch (err) {
       const typed = err as { message?: string }
@@ -371,6 +386,35 @@ export function ExpenseRegisterModal({
           onValueChange={(value) => setTab(value as "scan" | "manual")}
           className="flex min-h-0 flex-1 flex-col gap-0"
         >
+          {!fixedTripId ? (
+            <div className="px-5 pt-4">
+              <Field>
+                <FieldLabel>여행</FieldLabel>
+                <Select
+                  items={trips.map((t) => ({ value: t.id, label: t.title }))}
+                  value={selectedTripId}
+                  onValueChange={(value) => setSelectedTripId(value as string)}
+                >
+                  <SelectTrigger className="w-full rounded-xl">
+                    <SelectValue placeholder="여행을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {trips.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {trips.length === 0 ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    먼저 여행을 등록해야 지출을 저장할 수 있어요.
+                  </p>
+                ) : null}
+              </Field>
+            </div>
+          ) : null}
+
           <div className="px-5 pt-4">
             <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl bg-secondary p-1">
               <TabsTrigger
@@ -524,7 +568,7 @@ function ReceiptScanPanel({
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/55 text-white">
             <Loader2 className="size-8 animate-spin" />
             <p className="text-sm font-semibold">영수증을 읽는 중…</p>
-            <p className="text-xs opacity-80">AI OCR 준비 중 · 샘플 값으로 채워요</p>
+            <p className="text-xs opacity-80">AI가 금액·상호·날짜를 읽고 있어요</p>
           </div>
         ) : null}
         {!scanning ? (
