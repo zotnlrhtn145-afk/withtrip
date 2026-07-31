@@ -41,13 +41,18 @@ export function AddSavedPlaceModal({
   onSaved,
   open: openProp,
   onOpenChange,
+  title = "가고 싶은 곳 추가",
+  description = "멤버들과 공유할 미식·라운지 스폿을 저장해 두세요.",
 }: {
-  tripId: string
+  /** null → trip-less "관심 맛집" (담아만 두고 나중에 원하는 여행에 배정). */
+  tripId: string | null
   trigger?: ReactNode
   defaultKind?: WishlistKind
   onSaved?: (place: SavedPlace) => void
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  title?: string
+  description?: string
 }) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const isControlled = openProp !== undefined
@@ -179,9 +184,10 @@ export function AddSavedPlaceModal({
     try {
       const userId = (await getCurrentUserId()) || undefined
 
-      // Distance to the trip's (first) accommodation — only when both sides have coordinates.
+      // Distance to the trip's (first) accommodation — only when both sides have
+      // coordinates and this place actually belongs to a trip.
       let distanceKm: number | null = null
-      if (typeof lat === "number" && typeof lng === "number") {
+      if (tripId && typeof lat === "number" && typeof lng === "number") {
         const stays = await fetchAccommodationsByTripId(tripId)
         const stay = stays.find((item) => item.lat != null && item.lng != null)
         if (stay && stay.lat != null && stay.lng != null) {
@@ -237,11 +243,9 @@ export function AddSavedPlaceModal({
         <div className="flex items-start justify-between border-b border-zinc-100 px-6 pt-6 pb-4">
           <div>
             <DialogTitle className="text-xl font-bold tracking-tight text-zinc-900">
-              가고 싶은 곳 추가
+              {title}
             </DialogTitle>
-            <p className="mt-0.5 text-xs text-zinc-400">
-              멤버들과 공유할 미식·라운지 스폿을 저장해 두세요.
-            </p>
+            <p className="mt-0.5 text-xs text-zinc-400">{description}</p>
           </div>
           <button
             type="button"

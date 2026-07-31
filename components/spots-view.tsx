@@ -17,7 +17,7 @@ import {
 
 import { useGeolocation } from "@/hooks/use-geolocation"
 import { LoginRedirectOverlay } from "@/components/login-redirect-overlay"
-import { AddInterestPlaceModal } from "@/components/spots/add-interest-place-modal"
+import { AddSavedPlaceModal } from "@/components/itinerary/AddSavedPlaceModal"
 import { TripPickerModal } from "@/components/quick-register/trip-picker-modal"
 import { useTrips } from "@/components/trips-store"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -477,10 +477,13 @@ export function SpotsView() {
 
   const interestModals = (
     <>
-      <AddInterestPlaceModal
+      <AddSavedPlaceModal
+        tripId={null}
         open={addInterestOpen}
         onOpenChange={setAddInterestOpen}
         onSaved={(saved) => setInterestPlaces((current) => [saved, ...current])}
+        title="관심 맛집 추가"
+        description="여행과 상관없이 가고 싶은 곳을 먼저 담아둬요. 나중에 원하는 여행에 옮길 수 있어요."
       />
       <TripPickerModal
         open={assigningPlace !== null}
