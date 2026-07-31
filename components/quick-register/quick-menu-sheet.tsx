@@ -58,7 +58,7 @@ export function QuickMenuSheet({
         className={cn(
           "absolute overflow-hidden border border-border bg-card shadow-2xl transform-gpu transition-all duration-200 ease-out",
           // Mobile: dropdown anchored under the top-left "+", unfurls downward.
-          "max-md:top-16 max-md:left-4 max-md:w-[calc(100%-5rem)] max-md:max-w-xs max-md:origin-top-left max-md:rounded-3xl",
+          "max-md:top-16 max-md:left-4 max-md:right-4 max-md:origin-top-left max-md:rounded-3xl",
           open
             ? "max-md:scale-100 max-md:opacity-100"
             : "max-md:pointer-events-none max-md:scale-95 max-md:opacity-0",
