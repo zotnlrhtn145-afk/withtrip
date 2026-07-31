@@ -56,12 +56,19 @@ export function QuickMenuSheet({
         aria-modal="true"
         aria-label="퀵 등록 메뉴"
         className={cn(
-          "absolute inset-x-0 bottom-0 rounded-t-3xl border border-border bg-card pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl transform-gpu transition-transform duration-200 ease-out",
-          open ? "translate-y-0" : "translate-y-full"
+          "absolute overflow-hidden border border-border bg-card shadow-2xl transform-gpu transition-all duration-200 ease-out",
+          // Mobile: dropdown anchored under the top-left "+", unfurls downward.
+          "max-md:top-16 max-md:left-4 max-md:w-[calc(100%-5rem)] max-md:max-w-xs max-md:origin-top-left max-md:rounded-3xl",
+          open
+            ? "max-md:scale-100 max-md:opacity-100"
+            : "max-md:pointer-events-none max-md:scale-95 max-md:opacity-0",
+          // Desktop: bottom sheet, centered, slides up.
+          "md:inset-x-0 md:bottom-0 md:mx-auto md:w-full md:max-w-md md:origin-bottom md:rounded-t-3xl md:pb-[max(1rem,env(safe-area-inset-bottom))]",
+          open ? "md:translate-y-0" : "md:translate-y-full"
         )}
       >
-        <div className="flex flex-col gap-4 px-5 pt-3">
-          <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 px-5 pt-3 max-md:pb-4">
+          <div className="flex items-center justify-between max-md:hidden">
             <div className="mx-auto h-1 w-10 rounded-full bg-muted-foreground/30" aria-hidden="true" />
           </div>
           <div className="flex items-start justify-between gap-3">

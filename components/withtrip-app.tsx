@@ -471,7 +471,6 @@ function WithtripShell() {
         </div>
 
         {quickAddOverlay}
-        {quickAddFab}
         <TripSearchDialog
           open={searchOpen}
           onOpenChange={setSearchOpen}
