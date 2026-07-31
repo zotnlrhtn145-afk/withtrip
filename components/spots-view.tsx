@@ -140,6 +140,7 @@ export function SpotsView() {
       await assignSavedPlaceToTrip(place.id, tripId)
       setInterestPlaces((current) => current.filter((item) => item.id !== place.id))
       setAssigningPlace(null)
+      void loadRawSpots()
     } catch (err) {
       setAssigningError(getErrorMessage(err) || "여행에 담지 못했어요.")
     }
@@ -152,6 +153,11 @@ export function SpotsView() {
     }, 1200)
     return () => window.clearTimeout(timer)
   }, [authPhase, router])
+
+  const loadRawSpots = async () => {
+    const next = await fetchNearbySpots()
+    setRawSpots(next)
+  }
 
   useEffect(() => {
     if (authPhase !== "authed") return
@@ -481,7 +487,10 @@ export function SpotsView() {
         tripId={null}
         open={addInterestOpen}
         onOpenChange={setAddInterestOpen}
-        onSaved={(saved) => setInterestPlaces((current) => [saved, ...current])}
+        onSaved={(saved) => {
+          setInterestPlaces((current) => [saved, ...current])
+          void loadRawSpots()
+        }}
         title="관심 맛집 추가"
         description="여행과 상관없이 가고 싶은 곳을 먼저 담아둬요. 나중에 원하는 여행에 옮길 수 있어요."
       />
