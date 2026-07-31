@@ -39,13 +39,23 @@ export function AddSavedPlaceModal({
   trigger,
   defaultKind = "restaurant",
   onSaved,
+  open: openProp,
+  onOpenChange,
 }: {
   tripId: string
-  trigger: ReactNode
+  trigger?: ReactNode
   defaultKind?: WishlistKind
   onSaved?: (place: SavedPlace) => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
-  const [open, setOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const isControlled = openProp !== undefined
+  const open = isControlled ? openProp : uncontrolledOpen
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setUncontrolledOpen(next)
+    onOpenChange?.(next)
+  }
   const [kind, setKind] = useState<WishlistKind>(defaultKind)
   const [searchQuery, setSearchQuery] = useState("")
   const [placeName, setPlaceName] = useState("")
@@ -218,7 +228,7 @@ export function AddSavedPlaceModal({
         if (!next) reset()
       }}
     >
-      <DialogTrigger render={trigger as React.ReactElement} />
+      {trigger ? <DialogTrigger render={trigger as React.ReactElement} /> : null}
       <DialogContent
         showCloseButton={false}
         className="flex max-h-[90svh] max-w-lg flex-col gap-0 overflow-hidden rounded-3xl border-zinc-100 bg-white p-0 shadow-2xl sm:max-w-lg"

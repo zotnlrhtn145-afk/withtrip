@@ -9,6 +9,7 @@ import { ForgotPasswordView } from "@/components/auth/forgot-password-view"
 import { LoginView } from "@/components/auth/login-view"
 import { SignupView } from "@/components/auth/signup-view"
 import { type NavKey } from "@/components/bottom-nav"
+import { CreateTripDialog } from "@/components/create-trip-dialog"
 import { FriendsView } from "@/components/friends-view"
 import { HomeView } from "@/components/home-view"
 import { FlightSection } from "@/components/itinerary/flight-section"
@@ -16,10 +17,8 @@ import { StaySection } from "@/components/itinerary/stay-section"
 import { WishlistSection } from "@/components/itinerary/wishlist-section"
 import { MyPageView } from "@/components/mypage-view"
 import { NotificationMenu } from "@/components/notification-menu"
-import { ExpenseRegisterModal } from "@/components/quick-register/expense-register-modal"
-import { PlaceRegisterModal } from "@/components/quick-register/place-register-modal"
 import { QuickMenuSheet } from "@/components/quick-register/quick-menu-sheet"
-import { TripRegisterModal } from "@/components/quick-register/trip-register-modal"
+import { TripPickerModal } from "@/components/quick-register/trip-picker-modal"
 import { ScheduleTimeline } from "@/components/schedule-timeline"
 import { SettlementView } from "@/components/settlement-view"
 import { SpotsView } from "@/components/spots-view"
@@ -61,8 +60,7 @@ function WithtripShell() {
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null)
   const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false)
   const [isTripModalOpen, setIsTripModalOpen] = useState(false)
-  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false)
-  const [isPlaceModalOpen, setIsPlaceModalOpen] = useState(false)
+  const [tripPickerPurpose, setTripPickerPurpose] = useState<"expense" | "place" | null>(null)
   const [quickToast, setQuickToast] = useState<string | null>(null)
   const { trips } = useTrips()
 
@@ -356,6 +354,48 @@ function WithtripShell() {
     />
   )
 
+  const showQuickToast = (message: string) => {
+    setQuickToast(message)
+    window.setTimeout(() => setQuickToast(null), 2800)
+  }
+
+  const goToAddExpense = (tripId: string) => {
+    setActiveNav("settlement")
+    if (!selectedTripId) setSelectedTripId(tripId)
+    router.push(`/settlement/${tripId}?addExpense=1`)
+  }
+
+  const goToAddPlace = (tripId: string) => {
+    if (!selectedTripId) setSelectedTripId(tripId)
+    router.push(`/trips/${tripId}?addPlace=1`)
+  }
+
+  const handleSelectExpense = () => {
+    setIsQuickMenuOpen(false)
+    if (trips.length === 0) {
+      showQuickToast("먼저 여행을 만들어 주세요.")
+      return
+    }
+    if (trips.length === 1) {
+      goToAddExpense(trips[0].id)
+      return
+    }
+    setTripPickerPurpose("expense")
+  }
+
+  const handleSelectPlace = () => {
+    setIsQuickMenuOpen(false)
+    if (trips.length === 0) {
+      showQuickToast("먼저 여행을 만들어 주세요.")
+      return
+    }
+    if (trips.length === 1) {
+      goToAddPlace(trips[0].id)
+      return
+    }
+    setTripPickerPurpose("place")
+  }
+
   // Shared across mobile + desktop so quick-add (trip/expense/place) works on every viewport.
   const quickAddOverlay = (
     <>
@@ -366,51 +406,33 @@ function WithtripShell() {
           setIsQuickMenuOpen(false)
           setIsTripModalOpen(true)
         }}
-        onSelectExpense={() => {
-          setIsQuickMenuOpen(false)
-          setIsExpenseModalOpen(true)
-        }}
-        onSelectPlace={() => {
-          setIsQuickMenuOpen(false)
-          setIsPlaceModalOpen(true)
-        }}
+        onSelectExpense={handleSelectExpense}
+        onSelectPlace={handleSelectPlace}
       />
-      <TripRegisterModal
+      <CreateTripDialog
         open={isTripModalOpen}
         onOpenChange={setIsTripModalOpen}
-        onSaved={(trip) => {
+        onCreated={(trip) => {
           // Stay on home dashboard — do not open trip detail.
           setSelectedTripId(null)
           setActiveNav("home")
           goTo("home")
-          setQuickToast(`「${trip.title}」 여행이 등록되었어요.`)
-          window.setTimeout(() => setQuickToast(null), 2800)
+          showQuickToast(`「${trip.title}」 여행이 등록되었어요.`)
         }}
       />
-      <ExpenseRegisterModal
-        open={isExpenseModalOpen}
-        onOpenChange={setIsExpenseModalOpen}
-        tripId={selectedTripId}
-        trips={trips.map((trip) => ({ id: trip.id, title: trip.title }))}
-        onSaved={(draft, usedTripId) => {
-          setActiveNav("settlement")
-          if (!selectedTripId) setSelectedTripId(usedTripId)
-          router.push(`/settlement/${usedTripId}`)
-          setQuickToast(`「${draft.storeName}」 지출이 등록되었어요.`)
-          window.setTimeout(() => setQuickToast(null), 2800)
+      <TripPickerModal
+        open={tripPickerPurpose !== null}
+        onOpenChange={(next) => {
+          if (!next) setTripPickerPurpose(null)
         }}
-      />
-      <PlaceRegisterModal
-        open={isPlaceModalOpen}
-        onOpenChange={setIsPlaceModalOpen}
-        tripId={selectedTripId}
         trips={trips.map((trip) => ({ id: trip.id, title: trip.title }))}
-        onSaved={(saved) => {
-          setActiveNav("spots")
-          if (!selectedTripId) setSelectedTripId(saved.tripId)
-          goTo("spots")
-          setQuickToast(`「${saved.placeName}」 장소가 저장되었어요.`)
-          window.setTimeout(() => setQuickToast(null), 2800)
+        title={tripPickerPurpose === "expense" ? "어느 여행의 지출인가요?" : "어느 여행에 저장할까요?"}
+        description="여러 여행이 등록되어 있어요. 하나를 선택해 주세요."
+        onSelect={(trip) => {
+          const purpose = tripPickerPurpose
+          setTripPickerPurpose(null)
+          if (purpose === "expense") goToAddExpense(trip.id)
+          else if (purpose === "place") goToAddPlace(trip.id)
         }}
       />
       {quickToast ? (

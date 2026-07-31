@@ -10,7 +10,7 @@ import { getErrorMessage } from "@/lib/trips-api"
 /** Client model for Supabase `saved_places` (가고 싶은 곳). */
 export type SavedPlace = {
   id: string
-  tripId: string
+  tripId: string | null
   userId: string
   createdBy: string
   authorId: string
@@ -34,7 +34,7 @@ export type SavedPlace = {
 
 export type SavedPlaceRow = {
   id: string
-  trip_id: string
+  trip_id: string | null
   user_id?: string | null
   created_by?: string | null
   author_id?: string | null
@@ -61,7 +61,8 @@ export type SavedPlaceRow = {
 }
 
 export type CreateSavedPlaceInput = {
-  tripId: string
+  /** null/omitted → trip-less "관심 맛집" (interest place), not yet assigned to a trip. */
+  tripId?: string | null
   userId?: string | null
   placeName: string
   category?: string
@@ -205,20 +206,25 @@ function hasInsertValue(value: unknown): boolean {
 
 /**
  * Drop unknown columns and empty values before Supabase insert.
- * Required keys (`trip_id`, `place_name`) are kept if present even when empty
- * so the API can still surface validation errors.
+ * `place_name` is kept even when empty so the API can still surface validation
+ * errors. `trip_id` is nullable — an empty value becomes `null` (trip-less
+ * "관심 맛집"), never an empty string, since the column is a uuid type.
  */
 function sanitizeInsertPayload(
   raw: Record<string, string | number | null | undefined>
-): Record<string, string | number> {
-  const required = new Set(["trip_id", "place_name"])
-  const cleaned: Record<string, string | number> = {}
+): Record<string, string | number | null> {
+  const cleaned: Record<string, string | number | null> = {}
 
   for (const [key, value] of Object.entries(raw)) {
     if (!SAVED_PLACE_INSERT_COLUMNS.has(key)) continue
-    if (required.has(key)) {
+    if (key === "place_name") {
       if (typeof value === "string") cleaned[key] = value.trim()
       else if (typeof value === "number" && Number.isFinite(value)) cleaned[key] = value
+      continue
+    }
+    if (key === "trip_id") {
+      const trimmed = typeof value === "string" ? value.trim() : ""
+      cleaned[key] = trimmed || null
       continue
     }
     if (!hasInsertValue(value)) continue
@@ -332,11 +338,63 @@ export async function fetchSavedPlacesByTripId(tripId: string): Promise<SavedPla
   }
 }
 
-/** `saved_places` INSERT — `user_id` may be null; never blocks insert. */
+/**
+ * 여행에 아직 배정하지 않은 "나의 관심 맛집" 목록 (trip_id IS NULL, 본인 소유).
+ */
+export async function fetchInterestPlacesByUserId(userId: string): Promise<SavedPlace[]> {
+  const id = String(userId ?? "").trim()
+  if (!id) return []
+
+  const { data, error } = await supabase
+    .from("saved_places")
+    .select("*")
+    .is("trip_id", null)
+    .eq("user_id", id)
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    logSupabaseError("fetchInterestPlacesByUserId", error, { user_id: id })
+    return []
+  }
+
+  return ((data as SavedPlaceRow[] | null) ?? [])
+    .map(mapSavedPlaceRow)
+    .filter((place) => Boolean(place.placeName))
+}
+
+/** 트립 없는 "관심 맛집"을 특정 여행의 "가고 싶은 곳"으로 옮긴다 (trip_id 배정). */
+export async function assignSavedPlaceToTrip(
+  placeId: string,
+  tripId: string
+): Promise<SavedPlace> {
+  const id = String(placeId ?? "").trim()
+  const nextTripId = String(tripId ?? "").trim()
+  if (!id) throw new Error("placeId가 필요합니다.")
+  if (!nextTripId) throw new Error("tripId가 필요합니다.")
+
+  const { data, error } = await supabase
+    .from("saved_places")
+    .update({ trip_id: nextTripId })
+    .eq("id", id)
+    .select("*")
+    .single()
+
+  if (error) {
+    logSupabaseError("assignSavedPlaceToTrip", error, { place_id: id, trip_id: nextTripId })
+    throw error
+  }
+
+  return mapSavedPlaceRow(data as SavedPlaceRow)
+}
+
+/**
+ * `saved_places` INSERT — `user_id` may be null; never blocks insert.
+ * `tripId` may be null/omitted → saved as a trip-less "관심 맛집" (interest
+ * place), later assignable to a trip via `assignSavedPlaceToTrip`.
+ */
 export async function insertSavedPlace(input: CreateSavedPlaceInput): Promise<SavedPlace> {
-  const tripId = String(input.tripId ?? "").trim()
+  const tripId = String(input.tripId ?? "").trim() || null
   const placeName = String(input.placeName ?? "").trim()
-  if (!tripId) throw new Error("tripId가 필요합니다.")
   if (!placeName) throw new Error("장소명을 입력해 주세요.")
 
   // Prefer explicit input, then auth session. Missing/invalid → null (no throw).

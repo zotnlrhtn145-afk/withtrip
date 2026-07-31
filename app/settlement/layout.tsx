@@ -1,5 +1,7 @@
 "use client"
 
+import { Suspense } from "react"
+
 import { SettlementShell } from "@/components/settlement-shell"
 
 export default function SettlementLayout({
@@ -7,5 +9,9 @@ export default function SettlementLayout({
 }: {
   children: React.ReactNode
 }) {
-  return <SettlementShell>{children}</SettlementShell>
+  return (
+    <Suspense fallback={null}>
+      <SettlementShell>{children}</SettlementShell>
+    </Suspense>
+  )
 }

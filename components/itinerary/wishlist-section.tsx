@@ -69,11 +69,27 @@ function CategorySummary({
 /**
  * Supabase `saved_places` 연동 가고 싶은 곳(Wishlist) 섹션.
  */
-export function WishlistSection({ trip }: { trip: Trip }) {
+export function WishlistSection({
+  trip,
+  autoOpenAdd = false,
+  onAutoOpenHandled,
+}: {
+  trip: Trip
+  /** 외부(퀵등록 등)에서 장소 추가 모달을 강제로 열 때 true로 전달 */
+  autoOpenAdd?: boolean
+  onAutoOpenHandled?: () => void
+}) {
   const [places, setPlaces] = useState<SavedPlace[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedKind, setSelectedKind] = useState<WishlistKind>("restaurant")
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [addOpen, setAddOpen] = useState(false)
+
+  useEffect(() => {
+    if (!autoOpenAdd) return
+    setAddOpen(true)
+    onAutoOpenHandled?.()
+  }, [autoOpenAdd, onAutoOpenHandled])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -125,21 +141,15 @@ export function WishlistSection({ trip }: { trip: Trip }) {
   }
 
   const addButton = (
-    <AddSavedPlaceModal
-      tripId={trip.id}
-      defaultKind={selectedKind}
-      onSaved={() => void load()}
-      trigger={
-        <Button
-          variant="outline"
-          size="sm"
-          className="rounded-full border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-        >
-          <Plus data-icon="inline-start" />
-          장소 추가
-        </Button>
-      }
-    />
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => setAddOpen(true)}
+      className="rounded-full border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+    >
+      <Plus data-icon="inline-start" />
+      장소 추가
+    </Button>
   )
 
   return (
@@ -201,22 +211,24 @@ export function WishlistSection({ trip }: { trip: Trip }) {
             <p className="mt-1 mb-5 max-w-xs text-xs leading-relaxed text-slate-500">
               레스토랑, 라운지, 숙소를 저장하면 멤버 모두가 함께 볼 수 있어요.
             </p>
-            <AddSavedPlaceModal
-              tripId={trip.id}
-              defaultKind={selectedKind}
-              onSaved={() => void load()}
-              trigger={
-                <button
-                  type="button"
-                  className="rounded-full bg-amber-400 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 transition-all hover:bg-amber-500 active:scale-95"
-                >
-                  장소 추가
-                </button>
-              }
-            />
+            <button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              className="rounded-full bg-amber-400 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 transition-all hover:bg-amber-500 active:scale-95"
+            >
+              장소 추가
+            </button>
           </div>
         )}
       </CardContent>
+
+      <AddSavedPlaceModal
+        tripId={trip.id}
+        defaultKind={selectedKind}
+        onSaved={() => void load()}
+        open={addOpen}
+        onOpenChange={setAddOpen}
+      />
     </Card>
   )
 }

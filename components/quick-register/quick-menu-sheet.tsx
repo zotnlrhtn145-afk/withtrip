@@ -97,9 +97,9 @@ export function QuickMenuSheet({
                   <Plane className="size-5" />
                 </span>
                 <span className="flex min-w-0 flex-col">
-                  <span className="text-sm font-semibold">새 여행 등록</span>
+                  <span className="text-sm font-semibold">새 여행 만들기</span>
                   <span className="text-xs text-muted-foreground">
-                    제목·위치·일정으로 여행을 바로 추가해요
+                    목적지와 일정을 입력하면 여행 카드가 바로 만들어져요
                   </span>
                 </span>
               </button>
@@ -114,9 +114,9 @@ export function QuickMenuSheet({
                   <Receipt className="size-5" />
                 </span>
                 <span className="flex min-w-0 flex-col">
-                  <span className="text-sm font-semibold">지출/정산 등록</span>
+                  <span className="text-sm font-semibold">지출 추가</span>
                   <span className="text-xs text-muted-foreground">
-                    영수증 스캔 또는 수기 입력으로 기록해요
+                    영수증 스캔 또는 수기 입력으로 정산에 기록해요
                   </span>
                 </span>
               </button>
@@ -131,9 +131,9 @@ export function QuickMenuSheet({
                   <MapPinPlus className="size-5" />
                 </span>
                 <span className="flex min-w-0 flex-col">
-                  <span className="text-sm font-semibold">장소 저장</span>
+                  <span className="text-sm font-semibold">장소 추가</span>
                   <span className="text-xs text-muted-foreground">
-                    가고 싶은 스팟을 위시리스트에 남겨요
+                    여행의 가고 싶은 곳에 스팟을 저장해요
                   </span>
                 </span>
               </button>

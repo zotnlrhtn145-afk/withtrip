@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeftRight,
   ArrowRight,
@@ -123,6 +124,8 @@ export function SettlementView({
   onChangeTrip,
 }: SettlementViewProps) {
   const activeTripId = String(tripId ?? "").trim() || null
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { refreshTrips, setTripSettledStatus } = useTrips()
 
   const [members, setMembers] = useState<SettlementMember[]>([])
@@ -155,6 +158,18 @@ export function SettlementView({
   const receiptInputRef = useRef<HTMLInputElement>(null)
   const scanInputRef = useRef<HTMLInputElement>(null)
   const receiptPreviewRef = useRef<string | null>(null)
+
+  // 퀵등록의 "지출 추가"에서 넘어온 경우 (?addExpense=1) 지출 입력 다이얼로그를 바로 연다.
+  useEffect(() => {
+    if (!activeTripId) return
+    if (searchParams.get("addExpense") !== "1") return
+    if (tripSettled) return
+    setOpen(true)
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("addExpense")
+    const qs = params.toString()
+    router.replace(qs ? `/settlement/${activeTripId}?${qs}` : `/settlement/${activeTripId}`)
+  }, [activeTripId, searchParams, tripSettled, router])
 
   const membersById = useMemo(() => {
     const map = new Map<string, SettlementMember>()
