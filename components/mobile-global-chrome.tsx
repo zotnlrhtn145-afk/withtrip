@@ -7,7 +7,6 @@ import { LogIn, PlusSquare } from "lucide-react"
 
 import { AccountMenu } from "@/components/account-menu"
 import { BottomNav, type NavKey } from "@/components/bottom-nav"
-import { CreateTripDialog } from "@/components/create-trip-dialog"
 import { useNavigateToLogin } from "@/components/login-navigation"
 import { NotificationBellButton } from "@/components/notifications/NotificationBellButton"
 import { createClient } from "@/utils/supabase/client"
@@ -127,17 +126,16 @@ export function MobileGlobalChrome() {
       {!hideChrome ? (
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md md:hidden">
           <div className="flex items-center justify-between px-4 py-3">
-            <CreateTripDialog
-              trigger={
-                <button
-                  type="button"
-                  aria-label="새 여행 만들기"
-                  className="flex size-9 items-center justify-center text-slate-800 transition-colors hover:text-black"
-                >
-                  <PlusSquare className="size-6 stroke-[1.5]" />
-                </button>
+            <button
+              type="button"
+              aria-label="퀵 등록"
+              onClick={() =>
+                window.dispatchEvent(new CustomEvent("withtrip:open-quick-menu"))
               }
-            />
+              className="flex size-9 items-center justify-center text-slate-800 transition-colors hover:text-black"
+            >
+              <PlusSquare className="size-6 stroke-[1.5]" />
+            </button>
 
             <div className="flex flex-row items-center gap-1.5">
               <HeaderAuthControl />

@@ -244,6 +244,14 @@ function WithtripShell() {
       window.removeEventListener("withtrip:bottom-nav-tab", onBottomTab)
   }, [isLoggedIn])
 
+  // Mobile header's top-left "+" opens the same quick-add sheet as the round FAB.
+  useEffect(() => {
+    const onOpenQuickMenu = () => setIsQuickMenuOpen(true)
+    window.addEventListener("withtrip:open-quick-menu", onOpenQuickMenu)
+    return () =>
+      window.removeEventListener("withtrip:open-quick-menu", onOpenQuickMenu)
+  }, [])
+
   const goTo = (next: AppView) => {
     setCurrentView(next)
     window.scrollTo({ top: 0 })
