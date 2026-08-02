@@ -1,10 +1,12 @@
 import { getCurrentUserId } from "@/lib/auth-session"
+import { curatePlaceCoverImage } from "@/lib/place-cover-curation"
 import { resolveCoverImageUrl } from "@/lib/place-cover-image"
 import { supabase } from "@/lib/supabase"
 import {
   SCHEDULE_CATEGORIES,
   type ScheduleCategory,
 } from "@/lib/schedules-api"
+import { toWishlistKind } from "@/lib/trip-itinerary"
 import { getErrorMessage } from "@/lib/trips-api"
 
 /** Client model for Supabase `saved_places` (가고 싶은 곳). */
@@ -79,6 +81,8 @@ export type CreateSavedPlaceInput = {
   distanceKm?: number | null
   lat?: number | null
   lng?: number | null
+  /** 대표 이미지 후보(최대 4장, DB에는 저장 안 됨) — AI가 실내/음식 사진을 골라 대표 이미지를 승격할 때만 쓰인다. */
+  photoUrls?: string[]
 }
 
 function logSupabaseError(scope: string, error: unknown, extra?: Record<string, unknown>) {
@@ -423,7 +427,51 @@ export async function insertSavedPlace(input: CreateSavedPlaceInput): Promise<Sa
     throw error
   }
 
-  return mapSavedPlaceRow(data as SavedPlaceRow)
+  const saved = mapSavedPlaceRow(data as SavedPlaceRow)
+
+  if (input.photoUrls && input.photoUrls.length >= 2) {
+    void upgradeSavedPlaceCoverWithAI(saved.id, {
+      photoUrls: input.photoUrls,
+      placeName: saved.placeName,
+      kind: toWishlistKind(saved.category),
+      subCategory: saved.subCategory,
+    })
+  }
+
+  return saved
+}
+
+/**
+ * Background upgrade — AI가 후보 사진 중 업장 내부/음식 사진을 골라 대표
+ * 이미지로 교체한다. 저장은 이미 끝난 뒤 호출되므로 실패해도 기존 대표
+ * 이미지가 그대로 유지된다.
+ */
+async function upgradeSavedPlaceCoverWithAI(
+  placeId: string,
+  input: { photoUrls: string[]; placeName: string; kind: string; subCategory: string }
+): Promise<void> {
+  try {
+    const curated = await curatePlaceCoverImage(input)
+    if (!curated) return
+
+    const { error } = await supabase
+      .from("saved_places")
+      .update({ image_url: curated })
+      .eq("id", placeId)
+
+    if (error) {
+      console.warn("[upgradeSavedPlaceCoverWithAI] update failed:", error.message)
+      return
+    }
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("withtrip:saved-place-cover-ready", { detail: { placeId } })
+      )
+    }
+  } catch (err) {
+    console.warn("[upgradeSavedPlaceCoverWithAI] unexpected:", err)
+  }
 }
 
 /** `saved_places` UPDATE */

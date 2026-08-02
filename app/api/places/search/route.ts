@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { buildGooglePlacePhotoUrl, resolveCoverImageUrl } from "@/lib/place-cover-image"
+import { guessSubCategory } from "@/lib/place-subcategories"
 
 export const runtime = "nodejs"
 
@@ -64,6 +65,9 @@ export type PlaceSearchApiItem = {
   imageUrl: string
   image: string
   imageAlt: string
+  /** 대표 이미지 후보(최대 4장) — AI가 실내/음식 사진을 골라내는 데 쓰인다. */
+  photoUrls?: string[]
+  photoReferences?: string[]
   lat?: number
   lng?: number
 }
@@ -100,27 +104,6 @@ function mapPriceLevel(level: number | undefined | null): string {
   return (["¥", "¥¥", "¥¥", "¥¥¥", "¥¥¥¥"] as const)[n]
 }
 
-function mapSubCategory(
-  types: string[] | undefined,
-  kind: "restaurant" | "bar" | "stay"
-): string {
-  const set = new Set((types ?? []).map((t) => t.toLowerCase()))
-  if (kind === "stay") {
-    if (set.has("resort_hotel") || set.has("spa")) return "리조트 · 스파"
-    if (set.has("lodging") || set.has("hotel")) return "호텔 · 숙박"
-    return "호텔 · 숙소"
-  }
-  if (set.has("korean_restaurant")) return "모던 한식 · 코스 요리"
-  if (set.has("japanese_restaurant") || set.has("sushi_restaurant")) return "일식 · 코스"
-  if (set.has("french_restaurant")) return "프렌치 · 코스"
-  if (set.has("italian_restaurant")) return "이탈리안"
-  if (set.has("chinese_restaurant")) return "중식"
-  if (set.has("cafe") || set.has("coffee_shop")) return "카페"
-  if (set.has("bar") || set.has("night_club")) return "라운지 · 바"
-  if (kind === "bar") return "라운지 · 바"
-  return "레스토랑 · 다이닝"
-}
-
 function mapGuideBadge(rating: number | undefined, name: string): string {
   const hay = name.toLowerCase()
   if (/michelin|미슐랭/.test(hay)) return "Michelin Starred"
@@ -143,18 +126,26 @@ function buildLocalName(name: string, address: string) {
   return n
 }
 
-function pickPhotoUrl(
+function buildPhotoUrls(
   photos: { photo_reference?: string }[] | undefined,
   apiKey: string,
+  limit = 4
+): string[] {
+  return (photos ?? [])
+    .slice(0, limit)
+    .map((photo) => (photo.photo_reference ? buildGooglePlacePhotoUrl(photo.photo_reference, apiKey, 1200) : ""))
+    .filter(Boolean)
+}
+
+function pickFallbackImageUrl(
+  photoUrls: string[],
   kind: "restaurant" | "bar" | "stay",
   subCategory: string
 ) {
-  const ref = photos?.[0]?.photo_reference
-  const googleUrl = ref ? buildGooglePlacePhotoUrl(ref, apiKey, 1200) : ""
   const category =
     kind === "stay" ? "숙소" : kind === "bar" ? "라운지 & 바" : "레스토랑"
   return resolveCoverImageUrl({
-    imageUrl: googleUrl,
+    imageUrl: photoUrls[0] ?? "",
     kind,
     subCategory,
     category,
@@ -175,8 +166,13 @@ function toApiItem(
   const rating = typeof details.rating === "number" ? details.rating : undefined
   const reviewCount =
     typeof details.user_ratings_total === "number" ? details.user_ratings_total : undefined
-  const subCategory = mapSubCategory(details.types, kind)
-  const imageUrl = pickPhotoUrl(details.photos, apiKey, kind, subCategory)
+  const subCategory = guessSubCategory({ kind, name: details.name, types: details.types })
+  const photoUrls = buildPhotoUrls(details.photos, apiKey)
+  const photoReferences = (details.photos ?? [])
+    .slice(0, 4)
+    .map((photo) => photo.photo_reference ?? "")
+    .filter(Boolean)
+  const imageUrl = pickFallbackImageUrl(photoUrls, kind, subCategory)
   const lat = details.geometry?.location?.lat
   const lng = details.geometry?.location?.lng
 
@@ -196,6 +192,8 @@ function toApiItem(
     imageUrl,
     image: imageUrl,
     imageAlt: placeName || "장소",
+    photoUrls,
+    photoReferences,
     ...(typeof lat === "number" ? { lat } : {}),
     ...(typeof lng === "number" ? { lng } : {}),
   }

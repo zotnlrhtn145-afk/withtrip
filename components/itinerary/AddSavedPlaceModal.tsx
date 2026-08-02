@@ -74,6 +74,7 @@ export function AddSavedPlaceModal({
   const [phoneNumber, setPhoneNumber] = useState("")
   const [memo, setMemo] = useState("")
   const [imageUrl, setImageUrl] = useState("")
+  const [photoUrls, setPhotoUrls] = useState<string[]>([])
   const [rating, setRating] = useState<number | null>(null)
   const [reviewCount, setReviewCount] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
@@ -98,6 +99,7 @@ export function AddSavedPlaceModal({
     setPhoneNumber("")
     setMemo("")
     setImageUrl("")
+    setPhotoUrls([])
     setRating(null)
     setReviewCount(null)
     setSaving(false)
@@ -160,7 +162,11 @@ export function AddSavedPlaceModal({
     setPlaceName(name)
     setLocalName(String(place.localName ?? "").trim() || name)
     setSubCategory(
-      guessSubCategory({ kind: resolvedKind, name, hint: place.subCategory })
+      guessSubCategory({
+        kind: resolvedKind,
+        name,
+        hint: `${place.subCategory ?? ""} ${searchQuery}`,
+      })
     )
     setGuideBadge(String(place.guideBadge ?? "").trim())
     setAddress(String(place.address ?? "").trim())
@@ -168,6 +174,7 @@ export function AddSavedPlaceModal({
     setLng(typeof place.lng === "number" ? place.lng : null)
     setPhoneNumber(String(place.phoneNumber ?? "").trim())
     setImageUrl(String(place.imageUrl ?? place.image ?? "").trim())
+    setPhotoUrls(Array.isArray(place.photoUrls) ? place.photoUrls.filter(Boolean) : [])
     setRating(typeof place.rating === "number" ? place.rating : null)
     setReviewCount(typeof place.reviewCount === "number" ? place.reviewCount : null)
     if (resolvedKind !== kind) setKind(resolvedKind)
@@ -214,6 +221,7 @@ export function AddSavedPlaceModal({
         phoneNumber: phoneNumber.trim(),
         memo: memo.trim(),
         imageUrl: imageUrl.trim(),
+        photoUrls,
         rating,
         reviewCount,
         lat,

@@ -21,6 +21,8 @@ export type PlaceSearchResult = {
   imageUrl?: string
   image?: string
   imageAlt?: string
+  /** 대표 이미지 후보(최대 4장) — AI 대표사진 선별에 쓰인다. */
+  photoUrls?: string[]
   lat?: number
   lng?: number
 }

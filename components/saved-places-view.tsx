@@ -72,6 +72,16 @@ export function SavedPlacesView() {
     void loadPlaces(userId)
   }, [authPhase, userId])
 
+  // AI가 대표 이미지를 실내/음식 사진으로 골라 교체하면 조용히 목록만 갱신한다.
+  useEffect(() => {
+    if (authPhase !== "authed" || !userId) return
+    const onCoverReady = () => {
+      void fetchInterestPlacesByUserId(userId).then(setPlaces)
+    }
+    window.addEventListener("withtrip:saved-place-cover-ready", onCoverReady)
+    return () => window.removeEventListener("withtrip:saved-place-cover-ready", onCoverReady)
+  }, [authPhase, userId])
+
   /** 저장된 장소에 실제로 존재하는 세부(음식) 카테고리만 칩으로 보여준다 — 일식/한식/스시/국수… */
   const subChips = useMemo(() => {
     const map = new Map<string, number>()
