@@ -8,6 +8,7 @@ import {
   List,
   Loader2,
   Map as MapIcon,
+  MapPin,
   Navigation,
   Plane,
   Plus,
@@ -152,6 +153,17 @@ export function SavedPlacesView() {
     return places.filter((place) => place.subCategory.trim() === subFilter)
   }, [places, subFilter])
 
+  /** 리스트 카드에도 거리를 보여준다 — 좌표 없는 곳은 null. */
+  const placeDistanceLabels = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const place of filteredPlaces) {
+      if (typeof place.lat !== "number" || typeof place.lng !== "number") continue
+      const meters = distanceMeters(geo.position, { lat: place.lat, lng: place.lng })
+      map.set(place.id, formatDistance(meters))
+    }
+    return map
+  }, [filteredPlaces, geo.position])
+
   /** 지도 모드 마커 — 현재 카테고리 필터가 그대로 적용되고, 좌표가 없는 곳은 제외된다. */
   const mapSpots: MapSpot[] = useMemo(() => {
     return filteredPlaces
@@ -292,36 +304,11 @@ export function SavedPlacesView() {
         </div>
       ) : (
         <>
-          <div className="flex items-center gap-1 self-start rounded-full border border-slate-200 bg-white p-1">
-            <button
-              type="button"
-              onClick={() => setViewMode("list")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-all",
-                viewMode === "list"
-                  ? "bg-slate-900 text-white shadow-sm"
-                  : "text-slate-500 hover:bg-slate-100"
-              )}
-            >
-              <List className="size-3.5" />
-              리스트
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("map")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-all",
-                viewMode === "map"
-                  ? "bg-slate-900 text-white shadow-sm"
-                  : "text-slate-500 hover:bg-slate-100"
-              )}
-            >
-              <MapIcon className="size-3.5" />
-              지도로 보기
-            </button>
-          </div>
-
-          <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">
+          {/* 캐치테이블 "내주변"처럼 필터 칩은 스크롤 중에도 상단에 고정된다. */}
+          <div
+            className="sticky z-20 -mx-4 flex items-center gap-2 overflow-x-auto bg-white/95 px-4 py-2 backdrop-blur"
+            style={{ top: 62 }}
+          >
             <button
               type="button"
               onClick={() => setSubFilter(null)}
@@ -372,113 +359,145 @@ export function SavedPlacesView() {
             })}
           </div>
 
-          {viewMode === "map" ? (
-            mapSpots.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
-                이 카테고리엔 위치 정보가 있는 장소가 없어요.
+          <div className="relative -mx-4">
+            {viewMode === "map" ? (
+              mapSpots.length === 0 ? (
+                <div className="mx-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
+                  이 카테고리엔 위치 정보가 있는 장소가 없어요.
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <NearbyMap
+                    center={geo.position}
+                    accuracy={geo.accuracy}
+                    spots={mapSpots}
+                    selectedId={selectedMapId}
+                    onSelect={setSelectedMapId}
+                    onRecenter={handleRecenter}
+                    recenterKey={recenterKey}
+                    locating={geo.status === "locating"}
+                    className="h-[60vh] rounded-none border-x-0"
+                    fill
+                  />
+                  {selectedMapSpot ? (
+                    <div className="mx-4 rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-slate-900">
+                            {selectedMapSpot.name}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">{selectedMapSpot.address}</p>
+                          <p className="mt-1 text-[11px] text-slate-400">
+                            {selectedMapSpot.category}
+                          </p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold tabular-nums text-amber-700">
+                          {selectedMapSpot.distanceLabel}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-slate-400 tabular-nums">
+                        도보 약 {estimateWalkMinutes(selectedMapSpot.distanceMeters)}분
+                      </p>
+                      <button
+                        type="button"
+                        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-amber-400 py-2.5 text-sm font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 active:scale-[0.99]"
+                        onClick={() => handleOpenDirections(selectedMapSpot)}
+                      >
+                        <Navigation className="size-4" />
+                        길찾기
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              )
+            ) : filteredPlaces.length === 0 ? (
+              <div className="mx-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
+                이 카테고리에 저장된 장소가 없어요.
               </div>
             ) : (
-              <div className="flex flex-col gap-3">
-                <NearbyMap
-                  center={geo.position}
-                  accuracy={geo.accuracy}
-                  spots={mapSpots}
-                  selectedId={selectedMapId}
-                  onSelect={setSelectedMapId}
-                  onRecenter={handleRecenter}
-                  recenterKey={recenterKey}
-                  locating={geo.status === "locating"}
-                  className="h-[420px]"
-                  fill
-                />
-                {selectedMapSpot ? (
-                  <div className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-slate-900">{selectedMapSpot.name}</p>
-                        <p className="mt-1 text-xs text-slate-400">{selectedMapSpot.address}</p>
-                        <p className="mt-1 text-[11px] text-slate-400">
-                          {selectedMapSpot.category}
-                        </p>
-                      </div>
-                      <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold tabular-nums text-amber-700">
-                        {selectedMapSpot.distanceLabel}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-xs text-slate-400 tabular-nums">
-                      도보 약 {estimateWalkMinutes(selectedMapSpot.distanceMeters)}분
-                    </p>
-                    <button
-                      type="button"
-                      className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-amber-400 py-2.5 text-sm font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 active:scale-[0.99]"
-                      onClick={() => handleOpenDirections(selectedMapSpot)}
-                    >
-                      <Navigation className="size-4" />
-                      길찾기
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            )
-          ) : filteredPlaces.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
-              이 카테고리에 저장된 장소가 없어요.
-            </div>
-          ) : (
-            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {filteredPlaces.map((place) => (
-                <li key={place.id} className="group flex flex-col gap-2">
-                  <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-slate-100">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={place.imageUrl}
-                      alt=""
-                      className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/65 via-black/0 to-black/0" />
-                    <button
-                      type="button"
-                      onClick={() => void handleRemove(place.id)}
-                      disabled={removingId === place.id}
-                      aria-label={`${place.placeName} 삭제`}
-                      className="absolute top-2 right-2 flex size-7 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/60 disabled:opacity-50"
-                    >
-                      {removingId === place.id ? (
-                        <Loader2 className="size-3.5 animate-spin" />
-                      ) : (
-                        <X className="size-3.5" />
-                      )}
-                    </button>
-                    {place.rating ? (
-                      <span className="absolute top-2 left-2 flex items-center gap-0.5 rounded-full bg-black/40 px-2 py-0.5 text-[11px] font-bold text-white backdrop-blur-sm">
-                        <Star className="size-3 fill-amber-400 text-amber-400" />
-                        {place.rating}
-                      </span>
-                    ) : null}
-                    <div className="absolute inset-x-0 bottom-0 p-2.5">
-                      <p className="truncate text-sm font-bold text-white drop-shadow">
-                        {place.placeName}
-                      </p>
-                      <p className="truncate text-[11px] text-white/85 drop-shadow">
-                        {place.subCategory || place.category || "관심 장소"}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAssigningError(null)
-                      setAssigningPlace(place)
-                    }}
-                    className="flex items-center justify-center gap-1.5 rounded-full bg-amber-400 py-2 text-xs font-bold text-slate-950 transition-colors hover:bg-amber-500 active:scale-95"
+              <ul className="flex flex-col gap-2.5 px-4">
+                {filteredPlaces.map((place) => (
+                  <li
+                    key={place.id}
+                    className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm"
                   >
-                    <Plane className="size-3.5" />
-                    여행에 담기
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+                    <div className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={place.imageUrl} alt="" className="size-full object-cover" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate text-sm font-bold text-slate-900">
+                          {place.placeName}
+                        </p>
+                        {place.rating ? (
+                          <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium tabular-nums text-slate-400">
+                            <Star className="size-3 fill-amber-400 text-amber-400" />
+                            {place.rating}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="truncate text-xs text-slate-400">
+                        {place.subCategory || place.category || "관심 장소"}
+                        {place.address ? ` · ${place.address}` : ""}
+                      </p>
+                      {placeDistanceLabels.has(place.id) ? (
+                        <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-amber-700">
+                          <MapPin className="size-3" />
+                          {placeDistanceLabels.get(place.id)}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="flex shrink-0 flex-col gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAssigningError(null)
+                          setAssigningPlace(place)
+                        }}
+                        className="flex items-center justify-center gap-1 rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-bold text-slate-950 transition-colors hover:bg-amber-500 active:scale-95"
+                      >
+                        <Plane className="size-3" />
+                        담기
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleRemove(place.id)}
+                        disabled={removingId === place.id}
+                        aria-label={`${place.placeName} 삭제`}
+                        className="flex items-center justify-center rounded-full border border-slate-200 p-1.5 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600 disabled:opacity-50"
+                      >
+                        {removingId === place.id ? (
+                          <Loader2 className="size-3 animate-spin" />
+                        ) : (
+                          <X className="size-3" />
+                        )}
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* 캐치테이블처럼 지도/리스트를 오가는 버튼 하나만 화면에 고정해 둔다. */}
+          <button
+            type="button"
+            onClick={() => setViewMode((current) => (current === "map" ? "list" : "map"))}
+            className="fixed bottom-24 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-slate-900/20 transition-transform active:scale-95"
+          >
+            {viewMode === "map" ? (
+              <>
+                <List className="size-3.5" />
+                목록 보기
+              </>
+            ) : (
+              <>
+                <MapIcon className="size-3.5" />
+                지도 보기
+              </>
+            )}
+          </button>
         </>
       )}
 
