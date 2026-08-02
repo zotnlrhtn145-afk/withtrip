@@ -1,8 +1,26 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Plus_Jakarta_Sans, Noto_Sans_KR } from 'next/font/google'
+import Script from 'next/script'
 import { AppShell } from '@/components/app-shell'
 import './globals.css'
+
+/**
+ * 카카오톡 인앱 브라우저로 열렸으면 즉시 기기 기본 브라우저로 넘긴다.
+ * `kakaotalk://web/openExternal`은 카카오톡이 공식으로 지원하는 탈출 스킴 —
+ * iOS/Android 모두에서 동작한다. 데스크톱 카카오톡은 애초에 외부 브라우저로
+ * 열어서 이 스크립트가 실행돼도 조건에 안 걸린다.
+ */
+const KAKAO_INAPP_ESCAPE_SCRIPT = `
+(function () {
+  try {
+    var ua = navigator.userAgent || '';
+    if (/KAKAOTALK/i.test(ua)) {
+      location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(location.href);
+    }
+  } catch (e) {}
+})();
+`
 
 const _jakarta = Plus_Jakarta_Sans({ subsets: ['latin'] })
 const _notoKR = Noto_Sans_KR({ subsets: ['latin'] })
@@ -56,6 +74,11 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
     >
       <body className="min-h-screen w-full bg-white font-sans antialiased">
+        <Script
+          id="kakao-inapp-escape"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: KAKAO_INAPP_ESCAPE_SCRIPT }}
+        />
         <AppShell>{children}</AppShell>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
