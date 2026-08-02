@@ -69,13 +69,13 @@ export function BottomNav({
         right: 0,
         marginLeft: "auto",
         marginRight: "auto",
-        zIndex: 99999,
+        zIndex: 20,
         width: "calc(100% - 2rem)",
         maxWidth: "380px",
         pointerEvents: "auto",
       }}
       className={cn(
-        "fixed bottom-4 inset-x-0 mx-auto z-[99999] w-[calc(100%-2rem)] max-w-[380px] md:hidden",
+        "fixed bottom-4 inset-x-0 mx-auto z-20 w-[calc(100%-2rem)] max-w-[380px] md:hidden",
         "flex items-center justify-between px-3 py-2 pointer-events-auto",
         "rounded-full border border-white/30 bg-white/85 shadow-2xl backdrop-blur-md",
         "transition-all duration-300 ease-in-out transform",
