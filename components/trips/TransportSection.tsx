@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { User } from "@supabase/supabase-js"
-import { Loader2, Pencil, Plane, PlaneTakeoff, Plus, Trash2, UserRound } from "lucide-react"
+import { Car, Loader2, Pencil, Plane, PlaneTakeoff, Plus, TrainFront, Trash2, UserRound } from "lucide-react"
 
-import { FlightRegisterModal } from "@/components/trips/FlightRegisterModal"
+import { TransportRegisterModal } from "@/components/trips/TransportRegisterModal"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -15,12 +15,13 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
-  deleteTripFlight,
-  fetchFlightsByTripId,
-  isFlightAuthor,
-  type FlightType,
-  type TripFlight,
-} from "@/lib/flights-api"
+  deleteTripTransport,
+  fetchTransportsByTripId,
+  isTransportAuthor,
+  type TransportRole,
+  type TransportType,
+  type TripTransport,
+} from "@/lib/transports-api"
 import {
   fetchProfilesByIds,
   fetchTripRoster,
@@ -29,7 +30,21 @@ import {
 import { cn } from "@/lib/utils"
 import { createClient } from "@/utils/supabase/client"
 
-function airlineAccent(name: string) {
+const TRANSPORT_ICON: Record<TransportType, typeof Plane> = {
+  FLIGHT: Plane,
+  TRAIN: TrainFront,
+  CAR: Car,
+}
+
+const TRANSPORT_LABEL: Record<TransportType, string> = {
+  FLIGHT: "비행기",
+  TRAIN: "기차",
+  CAR: "자가용",
+}
+
+function carrierAccent(transportType: TransportType, name: string) {
+  if (transportType === "TRAIN") return "#0F766E"
+  if (transportType === "CAR") return "#57534E"
   const n = name.toLowerCase()
   if (n.includes("대한") || n.includes("korean")) return "#00256C"
   if (n.includes("아시아나") || n.includes("asiana")) return "#B3141B"
@@ -39,8 +54,9 @@ function airlineAccent(name: string) {
   return "#57534E"
 }
 
-function airlineCodeHint(flight: TripFlight) {
-  if (flight.flightNo.trim().length >= 2) return flight.flightNo.trim().slice(0, 2).toUpperCase()
+function vehicleCodeHint(transport: TripTransport) {
+  if (transport.transportType !== "FLIGHT") return ""
+  if (transport.vehicleNo.trim().length >= 2) return transport.vehicleNo.trim().slice(0, 2).toUpperCase()
   return ""
 }
 
@@ -106,17 +122,17 @@ function PersonChip({
   )
 }
 
-function FlightPeople({
-  flight,
+function TransportPeople({
+  transport,
   memberById,
 }: {
-  flight: TripFlight
+  transport: TripTransport
   memberById: Map<string, TripMember>
 }) {
-  const authorId = flight.createdBy || flight.userId
+  const authorId = transport.createdBy || transport.userId
   const author = authorId ? memberById.get(authorId) : undefined
   const authorName = authorId ? memberLabel(memberById, authorId) : ""
-  const passengers = flight.passengerIds
+  const passengers = transport.passengerIds
     .filter((id) => id && id !== authorId)
     .map((id) => ({
       id,
@@ -138,7 +154,7 @@ function FlightPeople({
       ) : null}
       {passengers.map((passenger) => (
         <PersonChip
-          key={`${flight.id}-${passenger.id}`}
+          key={`${transport.id}-${passenger.id}`}
           label="동승"
           name={passenger.name}
           avatarUrl={passenger.avatarUrl}
@@ -149,18 +165,18 @@ function FlightPeople({
   )
 }
 
-function TypeBadge({ flightType, segmentOrder }: { flightType: FlightType; segmentOrder: number }) {
-  if (flightType === "OUTBOUND") {
+function RoleBadge({ role, segmentOrder }: { role: TransportRole; segmentOrder: number }) {
+  if (role === "OUTBOUND") {
     return (
       <span className="inline-flex items-center rounded-full bg-sky-500/15 px-2.5 py-1 text-[11px] font-bold text-sky-700 ring-1 ring-sky-500/25 dark:text-sky-300">
-        🟦 가는 편 / 출국
+        🟦 가는 편
       </span>
     )
   }
-  if (flightType === "RETURN") {
+  if (role === "RETURN") {
     return (
       <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-500/25 dark:text-emerald-300">
-        🟩 오는 편 / 귀국
+        🟩 오는 편
       </span>
     )
   }
@@ -171,21 +187,23 @@ function TypeBadge({ flightType, segmentOrder }: { flightType: FlightType; segme
   )
 }
 
-function TicketRoute({ flight }: { flight: TripFlight }) {
+function TicketRoute({ transport }: { transport: TripTransport }) {
   return (
     <div className="relative flex items-center gap-4">
       <div className="flex min-w-0 flex-col gap-1">
-        <span className="font-mono text-2xl leading-none font-extrabold">{flight.fromCode}</span>
-        <span className="text-base leading-none font-bold tabular-nums">{flight.departTime}</span>
-        {flight.departDate ? (
-          <span className="text-xs text-muted-foreground tabular-nums">{flight.departDate}</span>
+        <span className="truncate font-mono text-xl leading-none font-extrabold sm:text-2xl">
+          {transport.fromLabel}
+        </span>
+        <span className="text-base leading-none font-bold tabular-nums">{transport.departTime}</span>
+        {transport.departDate ? (
+          <span className="text-xs text-muted-foreground tabular-nums">{transport.departDate}</span>
         ) : null}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-        {flight.duration ? (
+        {transport.duration ? (
           <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
-            {flight.duration}
+            {transport.duration}
           </span>
         ) : null}
         <div className="flex w-full items-center gap-1">
@@ -194,7 +212,13 @@ function TicketRoute({ flight }: { flight: TripFlight }) {
             aria-hidden="true"
             className="h-0 flex-1 border-t border-dashed border-foreground/30"
           />
-          <PlaneTakeoff aria-hidden="true" className="size-4 text-foreground" />
+          {transport.transportType === "TRAIN" ? (
+            <TrainFront aria-hidden="true" className="size-4 text-foreground" />
+          ) : transport.transportType === "CAR" ? (
+            <Car aria-hidden="true" className="size-4 text-foreground" />
+          ) : (
+            <PlaneTakeoff aria-hidden="true" className="size-4 text-foreground" />
+          )}
           <span
             aria-hidden="true"
             className="h-0 flex-1 border-t border-dashed border-foreground/30"
@@ -204,10 +228,12 @@ function TicketRoute({ flight }: { flight: TripFlight }) {
       </div>
 
       <div className="flex min-w-0 flex-col items-end gap-1">
-        <span className="font-mono text-2xl leading-none font-extrabold">{flight.toCode}</span>
-        <span className="text-base leading-none font-bold tabular-nums">{flight.arriveTime}</span>
-        {flight.arriveDate ? (
-          <span className="text-xs text-muted-foreground tabular-nums">{flight.arriveDate}</span>
+        <span className="truncate font-mono text-xl leading-none font-extrabold sm:text-2xl">
+          {transport.toLabel}
+        </span>
+        <span className="text-base leading-none font-bold tabular-nums">{transport.arriveTime}</span>
+        {transport.arriveDate ? (
+          <span className="text-xs text-muted-foreground tabular-nums">{transport.arriveDate}</span>
         ) : null}
       </div>
     </div>
@@ -218,8 +244,8 @@ function TicketActions({
   deleting,
   onEdit,
   onDelete,
-  editLabel = "항공권 수정",
-  deleteLabel = "항공권 삭제",
+  editLabel = "이동수단 수정",
+  deleteLabel = "이동수단 삭제",
 }: {
   deleting: boolean
   onEdit: () => void
@@ -255,24 +281,25 @@ function TicketActions({
   )
 }
 
-function FlightTicket({
-  flight,
+function TransportTicket({
+  transport,
   memberById,
   isAuthor,
   onEdit,
   onDelete,
   deleting,
 }: {
-  flight: TripFlight
+  transport: TripTransport
   memberById: Map<string, TripMember>
   isAuthor: boolean
-  onEdit: (flight: TripFlight) => void
+  onEdit: (transport: TripTransport) => void
   onDelete: (id: string) => void
   deleting: boolean
 }) {
-  const accent = airlineAccent(flight.airlineName)
-  const code = airlineCodeHint(flight)
-  const badgeLabel = [flight.airlineName, flight.flightNo].filter(Boolean).join(" · ")
+  const accent = carrierAccent(transport.transportType, transport.carrierName)
+  const code = vehicleCodeHint(transport)
+  const Icon = TRANSPORT_ICON[transport.transportType]
+  const badgeLabel = [transport.carrierName, transport.vehicleNo].filter(Boolean).join(" · ")
 
   return (
     <li className="media-card relative overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm ring-0 transition-all hover:shadow-md">
@@ -284,7 +311,7 @@ function FlightTicket({
           {code}
         </span>
       ) : (
-        <Plane
+        <Icon
           aria-hidden="true"
           className="pointer-events-none absolute -right-5 -bottom-5 size-24 scale-125 text-foreground opacity-10"
         />
@@ -292,10 +319,10 @@ function FlightTicket({
 
       <div className="relative flex items-start justify-between gap-2 px-5 pt-4">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <TypeBadge flightType={flight.flightType} segmentOrder={flight.segmentOrder} />
+          <RoleBadge role={transport.transportRole} segmentOrder={transport.segmentOrder} />
           {badgeLabel ? (
             <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-card px-2.5 py-1 ring-1 ring-border">
-              <Plane aria-hidden="true" className="size-3.5 shrink-0" style={{ color: accent }} />
+              <Icon aria-hidden="true" className="size-3.5 shrink-0" style={{ color: accent }} />
               <span className="truncate text-xs font-bold">{badgeLabel}</span>
             </span>
           ) : null}
@@ -303,22 +330,22 @@ function FlightTicket({
         {isAuthor ? (
           <TicketActions
             deleting={deleting}
-            onEdit={() => onEdit(flight)}
-            onDelete={() => onDelete(flight.id)}
+            onEdit={() => onEdit(transport)}
+            onDelete={() => onDelete(transport.id)}
           />
         ) : null}
       </div>
 
       <div className="relative px-5 pt-3 pb-5">
-        <TicketRoute flight={flight} />
-        <FlightPeople flight={flight} memberById={memberById} />
+        <TicketRoute transport={transport} />
+        <TransportPeople transport={transport} memberById={memberById} />
       </div>
     </li>
   )
 }
 
 function LayoverJourney({
-  flights,
+  transports,
   memberById,
   currentUserId,
   authReady,
@@ -326,25 +353,26 @@ function LayoverJourney({
   onEdit,
   onDelete,
 }: {
-  flights: TripFlight[]
+  transports: TripTransport[]
   memberById: Map<string, TripMember>
   currentUserId: string | null
   authReady: boolean
   deletingId: string | null
-  onEdit: (flight: TripFlight) => void
+  onEdit: (transport: TripTransport) => void
   onDelete: (id: string) => void
 }) {
   return (
     <li className="media-card overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm ring-0 transition-all hover:shadow-md">
       <div className="flex flex-col gap-0 px-5 py-4">
-        {flights.map((flight, index) => {
-          const accent = airlineAccent(flight.airlineName)
-          const badgeLabel = [flight.airlineName, flight.flightNo].filter(Boolean).join(" · ")
-          const deleting = deletingId === flight.id
-          const isAuthor = authReady && isFlightAuthor(flight, currentUserId)
+        {transports.map((transport, index) => {
+          const accent = carrierAccent(transport.transportType, transport.carrierName)
+          const Icon = TRANSPORT_ICON[transport.transportType]
+          const badgeLabel = [transport.carrierName, transport.vehicleNo].filter(Boolean).join(" · ")
+          const deleting = deletingId === transport.id
+          const isAuthor = authReady && isTransportAuthor(transport, currentUserId)
 
           return (
-            <div key={flight.id} className="relative">
+            <div key={transport.id} className="relative">
               {index > 0 ? (
                 <div className="flex items-center gap-2 py-2 pl-1" aria-hidden="true">
                   <span className="w-px flex-none self-stretch border-l border-dashed border-orange-400/70" />
@@ -358,10 +386,10 @@ function LayoverJourney({
               <div className="rounded-xl bg-card/60 p-3 ring-1 ring-border/60">
                 <div className="mb-3 flex items-start justify-between gap-2">
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <TypeBadge flightType="LAYOVER" segmentOrder={flight.segmentOrder} />
+                    <RoleBadge role="LAYOVER" segmentOrder={transport.segmentOrder} />
                     {badgeLabel ? (
                       <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 ring-1 ring-border">
-                        <Plane
+                        <Icon
                           aria-hidden="true"
                           className="size-3.5 shrink-0"
                           style={{ color: accent }}
@@ -373,15 +401,15 @@ function LayoverJourney({
                   {isAuthor ? (
                     <TicketActions
                       deleting={deleting}
-                      editLabel={`경유 ${flight.segmentOrder} 수정`}
-                      deleteLabel={`경유 ${flight.segmentOrder} 삭제`}
-                      onEdit={() => onEdit(flight)}
-                      onDelete={() => onDelete(flight.id)}
+                      editLabel={`경유 ${transport.segmentOrder} 수정`}
+                      deleteLabel={`경유 ${transport.segmentOrder} 삭제`}
+                      onEdit={() => onEdit(transport)}
+                      onDelete={() => onDelete(transport.id)}
                     />
                   ) : null}
                 </div>
-                <TicketRoute flight={flight} />
-                <FlightPeople flight={flight} memberById={memberById} />
+                <TicketRoute transport={transport} />
+                <TransportPeople transport={transport} memberById={memberById} />
               </div>
             </div>
           )
@@ -392,21 +420,21 @@ function LayoverJourney({
 }
 
 /**
- * Supabase `trip_flights` 연동 비행기 일정 섹션 (좌측 5컬럼용).
+ * Supabase `trip_transports` 연동 이동수단(비행기/기차/자가용) 섹션 (좌측 5컬럼용).
  */
-export function FlightSection({
+export function TransportSection({
   tripId,
-  onFlightChange,
+  onTransportChange,
 }: {
   tripId: string
   /** Called after a successful create/update/delete so hero (and others) can refetch. */
-  onFlightChange?: () => void
+  onTransportChange?: () => void
 }) {
-  const [flights, setFlights] = useState<TripFlight[]>([])
+  const [transports, setTransports] = useState<TripTransport[]>([])
   const [roster, setRoster] = useState<TripMember[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
-  const [editingFlight, setEditingFlight] = useState<TripFlight | null>(null)
+  const [editingTransport, setEditingTransport] = useState<TripTransport | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [authReady, setAuthReady] = useState(false)
@@ -423,15 +451,15 @@ export function FlightSection({
     setLoading(true)
     try {
       const [data, members] = await Promise.all([
-        fetchFlightsByTripId(tripId),
+        fetchTransportsByTripId(tripId),
         fetchTripRoster(tripId),
       ])
 
       const profileIds = new Set<string>()
-      for (const flight of data) {
-        const authorId = String(flight.createdBy || flight.userId || "").trim()
+      for (const transport of data) {
+        const authorId = String(transport.createdBy || transport.userId || "").trim()
         if (authorId) profileIds.add(authorId)
-        for (const passengerId of flight.passengerIds) {
+        for (const passengerId of transport.passengerIds) {
           const id = String(passengerId ?? "").trim()
           if (id) profileIds.add(id)
         }
@@ -495,11 +523,11 @@ export function FlightSection({
         // ignore auth metadata enrichment failures
       }
 
-      setFlights(data)
+      setTransports(data)
       setRoster(Array.from(byId.values()))
     } catch (err) {
-      console.error("[FlightSection] load failed:", err)
-      setFlights([])
+      console.error("[TransportSection] load failed:", err)
+      setTransports([])
       setRoster([])
     } finally {
       setLoading(false)
@@ -546,62 +574,67 @@ export function FlightSection({
   }, [])
 
   const openCreateModal = () => {
-    setEditingFlight(null)
+    setEditingTransport(null)
     setModalOpen(true)
   }
 
-  const openEditModal = (flight: TripFlight) => {
-    if (!authReady || !isFlightAuthor(flight, currentUserId)) return
-    setEditingFlight(flight)
+  const openEditModal = (transport: TripTransport) => {
+    if (!authReady || !isTransportAuthor(transport, currentUserId)) return
+    setEditingTransport(transport)
     setModalOpen(true)
   }
 
   const handleModalOpenChange = (next: boolean) => {
     setModalOpen(next)
-    if (!next) setEditingFlight(null)
+    if (!next) setEditingTransport(null)
   }
 
   const handleDelete = async (id: string) => {
-    const target = flights.find((flight) => flight.id === id)
-    if (!target || !authReady || !isFlightAuthor(target, currentUserId)) return
-    if (!window.confirm("이 항공권을 삭제할까요?")) return
+    const target = transports.find((transport) => transport.id === id)
+    if (!target || !authReady || !isTransportAuthor(target, currentUserId)) return
+    if (!window.confirm("이 이동수단을 삭제할까요?")) return
 
     setDeletingId(id)
     try {
-      const ok = await deleteTripFlight(id)
+      const ok = await deleteTripTransport(id)
       if (ok) {
-        setFlights((current) => current.filter((item) => item.id !== id))
-        onFlightChange?.()
+        setTransports((current) => current.filter((item) => item.id !== id))
+        onTransportChange?.()
       }
     } finally {
       setDeletingId(null)
     }
   }
 
-  const listBlocks = useMemo(() => {
-    const outbound = flights.filter((flight) => flight.flightType === "OUTBOUND")
-    const returnFlights = flights.filter((flight) => flight.flightType === "RETURN")
-    const layover = flights.filter((flight) => flight.flightType === "LAYOVER")
-    const unknown = flights.filter(
-      (flight) =>
-        flight.flightType !== "OUTBOUND" &&
-        flight.flightType !== "RETURN" &&
-        flight.flightType !== "LAYOVER"
-    )
-
-    return { outbound, returnFlights, layover, unknown }
-  }, [flights])
+  const groupedByType = useMemo(() => {
+    const groups = new Map<
+      TransportType,
+      { outbound: TripTransport[]; returnLeg: TripTransport[]; layover: TripTransport[] }
+    >()
+    for (const transport of transports) {
+      const bucket = groups.get(transport.transportType) ?? {
+        outbound: [],
+        returnLeg: [],
+        layover: [],
+      }
+      if (transport.transportRole === "RETURN") bucket.returnLeg.push(transport)
+      else if (transport.transportRole === "LAYOVER") bucket.layover.push(transport)
+      else bucket.outbound.push(transport)
+      groups.set(transport.transportType, bucket)
+    }
+    return groups
+  }, [transports])
 
   return (
     <Card className="rounded-2xl border border-slate-100 bg-white shadow-sm ring-0 transition-all hover:shadow-md">
       <CardHeader>
         <CardDescription className="mb-1 text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-          Flight
+          Transport
         </CardDescription>
         <CardTitle className="text-lg font-bold tracking-tight text-slate-900">
-          비행기 일정
+          이동수단
         </CardTitle>
-        {flights.length > 0 ? (
+        {transports.length > 0 ? (
           <CardAction>
             <Button
               type="button"
@@ -610,7 +643,7 @@ export function FlightSection({
               className="rounded-full bg-amber-400 px-4 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 hover:bg-amber-500"
             >
               <Plus data-icon="inline-start" />
-              항공권 추가
+              이동수단 추가
             </Button>
           </CardAction>
         ) : null}
@@ -620,87 +653,89 @@ export function FlightSection({
         {loading ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 px-6 py-10 text-center">
             <Loader2 className="size-6 animate-spin text-amber-500" />
-            <p className="text-sm text-slate-500">항공권을 불러오는 중…</p>
+            <p className="text-sm text-slate-500">이동수단을 불러오는 중…</p>
           </div>
-        ) : flights.length > 0 ? (
-          <ul className="flex flex-col gap-3">
-            {listBlocks.outbound.map((flight) => (
-              <FlightTicket
-                key={flight.id}
-                flight={flight}
-                memberById={memberById}
-                isAuthor={authReady && isFlightAuthor(flight, currentUserId)}
-                deleting={deletingId === flight.id}
-                onEdit={openEditModal}
-                onDelete={(id) => void handleDelete(id)}
-              />
-            ))}
+        ) : transports.length > 0 ? (
+          <div className="flex flex-col gap-5">
+            {([...groupedByType.keys()] as TransportType[]).map((type) => {
+              const bucket = groupedByType.get(type)!
+              const Icon = TRANSPORT_ICON[type]
+              return (
+                <div key={type} className="flex flex-col gap-3">
+                  <div className="flex items-center gap-1.5 px-0.5 text-xs font-bold text-slate-500">
+                    <Icon className="size-3.5" />
+                    {TRANSPORT_LABEL[type]}
+                  </div>
+                  <ul className="flex flex-col gap-3">
+                    {bucket.outbound.map((transport) => (
+                      <TransportTicket
+                        key={transport.id}
+                        transport={transport}
+                        memberById={memberById}
+                        isAuthor={authReady && isTransportAuthor(transport, currentUserId)}
+                        deleting={deletingId === transport.id}
+                        onEdit={openEditModal}
+                        onDelete={(id) => void handleDelete(id)}
+                      />
+                    ))}
 
-            {listBlocks.layover.length > 0 ? (
-              <LayoverJourney
-                flights={listBlocks.layover}
-                memberById={memberById}
-                currentUserId={currentUserId}
-                authReady={authReady}
-                deletingId={deletingId}
-                onEdit={openEditModal}
-                onDelete={(id) => void handleDelete(id)}
-              />
-            ) : null}
+                    {bucket.layover.length > 0 ? (
+                      <LayoverJourney
+                        transports={bucket.layover}
+                        memberById={memberById}
+                        currentUserId={currentUserId}
+                        authReady={authReady}
+                        deletingId={deletingId}
+                        onEdit={openEditModal}
+                        onDelete={(id) => void handleDelete(id)}
+                      />
+                    ) : null}
 
-            {listBlocks.returnFlights.map((flight) => (
-              <FlightTicket
-                key={flight.id}
-                flight={flight}
-                memberById={memberById}
-                isAuthor={authReady && isFlightAuthor(flight, currentUserId)}
-                deleting={deletingId === flight.id}
-                onEdit={openEditModal}
-                onDelete={(id) => void handleDelete(id)}
-              />
-            ))}
-
-            {listBlocks.unknown.map((flight) => (
-              <FlightTicket
-                key={flight.id}
-                flight={flight}
-                memberById={memberById}
-                isAuthor={authReady && isFlightAuthor(flight, currentUserId)}
-                deleting={deletingId === flight.id}
-                onEdit={openEditModal}
-                onDelete={(id) => void handleDelete(id)}
-              />
-            ))}
-          </ul>
+                    {bucket.returnLeg.map((transport) => (
+                      <TransportTicket
+                        key={transport.id}
+                        transport={transport}
+                        memberById={memberById}
+                        isAuthor={authReady && isTransportAuthor(transport, currentUserId)}
+                        deleting={deletingId === transport.id}
+                        onEdit={openEditModal}
+                        onDelete={(id) => void handleDelete(id)}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              )
+            })}
+          </div>
         ) : (
           <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 p-8 text-center">
             <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-500">
               <PlaneTakeoff className="size-5" />
             </span>
-            <p className="text-sm font-bold text-slate-900">아직 등록된 비행기 일정이 없어요</p>
+            <p className="text-sm font-bold text-slate-900">아직 등록된 이동수단이 없어요</p>
             <p className="mt-1 mb-5 max-w-xs text-xs leading-relaxed text-slate-500">
-              출국·귀국·경유를 구분해 등록하면 티켓 카드로 정리됩니다.
+              비행기·기차·자가용을 선택하고 가는 편·오는 편·경유를 구분해 등록하면 티켓 카드로 정리됩니다.
             </p>
             <button
               type="button"
               onClick={openCreateModal}
               className="rounded-full bg-amber-400 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 transition-all hover:bg-amber-500 active:scale-95"
             >
-              비행기 일정 등록
+              이동수단 등록
             </button>
           </div>
         )}
       </CardContent>
 
-      <FlightRegisterModal
+      <TransportRegisterModal
         open={modalOpen}
         onOpenChange={handleModalOpenChange}
         tripId={tripId}
-        existingFlights={flights}
-        editingFlight={editingFlight}
+        existingTransports={transports}
+        editingTransport={editingTransport}
         onSaved={() => {
           void load()
-          onFlightChange?.()
+          onTransportChange?.()
         }}
       />
     </Card>

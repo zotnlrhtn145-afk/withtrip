@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useId, useMemo, useState } from "react"
-import { Check, Loader2, Plane, Plus, Trash2 } from "lucide-react"
+import { Car, Check, Loader2, Plane, Plus, TrainFront, Trash2 } from "lucide-react"
 
 import { SearchableSelect } from "@/components/searchable-select"
 import {
@@ -15,14 +15,17 @@ import {
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { AIRLINE_PRESETS, AIRPORT_OPTIONS } from "@/lib/flight-presets"
+import { STATION_OPTIONS, TRAIN_PRESETS } from "@/lib/transport-presets"
 import {
   computeDurationLabel,
-  getFlightErrorMessage,
-  insertTripFlights,
-  updateTripFlight,
-  type FlightType,
-  type TripFlight,
-} from "@/lib/flights-api"
+  getTransportErrorMessage,
+  insertTripTransports,
+  updateTripTransport,
+  type CreateTripTransportInput,
+  type TransportRole,
+  type TransportType,
+  type TripTransport,
+} from "@/lib/transports-api"
 import { getCurrentUserId } from "@/lib/auth-session"
 import { fetchTripRoster, type TripMember } from "@/lib/trip-members-api"
 import { cn } from "@/lib/utils"
@@ -30,12 +33,14 @@ import { Checkbox } from "@/components/ui/checkbox"
 
 type SegmentDraft = {
   key: string
-  airline: string
-  flightNo: string
-  departureAirport: string
-  arrivalAirport: string
+  carrier: string
+  vehicleNo: string
+  fromLabel: string
+  toLabel: string
   departTime: string
   arriveTime: string
+  departDate: string
+  arriveDate: string
   duration: string
 }
 
@@ -45,18 +50,83 @@ type TabFormData = {
   multiCity: SegmentDraft[]
 }
 
-const DUPLICATE_TYPE_MESSAGE =
-  "이미 출국(또는 귀국) 항공권이 등록되어 있습니다. 기존 티켓을 수정해 주세요."
+const DUPLICATE_ROLE_MESSAGE =
+  "이미 가는 편(또는 오는 편)이 등록되어 있습니다. 기존 일정을 수정해 주세요."
+
+const TRANSPORT_TYPE_META: Record<
+  TransportType,
+  {
+    label: string
+    icon: typeof Plane
+    carrierLabel: string
+    carrierOptions: typeof AIRLINE_PRESETS
+    carrierPlaceholder: string
+    showVehicleNo: boolean
+    vehicleNoLabel: string
+    vehicleNoPlaceholder: string
+    placeLabel: string
+    placeOptions: typeof AIRPORT_OPTIONS
+    fromPlaceholder: string
+    toPlaceholder: string
+  }
+> = {
+  FLIGHT: {
+    label: "비행기",
+    icon: Plane,
+    carrierLabel: "항공사",
+    carrierOptions: AIRLINE_PRESETS,
+    carrierPlaceholder: "항공사 검색",
+    showVehicleNo: true,
+    vehicleNoLabel: "편명",
+    vehicleNoPlaceholder: "KE721",
+    placeLabel: "공항",
+    placeOptions: AIRPORT_OPTIONS,
+    fromPlaceholder: "ICN",
+    toPlaceholder: "KIX",
+  },
+  TRAIN: {
+    label: "기차",
+    icon: TrainFront,
+    carrierLabel: "열차 종류",
+    carrierOptions: TRAIN_PRESETS,
+    carrierPlaceholder: "KTX, SRT 등",
+    showVehicleNo: true,
+    vehicleNoLabel: "열차번호",
+    vehicleNoPlaceholder: "101 (선택)",
+    placeLabel: "역",
+    placeOptions: STATION_OPTIONS,
+    fromPlaceholder: "서울역",
+    toPlaceholder: "부산역",
+  },
+  CAR: {
+    label: "자가용",
+    icon: Car,
+    carrierLabel: "차량 정보",
+    carrierOptions: [],
+    carrierPlaceholder: "렌터카, 차종 등 (선택)",
+    showVehicleNo: true,
+    vehicleNoLabel: "차량번호",
+    vehicleNoPlaceholder: "12가 3456 (선택)",
+    placeLabel: "장소",
+    placeOptions: [],
+    fromPlaceholder: "출발지 입력",
+    toPlaceholder: "도착지 입력",
+  },
+}
+
+const TRANSPORT_TYPE_OPTIONS: TransportType[] = ["FLIGHT", "TRAIN", "CAR"]
 
 function createEmptySegment(): SegmentDraft {
   return {
     key: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    airline: "",
-    flightNo: "",
-    departureAirport: "",
-    arrivalAirport: "",
+    carrier: "",
+    vehicleNo: "",
+    fromLabel: "",
+    toLabel: "",
     departTime: "",
     arriveTime: "",
+    departDate: "",
+    arriveDate: "",
     duration: "",
   }
 }
@@ -69,43 +139,48 @@ function createEmptyFormData(): TabFormData {
   }
 }
 
-function segmentFromFlight(flight: TripFlight): SegmentDraft {
+function segmentFromTransport(transport: TripTransport): SegmentDraft {
   return {
-    key: flight.id,
-    airline: flight.airlineName,
-    flightNo: flight.flightNo,
-    departureAirport: flight.fromCode,
-    arrivalAirport: flight.toCode,
-    departTime: flight.departTime,
-    arriveTime: flight.arriveTime,
-    duration: flight.duration,
+    key: transport.id,
+    carrier: transport.carrierName,
+    vehicleNo: transport.vehicleNo,
+    fromLabel: transport.fromLabel,
+    toLabel: transport.toLabel,
+    departTime: transport.departTime,
+    arriveTime: transport.arriveTime,
+    departDate: transport.departDate,
+    arriveDate: transport.arriveDate,
+    duration: transport.duration,
   }
 }
 
-function hasTypeTaken(
-  existingFlights: TripFlight[],
-  type: FlightType,
+function hasRoleTaken(
+  existing: TripTransport[],
+  transportType: TransportType,
+  role: TransportRole,
   excludeId?: string | null
 ) {
-  if (type === "LAYOVER") return false
-  return existingFlights.some(
-    (flight) => flight.flightType === type && flight.id !== excludeId
+  if (role === "LAYOVER") return false
+  return existing.some(
+    (item) =>
+      item.transportType === transportType && item.transportRole === role && item.id !== excludeId
   )
 }
 
-function pickDefaultCreateType(existingFlights: TripFlight[]): FlightType {
-  if (!hasTypeTaken(existingFlights, "OUTBOUND")) return "OUTBOUND"
-  if (!hasTypeTaken(existingFlights, "RETURN")) return "RETURN"
+function pickDefaultRole(existing: TripTransport[], transportType: TransportType): TransportRole {
+  if (!hasRoleTaken(existing, transportType, "OUTBOUND")) return "OUTBOUND"
+  if (!hasRoleTaken(existing, transportType, "RETURN")) return "RETURN"
   return "LAYOVER"
 }
 
-function tabKeyFromType(type: FlightType): keyof TabFormData {
-  if (type === "RETURN") return "inbound"
-  if (type === "LAYOVER") return "multiCity"
+function tabKeyFromRole(role: TransportRole): keyof TabFormData {
+  if (role === "RETURN") return "inbound"
+  if (role === "LAYOVER") return "multiCity"
   return "outbound"
 }
 
 function SegmentFields({
+  transportType,
   segment,
   index,
   total,
@@ -113,6 +188,7 @@ function SegmentFields({
   onChange,
   onRemove,
 }: {
+  transportType: TransportType
   segment: SegmentDraft
   index: number
   total: number
@@ -121,6 +197,7 @@ function SegmentFields({
   onRemove: (key: string) => void
 }) {
   const baseId = useId()
+  const meta = TRANSPORT_TYPE_META[transportType]
 
   const patch = (next: Partial<SegmentDraft>) => {
     const merged = { ...segment, ...next }
@@ -134,7 +211,7 @@ function SegmentFields({
     <div className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[13px] font-semibold tracking-tight text-gray-900">
-          {total > 1 ? `구간 ${index + 1}` : "비행 정보"}
+          {total > 1 ? `구간 ${index + 1}` : `${meta.label} 정보`}
         </p>
         {showRemove ? (
           <button
@@ -149,50 +226,74 @@ function SegmentFields({
       </div>
 
       <FieldGroup className="gap-3.5">
-        <Field>
-          <FieldLabel htmlFor={`${baseId}-airline`} className="text-xs text-gray-500">
-            항공사
-          </FieldLabel>
-          <SearchableSelect
-            id={`${baseId}-airline`}
-            value={segment.airline}
-            onChange={(value) => patch({ airline: value })}
-            options={AIRLINE_PRESETS}
-            placeholder="항공사 검색"
-            emptyText="일치하는 항공사가 없어요"
-            allowCustom
-            customHint="목록에 없으면 입력한 이름을 그대로 저장해요."
-          />
-        </Field>
-
-        <Field>
-          <FieldLabel htmlFor={`${baseId}-flight-no`} className="text-xs text-gray-500">
-            편명
-          </FieldLabel>
-          <Input
-            id={`${baseId}-flight-no`}
-            value={segment.flightNo}
-            onChange={(event) => patch({ flightNo: event.target.value.toUpperCase() })}
-            placeholder="KE721"
-            className="h-11 rounded-xl border-gray-200 bg-gray-50/80 font-mono uppercase tracking-wide focus-visible:bg-white"
-          />
-        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field>
+            <FieldLabel htmlFor={`${baseId}-carrier`} className="text-xs text-gray-500">
+              {meta.carrierLabel}
+              {transportType === "CAR" ? <span className="ml-1 text-gray-300">(선택)</span> : null}
+            </FieldLabel>
+            {meta.carrierOptions.length > 0 ? (
+              <SearchableSelect
+                id={`${baseId}-carrier`}
+                value={segment.carrier}
+                onChange={(value) => patch({ carrier: value })}
+                options={meta.carrierOptions}
+                placeholder={meta.carrierPlaceholder}
+                emptyText="일치하는 항목이 없어요"
+                allowCustom
+                customHint="목록에 없으면 입력한 이름을 그대로 저장해요."
+              />
+            ) : (
+              <Input
+                id={`${baseId}-carrier`}
+                value={segment.carrier}
+                onChange={(event) => patch({ carrier: event.target.value })}
+                placeholder={meta.carrierPlaceholder}
+                className="h-9 rounded-xl border-gray-200 bg-gray-50/80 focus-visible:bg-white"
+              />
+            )}
+          </Field>
+          {meta.showVehicleNo ? (
+            <Field>
+              <FieldLabel htmlFor={`${baseId}-vehicle-no`} className="text-xs text-gray-500">
+                {meta.vehicleNoLabel}
+              </FieldLabel>
+              <Input
+                id={`${baseId}-vehicle-no`}
+                value={segment.vehicleNo}
+                onChange={(event) => patch({ vehicleNo: event.target.value.toUpperCase() })}
+                placeholder={meta.vehicleNoPlaceholder}
+                className="h-9 rounded-xl border-gray-200 bg-gray-50/80 font-mono uppercase tracking-wide focus-visible:bg-white"
+              />
+            </Field>
+          ) : null}
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <Field>
             <FieldLabel htmlFor={`${baseId}-from`} className="text-xs text-gray-500">
-              출발
+              출발 {meta.placeLabel}
             </FieldLabel>
-            <SearchableSelect
-              id={`${baseId}-from`}
-              value={segment.departureAirport}
-              onChange={(next) => patch({ departureAirport: next.toUpperCase().slice(0, 8) })}
-              options={AIRPORT_OPTIONS}
-              placeholder="ICN"
-              emptyText="일치하는 공항이 없어요"
-              allowCustom
-              customHint="코드 또는 공항명으로 검색"
-            />
+            {meta.placeOptions.length > 0 ? (
+              <SearchableSelect
+                id={`${baseId}-from`}
+                value={segment.fromLabel}
+                onChange={(next) => patch({ fromLabel: next })}
+                options={meta.placeOptions}
+                placeholder={meta.fromPlaceholder}
+                emptyText="일치하는 항목이 없어요"
+                allowCustom
+                customHint="이름으로 검색하거나 직접 입력하세요."
+              />
+            ) : (
+              <Input
+                id={`${baseId}-from`}
+                value={segment.fromLabel}
+                onChange={(event) => patch({ fromLabel: event.target.value })}
+                placeholder={meta.fromPlaceholder}
+                className="h-9 rounded-xl border-gray-200 bg-gray-50/80 focus-visible:bg-white"
+              />
+            )}
           </Field>
           <Field>
             <FieldLabel htmlFor={`${baseId}-depart-time`} className="text-xs text-gray-500">
@@ -203,26 +304,48 @@ function SegmentFields({
               type="time"
               value={segment.departTime}
               onChange={(event) => patch({ departTime: event.target.value })}
-              className="h-11 rounded-xl border-gray-200 bg-gray-50/80 tabular-nums focus-visible:bg-white"
+              className="h-9 rounded-xl border-gray-200 bg-gray-50/80 tabular-nums focus-visible:bg-white"
             />
           </Field>
         </div>
+        <Field>
+          <FieldLabel htmlFor={`${baseId}-depart-date`} className="text-xs text-gray-500">
+            출발 날짜 <span className="ml-1 text-gray-300">(선택)</span>
+          </FieldLabel>
+          <Input
+            id={`${baseId}-depart-date`}
+            type="date"
+            value={segment.departDate}
+            onChange={(event) => patch({ departDate: event.target.value })}
+            className="h-9 rounded-xl border-gray-200 bg-gray-50/80 tabular-nums focus-visible:bg-white"
+          />
+        </Field>
 
         <div className="grid grid-cols-2 gap-3">
           <Field>
             <FieldLabel htmlFor={`${baseId}-to`} className="text-xs text-gray-500">
-              도착
+              도착 {meta.placeLabel}
             </FieldLabel>
-            <SearchableSelect
-              id={`${baseId}-to`}
-              value={segment.arrivalAirport}
-              onChange={(next) => patch({ arrivalAirport: next.toUpperCase().slice(0, 8) })}
-              options={AIRPORT_OPTIONS}
-              placeholder="KIX"
-              emptyText="일치하는 공항이 없어요"
-              allowCustom
-              customHint="코드 또는 공항명으로 검색"
-            />
+            {meta.placeOptions.length > 0 ? (
+              <SearchableSelect
+                id={`${baseId}-to`}
+                value={segment.toLabel}
+                onChange={(next) => patch({ toLabel: next })}
+                options={meta.placeOptions}
+                placeholder={meta.toPlaceholder}
+                emptyText="일치하는 항목이 없어요"
+                allowCustom
+                customHint="이름으로 검색하거나 직접 입력하세요."
+              />
+            ) : (
+              <Input
+                id={`${baseId}-to`}
+                value={segment.toLabel}
+                onChange={(event) => patch({ toLabel: event.target.value })}
+                placeholder={meta.toPlaceholder}
+                className="h-9 rounded-xl border-gray-200 bg-gray-50/80 focus-visible:bg-white"
+              />
+            )}
           </Field>
           <Field>
             <FieldLabel htmlFor={`${baseId}-arrive-time`} className="text-xs text-gray-500">
@@ -233,10 +356,22 @@ function SegmentFields({
               type="time"
               value={segment.arriveTime}
               onChange={(event) => patch({ arriveTime: event.target.value })}
-              className="h-11 rounded-xl border-gray-200 bg-gray-50/80 tabular-nums focus-visible:bg-white"
+              className="h-9 rounded-xl border-gray-200 bg-gray-50/80 tabular-nums focus-visible:bg-white"
             />
           </Field>
         </div>
+        <Field>
+          <FieldLabel htmlFor={`${baseId}-arrive-date`} className="text-xs text-gray-500">
+            도착 날짜 <span className="ml-1 text-gray-300">(선택)</span>
+          </FieldLabel>
+          <Input
+            id={`${baseId}-arrive-date`}
+            type="date"
+            value={segment.arriveDate}
+            onChange={(event) => patch({ arriveDate: event.target.value })}
+            className="h-9 rounded-xl border-gray-200 bg-gray-50/80 tabular-nums focus-visible:bg-white"
+          />
+        </Field>
 
         <Field>
           <FieldLabel htmlFor={`${baseId}-duration`} className="text-xs text-gray-500">
@@ -247,7 +382,7 @@ function SegmentFields({
             value={segment.duration}
             onChange={(event) => patch({ duration: event.target.value })}
             placeholder="자동 계산"
-            className="h-11 rounded-xl border-gray-200 bg-gray-50/80 focus-visible:bg-white"
+            className="h-9 rounded-xl border-gray-200 bg-gray-50/80 focus-visible:bg-white"
           />
           <FieldDescription className="text-[11px] text-gray-400">
             출발·도착 시간으로 자동 계산되며, 직접 수정할 수도 있어요.
@@ -258,25 +393,26 @@ function SegmentFields({
   )
 }
 
-export function FlightRegisterModal({
+export function TransportRegisterModal({
   open,
   onOpenChange,
   tripId,
-  existingFlights = [],
-  editingFlight = null,
+  existingTransports = [],
+  editingTransport = null,
   onSaved,
 }: {
   open: boolean
   onOpenChange: (next: boolean) => void
   tripId: string
-  existingFlights?: TripFlight[]
-  editingFlight?: TripFlight | null
-  onSaved: (flights?: TripFlight[]) => void
+  existingTransports?: TripTransport[]
+  editingTransport?: TripTransport | null
+  onSaved: (transports?: TripTransport[]) => void
 }) {
-  const isEditMode = Boolean(editingFlight)
-  const excludeId = editingFlight?.id ?? null
+  const isEditMode = Boolean(editingTransport)
+  const excludeId = editingTransport?.id ?? null
 
-  const [flightType, setFlightType] = useState<FlightType>("OUTBOUND")
+  const [transportType, setTransportType] = useState<TransportType>("FLIGHT")
+  const [role, setRole] = useState<TransportRole>("OUTBOUND")
   const [formData, setFormData] = useState<TabFormData>(() => createEmptyFormData())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -284,27 +420,27 @@ export function FlightRegisterModal({
   const [passengerIds, setPassengerIds] = useState<string[]>([])
   const [rosterLoading, setRosterLoading] = useState(false)
 
-  const outboundTaken = hasTypeTaken(existingFlights, "OUTBOUND", excludeId)
-  const returnTaken = hasTypeTaken(existingFlights, "RETURN", excludeId)
+  const outboundTaken = hasRoleTaken(existingTransports, transportType, "OUTBOUND", excludeId)
+  const returnTaken = hasRoleTaken(existingTransports, transportType, "RETURN", excludeId)
 
-  const typeOptions = useMemo(
+  const roleOptions = useMemo(
     () => [
       {
         value: "OUTBOUND" as const,
-        label: outboundTaken ? "출국 완료" : "출국",
-        hint: "가는 편",
+        label: outboundTaken ? "가는 편 완료" : "가는 편",
+        hint: "출발",
         disabled: outboundTaken,
       },
       {
         value: "RETURN" as const,
-        label: returnTaken ? "귀국 완료" : "귀국",
-        hint: "오는 편",
+        label: returnTaken ? "오는 편 완료" : "오는 편",
+        hint: "귀환",
         disabled: returnTaken,
       },
       {
         value: "LAYOVER" as const,
-        label: "다구간",
-        hint: "경유",
+        label: "경유",
+        hint: "환승",
         disabled: false,
       },
     ],
@@ -312,10 +448,10 @@ export function FlightRegisterModal({
   )
 
   const activeSegments: SegmentDraft[] = useMemo(() => {
-    if (flightType === "RETURN") return [formData.inbound]
-    if (flightType === "LAYOVER") return formData.multiCity
+    if (role === "RETURN") return [formData.inbound]
+    if (role === "LAYOVER") return formData.multiCity
     return [formData.outbound]
-  }, [flightType, formData])
+  }, [role, formData])
 
   useEffect(() => {
     if (!open) return
@@ -335,10 +471,10 @@ export function FlightRegisterModal({
         if (cancelled) return
         setRoster(members)
 
-        if (editingFlight) {
-          const authorId = editingFlight.createdBy || editingFlight.userId
-          const selected = editingFlight.passengerIds.length
-            ? editingFlight.passengerIds
+        if (editingTransport) {
+          const authorId = editingTransport.createdBy || editingTransport.userId
+          const selected = editingTransport.passengerIds.length
+            ? editingTransport.passengerIds
             : authorId
               ? [authorId]
               : authUserId
@@ -349,7 +485,7 @@ export function FlightRegisterModal({
           setPassengerIds(authUserId ? [authUserId] : [])
         }
       } catch (err) {
-        console.error("[FlightRegisterModal] roster load failed:", err)
+        console.error("[TransportRegisterModal] roster load failed:", err)
         if (!cancelled) {
           setRoster([])
           setPassengerIds([])
@@ -359,16 +495,17 @@ export function FlightRegisterModal({
       }
     })()
 
-    if (editingFlight) {
-      const segment = segmentFromFlight(editingFlight)
+    if (editingTransport) {
+      const segment = segmentFromTransport(editingTransport)
       const next = createEmptyFormData()
-      if (editingFlight.flightType === "RETURN") next.inbound = segment
-      else if (editingFlight.flightType === "LAYOVER") next.multiCity = [segment]
+      if (editingTransport.transportRole === "RETURN") next.inbound = segment
+      else if (editingTransport.transportRole === "LAYOVER") next.multiCity = [segment]
       else next.outbound = segment
-      setFlightType(editingFlight.flightType)
+      setTransportType(editingTransport.transportType)
+      setRole(editingTransport.transportRole)
       setFormData(next)
     } else {
-      setFlightType(pickDefaultCreateType(existingFlights))
+      setRole(pickDefaultRole(existingTransports, transportType))
       setFormData(createEmptyFormData())
     }
 
@@ -376,19 +513,26 @@ export function FlightRegisterModal({
       cancelled = true
     }
     // Prefill only when the dialog opens (or the edit target changes).
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- existingFlights snapshot at open
-  }, [open, editingFlight, tripId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- existingTransports snapshot at open
+  }, [open, editingTransport, tripId])
+
+  const selectTransportType = (next: TransportType) => {
+    if (isEditMode) return
+    setTransportType(next)
+    setRole(pickDefaultRole(existingTransports, next))
+    setError(null)
+  }
 
   /** Switch tabs without wiping other tabs' drafts. */
-  const selectFlightType = (next: FlightType) => {
-    const option = typeOptions.find((item) => item.value === next)
+  const selectRole = (next: TransportRole) => {
+    const option = roleOptions.find((item) => item.value === next)
     if (option?.disabled) return
-    setFlightType(next)
+    setRole(next)
     setError(null)
   }
 
   const updateSegment = (key: string, patch: Partial<SegmentDraft>) => {
-    const tab = tabKeyFromType(flightType)
+    const tab = tabKeyFromRole(role)
     setFormData((current) => {
       if (tab === "multiCity") {
         return {
@@ -405,7 +549,7 @@ export function FlightRegisterModal({
   }
 
   const removeSegment = (key: string) => {
-    if (isEditMode || flightType !== "LAYOVER") return
+    if (isEditMode || role !== "LAYOVER") return
     setFormData((current) => {
       if (current.multiCity.length <= 1) return current
       return {
@@ -418,7 +562,7 @@ export function FlightRegisterModal({
   const addSegment = () => {
     if (isEditMode) return
     setError(null)
-    setFlightType("LAYOVER")
+    setRole("LAYOVER")
     setFormData((current) => ({
       ...current,
       multiCity: [...current.multiCity, createEmptySegment()],
@@ -430,87 +574,84 @@ export function FlightRegisterModal({
     if (saving) return
 
     const segments =
-      flightType === "LAYOVER"
+      role === "LAYOVER"
         ? formData.multiCity
-        : flightType === "RETURN"
+        : role === "RETURN"
           ? [formData.inbound]
           : [formData.outbound]
 
+    const requiresCarrier = transportType !== "CAR"
     const invalid = segments.some(
       (segment) =>
-        !segment.airline.trim() ||
-        !segment.departureAirport.trim() ||
-        !segment.arrivalAirport.trim()
+        (requiresCarrier && !segment.carrier.trim()) ||
+        !segment.fromLabel.trim() ||
+        !segment.toLabel.trim()
     )
 
     if (invalid) {
-      setError("항공사 및 공항 정보를 선택해 주세요")
+      setError(
+        transportType === "CAR"
+          ? "출발지와 도착지를 입력해 주세요"
+          : `${TRANSPORT_TYPE_META[transportType].carrierLabel} 및 출발·도착 정보를 입력해 주세요`
+      )
       return
     }
 
-    const resolvedType: FlightType =
-      !isEditMode && segments.length > 1 ? "LAYOVER" : flightType
+    const resolvedRole: TransportRole = !isEditMode && segments.length > 1 ? "LAYOVER" : role
 
-    if (hasTypeTaken(existingFlights, resolvedType, excludeId)) {
-      setError(DUPLICATE_TYPE_MESSAGE)
+    if (hasRoleTaken(existingTransports, transportType, resolvedRole, excludeId)) {
+      setError(DUPLICATE_ROLE_MESSAGE)
       return
     }
 
     setSaving(true)
     setError(null)
     try {
-      if (isEditMode && editingFlight) {
+      const toInput = (segment: SegmentDraft, segmentOrder: number): CreateTripTransportInput => ({
+        tripId,
+        transportType,
+        carrierName: segment.carrier.trim(),
+        vehicleNo: segment.vehicleNo.trim(),
+        fromLabel: segment.fromLabel.trim(),
+        toLabel: segment.toLabel.trim(),
+        departTime: segment.departTime,
+        arriveTime: segment.arriveTime,
+        duration: segment.duration.trim(),
+        departDate: segment.departDate,
+        arriveDate: segment.arriveDate,
+        transportRole: resolvedRole,
+        segmentOrder,
+        passengerIds,
+      })
+
+      if (isEditMode && editingTransport) {
         const segment = segments[0]
-        if (!segment) throw new Error("수정할 항공권 정보가 없어요.")
-        const updated = await updateTripFlight(editingFlight.id, {
-          tripId,
-          airlineName: segment.airline.trim(),
-          flightNo: segment.flightNo.trim(),
-          fromCode: segment.departureAirport.trim().toUpperCase(),
-          toCode: segment.arrivalAirport.trim().toUpperCase(),
-          departTime: segment.departTime,
-          arriveTime: segment.arriveTime,
-          duration: segment.duration.trim(),
-          flightType: resolvedType,
-          segmentOrder: resolvedType === "LAYOVER" ? editingFlight.segmentOrder : 1,
-          passengerIds,
-        })
+        if (!segment) throw new Error("수정할 이동수단 정보가 없어요.")
+        const updated = await updateTripTransport(
+          editingTransport.id,
+          toInput(segment, resolvedRole === "LAYOVER" ? editingTransport.segmentOrder : 1)
+        )
         onSaved([updated])
         onOpenChange(false)
         return
       }
 
-      const flights = await insertTripFlights(
-        segments.map((segment, index) => ({
-          tripId,
-          airlineName: segment.airline.trim(),
-          flightNo: segment.flightNo.trim(),
-          fromCode: segment.departureAirport.trim().toUpperCase(),
-          toCode: segment.arrivalAirport.trim().toUpperCase(),
-          departTime: segment.departTime,
-          arriveTime: segment.arriveTime,
-          duration: segment.duration.trim(),
-          flightType: resolvedType,
-          segmentOrder: index + 1,
-          passengerIds,
-        }))
+      const transports = await insertTripTransports(
+        segments.map((segment, index) => toInput(segment, index + 1))
       )
-      onSaved(flights)
+      onSaved(transports)
       onOpenChange(false)
     } catch (err) {
-      console.error("[FlightRegisterModal] save failed:", err)
-      if (err && typeof err === "object") {
-        console.error("[FlightRegisterModal] error.message:", (err as { message?: unknown }).message)
-        console.error("[FlightRegisterModal] error.details:", (err as { details?: unknown }).details)
-        console.error("[FlightRegisterModal] error.hint:", (err as { hint?: unknown }).hint)
-        console.error("[FlightRegisterModal] error.code:", (err as { code?: unknown }).code)
-      }
-      const message = getFlightErrorMessage(err)
-      setError(message || "항공권 저장에 실패했어요. 잠시 후 다시 시도해 주세요.")
+      console.error("[TransportRegisterModal] save failed:", err)
+      const message = getTransportErrorMessage(err)
+      setError(message || "이동수단 저장에 실패했어요. 잠시 후 다시 시도해 주세요.")
     } finally {
       setSaving(false)
     }
   }
+
+  const activeMeta = TRANSPORT_TYPE_META[transportType]
+  const ActiveIcon = activeMeta.icon
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -519,30 +660,64 @@ export function FlightRegisterModal({
           <DialogTitle className="flex items-center gap-2.5 text-base font-bold tracking-tight text-gray-900">
             <span className="flex size-9 items-center justify-center rounded-full bg-gradient-to-tr from-amber-400 via-rose-400 to-amber-500 p-[2px]">
               <span className="flex size-full items-center justify-center rounded-full bg-white">
-                <Plane className="size-4 text-amber-500" />
+                <ActiveIcon className="size-4 text-amber-500" />
               </span>
             </span>
-            {isEditMode ? "비행 일정 수정" : "비행 일정 추가"}
+            {isEditMode ? "이동수단 수정" : "이동수단 추가"}
           </DialogTitle>
           <DialogDescription className="text-xs text-gray-400">
             {isEditMode
               ? "탭을 바꿔도 입력한 내용은 유지돼요."
-              : "출국 · 귀국 · 다구간 입력값은 탭을 바꿔도 사라지지 않아요."}
+              : "가는 편 · 오는 편 · 경유 입력값은 탭을 바꿔도 사라지지 않아요."}
           </DialogDescription>
         </DialogHeader>
 
         <form
-          id="flight-register-form"
+          id="transport-register-form"
           onSubmit={(event) => void handleSubmit(event)}
           className="flex max-h-[min(70svh,560px)] flex-col gap-4 overflow-y-auto px-5 py-4"
         >
           <div
             role="tablist"
-            aria-label="여정 유형"
+            aria-label="이동수단 종류"
             className="grid grid-cols-3 gap-1 rounded-full bg-gray-100 p-1"
           >
-            {typeOptions.map((option) => {
-              const selected = flightType === option.value
+            {TRANSPORT_TYPE_OPTIONS.map((type) => {
+              const meta = TRANSPORT_TYPE_META[type]
+              const Icon = meta.icon
+              const selected = transportType === type
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  disabled={isEditMode && !selected}
+                  onClick={() => selectTransportType(type)}
+                  className={cn(
+                    "flex flex-col items-center gap-0.5 rounded-full px-2 py-2 transition-all",
+                    selected
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500 hover:text-gray-800",
+                    isEditMode && !selected && "cursor-not-allowed opacity-40 hover:text-gray-500"
+                  )}
+                >
+                  <Icon className="size-4" />
+                  <span className="text-[12px] font-semibold tracking-tight sm:text-[13px]">
+                    {meta.label}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          <div
+            role="tablist"
+            aria-label="여정 방향"
+            className="grid grid-cols-3 gap-1 rounded-full bg-gray-100 p-1"
+          >
+            {roleOptions.map((option) => {
+              const selected = role === option.value
               return (
                 <button
                   key={option.value}
@@ -551,7 +726,7 @@ export function FlightRegisterModal({
                   aria-selected={selected}
                   aria-disabled={option.disabled}
                   disabled={option.disabled}
-                  onClick={() => selectFlightType(option.value)}
+                  onClick={() => selectRole(option.value)}
                   className={cn(
                     "flex flex-col items-center rounded-full px-2 py-2 transition-all",
                     selected
@@ -573,10 +748,11 @@ export function FlightRegisterModal({
             {activeSegments.map((segment, index) => (
               <SegmentFields
                 key={segment.key}
+                transportType={transportType}
                 segment={segment}
                 index={index}
                 total={activeSegments.length}
-                showRemove={!isEditMode && flightType === "LAYOVER" && activeSegments.length > 1}
+                showRemove={!isEditMode && role === "LAYOVER" && activeSegments.length > 1}
                 onChange={updateSegment}
                 onRemove={removeSegment}
               />
@@ -598,7 +774,7 @@ export function FlightRegisterModal({
           <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
             <p className="text-[13px] font-semibold tracking-tight text-gray-900">동승자</p>
             <p className="mt-0.5 text-[11px] text-gray-400">
-              함께 탑승하는 여행 멤버를 선택해 주세요.
+              함께 이동하는 여행 멤버를 선택해 주세요.
             </p>
             {rosterLoading ? (
               <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
@@ -672,7 +848,7 @@ export function FlightRegisterModal({
           </button>
           <button
             type="submit"
-            form="flight-register-form"
+            form="transport-register-form"
             disabled={saving}
             className="inline-flex items-center justify-center gap-1.5 rounded-full bg-amber-400 px-6 py-2.5 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 transition-all hover:bg-amber-500 active:scale-95 disabled:opacity-60 sm:w-auto"
           >

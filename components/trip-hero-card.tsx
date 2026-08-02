@@ -4,6 +4,7 @@ import Image from "next/image"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   CalendarDays,
+  Car,
   Check,
   Copy,
   CloudRain,
@@ -14,6 +15,7 @@ import {
   Plane,
   Share2,
   Sun,
+  TrainFront,
   User,
   UserPlus,
 } from "lucide-react"
@@ -40,7 +42,11 @@ import {
   resolveUsersByIds,
   type UserSummary,
 } from "@/lib/friends-api"
-import { fetchFlightsByTripId, type TripFlight } from "@/lib/flights-api"
+import {
+  fetchTransportsByTripId,
+  type TransportType,
+  type TripTransport,
+} from "@/lib/transports-api"
 import {
   addTripMember,
   fetchTripInviteCode,
@@ -59,47 +65,60 @@ const weatherIcons = {
   rain: CloudRain,
 } as const
 
-const EMPTY_FLIGHT_LABEL = "항공편 미등록"
+const EMPTY_TRANSPORT_LABEL = "이동수단 미등록"
+const TRANSPORT_HERO_ICON: Record<TransportType, typeof Plane> = {
+  FLIGHT: Plane,
+  TRAIN: TrainFront,
+  CAR: Car,
+}
 const actionBtnClass =
   "inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-200/80 active:scale-95"
 const primaryCtaClass =
   "inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-5 py-2 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 transition-all hover:bg-amber-500 active:scale-95"
 
-function routeArrow(fromCode: string, toCode: string) {
-  return `${fromCode || "—"}→${toCode || "—"}`
+function routeArrow(fromLabel: string, toLabel: string) {
+  return `${fromLabel || "—"}→${toLabel || "—"}`
 }
 
-function formatLayoverSuffix(layovers: TripFlight[]): string {
+function formatLayoverSuffix(layovers: TripTransport[]): string {
   if (layovers.length <= 0) return ""
   if (layovers.length === 1) {
-    const code = layovers[0].toCode || layovers[0].fromCode
-    return code ? ` (경유: ${code})` : " (경유 1회)"
+    const label = layovers[0].toLabel || layovers[0].fromLabel
+    return label ? ` (경유: ${label})` : " (경유 1회)"
   }
   return ` (경유 ${layovers.length}회)`
 }
 
-function formatHeroFlightLabel(flights: TripFlight[]): string {
-  if (flights.length === 0) return EMPTY_FLIGHT_LABEL
-  const outbound = flights.find((flight) => flight.flightType === "OUTBOUND")
-  const layovers = flights
-    .filter((flight) => flight.flightType === "LAYOVER")
+function formatHeroTransportLabel(transports: TripTransport[]): string {
+  if (transports.length === 0) return EMPTY_TRANSPORT_LABEL
+  const outbound = transports.find((transport) => transport.transportRole === "OUTBOUND")
+  const layovers = transports
+    .filter((transport) => transport.transportRole === "LAYOVER")
     .sort((a, b) => a.segmentOrder - b.segmentOrder)
-  const inbound = flights.find((flight) => flight.flightType === "RETURN")
+  const inbound = transports.find((transport) => transport.transportRole === "RETURN")
 
   let goingPart = ""
   if (outbound) {
-    goingPart = `가는 편: ${routeArrow(outbound.fromCode, outbound.toCode)}${formatLayoverSuffix(layovers)}`
+    goingPart = `가는 편: ${routeArrow(outbound.fromLabel, outbound.toLabel)}${formatLayoverSuffix(layovers)}`
   } else if (layovers.length > 0) {
     const first = layovers[0]
     const last = layovers[layovers.length - 1]
     goingPart =
       layovers.length === 1
-        ? `가는 편: ${routeArrow(first.fromCode, first.toCode)}`
-        : `가는 편: ${routeArrow(first.fromCode, last.toCode)}${formatLayoverSuffix(layovers)}`
+        ? `가는 편: ${routeArrow(first.fromLabel, first.toLabel)}`
+        : `가는 편: ${routeArrow(first.fromLabel, last.toLabel)}${formatLayoverSuffix(layovers)}`
   }
-  const returnPart = inbound ? `오는 편: ${routeArrow(inbound.fromCode, inbound.toCode)}` : ""
+  const returnPart = inbound ? `오는 편: ${routeArrow(inbound.fromLabel, inbound.toLabel)}` : ""
   const summary = [goingPart, returnPart].filter(Boolean).join(" · ")
-  return summary || EMPTY_FLIGHT_LABEL
+  return summary || EMPTY_TRANSPORT_LABEL
+}
+
+function pickHeroTransportIcon(transports: TripTransport[]) {
+  const primary =
+    transports.find((transport) => transport.transportRole === "OUTBOUND") ??
+    transports.find((transport) => transport.transportRole === "LAYOVER") ??
+    transports[0]
+  return primary ? TRANSPORT_HERO_ICON[primary.transportType] : Plane
 }
 
 function initialsFromName(name: string) {
@@ -131,7 +150,8 @@ export function TripHeroCard({
   const fallbackMembers = trip.groupMembers?.length
     ? trip.groupMembers
     : getTripMembers(trip, members)
-  const [flightLabel, setFlightLabel] = useState(EMPTY_FLIGHT_LABEL)
+  const [transportLabel, setTransportLabel] = useState(EMPTY_TRANSPORT_LABEL)
+  const [transportIcon, setTransportIcon] = useState<typeof Plane>(() => Plane)
   const [coverSrc, setCoverSrc] = useState(trip.heroImage || FALLBACK_TRIP_COVER)
   const [joinedMembers, setJoinedMembers] = useState<TripMember[]>([])
   const [membershipStates, setMembershipStates] = useState<Record<string, TripMemberStatus>>(
@@ -208,19 +228,21 @@ export function TripHeroCard({
     setMembershipStates(states)
   }, [trip.id])
 
-  const fetchHeroFlightData = useCallback(async () => {
+  const fetchHeroTransportData = useCallback(async () => {
     try {
-      const flights = await fetchFlightsByTripId(trip.id)
-      setFlightLabel(formatHeroFlightLabel(flights))
+      const transports = await fetchTransportsByTripId(trip.id)
+      setTransportLabel(formatHeroTransportLabel(transports))
+      setTransportIcon(() => pickHeroTransportIcon(transports))
     } catch (err) {
-      console.error("[TripHeroCard] fetchHeroFlightData failed:", err)
-      setFlightLabel(EMPTY_FLIGHT_LABEL)
+      console.error("[TripHeroCard] fetchHeroTransportData failed:", err)
+      setTransportLabel(EMPTY_TRANSPORT_LABEL)
+      setTransportIcon(() => Plane)
     }
   }, [trip.id])
 
   useEffect(() => {
-    void fetchHeroFlightData()
-  }, [fetchHeroFlightData, flightsRevision])
+    void fetchHeroTransportData()
+  }, [fetchHeroTransportData, flightsRevision])
 
   useEffect(() => {
     setCoverSrc(trip.heroImage || FALLBACK_TRIP_COVER)
@@ -373,10 +395,13 @@ export function TripHeroCard({
             </span>
             <span
               className="inline-flex min-w-0 items-center gap-1.5 truncate whitespace-nowrap"
-              title={flightLabel}
+              title={transportLabel}
             >
-              <Plane className="size-3.5 shrink-0" />
-              <span className="truncate">{flightLabel}</span>
+              {(() => {
+                const TransportIcon = transportIcon
+                return <TransportIcon className="size-3.5 shrink-0" />
+              })()}
+              <span className="truncate">{transportLabel}</span>
             </span>
           </div>
         </div>
