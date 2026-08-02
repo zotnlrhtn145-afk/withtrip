@@ -30,6 +30,44 @@ function mapCategory(raw: unknown): string {
   return value
 }
 
+type ParsedItem = {
+  title?: unknown
+  amount?: unknown
+  category?: unknown
+  date?: unknown
+}
+
+function normalizeParsedItem(raw: ParsedItem) {
+  return {
+    title: String(raw.title ?? "").trim() || "영수증 지출",
+    amount: Number(raw.amount) || 0,
+    category: mapCategory(raw.category),
+    date: String(raw.date ?? "").trim(),
+  }
+}
+
+/**
+ * Accepts whatever shape the model returned and normalizes to an items array:
+ * - { items: [...] } — expected shape
+ * - [...] — bare array (model skipped the wrapper)
+ * - { title, amount, ... } — single legacy object shape
+ */
+function extractItems(parsed: unknown): ReturnType<typeof normalizeParsedItem>[] {
+  if (Array.isArray(parsed)) {
+    return parsed.map((item) => normalizeParsedItem(item as ParsedItem))
+  }
+  if (parsed && typeof parsed === "object") {
+    const obj = parsed as { items?: unknown } & ParsedItem
+    if (Array.isArray(obj.items)) {
+      return obj.items.map((item) => normalizeParsedItem(item as ParsedItem))
+    }
+    if (obj.title !== undefined || obj.amount !== undefined) {
+      return [normalizeParsedItem(obj)]
+    }
+  }
+  return []
+}
+
 export async function POST(req: Request) {
   try {
     const apiKey =
@@ -81,10 +119,14 @@ export async function POST(req: Request) {
     }
 
     // 2. 기본 안전 후보 모델 목록 추가 및 중복 제거
-    // Prefer flash models from live list first, then defaults
+    // "gemini-flash-latest"를 최우선으로 — 검증된 빠른 모델. 나머지 구버전
+    // 모델명들은 계정에서 404로 죽어있는 경우가 많아 순서대로 다 시도하면
+    // 수십 초가 그냥 낭비된다 (실측 71초). 라이브 목록/레거시 기본값은
+    // 최후 폴백으로만 사용.
+    const preferredFirst = ["gemini-flash-latest"]
     const flashFirst = [
-      ...candidateModels.filter((m) => m.includes("flash")),
-      ...candidateModels.filter((m) => !m.includes("flash")),
+      ...candidateModels.filter((m) => m.includes("flash") && !/tts|image/i.test(m)),
+      ...candidateModels.filter((m) => !m.includes("flash") && !/tts|image/i.test(m)),
     ]
     const defaultCandidates = [
       "gemini-1.5-flash-latest",
@@ -93,7 +135,7 @@ export async function POST(req: Request) {
       "gemini-2.0-flash-exp",
     ]
     const allModelsToTry = Array.from(
-      new Set([...flashFirst, ...defaultCandidates])
+      new Set([...preferredFirst, ...flashFirst, ...defaultCandidates])
     )
 
     let lastError = ""
@@ -114,7 +156,14 @@ export async function POST(req: Request) {
                 {
                   parts: [
                     {
-                      text: "영수증 이미지에서 상호명(title), 총금액(amount), 카테고리(category: 식비/쇼핑/교통/숙박/기타), 날짜(date: YYYY-MM-DD)를 추출해서 JSON 형식으로만 응답해줘.",
+                      text:
+                        "이 이미지를 분석해줘. 하나의 매장에서 결제한 단일 영수증이면 배열에 항목을 1개만 담아줘. " +
+                        "카드사/은행 앱의 거래내역 목록처럼 여러 건의 결제가 나열되어 있으면, 각 결제 건을 배열의 " +
+                        "개별 항목으로 만들어줘 (합산하지 말고 건별로 분리). 각 항목은 title(가맹점명), " +
+                        "amount(결제금액, 숫자만), category(식비/쇼핑/교통/숙박/기타 중 하나), " +
+                        "date(YYYY-MM-DD, 항목별 날짜가 다르면 각각 반영, 알 수 없으면 오늘 날짜)를 포함해야 해. " +
+                        '반드시 {"items": [{"title": "...", "amount": 0, "category": "...", "date": "..."}, ...]} ' +
+                        "형태의 JSON으로만 응답해줘.",
                     },
                     {
                       inlineData: {
@@ -143,19 +192,14 @@ export async function POST(req: Request) {
           if (rawText) {
             // 마크다운 코드블록 제거 후 안전하게 JSON 파싱
             rawText = rawText.replace(/```json|```/g, "").trim()
-            const parsedData = JSON.parse(rawText) as {
-              title?: unknown
-              amount?: unknown
-              category?: unknown
-              date?: unknown
+            const parsedData: unknown = JSON.parse(rawText)
+            const items = extractItems(parsedData).filter((item) => item.amount > 0)
+            if (items.length > 0) {
+              console.info(
+                `[parse-receipt] success with model: ${model} (${items.length} item(s))`
+              )
+              return NextResponse.json({ items })
             }
-            console.info(`[parse-receipt] success with model: ${model}`)
-            return NextResponse.json({
-              title: String(parsedData.title ?? "").trim() || "영수증 지출",
-              amount: Number(parsedData.amount) || 0,
-              category: mapCategory(parsedData.category),
-              date: String(parsedData.date ?? "").trim(),
-            })
           }
         } else {
           const errText = await response.text()

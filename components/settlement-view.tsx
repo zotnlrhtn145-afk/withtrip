@@ -43,7 +43,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { calcPerPerson } from "@/lib/settlement-math"
-import { parseReceiptImage } from "@/lib/parse-receipt"
+import { parseReceiptImage, type ParsedReceiptItem } from "@/lib/parse-receipt"
 import {
   fetchSettlementMembers,
   fetchTripExpenses,
@@ -118,6 +118,37 @@ function todayIsoDate() {
   return `${yyyy}-${mm}-${dd}`
 }
 
+/** One row in the multi-item receipt review list. */
+type ReviewItem = {
+  id: number
+  title: string
+  amount: string
+  chipId: string
+  date: string
+  selected: boolean
+}
+
+function chipIdToCategory(chipId: string): ExpenseCategory {
+  const match = CATEGORY_CHIPS.find((chip) => chip.chipId === chipId)
+  return match?.value ?? "기타"
+}
+
+let reviewItemSeq = 0
+function toReviewItem(item: ParsedReceiptItem): ReviewItem {
+  reviewItemSeq += 1
+  const chipId = CATEGORY_CHIPS.some((chip) => chip.chipId === item.category)
+    ? item.category
+    : "기타"
+  return {
+    id: reviewItemSeq,
+    title: item.title,
+    amount: String(Math.round(item.amount)),
+    chipId,
+    date: /^\d{4}-\d{2}-\d{2}$/.test(item.date) ? item.date : todayIsoDate(),
+    selected: true,
+  }
+}
+
 export function SettlementView({
   tripId = null,
   tripTitle = null,
@@ -155,6 +186,8 @@ export function SettlementView({
   const [scanningReceipt, setScanningReceipt] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [receiptViewerUrl, setReceiptViewerUrl] = useState<string | null>(null)
+  // 한 영수증(카드/은행 앱 거래내역 캡처 등)에 여러 건이 있을 때의 일괄 등록 검토 목록.
+  const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
   const receiptInputRef = useRef<HTMLInputElement>(null)
   const scanInputRef = useRef<HTMLInputElement>(null)
   const receiptPreviewRef = useRef<string | null>(null)
@@ -334,6 +367,7 @@ export function SettlementView({
     setReceiptPreview(null)
     setScanningReceipt(false)
     setFormError(null)
+    setReviewItems([])
   }
 
   const applyParsedCategory = useCallback((raw: string) => {
@@ -363,16 +397,26 @@ export function SettlementView({
       setReceiptPreview(previewUrl)
       setScanningReceipt(true)
       setFormError(null)
+      setReviewItems([])
 
       try {
-        const data = await parseReceiptImage(file)
-        if (data.title) setTitle(data.title)
-        if (data.amount > 0) setAmount(String(Math.round(data.amount)))
-        if (data.category) applyParsedCategory(data.category)
-        if (data.date && /^\d{4}-\d{2}-\d{2}$/.test(data.date)) {
-          setExpenseDate(data.date)
+        const { items } = await parseReceiptImage(file)
+        if (items.length > 1) {
+          // 카드/은행 앱 거래내역처럼 한 이미지에 여러 건 — 검토 목록으로 전환.
+          setReviewItems(items.map(toReviewItem))
+          showToast(
+            `영수증에서 ${items.length}건의 지출을 찾았어요. 등록할 항목을 확인해 주세요.`
+          )
+        } else {
+          const data = items[0]
+          if (data.title) setTitle(data.title)
+          if (data.amount > 0) setAmount(String(Math.round(data.amount)))
+          if (data.category) applyParsedCategory(data.category)
+          if (data.date && /^\d{4}-\d{2}-\d{2}$/.test(data.date)) {
+            setExpenseDate(data.date)
+          }
+          showToast("영수증에서 내용을 불러왔어요. 필요하면 수정해 주세요.")
         }
-        showToast("영수증에서 내용을 불러왔어요. 필요하면 수정해 주세요.")
       } catch (err) {
         const typed = err as { message?: string }
         console.error("[SettlementView] receipt scan failed:", typed?.message)
@@ -382,6 +426,32 @@ export function SettlementView({
       }
     },
     [applyParsedCategory, showToast]
+  )
+
+  const updateReviewItem = (id: number, patch: Partial<ReviewItem>) => {
+    setReviewItems((current) =>
+      current.map((item) => (item.id === id ? { ...item, ...patch } : item))
+    )
+  }
+
+  const toggleReviewItem = (id: number) => {
+    setReviewItems((current) =>
+      current.map((item) => (item.id === id ? { ...item, selected: !item.selected } : item))
+    )
+  }
+
+  const removeReviewItem = (id: number) => {
+    setReviewItems((current) => current.filter((item) => item.id !== id))
+  }
+
+  const selectedReviewItems = useMemo(
+    () => reviewItems.filter((item) => item.selected),
+    [reviewItems]
+  )
+
+  const reviewItemsTotal = useMemo(
+    () => selectedReviewItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
+    [selectedReviewItems]
   )
 
   const handleAddExpense = async (event: React.FormEvent) => {
@@ -444,6 +514,81 @@ export function SettlementView({
           : typed?.message?.toLowerCase().includes("expense_participants")
             ? "정산 대상자 저장에 실패했어요. expense_participants 테이블을 확인해 주세요."
             : "지출 등록에 실패했어요."
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleBulkAddExpense = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (scanningReceipt) return
+    if (!activeTripId) {
+      setFormError("사이드바에서 여행을 선택해 주세요.")
+      return
+    }
+    if (selectedReviewItems.length === 0) {
+      setFormError("등록할 항목을 하나 이상 선택해 주세요.")
+      return
+    }
+    if (!payerId) {
+      setFormError("결제자를 선택해 주세요.")
+      return
+    }
+    if (participantIds.length === 0) {
+      setFormError("정산 대상자를 한 명 이상 선택해 주세요.")
+      return
+    }
+    for (const item of selectedReviewItems) {
+      if (!item.title.trim()) {
+        setFormError("모든 항목의 지출명을 입력해 주세요.")
+        return
+      }
+      if (!Number.isFinite(Number(item.amount)) || Number(item.amount) <= 0) {
+        setFormError("모든 항목의 금액을 올바르게 입력해 주세요.")
+        return
+      }
+      if (!item.date) {
+        setFormError("모든 항목의 날짜를 입력해 주세요.")
+        return
+      }
+    }
+
+    setSubmitting(true)
+    setFormError(null)
+    try {
+      let receiptUrl: string | undefined
+      if (receiptFile) {
+        receiptUrl = await uploadReceiptImage(receiptFile, activeTripId)
+      }
+      // 순차 등록 — 각 지출이 독립적으로 실패해도 원인을 바로 알 수 있게.
+      for (const item of selectedReviewItems) {
+        await insertExpense({
+          tripId: activeTripId,
+          title: item.title.trim(),
+          amount: Number(item.amount),
+          category: chipIdToCategory(item.chipId),
+          payerId,
+          expenseDate: item.date,
+          receiptUrl,
+          participantIds,
+        })
+      }
+      const count = selectedReviewItems.length
+      resetForm()
+      setOpen(false)
+      await refreshSettlementData()
+      showToast(`${count}건의 지출이 등록되었어요.`)
+    } catch (err) {
+      const typed = err as { message?: string }
+      console.error("[SettlementView] bulk insert expense failed:", typed?.message)
+      setFormError(
+        typed?.message?.toLowerCase().includes("bucket") ||
+          typed?.message?.toLowerCase().includes("receipts")
+          ? "영수증 업로드에 실패했어요. Storage 버킷(receipts)을 확인해 주세요."
+          : typed?.message?.toLowerCase().includes("expense_participants")
+            ? "정산 대상자 저장에 실패했어요. expense_participants 테이블을 확인해 주세요."
+            : "일부 지출 등록에 실패했어요. 다시 시도해 주세요."
       )
     } finally {
       setSubmitting(false)
@@ -972,7 +1117,11 @@ export function SettlementView({
           </DialogHeader>
 
           <form
-            onSubmit={(event) => void handleAddExpense(event)}
+            onSubmit={(event) =>
+              void (reviewItems.length > 0
+                ? handleBulkAddExpense(event)
+                : handleAddExpense(event))
+            }
             className="flex min-h-0 flex-1 flex-col"
           >
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-3.5">
@@ -1010,7 +1159,119 @@ export function SettlementView({
                 }}
               />
 
-              {/* Amount — compact high contrast */}
+              {reviewItems.length > 0 ? (
+                <div className="flex flex-col gap-2 rounded-xl border border-yellow-400/50 bg-yellow-50/40 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-bold text-gray-900">
+                      {reviewItems.length}건의 지출을 찾았어요
+                    </p>
+                    <span className="shrink-0 text-[11px] font-semibold text-gray-500">
+                      선택 {selectedReviewItems.length}건 · {formatWon(reviewItemsTotal)}
+                    </span>
+                  </div>
+                  <ul className="flex max-h-72 flex-col gap-2 overflow-y-auto">
+                    {reviewItems.map((item) => (
+                      <li
+                        key={item.id}
+                        className={cn(
+                          "flex flex-col gap-2 rounded-lg border bg-white p-2.5 transition-opacity",
+                          item.selected
+                            ? "border-gray-200"
+                            : "border-gray-100 opacity-50"
+                        )}
+                      >
+                        <div className="flex items-start gap-2">
+                          <button
+                            type="button"
+                            role="checkbox"
+                            aria-checked={item.selected}
+                            aria-label={item.selected ? "이 항목 제외" : "이 항목 포함"}
+                            onClick={() => toggleReviewItem(item.id)}
+                            className={cn(
+                              "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors",
+                              item.selected
+                                ? "border-yellow-400 bg-yellow-400 text-gray-900"
+                                : "border-gray-300 bg-white text-transparent"
+                            )}
+                          >
+                            <Check className="size-3.5 stroke-[3]" />
+                          </button>
+                          <div className="grid min-w-0 flex-1 grid-cols-2 gap-1.5">
+                            <Input
+                              value={item.title}
+                              onChange={(event) =>
+                                updateReviewItem(item.id, { title: event.target.value })
+                              }
+                              placeholder="상호명"
+                              className="col-span-2 h-8 rounded-lg border-gray-200 bg-gray-50 px-2 text-xs shadow-none focus-visible:border-yellow-400 focus-visible:ring-1 focus-visible:ring-yellow-400/30"
+                            />
+                            <Input
+                              inputMode="numeric"
+                              value={item.amount}
+                              onChange={(event) =>
+                                updateReviewItem(item.id, {
+                                  amount: event.target.value.replace(/[^\d]/g, ""),
+                                })
+                              }
+                              placeholder="금액"
+                              className="h-8 rounded-lg border-gray-200 bg-gray-50 px-2 text-xs tabular-nums shadow-none focus-visible:border-yellow-400 focus-visible:ring-1 focus-visible:ring-yellow-400/30"
+                            />
+                            <Input
+                              type="date"
+                              value={item.date}
+                              onChange={(event) =>
+                                updateReviewItem(item.id, { date: event.target.value })
+                              }
+                              className="h-8 rounded-lg border-gray-200 bg-gray-50 px-2 text-xs shadow-none focus-visible:border-yellow-400 focus-visible:ring-1 focus-visible:ring-yellow-400/30"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="항목 삭제"
+                            onClick={() => removeReviewItem(item.id)}
+                            className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-gray-300 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                          >
+                            <X className="size-3.5" />
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1 pl-7">
+                          {CATEGORY_CHIPS.map((chip) => {
+                            const selected = item.chipId === chip.chipId
+                            const Icon = chip.Icon
+                            return (
+                              <button
+                                key={chip.chipId}
+                                type="button"
+                                onClick={() => updateReviewItem(item.id, { chipId: chip.chipId })}
+                                className={cn(
+                                  "inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[11px] transition-colors",
+                                  selected
+                                    ? "bg-yellow-400 font-bold text-gray-900"
+                                    : "bg-gray-100 font-medium text-gray-600 hover:bg-gray-200"
+                                )}
+                              >
+                                <Icon className="size-3 stroke-[1.75]" />
+                                {chip.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => setReviewItems([])}
+                    className="self-start text-[11px] font-semibold text-gray-500 underline underline-offset-2 hover:text-gray-800"
+                  >
+                    대신 직접 한 건씩 입력할래요
+                  </button>
+                </div>
+              ) : null}
+
+              {reviewItems.length === 0 ? (
+                <>
+                  {/* Amount — compact high contrast */}
               <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5">
                 <div className="flex items-end justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -1153,6 +1414,8 @@ export function SettlementView({
                   />
                 </div>
               </div>
+                </>
+              ) : null}
 
               {/* Participants */}
               <div className="flex flex-col gap-1.5">
@@ -1281,13 +1544,18 @@ export function SettlementView({
                   submitting ||
                   scanningReceipt ||
                   members.length === 0 ||
-                  participantIds.length === 0
+                  participantIds.length === 0 ||
+                  (reviewItems.length > 0 && selectedReviewItems.length === 0)
                 }
               >
                 {submitting || scanningReceipt ? (
                   <Loader2 className="animate-spin" />
                 ) : null}
-                {scanningReceipt ? "분석 중…" : "등록하기"}
+                {scanningReceipt
+                  ? "분석 중…"
+                  : reviewItems.length > 0
+                    ? `선택한 ${selectedReviewItems.length}건 등록하기`
+                    : "등록하기"}
               </Button>
             </div>
           </form>

@@ -1,8 +1,13 @@
-export type ParsedReceiptResult = {
+export type ParsedReceiptItem = {
   title: string
   amount: number
   category: "식사" | "교통" | "숙소" | "쇼핑" | "기타"
   date: string
+}
+
+export type ParsedReceiptResult = {
+  /** Always at least one entry — a normal single receipt returns a 1-item array. */
+  items: ParsedReceiptItem[]
 }
 
 async function fileToBase64DataUrl(file: File): Promise<string> {
@@ -18,7 +23,25 @@ async function fileToBase64DataUrl(file: File): Promise<string> {
   return `data:${mimeType};base64,${base64}`
 }
 
-/** Upload a receipt image to `/api/parse-receipt` and return structured fields. */
+function normalizeItem(raw: unknown): ParsedReceiptItem {
+  const item = (raw ?? {}) as Partial<ParsedReceiptItem>
+  const category = item.category
+  return {
+    title: String(item.title ?? "").trim() || "영수증 지출",
+    amount: Number(item.amount) || 0,
+    category:
+      category === "식사" || category === "교통" || category === "숙소" || category === "쇼핑"
+        ? category
+        : "기타",
+    date: String(item.date ?? "").trim(),
+  }
+}
+
+/**
+ * Upload a receipt image to `/api/parse-receipt` and return structured items.
+ * Handles both a single purchase receipt (1 item) and a card/bank statement
+ * screenshot listing multiple transactions (N items).
+ */
 export async function parseReceiptImage(file: File): Promise<ParsedReceiptResult> {
   const imageBase64 = await fileToBase64DataUrl(file)
   const response = await fetch("/api/parse-receipt", {
@@ -30,15 +53,17 @@ export async function parseReceiptImage(file: File): Promise<ParsedReceiptResult
     }),
   })
 
-  const payload = (await response.json()) as ParsedReceiptResult & { error?: string }
+  const payload = (await response.json()) as { items?: unknown[]; error?: string }
   if (!response.ok) {
     throw new Error(payload.error || "영수증 분석에 실패했어요.")
   }
 
-  return {
-    title: String(payload.title ?? "").trim() || "영수증 지출",
-    amount: Number(payload.amount) || 0,
-    category: payload.category,
-    date: String(payload.date ?? "").trim(),
+  const rawItems = Array.isArray(payload.items) ? payload.items : []
+  const items = rawItems.map(normalizeItem).filter((item) => item.amount > 0)
+
+  if (items.length === 0) {
+    throw new Error("영수증에서 지출 내역을 찾지 못했어요.")
   }
+
+  return { items }
 }
