@@ -472,15 +472,9 @@ export function TransportRegisterModal({
         setRoster(members)
 
         if (editingTransport) {
-          const authorId = editingTransport.createdBy || editingTransport.userId
-          const selected = editingTransport.passengerIds.length
-            ? editingTransport.passengerIds
-            : authorId
-              ? [authorId]
-              : authUserId
-                ? [authUserId]
-                : []
-          setPassengerIds(selected)
+          // Respect the saved list as-is — an empty list means the author
+          // deliberately unchecked themselves, not "not yet decided".
+          setPassengerIds(editingTransport.passengerIds)
         } else {
           setPassengerIds(authUserId ? [authUserId] : [])
         }
