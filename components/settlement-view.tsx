@@ -42,7 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { calcPerPerson } from "@/lib/settlement-math"
+import { calcPerPerson, calcVariableMemberBalances } from "@/lib/settlement-math"
 import { parseReceiptImage, type ParsedReceiptItem } from "@/lib/parse-receipt"
 import {
   fetchSettlementMembers,
@@ -320,6 +320,25 @@ export function SettlementView({
   )
   const memberCount = members.length
   const perPerson = calcPerPerson(total, memberCount)
+
+  /** 정산 대상 인원별 실제 부담액 — 지출마다 다른 참여자 구성을 반영한다. */
+  const memberBalances = useMemo(() => {
+    if (members.length === 0 || expenses.length === 0) return []
+    const memberIds = members.map((member) => member.userId)
+    const balances = calcVariableMemberBalances(
+      memberIds,
+      expenses.map((expense) => ({
+        amount: expense.amount,
+        payerId: expense.payerId,
+        participantIds:
+          expense.participantIds.length > 0 ? expense.participantIds : memberIds,
+      }))
+    )
+    return balances
+      .map((entry) => ({ ...entry, member: membersById.get(entry.userId) }))
+      .filter((entry) => entry.member)
+      .sort((a, b) => b.balance - a.balance)
+  }, [members, expenses, membersById])
 
   const parsedAmount = useMemo(() => {
     const value = Number(String(amount).replace(/,/g, ""))
@@ -729,16 +748,51 @@ export function SettlementView({
                     {loading ? "—" : formatWon(total)}
                   </p>
                 </div>
-                <div className="min-w-0 text-right">
-                  <p className="text-[11px] font-medium text-neutral-500">1인당</p>
-                  <p className="mt-0.5 truncate text-base font-bold tracking-tight text-neutral-800 tabular-nums">
-                    {loading || memberCount === 0 ? "—" : formatWon(perPerson)}
-                  </p>
-                </div>
+                <p className="shrink-0 text-[11px] text-neutral-400 tabular-nums">
+                  {expenses.length}건 · {memberCount}명
+                </p>
               </div>
-              <p className="mt-2 text-[11px] text-neutral-400">
-                {expenses.length}건 · {memberCount}명
-              </p>
+
+              {/* 지출마다 참여자가 달라질 수 있어 "1인당" 균등분할 대신, 실제 부담액을 인원별로 보여준다. */}
+              {!loading && memberBalances.length > 0 ? (
+                <ul className="mt-3 flex flex-col gap-2 border-t border-neutral-100/80 pt-3">
+                  {memberBalances.map(({ userId, balance, member }) => {
+                    const isSettled = Math.abs(balance) < 1
+                    const name = member?.nickname ?? "멤버"
+                    return (
+                      <li key={userId} className="flex items-center justify-between gap-2">
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <Avatar className="size-5 shrink-0">
+                            {member?.avatarUrl ? (
+                              <AvatarImage src={member.avatarUrl} alt="" />
+                            ) : null}
+                            <AvatarFallback className="bg-neutral-200 text-[9px] font-bold text-neutral-600">
+                              {initialsFromNickname(name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="truncate text-xs font-medium text-neutral-700">
+                            {name}
+                          </span>
+                        </span>
+                        <span
+                          className={cn(
+                            "shrink-0 text-xs font-bold tabular-nums",
+                            isSettled
+                              ? "text-neutral-400"
+                              : balance > 0
+                                ? "text-emerald-600"
+                                : "text-red-500"
+                          )}
+                        >
+                          {isSettled
+                            ? "정산 완료"
+                            : `${balance > 0 ? "+" : "-"}${formatWon(Math.abs(balance))}`}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : null}
             </div>
 
             {/* 1. View filter tabs */}
