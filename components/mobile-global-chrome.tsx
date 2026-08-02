@@ -15,11 +15,13 @@ function resolveActive(pathname: string, nav: string | null): NavKey {
   if (pathname === "/around") return "spots"
   if (pathname === "/friends") return "friends"
   if (pathname === "/mypage") return "mypage"
+  if (pathname === "/saved") return "saved"
   if (pathname.startsWith("/settlement")) return "settlement"
   if (pathname === "/") {
     if (nav === "spots") return "spots"
     if (nav === "friends") return "friends"
     if (nav === "mypage") return "mypage"
+    if (nav === "saved") return "saved"
     return "home"
   }
   return "home"

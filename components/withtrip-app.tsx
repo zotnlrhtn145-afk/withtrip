@@ -16,6 +16,7 @@ import { StaySection } from "@/components/itinerary/stay-section"
 import { WishlistSection } from "@/components/itinerary/wishlist-section"
 import { MyPageView } from "@/components/mypage-view"
 import { NotificationMenu } from "@/components/notification-menu"
+import { SavedPlacesView } from "@/components/saved-places-view"
 import { ScheduleTimeline } from "@/components/schedule-timeline"
 import { SettlementView } from "@/components/settlement-view"
 import { SpotsView } from "@/components/spots-view"
@@ -117,6 +118,11 @@ function WithtripShell() {
       setCurrentView(isLoggedIn ? "mypage" : "login")
       return
     }
+    if (pathname === "/saved") {
+      setActiveNav("saved")
+      setCurrentView("saved")
+      return
+    }
     if (pathname === "/") {
       const nav = searchParams.get("nav") as NavKey | null
       const viewParam = searchParams.get("view")
@@ -128,6 +134,7 @@ function WithtripShell() {
         nav === "friends" ||
         nav === "spots" ||
         nav === "mypage" ||
+        nav === "saved" ||
         nav === "home"
       ) {
         setActiveNav(nav)
@@ -152,6 +159,7 @@ function WithtripShell() {
       nav === "friends" ||
       nav === "spots" ||
       nav === "mypage" ||
+      nav === "saved" ||
       nav === "home"
     ) {
       setActiveNav(nav)
@@ -224,6 +232,10 @@ function WithtripShell() {
       }
       if (key === "settlement") {
         setCurrentView("settlement")
+        return
+      }
+      if (key === "saved") {
+        setCurrentView("saved")
         return
       }
       if (key === "mypage") {
@@ -309,6 +321,7 @@ function WithtripShell() {
       ) : null}
       {currentView === "friends" ? <FriendsView /> : null}
       {currentView === "spots" ? <SpotsView /> : null}
+      {currentView === "saved" ? <SavedPlacesView /> : null}
       {currentView === "settlement" ? (
         <SettlementView
           tripId={selectedTripId}

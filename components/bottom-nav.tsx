@@ -3,18 +3,18 @@
 import { useEffect, useState, type MouseEvent } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { Home, MapPin, UserRound, Users, Wallet, type LucideIcon } from "lucide-react"
+import { Bookmark, Home, MapPin, Users, Wallet, type LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-export type NavKey = "home" | "friends" | "spots" | "settlement" | "mypage"
+export type NavKey = "home" | "friends" | "spots" | "settlement" | "mypage" | "saved"
 
 export const navItems: { key: NavKey; label: string; icon: LucideIcon }[] = [
   { key: "home", label: "홈", icon: Home },
   { key: "spots", label: "주변 스팟", icon: MapPin },
   { key: "friends", label: "친구", icon: Users },
   { key: "settlement", label: "정산", icon: Wallet },
-  { key: "mypage", label: "마이", icon: UserRound },
+  { key: "saved", label: "저장", icon: Bookmark },
 ]
 
 function toHref(key: NavKey): string {
@@ -22,6 +22,7 @@ function toHref(key: NavKey): string {
   if (key === "spots") return "/around"
   if (key === "friends") return "/friends"
   if (key === "settlement") return "/settlement"
+  if (key === "saved") return "/saved"
   return "/mypage"
 }
 

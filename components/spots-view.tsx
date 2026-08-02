@@ -5,21 +5,16 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   Footprints,
-  Heart,
   Loader2,
   MapPin,
   MapPinOff,
   Navigation,
-  Plus,
   RefreshCw,
   Star,
 } from "lucide-react"
 
 import { useGeolocation } from "@/hooks/use-geolocation"
 import { LoginRedirectOverlay } from "@/components/login-redirect-overlay"
-import { AddSavedPlaceModal } from "@/components/itinerary/AddSavedPlaceModal"
-import { TripPickerModal } from "@/components/quick-register/trip-picker-modal"
-import { useTrips } from "@/components/trips-store"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   distanceMeters,
@@ -31,12 +26,6 @@ import {
   DEFAULT_SPOT_AVATAR,
   type NearbySpot,
 } from "@/lib/spots-data"
-import {
-  assignSavedPlaceToTrip,
-  fetchInterestPlacesByUserId,
-  getErrorMessage,
-  type SavedPlace,
-} from "@/lib/saved-places-api"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/utils/supabase/client"
 
@@ -82,9 +71,7 @@ function SpotsEmptyState({ onGoHome }: { onGoHome: () => void }) {
 export function SpotsView() {
   const router = useRouter()
   const geo = useGeolocation()
-  const { trips } = useTrips()
   const [authPhase, setAuthPhase] = useState<AuthPhase>("checking")
-  const [userId, setUserId] = useState<string | null>(null)
   const [rawSpots, setRawSpots] = useState<NearbySpot[]>([])
   const [spotsLoading, setSpotsLoading] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -93,12 +80,6 @@ export function SpotsView() {
   const didAutoCenter = useRef(false)
   const followNextFix = useRef(false)
   const cardRefs = useRef<Record<string, HTMLLIElement | null>>({})
-
-  const [interestPlaces, setInterestPlaces] = useState<SavedPlace[]>([])
-  const [interestLoading, setInterestLoading] = useState(false)
-  const [addInterestOpen, setAddInterestOpen] = useState(false)
-  const [assigningPlace, setAssigningPlace] = useState<SavedPlace | null>(null)
-  const [assigningError, setAssigningError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -110,7 +91,6 @@ export function SpotsView() {
         } = await supabase.auth.getUser()
         if (cancelled) return
         setAuthPhase(user ? "authed" : "guest")
-        setUserId(user?.id ?? null)
       } catch {
         if (!cancelled) setAuthPhase("guest")
       }
@@ -120,32 +100,6 @@ export function SpotsView() {
     }
   }, [])
 
-  const loadInterestPlaces = async (uid: string) => {
-    setInterestLoading(true)
-    const next = await fetchInterestPlacesByUserId(uid)
-    setInterestLoading(false)
-    setInterestPlaces(next)
-  }
-
-  useEffect(() => {
-    if (authPhase !== "authed" || !userId) return
-    void loadInterestPlaces(userId)
-  }, [authPhase, userId])
-
-  const handleAssignTrip = async (tripId: string) => {
-    if (!assigningPlace) return
-    const place = assigningPlace
-    setAssigningError(null)
-    try {
-      await assignSavedPlaceToTrip(place.id, tripId)
-      setInterestPlaces((current) => current.filter((item) => item.id !== place.id))
-      setAssigningPlace(null)
-      void loadRawSpots()
-    } catch (err) {
-      setAssigningError(getErrorMessage(err) || "여행에 담지 못했어요.")
-    }
-  }
-
   useEffect(() => {
     if (authPhase !== "guest") return
     const timer = window.setTimeout(() => {
@@ -153,11 +107,6 @@ export function SpotsView() {
     }, 1200)
     return () => window.clearTimeout(timer)
   }, [authPhase, router])
-
-  const loadRawSpots = async () => {
-    const next = await fetchNearbySpots()
-    setRawSpots(next)
-  }
 
   useEffect(() => {
     if (authPhase !== "authed") return
@@ -381,77 +330,6 @@ export function SpotsView() {
       </div>
     ) : null
 
-  const interestChapter = (
-    <section className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-full bg-amber-400 text-slate-950">
-            <Heart className="size-4" />
-          </span>
-          <div>
-            <p className="text-sm font-bold text-slate-900">나의 관심 맛집</p>
-            <p className="text-[11px] text-slate-400">
-              여행 없이 먼저 담아두고, 나중에 원하는 여행에 옮겨요
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setAddInterestOpen(true)}
-          className="flex shrink-0 items-center gap-1 rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-50"
-        >
-          <Plus className="size-3.5" />
-          추가
-        </button>
-      </div>
-
-      {interestLoading ? (
-        <div className="flex items-center justify-center py-4">
-          <Loader2 className="size-5 animate-spin text-amber-500" />
-        </div>
-      ) : interestPlaces.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-center text-xs text-slate-400">
-          아직 담아둔 관심 맛집이 없어요. &ldquo;추가&rdquo;를 눌러 저장해 보세요.
-        </p>
-      ) : (
-        <ul className="-mx-1 flex gap-2.5 overflow-x-auto px-1 pb-1">
-          {interestPlaces.map((place) => (
-            <li
-              key={place.id}
-              className="flex w-56 shrink-0 flex-col gap-2 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-slate-900">{place.placeName}</p>
-                  <p className="truncate text-[11px] text-slate-400">
-                    {place.category || "관심 맛집"}
-                    {place.address ? ` · ${place.address}` : ""}
-                  </p>
-                </div>
-                {place.rating ? (
-                  <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium tabular-nums text-slate-400">
-                    <Star className="size-3 fill-amber-400 text-amber-400" />
-                    {place.rating}
-                  </span>
-                ) : null}
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setAssigningError(null)
-                  setAssigningPlace(place)
-                }}
-                className="mt-auto flex items-center justify-center gap-1 rounded-full bg-amber-400 py-1.5 text-xs font-bold text-slate-950 transition-colors hover:bg-amber-500 active:scale-95"
-              >
-                여행에 담기
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  )
-
   if (authPhase === "checking") {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3 bg-white px-6 text-center">
@@ -481,43 +359,11 @@ export function SpotsView() {
     )
   }
 
-  const interestModals = (
-    <>
-      <AddSavedPlaceModal
-        tripId={null}
-        open={addInterestOpen}
-        onOpenChange={setAddInterestOpen}
-        onSaved={(saved) => {
-          setInterestPlaces((current) => [saved, ...current])
-          void loadRawSpots()
-        }}
-        title="관심 맛집 추가"
-        description="여행과 상관없이 가고 싶은 곳을 먼저 담아둬요. 나중에 원하는 여행에 옮길 수 있어요."
-      />
-      <TripPickerModal
-        open={assigningPlace !== null}
-        onOpenChange={(next) => {
-          if (!next) {
-            setAssigningPlace(null)
-            setAssigningError(null)
-          }
-        }}
-        trips={trips.map((trip) => ({ id: trip.id, title: trip.title }))}
-        title={assigningPlace ? `「${assigningPlace.placeName}」을 어느 여행에 담을까요?` : "여행 선택"}
-        description={
-          assigningError ?? "선택한 여행의 가고 싶은 곳에 바로 등록돼요."
-        }
-        onSelect={(trip) => void handleAssignTrip(trip.id)}
-      />
-    </>
-  )
-
   if (spots.length === 0) {
     return (
       <div className="flex flex-col gap-5 bg-white">
         {locationBanner}
         {permissionHelp}
-        {interestChapter}
 
         <div className="grid w-full grid-cols-1 items-stretch gap-6 md:grid-cols-2">
           <div className="h-64 w-full md:h-full md:min-h-[400px]">
@@ -536,7 +382,6 @@ export function SpotsView() {
           </div>
           <SpotsEmptyState onGoHome={() => router.push("/")} />
         </div>
-        {interestModals}
       </div>
     )
   }
@@ -545,7 +390,6 @@ export function SpotsView() {
     <div className="flex flex-col gap-5 bg-white">
       {locationBanner}
       {permissionHelp}
-      {interestChapter}
       {authorFilterRow}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
@@ -701,7 +545,6 @@ export function SpotsView() {
           ) : null}
         </section>
       </div>
-      {interestModals}
     </div>
   )
 }

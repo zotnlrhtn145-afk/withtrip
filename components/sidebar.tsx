@@ -16,6 +16,7 @@ function hrefFor(key: NavKey): string {
   if (key === "spots") return "/spots"
   if (key === "friends") return "/friends"
   if (key === "settlement") return "/settlement"
+  if (key === "saved") return "/saved"
   return "/mypage"
 }
 
@@ -26,6 +27,7 @@ function isActiveNav(pathname: string, key: NavKey): boolean {
   if (key === "settlement") {
     return pathname.startsWith("/settlement") || pathname.startsWith("/bills")
   }
+  if (key === "saved") return pathname.startsWith("/saved")
   return pathname.startsWith("/mypage") || pathname.startsWith("/login")
 }
 

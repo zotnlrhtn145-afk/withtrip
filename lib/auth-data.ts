@@ -4,6 +4,7 @@ export type AppView =
   | "friends"
   | "spots"
   | "settlement"
+  | "saved"
   | "login"
   | "signup"
   | "forgot-password"
