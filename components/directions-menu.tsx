@@ -1,12 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { MapPin, Navigation } from "lucide-react"
+import { Car, MapPin, Navigation } from "lucide-react"
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
+  buildUberUrl,
+  isInKorea,
+  openGoogleMapsDirections,
   openKakaoMapDirections,
   openTmapDirections,
+  openUberDirections,
   type NavDestination,
 } from "@/lib/navigation-links"
 import { cn } from "@/lib/utils"
@@ -40,6 +44,8 @@ export function DirectionsMenu({
   const baseClass = VARIANT_CLASS[variant]
   const triggerIcon = variant === "cta" ? MapPin : Navigation
   const TriggerIcon = triggerIcon
+  const overseas = destination ? !isInKorea(destination.lat, destination.lng) : false
+  const uberUrl = destination && overseas ? buildUberUrl(destination) : null
 
   if (!destination) {
     if (!fallbackQuery) return null
@@ -76,28 +82,59 @@ export function DirectionsMenu({
         className="w-48 p-1.5"
         onClick={(event) => event.stopPropagation()}
       >
-        <button
-          type="button"
-          onClick={() => {
-            openTmapDirections(destination)
-            setOpen(false)
-          }}
-          className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-amber-50"
-        >
-          <Navigation className="size-3.5 text-amber-500" />
-          티맵으로 길찾기
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            openKakaoMapDirections(destination)
-            setOpen(false)
-          }}
-          className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-amber-50"
-        >
-          <MapPin className="size-3.5 text-amber-500" />
-          카카오맵으로 길찾기
-        </button>
+        {overseas ? (
+          <>
+            {uberUrl ? (
+              <button
+                type="button"
+                onClick={() => {
+                  openUberDirections(destination)
+                  setOpen(false)
+                }}
+                className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-amber-50"
+              >
+                <Car className="size-3.5 text-amber-500" />
+                우버로 택시 부르기
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                openGoogleMapsDirections(destination)
+                setOpen(false)
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-amber-50"
+            >
+              <MapPin className="size-3.5 text-amber-500" />
+              구글 지도로 길찾기
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                openTmapDirections(destination)
+                setOpen(false)
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-amber-50"
+            >
+              <Navigation className="size-3.5 text-amber-500" />
+              티맵으로 길찾기
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                openKakaoMapDirections(destination)
+                setOpen(false)
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-amber-50"
+            >
+              <MapPin className="size-3.5 text-amber-500" />
+              카카오맵으로 길찾기
+            </button>
+          </>
+        )}
       </PopoverContent>
     </Popover>
   )
