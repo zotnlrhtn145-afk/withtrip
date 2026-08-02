@@ -1,20 +1,10 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import {
-  Heart,
-  List,
-  Loader2,
-  Map as MapIcon,
-  MapPin,
-  Navigation,
-  Plane,
-  Plus,
-  Star,
-  X,
-} from "lucide-react"
+import { animate, motion, useDragControls, useMotionValue, type PanInfo } from "framer-motion"
+import { Heart, Loader2, MapPin, Plane, Plus, Star, X } from "lucide-react"
 
 import { useGeolocation } from "@/hooks/use-geolocation"
 import { LoginRedirectOverlay } from "@/components/login-redirect-overlay"
@@ -22,7 +12,7 @@ import { AddSavedPlaceModal } from "@/components/itinerary/AddSavedPlaceModal"
 import { type MapSpot } from "@/components/nearby-map"
 import { TripPickerModal } from "@/components/quick-register/trip-picker-modal"
 import { useTrips } from "@/components/trips-store"
-import { distanceMeters, estimateWalkMinutes, formatDistance } from "@/lib/geo"
+import { distanceMeters, formatDistance } from "@/lib/geo"
 import {
   assignSavedPlaceToTrip,
   deleteSavedPlace,
@@ -46,7 +36,11 @@ const NearbyMap = dynamic(
 )
 
 type AuthPhase = "checking" | "guest" | "authed"
-type ViewMode = "list" | "map"
+
+/** 시트가 접혔을 때 지도 아래로 살짝 보이는 높이 (핸들 + 칩 한 줄). */
+const PEEK_HEIGHT = 108
+/** 지도 + 시트 컨테이너의 하단 여백 (하단 네비바 높이만큼). */
+const BOTTOM_CLEARANCE = 96
 
 /** "저장한 장소" — 여행에 상관없이 담아둔 관심 맛집을 한곳에 모아보는 탭. */
 export function SavedPlacesView() {
@@ -61,13 +55,58 @@ export function SavedPlacesView() {
   const [assigningPlace, setAssigningPlace] = useState<SavedPlace | null>(null)
   const [assigningError, setAssigningError] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<ViewMode>("list")
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null)
   const [recenterKey, setRecenterKey] = useState(0)
   const didAutoCenter = useRef(false)
   const followNextFix = useRef(false)
   const geo = useGeolocation()
+
+  // 캐치테이블 "내주변"처럼 지도는 고정되어 있고, 리스트를 담은 시트를 손가락/마우스로
+  // 끌어올리면 지도를 덮으며 펼쳐지고, 다시 내리면 지도 위로 살짝 걸치는 정도로 접힌다.
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [containerHeight, setContainerHeight] = useState(520)
+  const [sheetExpanded, setSheetExpanded] = useState(false)
+  const sheetY = useMotionValue(0)
+  const dragControls = useDragControls()
+  const collapsedY = Math.max(0, containerHeight - PEEK_HEIGHT)
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = containerRef.current
+      if (!el) return
+      const top = el.getBoundingClientRect().top
+      setContainerHeight(Math.max(360, window.innerHeight - top - BOTTOM_CLEARANCE))
+    }
+    measure()
+    // 페이지 진입 애니메이션(트랜지션)이 끝난 뒤 자리가 확정된 상태로 다시 한 번 잰다.
+    const raf = requestAnimationFrame(measure)
+    const timer = window.setTimeout(measure, 350)
+    window.addEventListener("resize", measure)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.clearTimeout(timer)
+      window.removeEventListener("resize", measure)
+    }
+  }, [])
+
+  useEffect(() => {
+    animate(sheetY, sheetExpanded ? 0 : collapsedY, {
+      type: "spring",
+      damping: 32,
+      stiffness: 320,
+    })
+  }, [sheetExpanded, collapsedY, sheetY])
+
+  const handleSheetDragEnd = (_: unknown, info: PanInfo) => {
+    // 빠르게 튕기듯 드래그했을 때만 속도로 판단하고, 그 외엔 놓은 위치가
+    // 중간보다 위/아래인지로 결정한다 — 이러면 짧고 느린 드래그도 자연스럽다.
+    if (Math.abs(info.velocity.y) > 500) {
+      setSheetExpanded(info.velocity.y < 0)
+      return
+    }
+    setSheetExpanded(sheetY.get() < collapsedY / 2)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -164,7 +203,7 @@ export function SavedPlacesView() {
     return map
   }, [filteredPlaces, geo.position])
 
-  /** 지도 모드 마커 — 현재 카테고리 필터가 그대로 적용되고, 좌표가 없는 곳은 제외된다. */
+  /** 지도 마커 — 현재 카테고리 필터가 그대로 적용되고, 좌표가 없는 곳은 제외된다. */
   const mapSpots: MapSpot[] = useMemo(() => {
     return filteredPlaces
       .filter(
@@ -195,10 +234,7 @@ export function SavedPlacesView() {
       .sort((a, b) => a.distanceMeters - b.distanceMeters)
   }, [filteredPlaces, geo.position, avatarUrl, userId])
 
-  const selectedMapSpot = mapSpots.find((spot) => spot.id === selectedMapId) ?? null
-
   useEffect(() => {
-    if (viewMode !== "map") return
     if (geo.status !== "ready") return
     if (!didAutoCenter.current) {
       didAutoCenter.current = true
@@ -209,17 +245,12 @@ export function SavedPlacesView() {
       followNextFix.current = false
       setRecenterKey((key) => key + 1)
     }
-  }, [viewMode, geo.status, geo.position.lat, geo.position.lng])
+  }, [geo.status, geo.position.lat, geo.position.lng])
 
   const handleRecenter = () => {
     followNextFix.current = true
     setRecenterKey((key) => key + 1)
     geo.locate()
-  }
-
-  const handleOpenDirections = (spot: { lat: number; lng: number }) => {
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${geo.position.lat},${geo.position.lng}&destination=${spot.lat},${spot.lng}`
-    window.open(url, "_blank", "noopener,noreferrer")
   }
 
   const handleAssignTrip = async (tripId: string) => {
@@ -260,6 +291,57 @@ export function SavedPlacesView() {
       </div>
     )
   }
+
+  const filterChips = (
+    <>
+      <button
+        type="button"
+        onClick={() => setSubFilter(null)}
+        className={cn(
+          "flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
+          !subFilter
+            ? "border-amber-400 bg-amber-400 text-slate-950 shadow-sm"
+            : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/60"
+        )}
+      >
+        전체
+        <span
+          className={cn(
+            "rounded-full px-1.5 text-[10px] tabular-nums",
+            !subFilter ? "bg-slate-950/15" : "bg-slate-100"
+          )}
+        >
+          {places.length}
+        </span>
+      </button>
+      {subChips.map((chip) => {
+        const active = subFilter === chip.label
+        return (
+          <button
+            key={chip.label}
+            type="button"
+            onClick={() => setSubFilter((current) => (current === chip.label ? null : chip.label))}
+            className={cn(
+              "flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
+              active
+                ? "border-amber-400 bg-amber-400 text-slate-950 shadow-sm"
+                : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/60"
+            )}
+          >
+            {chip.label}
+            <span
+              className={cn(
+                "rounded-full px-1.5 text-[10px] tabular-nums",
+                active ? "bg-slate-950/15" : "bg-slate-100"
+              )}
+            >
+              {chip.count}
+            </span>
+          </button>
+        )
+      })}
+    </>
+  )
 
   return (
     <div className="flex w-full flex-col gap-5 bg-white">
@@ -303,202 +385,119 @@ export function SavedPlacesView() {
           </button>
         </div>
       ) : (
-        <>
-          {/* 캐치테이블 "내주변"처럼 필터 칩은 스크롤 중에도 상단에 고정된다. */}
-          <div
-            className="sticky z-20 -mx-4 flex items-center gap-2 overflow-x-auto bg-white/95 px-4 py-2 backdrop-blur"
-            style={{ top: 62 }}
+        <div ref={containerRef} className="relative -mx-4" style={{ height: containerHeight }}>
+          {/* 지도는 항상 고정되어 있고, 시트가 그 위를 덮는다 (캐치테이블 "내주변" 방식). */}
+          <div className="absolute inset-0">
+            <NearbyMap
+              center={geo.position}
+              accuracy={geo.accuracy}
+              spots={mapSpots}
+              selectedId={selectedMapId}
+              onSelect={setSelectedMapId}
+              onRecenter={handleRecenter}
+              recenterKey={recenterKey}
+              locating={geo.status === "locating"}
+              className="h-full rounded-none border-x-0"
+              fill
+            />
+          </div>
+
+          <motion.div
+            drag="y"
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: collapsedY }}
+            dragElastic={0.04}
+            onDragEnd={handleSheetDragEnd}
+            style={{ y: sheetY, height: containerHeight }}
+            className="absolute inset-x-0 top-0 z-10 flex flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.14)]"
           >
             <button
               type="button"
-              onClick={() => setSubFilter(null)}
-              className={cn(
-                "flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
-                !subFilter
-                  ? "border-amber-400 bg-amber-400 text-slate-950 shadow-sm"
-                  : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/60"
-              )}
+              onPointerDown={(event) => dragControls.start(event)}
+              onClick={() => setSheetExpanded((current) => !current)}
+              className="flex shrink-0 cursor-grab touch-none flex-col items-center gap-2 pt-2.5 pb-1 active:cursor-grabbing"
+              aria-label={sheetExpanded ? "목록 접기" : "목록 펼치기"}
             >
-              전체
-              <span
-                className={cn(
-                  "rounded-full px-1.5 text-[10px] tabular-nums",
-                  !subFilter ? "bg-slate-950/15" : "bg-slate-100"
-                )}
-              >
-                {places.length}
-              </span>
+              <span className="h-1.5 w-10 rounded-full bg-slate-300" />
             </button>
-            {subChips.map((chip) => {
-              const active = subFilter === chip.label
-              return (
-                <button
-                  key={chip.label}
-                  type="button"
-                  onClick={() =>
-                    setSubFilter((current) => (current === chip.label ? null : chip.label))
-                  }
-                  className={cn(
-                    "flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
-                    active
-                      ? "border-amber-400 bg-amber-400 text-slate-950 shadow-sm"
-                      : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/60"
-                  )}
-                >
-                  {chip.label}
-                  <span
-                    className={cn(
-                      "rounded-full px-1.5 text-[10px] tabular-nums",
-                      active ? "bg-slate-950/15" : "bg-slate-100"
-                    )}
-                  >
-                    {chip.count}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
 
-          <div className="relative -mx-4">
-            {viewMode === "map" ? (
-              mapSpots.length === 0 ? (
-                <div className="mx-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
-                  이 카테고리엔 위치 정보가 있는 장소가 없어요.
+            <div className="flex shrink-0 items-center gap-2 overflow-x-auto px-4 pb-2.5">
+              {filterChips}
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
+              {filteredPlaces.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
+                  이 카테고리에 저장된 장소가 없어요.
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
-                  <NearbyMap
-                    center={geo.position}
-                    accuracy={geo.accuracy}
-                    spots={mapSpots}
-                    selectedId={selectedMapId}
-                    onSelect={setSelectedMapId}
-                    onRecenter={handleRecenter}
-                    recenterKey={recenterKey}
-                    locating={geo.status === "locating"}
-                    className="h-[60vh] rounded-none border-x-0"
-                    fill
-                  />
-                  {selectedMapSpot ? (
-                    <div className="mx-4 rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-slate-900">
-                            {selectedMapSpot.name}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-400">{selectedMapSpot.address}</p>
-                          <p className="mt-1 text-[11px] text-slate-400">
-                            {selectedMapSpot.category}
-                          </p>
-                        </div>
-                        <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold tabular-nums text-amber-700">
-                          {selectedMapSpot.distanceLabel}
-                        </span>
+                <ul className="flex flex-col gap-2.5">
+                  {filteredPlaces.map((place) => (
+                    <li
+                      key={place.id}
+                      className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm"
+                    >
+                      <div className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={place.imageUrl} alt="" className="size-full object-cover" />
                       </div>
-                      <p className="mt-2 text-xs text-slate-400 tabular-nums">
-                        도보 약 {estimateWalkMinutes(selectedMapSpot.distanceMeters)}분
-                      </p>
-                      <button
-                        type="button"
-                        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-amber-400 py-2.5 text-sm font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 active:scale-[0.99]"
-                        onClick={() => handleOpenDirections(selectedMapSpot)}
-                      >
-                        <Navigation className="size-4" />
-                        길찾기
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              )
-            ) : filteredPlaces.length === 0 ? (
-              <div className="mx-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
-                이 카테고리에 저장된 장소가 없어요.
-              </div>
-            ) : (
-              <ul className="flex flex-col gap-2.5 px-4">
-                {filteredPlaces.map((place) => (
-                  <li
-                    key={place.id}
-                    className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm"
-                  >
-                    <div className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-slate-100">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={place.imageUrl} alt="" className="size-full object-cover" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <p className="truncate text-sm font-bold text-slate-900">
-                          {place.placeName}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className="truncate text-sm font-bold text-slate-900">
+                            {place.placeName}
+                          </p>
+                          {place.rating ? (
+                            <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium tabular-nums text-slate-400">
+                              <Star className="size-3 fill-amber-400 text-amber-400" />
+                              {place.rating}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="truncate text-xs text-slate-400">
+                          {place.subCategory || place.category || "관심 장소"}
+                          {place.address ? ` · ${place.address}` : ""}
                         </p>
-                        {place.rating ? (
-                          <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium tabular-nums text-slate-400">
-                            <Star className="size-3 fill-amber-400 text-amber-400" />
-                            {place.rating}
+                        {placeDistanceLabels.has(place.id) ? (
+                          <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-amber-700">
+                            <MapPin className="size-3" />
+                            {placeDistanceLabels.get(place.id)}
                           </span>
                         ) : null}
                       </div>
-                      <p className="truncate text-xs text-slate-400">
-                        {place.subCategory || place.category || "관심 장소"}
-                        {place.address ? ` · ${place.address}` : ""}
-                      </p>
-                      {placeDistanceLabels.has(place.id) ? (
-                        <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-amber-700">
-                          <MapPin className="size-3" />
-                          {placeDistanceLabels.get(place.id)}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="flex shrink-0 flex-col gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAssigningError(null)
-                          setAssigningPlace(place)
-                        }}
-                        className="flex items-center justify-center gap-1 rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-bold text-slate-950 transition-colors hover:bg-amber-500 active:scale-95"
-                      >
-                        <Plane className="size-3" />
-                        담기
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleRemove(place.id)}
-                        disabled={removingId === place.id}
-                        aria-label={`${place.placeName} 삭제`}
-                        className="flex items-center justify-center rounded-full border border-slate-200 p-1.5 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600 disabled:opacity-50"
-                      >
-                        {removingId === place.id ? (
-                          <Loader2 className="size-3 animate-spin" />
-                        ) : (
-                          <X className="size-3" />
-                        )}
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* 캐치테이블처럼 지도/리스트를 오가는 버튼 하나만 화면에 고정해 둔다. */}
-          <button
-            type="button"
-            onClick={() => setViewMode((current) => (current === "map" ? "list" : "map"))}
-            className="fixed bottom-24 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-slate-900/20 transition-transform active:scale-95"
-          >
-            {viewMode === "map" ? (
-              <>
-                <List className="size-3.5" />
-                목록 보기
-              </>
-            ) : (
-              <>
-                <MapIcon className="size-3.5" />
-                지도 보기
-              </>
-            )}
-          </button>
-        </>
+                      <div className="flex shrink-0 flex-col gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAssigningError(null)
+                            setAssigningPlace(place)
+                          }}
+                          className="flex items-center justify-center gap-1 rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-bold text-slate-950 transition-colors hover:bg-amber-500 active:scale-95"
+                        >
+                          <Plane className="size-3" />
+                          담기
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleRemove(place.id)}
+                          disabled={removingId === place.id}
+                          aria-label={`${place.placeName} 삭제`}
+                          className="flex items-center justify-center rounded-full border border-slate-200 p-1.5 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600 disabled:opacity-50"
+                        >
+                          {removingId === place.id ? (
+                            <Loader2 className="size-3 animate-spin" />
+                          ) : (
+                            <X className="size-3" />
+                          )}
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </motion.div>
+        </div>
       )}
 
       <AddSavedPlaceModal
