@@ -102,20 +102,37 @@ export function hasAnyPayout(account: PayoutAccount): boolean {
   return hasBankPayout(account) || hasCryptoPayout(account)
 }
 
+export type PayoutShareTransfer = {
+  fromNickname: string
+  toNickname: string
+  amount: number
+}
+
 export function formatPayoutShareText(input: {
   tripTitle: string
   total: number
-  perPerson: number
+  expenseCount: number
   memberCount: number
+  transfers: PayoutShareTransfer[]
   account: PayoutAccount
 }): string {
   const lines = [
     `[WITHTRIP 정산] ${input.tripTitle}`,
     "",
     `총지출: ${input.total.toLocaleString("ko-KR")}원`,
-    `참여 ${input.memberCount}명 · 1인당 약 ${input.perPerson.toLocaleString("ko-KR")}원`,
+    `${input.expenseCount}건 · 참여 ${input.memberCount}명`,
     "",
   ]
+
+  if (input.transfers.length > 0) {
+    lines.push("■ 송금 안내")
+    for (const transfer of input.transfers) {
+      lines.push(
+        `${transfer.fromNickname} → ${transfer.toNickname}  ${transfer.amount.toLocaleString("ko-KR")}원`
+      )
+    }
+    lines.push("")
+  }
 
   if (hasBankPayout(input.account)) {
     lines.push("■ 수령 계좌")

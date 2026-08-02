@@ -3,6 +3,7 @@ import {
   hasBankPayout,
   hasCryptoPayout,
   type PayoutAccount,
+  type PayoutShareTransfer,
 } from "@/lib/payout-account"
 
 type KakaoSDK = {
@@ -102,8 +103,9 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
 export type SettlementShareInput = {
   tripTitle: string
   total: number
-  perPerson: number
+  expenseCount: number
   memberCount: number
+  transfers: PayoutShareTransfer[]
   account: PayoutAccount
   shareUrl?: string
 }
@@ -115,9 +117,18 @@ function buildKakaoTitle(tripTitle: string) {
 
 function buildKakaoDescription(input: SettlementShareInput): string {
   const lines = [
-    `총지출 ${input.total.toLocaleString("ko-KR")}원`,
-    `1인당 ${input.perPerson.toLocaleString("ko-KR")}원 · ${input.memberCount}명`,
+    `총지출 ${input.total.toLocaleString("ko-KR")}원 · ${input.expenseCount}건 · ${input.memberCount}명`,
   ]
+
+  if (input.transfers.length > 0) {
+    lines.push("")
+    lines.push("송금 안내")
+    for (const transfer of input.transfers) {
+      lines.push(
+        `${transfer.fromNickname} → ${transfer.toNickname} ${transfer.amount.toLocaleString("ko-KR")}원`
+      )
+    }
+  }
 
   if (hasBankPayout(input.account)) {
     lines.push(

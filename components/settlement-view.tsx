@@ -319,7 +319,6 @@ export function SettlementView({
     [expenses]
   )
   const memberCount = members.length
-  const perPerson = calcPerPerson(total, memberCount)
 
   /** 정산 대상 인원별 실제 부담액 — 지출마다 다른 참여자 구성을 반영한다. */
   const memberBalances = useMemo(() => {
@@ -678,8 +677,13 @@ export function SettlementView({
       const result = await shareSettlementSummary({
         tripTitle: tripTitle?.trim() || "여행 정산",
         total,
-        perPerson,
+        expenseCount: expenses.length,
         memberCount,
+        transfers: settlements.map((transfer) => ({
+          fromNickname: membersById.get(transfer.fromUserId)?.nickname ?? "멤버",
+          toNickname: membersById.get(transfer.toUserId)?.nickname ?? "멤버",
+          amount: transfer.amount,
+        })),
         account: payoutAccount,
         shareUrl:
           typeof window !== "undefined" ? window.location.href : undefined,
