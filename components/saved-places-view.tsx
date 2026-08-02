@@ -429,6 +429,7 @@ export function SavedPlacesView() {
               recenterKey={recenterKey}
               locating={geo.status === "locating"}
               className="h-full rounded-none border-x-0"
+              gestureHandling="cooperative"
               fill
             />
           </div>

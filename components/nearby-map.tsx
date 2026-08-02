@@ -196,6 +196,7 @@ function NearbyMapInner({
   recenterKey,
   locating,
   fill = false,
+  gestureHandling = "greedy",
 }: {
   center: LatLng
   accuracy: number | null
@@ -206,6 +207,9 @@ function NearbyMapInner({
   recenterKey: number
   locating?: boolean
   fill?: boolean
+  /** "cooperative"면 마우스 휠 한 번/한 손가락 스와이프는 지도를 확대하지 않고
+   *  페이지를 스크롤한다 — 지도가 페이지 스크롤에 얹혀 있는 화면에서 필요하다. */
+  gestureHandling?: "greedy" | "cooperative"
 }) {
   const selected = useMemo(
     () => spots.find((spot) => spot.id === selectedId) ?? null,
@@ -226,7 +230,7 @@ function NearbyMapInner({
         minZoom={11}
         maxZoom={20}
         mapId={mapId}
-        gestureHandling="greedy"
+        gestureHandling={gestureHandling}
         disableDefaultUI
         clickableIcons={false}
       >
@@ -306,6 +310,7 @@ export function NearbyMap({
   locating,
   className,
   fill = false,
+  gestureHandling = "greedy",
 }: {
   center: LatLng
   accuracy: number | null
@@ -318,6 +323,8 @@ export function NearbyMap({
   className?: string
   /** Stretch map to parent height instead of fixed aspect ratio. */
   fill?: boolean
+  /** "cooperative"면 마우스 휠/한 손가락 스와이프가 지도 확대 대신 페이지 스크롤로 간다. */
+  gestureHandling?: "greedy" | "cooperative"
 }) {
   const apiKey = googleMapsApiKey()
   const [missingKey] = useState(!apiKey)
@@ -377,6 +384,7 @@ export function NearbyMap({
             recenterKey={recenterKey}
             locating={locating}
             fill={fill}
+            gestureHandling={gestureHandling}
           />
         </div>
       </APIProvider>
