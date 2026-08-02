@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Loader2, MapPin, Search, Star, X } from "lucide-react"
 
 import {
@@ -27,6 +27,7 @@ import {
   type WishlistKind,
 } from "@/lib/trip-itinerary"
 import { guessSubCategory, SUBCATEGORIES_BY_KIND } from "@/lib/place-subcategories"
+import { classifySubCategory } from "@/lib/place-subcategory-classifier"
 import { cn } from "@/lib/utils"
 
 const inputClassName =
@@ -83,10 +84,14 @@ export function AddSavedPlaceModal({
   const [searchingGoogle, setSearchingGoogle] = useState(false)
   const [searchWarning, setSearchWarning] = useState<string | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(true)
+  const [classifyingSubCategory, setClassifyingSubCategory] = useState(false)
+  const selectionTokenRef = useRef(0)
 
   const suggestions = googleResults
 
   const reset = useCallback(() => {
+    selectionTokenRef.current += 1
+    setClassifyingSubCategory(false)
     setKind(defaultKind)
     setSearchQuery("")
     setPlaceName("")
@@ -154,22 +159,23 @@ export function AddSavedPlaceModal({
 
   const handleSelectPlace = (place: PlaceSearchResult) => {
     const name = String(place.placeName ?? "").trim()
+    const localName = String(place.localName ?? "").trim() || name
+    const address = String(place.address ?? "").trim()
     const resolvedKind =
       place.kind === "restaurant" || place.kind === "bar" || place.kind === "stay"
         ? place.kind
         : kind
+    const guessed = guessSubCategory({
+      kind: resolvedKind,
+      name,
+      hint: `${place.subCategory ?? ""} ${searchQuery}`,
+    })
     setSearchQuery(name)
     setPlaceName(name)
-    setLocalName(String(place.localName ?? "").trim() || name)
-    setSubCategory(
-      guessSubCategory({
-        kind: resolvedKind,
-        name,
-        hint: `${place.subCategory ?? ""} ${searchQuery}`,
-      })
-    )
+    setLocalName(localName)
+    setSubCategory(guessed)
     setGuideBadge(String(place.guideBadge ?? "").trim())
-    setAddress(String(place.address ?? "").trim())
+    setAddress(address)
     setLat(typeof place.lat === "number" ? place.lat : null)
     setLng(typeof place.lng === "number" ? place.lng : null)
     setPhoneNumber(String(place.phoneNumber ?? "").trim())
@@ -180,6 +186,20 @@ export function AddSavedPlaceModal({
     if (resolvedKind !== kind) setKind(resolvedKind)
     setDropdownOpen(false)
     setError(null)
+
+    // 정규식으로 못 잡는 경우(유명 체인점 등)를 Gemini 상식으로 한 번 더 보정한다.
+    if (guessed === "기타") {
+      const token = ++selectionTokenRef.current
+      setClassifyingSubCategory(true)
+      void classifySubCategory({ kind: resolvedKind, placeName: name, localName, address })
+        .then((result) => {
+          if (selectionTokenRef.current !== token) return
+          if (result) setSubCategory(result)
+        })
+        .finally(() => {
+          if (selectionTokenRef.current === token) setClassifyingSubCategory(false)
+        })
+    }
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -419,11 +439,16 @@ export function AddSavedPlaceModal({
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-zinc-700">
+                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-zinc-700">
                   세부 카테고리
-                  <span className="ml-1 font-normal text-zinc-400">
-                    · 검색 결과 선택 시 자동으로 골라져요
+                  <span className="font-normal text-zinc-400">
+                    {classifyingSubCategory
+                      ? "· AI가 확인하는 중…"
+                      : "· 검색 결과 선택 시 자동으로 골라져요"}
                   </span>
+                  {classifyingSubCategory ? (
+                    <Loader2 className="size-3 animate-spin text-zinc-400" />
+                  ) : null}
                 </label>
                 <div className="flex flex-wrap gap-1.5">
                   {SUBCATEGORIES_BY_KIND[kind].map((option) => {
