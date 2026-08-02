@@ -1,13 +1,27 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import dynamic from "next/dynamic"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Heart, Loader2, Plane, Plus, Star, X } from "lucide-react"
+import {
+  Heart,
+  List,
+  Loader2,
+  Map as MapIcon,
+  Navigation,
+  Plane,
+  Plus,
+  Star,
+  X,
+} from "lucide-react"
 
+import { useGeolocation } from "@/hooks/use-geolocation"
 import { LoginRedirectOverlay } from "@/components/login-redirect-overlay"
 import { AddSavedPlaceModal } from "@/components/itinerary/AddSavedPlaceModal"
+import { type MapSpot } from "@/components/nearby-map"
 import { TripPickerModal } from "@/components/quick-register/trip-picker-modal"
 import { useTrips } from "@/components/trips-store"
+import { distanceMeters, estimateWalkMinutes, formatDistance } from "@/lib/geo"
 import {
   assignSavedPlaceToTrip,
   deleteSavedPlace,
@@ -18,7 +32,20 @@ import {
 import { cn } from "@/lib/utils"
 import { createClient } from "@/utils/supabase/client"
 
+const NearbyMap = dynamic(
+  () => import("@/components/nearby-map").then((mod) => mod.NearbyMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex aspect-[4/3] w-full items-center justify-center rounded-2xl border border-border bg-secondary sm:aspect-[16/11]">
+        <p className="text-sm text-muted-foreground">Google 지도를 불러오는 중…</p>
+      </div>
+    ),
+  }
+)
+
 type AuthPhase = "checking" | "guest" | "authed"
+type ViewMode = "list" | "map"
 
 /** "저장한 장소" — 여행에 상관없이 담아둔 관심 맛집을 한곳에 모아보는 탭. */
 export function SavedPlacesView() {
@@ -33,6 +60,13 @@ export function SavedPlacesView() {
   const [assigningPlace, setAssigningPlace] = useState<SavedPlace | null>(null)
   const [assigningError, setAssigningError] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<ViewMode>("list")
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [selectedMapId, setSelectedMapId] = useState<string | null>(null)
+  const [recenterKey, setRecenterKey] = useState(0)
+  const didAutoCenter = useRef(false)
+  const followNextFix = useRef(false)
+  const geo = useGeolocation()
 
   useEffect(() => {
     let cancelled = false
@@ -72,6 +106,24 @@ export function SavedPlacesView() {
     void loadPlaces(userId)
   }, [authPhase, userId])
 
+  // 마커 아바타용 — 저장한 장소는 전부 내 소유라 프로필 사진 하나만 있으면 된다.
+  useEffect(() => {
+    if (!userId) return
+    let cancelled = false
+    void (async () => {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", userId)
+        .maybeSingle()
+      if (!cancelled) setAvatarUrl((data?.avatar_url as string | null) ?? null)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
+
   // AI가 대표 이미지를 실내/음식 사진으로 골라 교체하면 조용히 목록만 갱신한다.
   useEffect(() => {
     if (authPhase !== "authed" || !userId) return
@@ -99,6 +151,64 @@ export function SavedPlacesView() {
     if (!subFilter) return places
     return places.filter((place) => place.subCategory.trim() === subFilter)
   }, [places, subFilter])
+
+  /** 지도 모드 마커 — 현재 카테고리 필터가 그대로 적용되고, 좌표가 없는 곳은 제외된다. */
+  const mapSpots: MapSpot[] = useMemo(() => {
+    return filteredPlaces
+      .filter(
+        (place): place is SavedPlace & { lat: number; lng: number } =>
+          typeof place.lat === "number" && typeof place.lng === "number"
+      )
+      .map((place) => {
+        const meters = distanceMeters(geo.position, { lat: place.lat, lng: place.lng })
+        return {
+          id: place.id,
+          name: place.placeName,
+          nameLocal: place.localName || place.placeName,
+          category: place.subCategory || place.category || "저장한 장소",
+          address: place.address,
+          lat: place.lat,
+          lng: place.lng,
+          rating: place.rating ?? 0,
+          image: place.imageUrl,
+          imageAlt: place.placeName,
+          userId,
+          authorNickname: null,
+          authorAvatarUrl: avatarUrl,
+          isInterest: true,
+          distanceMeters: meters,
+          distanceLabel: formatDistance(meters),
+        }
+      })
+      .sort((a, b) => a.distanceMeters - b.distanceMeters)
+  }, [filteredPlaces, geo.position, avatarUrl, userId])
+
+  const selectedMapSpot = mapSpots.find((spot) => spot.id === selectedMapId) ?? null
+
+  useEffect(() => {
+    if (viewMode !== "map") return
+    if (geo.status !== "ready") return
+    if (!didAutoCenter.current) {
+      didAutoCenter.current = true
+      setRecenterKey((key) => key + 1)
+      return
+    }
+    if (followNextFix.current) {
+      followNextFix.current = false
+      setRecenterKey((key) => key + 1)
+    }
+  }, [viewMode, geo.status, geo.position.lat, geo.position.lng])
+
+  const handleRecenter = () => {
+    followNextFix.current = true
+    setRecenterKey((key) => key + 1)
+    geo.locate()
+  }
+
+  const handleOpenDirections = (spot: { lat: number; lng: number }) => {
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${geo.position.lat},${geo.position.lng}&destination=${spot.lat},${spot.lng}`
+    window.open(url, "_blank", "noopener,noreferrer")
+  }
 
   const handleAssignTrip = async (tripId: string) => {
     if (!assigningPlace) return
@@ -182,6 +292,35 @@ export function SavedPlacesView() {
         </div>
       ) : (
         <>
+          <div className="flex items-center gap-1 self-start rounded-full border border-slate-200 bg-white p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-all",
+                viewMode === "list"
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : "text-slate-500 hover:bg-slate-100"
+              )}
+            >
+              <List className="size-3.5" />
+              리스트
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("map")}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-all",
+                viewMode === "map"
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : "text-slate-500 hover:bg-slate-100"
+              )}
+            >
+              <MapIcon className="size-3.5" />
+              지도로 보기
+            </button>
+          </div>
+
           <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">
             <button
               type="button"
@@ -233,7 +372,55 @@ export function SavedPlacesView() {
             })}
           </div>
 
-          {filteredPlaces.length === 0 ? (
+          {viewMode === "map" ? (
+            mapSpots.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
+                이 카테고리엔 위치 정보가 있는 장소가 없어요.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <NearbyMap
+                  center={geo.position}
+                  accuracy={geo.accuracy}
+                  spots={mapSpots}
+                  selectedId={selectedMapId}
+                  onSelect={setSelectedMapId}
+                  onRecenter={handleRecenter}
+                  recenterKey={recenterKey}
+                  locating={geo.status === "locating"}
+                  className="h-[420px]"
+                  fill
+                />
+                {selectedMapSpot ? (
+                  <div className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-slate-900">{selectedMapSpot.name}</p>
+                        <p className="mt-1 text-xs text-slate-400">{selectedMapSpot.address}</p>
+                        <p className="mt-1 text-[11px] text-slate-400">
+                          {selectedMapSpot.category}
+                        </p>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold tabular-nums text-amber-700">
+                        {selectedMapSpot.distanceLabel}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-400 tabular-nums">
+                      도보 약 {estimateWalkMinutes(selectedMapSpot.distanceMeters)}분
+                    </p>
+                    <button
+                      type="button"
+                      className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-amber-400 py-2.5 text-sm font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 active:scale-[0.99]"
+                      onClick={() => handleOpenDirections(selectedMapSpot)}
+                    >
+                      <Navigation className="size-4" />
+                      길찾기
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            )
+          ) : filteredPlaces.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
               이 카테고리에 저장된 장소가 없어요.
             </div>
