@@ -36,13 +36,6 @@ const NearbyMap = dynamic(
 
 type AuthPhase = "checking" | "guest" | "authed"
 
-/** 헤더(모바일 상단바) 높이 — sticky top 오프셋 기준. */
-const HEADER_OFFSET = 62
-/** 스크롤 top=0일 때 지도 아래로 보이는 리스트 미리보기(핸들+칩) 높이. */
-const PEEK_HEIGHT = 104
-/** 지도가 다 보일 때의 높이 — 헤더/타이틀/하단 네비를 뺀 나머지. */
-const MAP_HEIGHT = "calc(100dvh - 258px)"
-
 /** "저장한 장소" — 여행에 상관없이 담아둔 관심 맛집을 한곳에 모아보는 탭. */
 export function SavedPlacesView() {
   const router = useRouter()
@@ -208,14 +201,10 @@ export function SavedPlacesView() {
     geo.locate()
   }
 
-  /**
-   * 리스트 카드를 누르면 지도가 그 위치로 이동한다. 모바일은 지도가 스크롤에
-   * 덮여 있을 수 있으니 맨 위로 스크롤해서 다시 보이게 하고, 데스크톱은 지도가
-   * 항상 옆에 보이니 그냥 선택만 하면 된다.
-   */
-  const handleSelectOnMap = (placeId: string, scrollToReveal: boolean) => {
+  /** 리스트 카드를 누르면 지도가 그 위치로 이동하고, 지도가 다시 보이도록 맨 위로 스크롤한다. */
+  const handleSelectOnMap = (placeId: string) => {
     setSelectedMapId(placeId)
-    if (scrollToReveal) window.scrollTo({ top: 0, behavior: "smooth" })
+    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   const handleAssignTrip = async (tripId: string) => {
@@ -308,10 +297,10 @@ export function SavedPlacesView() {
     </>
   )
 
-  const renderPlaceCard = (place: SavedPlace, scrollToReveal: boolean) => (
+  const renderPlaceCard = (place: SavedPlace) => (
     <li
       key={place.id}
-      onClick={() => handleSelectOnMap(place.id, scrollToReveal)}
+      onClick={() => handleSelectOnMap(place.id)}
       className={cn(
         "flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-2.5 shadow-sm transition-colors",
         selectedMapId === place.id
@@ -419,89 +408,53 @@ export function SavedPlacesView() {
           </button>
         </div>
       ) : (
-        <>
+        <div className="relative -mx-4 md:-mx-6">
           {/*
-            모바일: 지도는 sticky로 화면에 고정되고, 리스트 카드는 지도 아래를 살짝
-            겹치도록 음수 마진으로 끌어올려 둔다. 페이지를 아래로 스크롤하면 리스트가
-            지도를 덮으며 올라오고, 맨 위로 스크롤하면 다시 지도 전체 + 타이틀이
-            보인다 — 핸들을 따로 잡을 필요 없이 일반 스크롤만으로 동작한다.
+            지도는 sticky로 화면에 고정되고, 리스트 카드는 지도 아래를 살짝 겹치도록
+            음수 마진으로 끌어올려 둔다. 페이지를 아래로 스크롤하면 리스트가 지도를
+            덮으며 올라오고, 맨 위로 스크롤하면 다시 지도 전체 + 타이틀이 보인다 —
+            모바일/데스크톱 둘 다 동일하게, 핸들 없이 일반 스크롤만으로 동작한다.
+            데스크톱은 헤더(40px)·좌우 여백(24px)만 다르고 나머지는 동일하다.
           */}
-          <div className="relative -mx-4 md:hidden">
-            <div className="sticky z-0" style={{ top: HEADER_OFFSET, height: MAP_HEIGHT }}>
-              <NearbyMap
-                center={geo.position}
-                accuracy={geo.accuracy}
-                spots={mapSpots}
-                selectedId={selectedMapId}
-                onSelect={setSelectedMapId}
-                onRecenter={handleRecenter}
-                recenterKey={recenterKey}
-                locating={geo.status === "locating"}
-                className="h-full rounded-none border-x-0"
-                fill
-              />
-            </div>
-
-            <div
-              className="relative z-10 min-h-[130vh] rounded-t-3xl bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.14)]"
-              style={{ marginTop: `-${PEEK_HEIGHT}px` }}
-            >
-              <div className="flex justify-center pt-2.5 pb-1">
-                <span className="h-1.5 w-10 rounded-full bg-slate-300" />
-              </div>
-
-              <div
-                className="sticky z-10 flex items-center gap-2 overflow-x-auto bg-white/95 px-4 pb-2.5 backdrop-blur"
-                style={{ top: HEADER_OFFSET }}
-              >
-                {filterChipsNode}
-              </div>
-
-              <div className="px-4 pt-3 pb-6">
-                {filteredPlaces.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
-                    이 카테고리에 저장된 장소가 없어요.
-                  </div>
-                ) : (
-                  <ul className="flex flex-col gap-2.5">
-                    {filteredPlaces.map((place) => renderPlaceCard(place, true))}
-                  </ul>
-                )}
-              </div>
-            </div>
+          <div
+            className="sticky z-0 top-[62px] h-[calc(100dvh-258px)] md:top-[40px] md:h-[calc(100dvh-190px)]"
+          >
+            <NearbyMap
+              center={geo.position}
+              accuracy={geo.accuracy}
+              spots={mapSpots}
+              selectedId={selectedMapId}
+              onSelect={setSelectedMapId}
+              onRecenter={handleRecenter}
+              recenterKey={recenterKey}
+              locating={geo.status === "locating"}
+              className="h-full rounded-none border-x-0"
+              fill
+            />
           </div>
 
-          {/* 데스크톱: 지도와 리스트가 항상 나란히 보이니 스크롤로 덮을 필요가 없다. */}
-          <div className="hidden md:flex md:flex-col md:gap-4">
-            <div className="flex flex-wrap items-center gap-2">{filterChipsNode}</div>
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-              <NearbyMap
-                center={geo.position}
-                accuracy={geo.accuracy}
-                spots={mapSpots}
-                selectedId={selectedMapId}
-                onSelect={setSelectedMapId}
-                onRecenter={handleRecenter}
-                recenterKey={recenterKey}
-                locating={geo.status === "locating"}
-              />
-              <section className="flex flex-col gap-3">
-                <p className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-                  {filteredPlaces.length}곳
-                </p>
-                {filteredPlaces.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
-                    이 카테고리에 저장된 장소가 없어요.
-                  </div>
-                ) : (
-                  <ul className="flex max-h-[min(70vh,640px)] flex-col gap-2.5 overflow-y-auto pr-0.5">
-                    {filteredPlaces.map((place) => renderPlaceCard(place, false))}
-                  </ul>
-                )}
-              </section>
+          <div className="relative z-10 -mt-[104px] min-h-[130vh] rounded-t-3xl bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.14)] md:-mt-[88px]">
+            <div className="flex justify-center pt-2.5 pb-1">
+              <span className="h-1.5 w-10 rounded-full bg-slate-300" />
+            </div>
+
+            <div className="sticky z-10 top-[62px] flex items-center gap-2 overflow-x-auto bg-white/95 px-4 pb-2.5 backdrop-blur md:top-[40px] md:px-6">
+              {filterChipsNode}
+            </div>
+
+            <div className="px-4 pt-3 pb-6 md:px-6">
+              {filteredPlaces.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
+                  이 카테고리에 저장된 장소가 없어요.
+                </div>
+              ) : (
+                <ul className="flex flex-col gap-2.5 md:grid md:grid-cols-2 xl:grid-cols-3">
+                  {filteredPlaces.map((place) => renderPlaceCard(place))}
+                </ul>
+              )}
             </div>
           </div>
-        </>
+        </div>
       )}
 
       <AddSavedPlaceModal
