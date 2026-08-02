@@ -15,7 +15,6 @@ import {
   getErrorMessage,
   type SavedPlace,
 } from "@/lib/saved-places-api"
-import { wishlistCategories } from "@/lib/trip-itinerary"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/utils/supabase/client"
 
@@ -29,7 +28,6 @@ export function SavedPlacesView() {
   const [userId, setUserId] = useState<string | null>(null)
   const [places, setPlaces] = useState<SavedPlace[]>([])
   const [loading, setLoading] = useState(false)
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
   const [subFilter, setSubFilter] = useState<string | null>(null)
   const [addOpen, setAddOpen] = useState(false)
   const [assigningPlace, setAssigningPlace] = useState<SavedPlace | null>(null)
@@ -74,24 +72,10 @@ export function SavedPlacesView() {
     void loadPlaces(userId)
   }, [authPhase, userId])
 
-  /** 전체 / 레스토랑 / 라운지 & 바 / 숙소 — 저장된 값 기준 카운트. */
-  const categoryChips = useMemo(() => {
-    return wishlistCategories.map((item) => ({
-      value: item.label,
-      label: item.label,
-      count: places.filter((place) => place.category === item.label).length,
-    }))
-  }, [places])
-
-  const categoryFiltered = useMemo(() => {
-    if (!categoryFilter) return places
-    return places.filter((place) => place.category === categoryFilter)
-  }, [places, categoryFilter])
-
-  /** 카테고리 필터 안에서, 실제로 존재하는 세부(음식) 카테고리만 칩으로 보여준다. */
+  /** 저장된 장소에 실제로 존재하는 세부(음식) 카테고리만 칩으로 보여준다 — 일식/한식/스시/국수… */
   const subChips = useMemo(() => {
     const map = new Map<string, number>()
-    for (const place of categoryFiltered) {
+    for (const place of places) {
       const sub = place.subCategory.trim()
       if (!sub) continue
       map.set(sub, (map.get(sub) ?? 0) + 1)
@@ -99,16 +83,12 @@ export function SavedPlacesView() {
     return Array.from(map.entries())
       .map(([label, count]) => ({ label, count }))
       .sort((a, b) => b.count - a.count)
-  }, [categoryFiltered])
-
-  useEffect(() => {
-    setSubFilter(null)
-  }, [categoryFilter])
+  }, [places])
 
   const filteredPlaces = useMemo(() => {
-    if (!subFilter) return categoryFiltered
-    return categoryFiltered.filter((place) => place.subCategory.trim() === subFilter)
-  }, [categoryFiltered, subFilter])
+    if (!subFilter) return places
+    return places.filter((place) => place.subCategory.trim() === subFilter)
+  }, [places, subFilter])
 
   const handleAssignTrip = async (tripId: string) => {
     if (!assigningPlace) return
@@ -195,10 +175,10 @@ export function SavedPlacesView() {
           <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">
             <button
               type="button"
-              onClick={() => setCategoryFilter(null)}
+              onClick={() => setSubFilter(null)}
               className={cn(
                 "flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
-                !categoryFilter
+                !subFilter
                   ? "border-amber-400 bg-amber-400 text-slate-950 shadow-sm"
                   : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/60"
               )}
@@ -207,69 +187,41 @@ export function SavedPlacesView() {
               <span
                 className={cn(
                   "rounded-full px-1.5 text-[10px] tabular-nums",
-                  !categoryFilter ? "bg-slate-950/15" : "bg-slate-100"
+                  !subFilter ? "bg-slate-950/15" : "bg-slate-100"
                 )}
               >
                 {places.length}
               </span>
             </button>
-            {categoryChips
-              .filter((chip) => chip.count > 0)
-              .map((chip) => {
-                const active = categoryFilter === chip.value
-                return (
-                  <button
-                    key={chip.value}
-                    type="button"
-                    onClick={() =>
-                      setCategoryFilter((current) => (current === chip.value ? null : chip.value))
-                    }
+            {subChips.map((chip) => {
+              const active = subFilter === chip.label
+              return (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={() =>
+                    setSubFilter((current) => (current === chip.label ? null : chip.label))
+                  }
+                  className={cn(
+                    "flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
+                    active
+                      ? "border-amber-400 bg-amber-400 text-slate-950 shadow-sm"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/60"
+                  )}
+                >
+                  {chip.label}
+                  <span
                     className={cn(
-                      "flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
-                      active
-                        ? "border-amber-400 bg-amber-400 text-slate-950 shadow-sm"
-                        : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/60"
+                      "rounded-full px-1.5 text-[10px] tabular-nums",
+                      active ? "bg-slate-950/15" : "bg-slate-100"
                     )}
                   >
-                    {chip.label}
-                    <span
-                      className={cn(
-                        "rounded-full px-1.5 text-[10px] tabular-nums",
-                        active ? "bg-slate-950/15" : "bg-slate-100"
-                      )}
-                    >
-                      {chip.count}
-                    </span>
-                  </button>
-                )
-              })}
+                    {chip.count}
+                  </span>
+                </button>
+              )
+            })}
           </div>
-
-          {subChips.length > 0 ? (
-            <div className="-mx-1 -mt-2 flex items-center gap-1.5 overflow-x-auto px-1 pb-1">
-              <span className="shrink-0 text-[11px] font-bold text-slate-400">음식 종류</span>
-              {subChips.map((chip) => {
-                const active = subFilter === chip.label
-                return (
-                  <button
-                    key={chip.label}
-                    type="button"
-                    onClick={() =>
-                      setSubFilter((current) => (current === chip.label ? null : chip.label))
-                    }
-                    className={cn(
-                      "shrink-0 rounded-full border px-3 py-1 text-[11px] font-semibold transition-all",
-                      active
-                        ? "border-slate-900 bg-slate-900 text-white"
-                        : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
-                    )}
-                  >
-                    {chip.label} {chip.count}
-                  </button>
-                )
-              })}
-            </div>
-          ) : null}
 
           {filteredPlaces.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">

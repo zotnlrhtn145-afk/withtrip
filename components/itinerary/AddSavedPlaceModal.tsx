@@ -26,6 +26,7 @@ import {
   WISHLIST_CATEGORY_VALUE,
   type WishlistKind,
 } from "@/lib/trip-itinerary"
+import { guessSubCategory, SUBCATEGORIES_BY_KIND } from "@/lib/place-subcategories"
 import { cn } from "@/lib/utils"
 
 const inputClassName =
@@ -151,10 +152,16 @@ export function AddSavedPlaceModal({
 
   const handleSelectPlace = (place: PlaceSearchResult) => {
     const name = String(place.placeName ?? "").trim()
+    const resolvedKind =
+      place.kind === "restaurant" || place.kind === "bar" || place.kind === "stay"
+        ? place.kind
+        : kind
     setSearchQuery(name)
     setPlaceName(name)
     setLocalName(String(place.localName ?? "").trim() || name)
-    setSubCategory(String(place.subCategory ?? "").trim())
+    setSubCategory(
+      guessSubCategory({ kind: resolvedKind, name, hint: place.subCategory })
+    )
     setGuideBadge(String(place.guideBadge ?? "").trim())
     setAddress(String(place.address ?? "").trim())
     setLat(typeof place.lat === "number" ? place.lat : null)
@@ -163,9 +170,7 @@ export function AddSavedPlaceModal({
     setImageUrl(String(place.imageUrl ?? place.image ?? "").trim())
     setRating(typeof place.rating === "number" ? place.rating : null)
     setReviewCount(typeof place.reviewCount === "number" ? place.reviewCount : null)
-    if (place.kind === "restaurant" || place.kind === "bar" || place.kind === "stay") {
-      setKind(place.kind)
-    }
+    if (resolvedKind !== kind) setKind(resolvedKind)
     setDropdownOpen(false)
     setError(null)
   }
@@ -277,6 +282,9 @@ export function AddSavedPlaceModal({
                       type="button"
                       onClick={() => {
                         setKind(item.kind)
+                        if (!SUBCATEGORIES_BY_KIND[item.kind].includes(subCategory)) {
+                          setSubCategory("")
+                        }
                         setDropdownOpen(true)
                       }}
                       className={cn(
@@ -385,38 +393,49 @@ export function AddSavedPlaceModal({
 
             {/* Detail form */}
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label
-                    htmlFor="wishlist-local-name"
-                    className="mb-1.5 block text-xs font-medium text-zinc-700"
-                  >
-                    현지 표기
-                  </label>
-                  <input
-                    id="wishlist-local-name"
-                    type="text"
-                    value={localName}
-                    onChange={(event) => setLocalName(event.target.value)}
-                    placeholder="예: ハジメ"
-                    className={inputClassName}
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="wishlist-sub-category"
-                    className="mb-1.5 block text-xs font-medium text-zinc-700"
-                  >
-                    세부 카테고리
-                  </label>
-                  <input
-                    id="wishlist-sub-category"
-                    type="text"
-                    value={subCategory}
-                    onChange={(event) => setSubCategory(event.target.value)}
-                    placeholder="이노베이티브 프렌치·코스"
-                    className={inputClassName}
-                  />
+              <div>
+                <label
+                  htmlFor="wishlist-local-name"
+                  className="mb-1.5 block text-xs font-medium text-zinc-700"
+                >
+                  현지 표기
+                </label>
+                <input
+                  id="wishlist-local-name"
+                  type="text"
+                  value={localName}
+                  onChange={(event) => setLocalName(event.target.value)}
+                  placeholder="예: ハジメ"
+                  className={inputClassName}
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-700">
+                  세부 카테고리
+                  <span className="ml-1 font-normal text-zinc-400">
+                    · 검색 결과 선택 시 자동으로 골라져요
+                  </span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {SUBCATEGORIES_BY_KIND[kind].map((option) => {
+                    const active = subCategory === option
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => setSubCategory(active ? "" : option)}
+                        className={cn(
+                          "rounded-full px-3 py-1.5 text-xs font-medium transition-all",
+                          active
+                            ? "bg-zinc-900 text-white shadow-sm"
+                            : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
+                        )}
+                      >
+                        {option}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
