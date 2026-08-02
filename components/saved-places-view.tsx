@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Heart, Loader2, MapPin, Plane, Plus, Star, X } from "lucide-react"
 
 import { useGeolocation } from "@/hooks/use-geolocation"
+import { DirectionsMenu } from "@/components/directions-menu"
 import { LoginRedirectOverlay } from "@/components/login-redirect-overlay"
 import { AddSavedPlaceModal } from "@/components/itinerary/AddSavedPlaceModal"
 import { type MapSpot } from "@/components/nearby-map"
@@ -346,6 +347,16 @@ export function SavedPlacesView() {
           <Plane className="size-3" />
           담기
         </button>
+        <DirectionsMenu
+          destination={
+            place.lat != null && place.lng != null
+              ? { name: place.placeName, lat: place.lat, lng: place.lng }
+              : null
+          }
+          fallbackQuery={place.address || place.placeName}
+          variant="icon"
+          className="size-7 border-slate-200 text-amber-600"
+        />
         <button
           type="button"
           onClick={(event) => {

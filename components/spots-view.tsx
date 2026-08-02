@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 
 import { useGeolocation } from "@/hooks/use-geolocation"
+import { DirectionsMenu } from "@/components/directions-menu"
 import { LoginRedirectOverlay } from "@/components/login-redirect-overlay"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -42,10 +43,6 @@ const NearbyMap = dynamic(
 )
 
 type AuthPhase = "checking" | "guest" | "authed"
-
-function directionsUrl(origin: { lat: number; lng: number }, dest: { lat: number; lng: number }) {
-  return `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${dest.lat},${dest.lng}`
-}
 
 function SpotsEmptyState({ onGoHome }: { onGoHome: () => void }) {
   return (
@@ -197,10 +194,6 @@ export function SpotsView() {
     followNextFix.current = true
     setRecenterKey((key) => key + 1)
     geo.locate()
-  }
-
-  const handleOpenDirections = (spot: { lat: number; lng: number }) => {
-    window.open(directionsUrl(geo.position, spot), "_blank", "noopener,noreferrer")
   }
 
   const statusLabel = (() => {
@@ -485,14 +478,10 @@ export function SpotsView() {
                           </span>
                         </div>
                       </button>
-                      <button
-                        type="button"
-                        aria-label={`${spot.name}까지 길찾기`}
-                        onClick={() => handleOpenDirections(spot)}
-                        className="flex size-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-amber-600 transition-all hover:border-amber-300 hover:bg-amber-50 active:scale-95"
-                      >
-                        <Navigation className="size-4" />
-                      </button>
+                      <DirectionsMenu
+                        destination={{ name: spot.name, lat: spot.lat, lng: spot.lng }}
+                        variant="icon"
+                      />
                     </div>
                   </li>
                 )
@@ -533,14 +522,11 @@ export function SpotsView() {
                 위도 {selected.lat.toFixed(5)} · 경도 {selected.lng.toFixed(5)} ·
                 도보 약 {selected.walkMinutes}분
               </p>
-              <button
-                type="button"
-                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-amber-400 py-2.5 text-sm font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 active:scale-[0.99]"
-                onClick={() => handleOpenDirections(selected)}
-              >
-                <MapPin className="size-4" />
-                길찾기
-              </button>
+              <DirectionsMenu
+                destination={{ name: selected.name, lat: selected.lat, lng: selected.lng }}
+                variant="cta"
+                className="mt-3"
+              />
             </div>
           ) : null}
         </section>

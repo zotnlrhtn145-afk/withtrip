@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react"
 import Image from "next/image"
-import { Loader2, MapPin, Navigation, Phone, Star, Trash2 } from "lucide-react"
+import { Loader2, MapPin, Phone, Star, Trash2 } from "lucide-react"
 import type { User } from "@supabase/supabase-js"
 
+import { DirectionsMenu } from "@/components/directions-menu"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { resolveCoverImageUrl } from "@/lib/place-cover-image"
@@ -77,9 +78,10 @@ export function SavedPlaceCard({
   const isAuthor =
     authReady && Boolean(user?.id && isSavedPlaceAuthor(place, user.id))
 
-  const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    place.address || place.placeName
-  )}`
+  const destination =
+    place.lat != null && place.lng != null
+      ? { name: place.placeName, lat: place.lat, lng: place.lng }
+      : null
 
   return (
     <li className="group media-card flex flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-md">
@@ -202,18 +204,11 @@ export function SavedPlaceCard({
         </div>
 
         <div className="mt-auto flex justify-end pt-1">
-          <a
-            href={mapHref}
-            target="_blank"
-            rel="noreferrer"
-            className={cn(
-              "inline-flex h-7 items-center gap-1.5 rounded-full border border-slate-200 bg-white",
-              "touch-press px-2.5 text-[0.8rem] font-semibold text-slate-700 transition-colors hover:border-amber-400 hover:bg-amber-50"
-            )}
-          >
-            <Navigation className="size-3.5" />
-            길찾기
-          </a>
+          <DirectionsMenu
+            destination={destination}
+            fallbackQuery={place.address || place.placeName}
+            className="touch-press"
+          />
         </div>
       </div>
     </li>
