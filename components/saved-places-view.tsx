@@ -1,9 +1,8 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { animate, motion, useDragControls, useMotionValue, type PanInfo } from "framer-motion"
 import { Heart, Loader2, MapPin, Plane, Plus, Star, X } from "lucide-react"
 
 import { useGeolocation } from "@/hooks/use-geolocation"
@@ -37,10 +36,12 @@ const NearbyMap = dynamic(
 
 type AuthPhase = "checking" | "guest" | "authed"
 
-/** 시트가 접혔을 때 지도 아래로 살짝 보이는 높이 (핸들 + 칩 한 줄). */
-const PEEK_HEIGHT = 108
-/** 지도 + 시트 컨테이너의 하단 여백 (하단 네비바 높이만큼). */
-const BOTTOM_CLEARANCE = 96
+/** 헤더(모바일 상단바) 높이 — sticky top 오프셋 기준. */
+const HEADER_OFFSET = 62
+/** 스크롤 top=0일 때 지도 아래로 보이는 리스트 미리보기(핸들+칩) 높이. */
+const PEEK_HEIGHT = 104
+/** 지도가 다 보일 때의 높이 — 헤더/타이틀/하단 네비를 뺀 나머지. */
+const MAP_HEIGHT = "calc(100dvh - 258px)"
 
 /** "저장한 장소" — 여행에 상관없이 담아둔 관심 맛집을 한곳에 모아보는 탭. */
 export function SavedPlacesView() {
@@ -61,52 +62,6 @@ export function SavedPlacesView() {
   const didAutoCenter = useRef(false)
   const followNextFix = useRef(false)
   const geo = useGeolocation()
-
-  // 캐치테이블 "내주변"처럼 지도는 고정되어 있고, 리스트를 담은 시트를 손가락/마우스로
-  // 끌어올리면 지도를 덮으며 펼쳐지고, 다시 내리면 지도 위로 살짝 걸치는 정도로 접힌다.
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [containerHeight, setContainerHeight] = useState(520)
-  const [sheetExpanded, setSheetExpanded] = useState(false)
-  const sheetY = useMotionValue(0)
-  const dragControls = useDragControls()
-  const collapsedY = Math.max(0, containerHeight - PEEK_HEIGHT)
-
-  useLayoutEffect(() => {
-    const measure = () => {
-      const el = containerRef.current
-      if (!el) return
-      const top = el.getBoundingClientRect().top
-      setContainerHeight(Math.max(360, window.innerHeight - top - BOTTOM_CLEARANCE))
-    }
-    measure()
-    // 페이지 진입 애니메이션(트랜지션)이 끝난 뒤 자리가 확정된 상태로 다시 한 번 잰다.
-    const raf = requestAnimationFrame(measure)
-    const timer = window.setTimeout(measure, 350)
-    window.addEventListener("resize", measure)
-    return () => {
-      cancelAnimationFrame(raf)
-      window.clearTimeout(timer)
-      window.removeEventListener("resize", measure)
-    }
-  }, [])
-
-  useEffect(() => {
-    animate(sheetY, sheetExpanded ? 0 : collapsedY, {
-      type: "spring",
-      damping: 32,
-      stiffness: 320,
-    })
-  }, [sheetExpanded, collapsedY, sheetY])
-
-  const handleSheetDragEnd = (_: unknown, info: PanInfo) => {
-    // 빠르게 튕기듯 드래그했을 때만 속도로 판단하고, 그 외엔 놓은 위치가
-    // 중간보다 위/아래인지로 결정한다 — 이러면 짧고 느린 드래그도 자연스럽다.
-    if (Math.abs(info.velocity.y) > 500) {
-      setSheetExpanded(info.velocity.y < 0)
-      return
-    }
-    setSheetExpanded(sheetY.get() < collapsedY / 2)
-  }
 
   useEffect(() => {
     let cancelled = false
@@ -253,6 +208,12 @@ export function SavedPlacesView() {
     geo.locate()
   }
 
+  /** 리스트 카드를 누르면 지도가 그 위치로 이동하고, 지도가 다시 보이도록 맨 위로 스크롤한다. */
+  const handleSelectOnMap = (placeId: string) => {
+    setSelectedMapId(placeId)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
   const handleAssignTrip = async (tripId: string) => {
     if (!assigningPlace) return
     const place = assigningPlace
@@ -291,57 +252,6 @@ export function SavedPlacesView() {
       </div>
     )
   }
-
-  const filterChips = (
-    <>
-      <button
-        type="button"
-        onClick={() => setSubFilter(null)}
-        className={cn(
-          "flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
-          !subFilter
-            ? "border-amber-400 bg-amber-400 text-slate-950 shadow-sm"
-            : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/60"
-        )}
-      >
-        전체
-        <span
-          className={cn(
-            "rounded-full px-1.5 text-[10px] tabular-nums",
-            !subFilter ? "bg-slate-950/15" : "bg-slate-100"
-          )}
-        >
-          {places.length}
-        </span>
-      </button>
-      {subChips.map((chip) => {
-        const active = subFilter === chip.label
-        return (
-          <button
-            key={chip.label}
-            type="button"
-            onClick={() => setSubFilter((current) => (current === chip.label ? null : chip.label))}
-            className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
-              active
-                ? "border-amber-400 bg-amber-400 text-slate-950 shadow-sm"
-                : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/60"
-            )}
-          >
-            {chip.label}
-            <span
-              className={cn(
-                "rounded-full px-1.5 text-[10px] tabular-nums",
-                active ? "bg-slate-950/15" : "bg-slate-100"
-              )}
-            >
-              {chip.count}
-            </span>
-          </button>
-        )
-      })}
-    </>
-  )
 
   return (
     <div className="flex w-full flex-col gap-5 bg-white">
@@ -385,9 +295,14 @@ export function SavedPlacesView() {
           </button>
         </div>
       ) : (
-        <div ref={containerRef} className="relative -mx-4" style={{ height: containerHeight }}>
-          {/* 지도는 항상 고정되어 있고, 시트가 그 위를 덮는다 (캐치테이블 "내주변" 방식). */}
-          <div className="absolute inset-0">
+        <div className="relative -mx-4">
+          {/*
+            지도는 sticky로 화면에 고정되고, 리스트 카드는 지도 아래를 살짝 겹치도록
+            음수 마진으로 끌어올려 둔다. 페이지를 아래로 스크롤하면 리스트가 지도를
+            덮으며 올라오고, 맨 위로 스크롤하면 다시 지도 전체 + 타이틀이 보인다 —
+            핸들을 따로 잡을 필요 없이 일반 스크롤만으로 동작한다.
+          */}
+          <div className="sticky z-0" style={{ top: HEADER_OFFSET, height: MAP_HEIGHT }}>
             <NearbyMap
               center={geo.position}
               accuracy={geo.accuracy}
@@ -402,31 +317,69 @@ export function SavedPlacesView() {
             />
           </div>
 
-          <motion.div
-            drag="y"
-            dragControls={dragControls}
-            dragListener={false}
-            dragConstraints={{ top: 0, bottom: collapsedY }}
-            dragElastic={0.04}
-            onDragEnd={handleSheetDragEnd}
-            style={{ y: sheetY, height: containerHeight }}
-            className="absolute inset-x-0 top-0 z-10 flex flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.14)]"
+          <div
+            className="relative z-10 min-h-[130vh] rounded-t-3xl bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.14)]"
+            style={{ marginTop: `-${PEEK_HEIGHT}px` }}
           >
-            <button
-              type="button"
-              onPointerDown={(event) => dragControls.start(event)}
-              onClick={() => setSheetExpanded((current) => !current)}
-              className="flex shrink-0 cursor-grab touch-none flex-col items-center gap-2 pt-2.5 pb-1 active:cursor-grabbing"
-              aria-label={sheetExpanded ? "목록 접기" : "목록 펼치기"}
-            >
+            <div className="flex justify-center pt-2.5 pb-1">
               <span className="h-1.5 w-10 rounded-full bg-slate-300" />
-            </button>
-
-            <div className="flex shrink-0 items-center gap-2 overflow-x-auto px-4 pb-2.5">
-              {filterChips}
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
+            <div
+              className="sticky z-10 flex items-center gap-2 overflow-x-auto bg-white/95 px-4 pb-2.5 backdrop-blur"
+              style={{ top: HEADER_OFFSET }}
+            >
+              <button
+                type="button"
+                onClick={() => setSubFilter(null)}
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
+                  !subFilter
+                    ? "border-amber-400 bg-amber-400 text-slate-950 shadow-sm"
+                    : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/60"
+                )}
+              >
+                전체
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 text-[10px] tabular-nums",
+                    !subFilter ? "bg-slate-950/15" : "bg-slate-100"
+                  )}
+                >
+                  {places.length}
+                </span>
+              </button>
+              {subChips.map((chip) => {
+                const active = subFilter === chip.label
+                return (
+                  <button
+                    key={chip.label}
+                    type="button"
+                    onClick={() =>
+                      setSubFilter((current) => (current === chip.label ? null : chip.label))
+                    }
+                    className={cn(
+                      "flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
+                      active
+                        ? "border-amber-400 bg-amber-400 text-slate-950 shadow-sm"
+                        : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/60"
+                    )}
+                  >
+                    {chip.label}
+                    <span
+                      className={cn(
+                        "rounded-full px-1.5 text-[10px] tabular-nums",
+                        active ? "bg-slate-950/15" : "bg-slate-100"
+                      )}
+                    >
+                      {chip.count}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="px-4 pt-3 pb-6">
               {filteredPlaces.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
                   이 카테고리에 저장된 장소가 없어요.
@@ -436,7 +389,13 @@ export function SavedPlacesView() {
                   {filteredPlaces.map((place) => (
                     <li
                       key={place.id}
-                      className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm"
+                      onClick={() => handleSelectOnMap(place.id)}
+                      className={cn(
+                        "flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-2.5 shadow-sm transition-colors",
+                        selectedMapId === place.id
+                          ? "border-amber-300 bg-amber-50/60"
+                          : "border-slate-100 hover:bg-slate-50"
+                      )}
                     >
                       <div className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-slate-100">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -468,7 +427,8 @@ export function SavedPlacesView() {
                       <div className="flex shrink-0 flex-col gap-1.5">
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(event) => {
+                            event.stopPropagation()
                             setAssigningError(null)
                             setAssigningPlace(place)
                           }}
@@ -479,7 +439,10 @@ export function SavedPlacesView() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => void handleRemove(place.id)}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            void handleRemove(place.id)
+                          }}
                           disabled={removingId === place.id}
                           aria-label={`${place.placeName} 삭제`}
                           className="flex items-center justify-center rounded-full border border-slate-200 p-1.5 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600 disabled:opacity-50"
@@ -496,7 +459,7 @@ export function SavedPlacesView() {
                 </ul>
               )}
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
 
