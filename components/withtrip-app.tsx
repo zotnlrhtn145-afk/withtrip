@@ -9,7 +9,6 @@ import { ForgotPasswordView } from "@/components/auth/forgot-password-view"
 import { LoginView } from "@/components/auth/login-view"
 import { SignupView } from "@/components/auth/signup-view"
 import { type NavKey } from "@/components/bottom-nav"
-import { CreateTripDialog } from "@/components/create-trip-dialog"
 import { FriendsView } from "@/components/friends-view"
 import { HomeView } from "@/components/home-view"
 import { FlightSection } from "@/components/itinerary/flight-section"
@@ -17,8 +16,6 @@ import { StaySection } from "@/components/itinerary/stay-section"
 import { WishlistSection } from "@/components/itinerary/wishlist-section"
 import { MyPageView } from "@/components/mypage-view"
 import { NotificationMenu } from "@/components/notification-menu"
-import { QuickMenuSheet } from "@/components/quick-register/quick-menu-sheet"
-import { TripPickerModal } from "@/components/quick-register/trip-picker-modal"
 import { ScheduleTimeline } from "@/components/schedule-timeline"
 import { SettlementView } from "@/components/settlement-view"
 import { SpotsView } from "@/components/spots-view"
@@ -58,10 +55,6 @@ function WithtripShell() {
   const [activeNav, setActiveNav] = useState<NavKey>("home")
   const [activeDay, setActiveDay] = useState("day1")
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null)
-  const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false)
-  const [isTripModalOpen, setIsTripModalOpen] = useState(false)
-  const [tripPickerPurpose, setTripPickerPurpose] = useState<"expense" | "place" | null>(null)
-  const [quickToast, setQuickToast] = useState<string | null>(null)
   const { trips } = useTrips()
 
   // Derive from the store so edits to the trip flow straight into the detail view.
@@ -242,14 +235,6 @@ function WithtripShell() {
       window.removeEventListener("withtrip:bottom-nav-tab", onBottomTab)
   }, [isLoggedIn])
 
-  // Mobile header's top-left "+" opens the same quick-add sheet as the round FAB.
-  useEffect(() => {
-    const onOpenQuickMenu = () => setIsQuickMenuOpen(true)
-    window.addEventListener("withtrip:open-quick-menu", onOpenQuickMenu)
-    return () =>
-      window.removeEventListener("withtrip:open-quick-menu", onOpenQuickMenu)
-  }, [])
-
   const goTo = (next: AppView) => {
     setCurrentView(next)
     window.scrollTo({ top: 0 })
@@ -354,101 +339,10 @@ function WithtripShell() {
     />
   )
 
-  const showQuickToast = (message: string) => {
-    setQuickToast(message)
-    window.setTimeout(() => setQuickToast(null), 2800)
-  }
-
-  const goToAddExpense = (tripId: string) => {
-    setActiveNav("settlement")
-    if (!selectedTripId) setSelectedTripId(tripId)
-    router.push(`/settlement/${tripId}?addExpense=1`)
-  }
-
-  const goToAddPlace = (tripId: string) => {
-    if (!selectedTripId) setSelectedTripId(tripId)
-    router.push(`/trips/${tripId}?addPlace=1`)
-  }
-
-  const handleSelectExpense = () => {
-    setIsQuickMenuOpen(false)
-    if (trips.length === 0) {
-      showQuickToast("먼저 여행을 만들어 주세요.")
-      return
-    }
-    if (trips.length === 1) {
-      goToAddExpense(trips[0].id)
-      return
-    }
-    setTripPickerPurpose("expense")
-  }
-
-  const handleSelectPlace = () => {
-    setIsQuickMenuOpen(false)
-    if (trips.length === 0) {
-      showQuickToast("먼저 여행을 만들어 주세요.")
-      return
-    }
-    if (trips.length === 1) {
-      goToAddPlace(trips[0].id)
-      return
-    }
-    setTripPickerPurpose("place")
-  }
-
-  // Shared across mobile + desktop so quick-add (trip/expense/place) works on every viewport.
-  const quickAddOverlay = (
-    <>
-      <QuickMenuSheet
-        open={isQuickMenuOpen}
-        onOpenChange={setIsQuickMenuOpen}
-        onSelectTrip={() => {
-          setIsQuickMenuOpen(false)
-          setIsTripModalOpen(true)
-        }}
-        onSelectExpense={handleSelectExpense}
-        onSelectPlace={handleSelectPlace}
-      />
-      <CreateTripDialog
-        open={isTripModalOpen}
-        onOpenChange={setIsTripModalOpen}
-        onCreated={(trip) => {
-          // Stay on home dashboard — do not open trip detail.
-          setSelectedTripId(null)
-          setActiveNav("home")
-          goTo("home")
-          showQuickToast(`「${trip.title}」 여행이 등록되었어요.`)
-        }}
-      />
-      <TripPickerModal
-        open={tripPickerPurpose !== null}
-        onOpenChange={(next) => {
-          if (!next) setTripPickerPurpose(null)
-        }}
-        trips={trips.map((trip) => ({ id: trip.id, title: trip.title }))}
-        title={tripPickerPurpose === "expense" ? "어느 여행의 지출인가요?" : "어느 여행에 저장할까요?"}
-        description="여러 여행이 등록되어 있어요. 하나를 선택해 주세요."
-        onSelect={(trip) => {
-          const purpose = tripPickerPurpose
-          setTripPickerPurpose(null)
-          if (purpose === "expense") goToAddExpense(trip.id)
-          else if (purpose === "place") goToAddPlace(trip.id)
-        }}
-      />
-      {quickToast ? (
-        <div className="fixed inset-x-0 bottom-24 z-[70] mx-auto w-full max-w-md px-4 md:right-6 md:left-auto md:max-w-sm">
-          <div className="rounded-2xl bg-foreground px-4 py-3 text-center text-sm font-semibold text-background shadow-lg animate-in fade-in-0 slide-in-from-bottom-2">
-            {quickToast}
-          </div>
-        </div>
-      ) : null}
-    </>
-  )
-
   const quickAddFab = (
     <button
       type="button"
-      onClick={() => setIsQuickMenuOpen(true)}
+      onClick={() => window.dispatchEvent(new CustomEvent("withtrip:open-quick-menu"))}
       aria-label="퀵 등록"
       title="퀵 등록"
       className="fixed right-5 bottom-24 z-[65] flex size-14 items-center justify-center rounded-full bg-amber-400 text-slate-950 shadow-lg shadow-amber-300/40 transition-all hover:scale-105 hover:bg-amber-500 active:scale-95 md:right-8 md:bottom-8"
@@ -492,7 +386,6 @@ function WithtripShell() {
           </main>
         </div>
 
-        {quickAddOverlay}
         <TripSearchDialog
           open={searchOpen}
           onOpenChange={setSearchOpen}
@@ -536,7 +429,6 @@ function WithtripShell() {
         </main>
       </div>
 
-      {quickAddOverlay}
       {quickAddFab}
       <TripSearchDialog open={searchOpen} onOpenChange={setSearchOpen} onSelectTrip={openTripDetail} />
     </div>

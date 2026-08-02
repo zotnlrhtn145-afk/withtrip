@@ -9,6 +9,7 @@ import { LoginNavigationProvider } from "@/components/login-navigation"
 import { MobileNotificationDrawer } from "@/components/notifications/MobileNotificationDrawer"
 import { NotificationDrawer } from "@/components/notifications/NotificationDrawer"
 import { NotificationsProvider } from "@/components/notifications/notifications-provider"
+import { GlobalQuickAdd } from "@/components/quick-register/global-quick-add"
 import { Sidebar, SIDEBAR_WIDTH_PX } from "@/components/sidebar"
 import { TripsProvider } from "@/components/trips-store"
 import { clearDocumentScrollLock } from "@/lib/clear-scroll-lock"
@@ -69,6 +70,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
           router.push(`/trips/${trip.id}`)
         }}
       />
+      <GlobalQuickAdd />
     </>
   )
 }
