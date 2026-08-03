@@ -47,11 +47,16 @@ export function TripScheduleBoard({
 
   return (
     <div className="w-full">
-      {/* 인스타그램 피드 상단 탭 스타일 — 미니멀 아이콘 + 라벨, 활성 탭은 상단 라인 강조 */}
+      {/*
+        인스타그램 피드 상단 탭 스타일.
+        - 모바일: 아이콘+라벨 세로, 화면 꽉 채우는 4등분 (앱 느낌)
+        - 웹: 아이콘+라벨 가로 인라인, 가운데 정렬 + 넉넉한 간격 (인스타 웹 피드 탭 느낌)
+        활성 탭은 상단 라인으로 강조.
+      */}
       <nav
         role="tablist"
         aria-label="여행 상세 카테고리"
-        className="flex items-stretch border-y border-slate-200/80 bg-white"
+        className="flex items-stretch border-y border-slate-200/80 bg-white md:justify-center md:gap-10"
       >
         {TABS.map((tab) => {
           const isActive = active === tab.key
@@ -66,11 +71,14 @@ export function TripScheduleBoard({
               onClick={() => setActive(tab.key)}
               className={cn(
                 "relative flex flex-1 flex-col items-center justify-center gap-1 py-3 transition-colors",
+                "md:flex-none md:flex-row md:gap-2 md:px-5 md:py-4",
                 isActive ? "text-slate-900" : "text-slate-400 hover:text-slate-600"
               )}
             >
-              <Icon className="size-5" strokeWidth={isActive ? 2.1 : 1.7} />
-              <span className="text-[11px] font-semibold tracking-tight">{tab.label}</span>
+              <Icon className="size-5 md:size-4" strokeWidth={isActive ? 2.1 : 1.7} />
+              <span className="text-[11px] font-semibold tracking-tight md:text-[13px] md:tracking-normal">
+                {tab.label}
+              </span>
               <span
                 aria-hidden
                 className={cn(

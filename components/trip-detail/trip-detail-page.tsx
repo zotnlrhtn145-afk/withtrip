@@ -134,6 +134,7 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
         trip={displayTrip}
         compact={view === "mobile"}
         flightsRevision={flightsRevision}
+        flushBottom
       />
       <TripScheduleBoard
         trip={displayTrip}

@@ -141,10 +141,14 @@ export function TripHeroCard({
   trip,
   compact = false,
   flightsRevision = 0,
+  flushBottom = false,
 }: {
   trip: Trip
   compact?: boolean
   flightsRevision?: number
+  /** Drop the bottom divider/margin when another bordered block (e.g. the detail
+   *  tab bar) sits directly beneath, so there's no double line + empty gap. */
+  flushBottom?: boolean
 }) {
   const { members } = useTrips()
   const fallbackMembers = trip.groupMembers?.length
@@ -347,7 +351,12 @@ export function TripHeroCard({
     memberCount > 0 ? memberSummary : "함께할 멤버를 초대해 보세요"
 
   return (
-    <section className="relative mb-8 border-b border-slate-200/70 pb-2">
+    <section
+      className={cn(
+        "relative",
+        flushBottom ? "" : "mb-8 border-b border-slate-200/70 pb-2"
+      )}
+    >
       <div
         className={cn(
           "relative h-52 w-full overflow-hidden rounded-3xl shadow-sm sm:h-72",
