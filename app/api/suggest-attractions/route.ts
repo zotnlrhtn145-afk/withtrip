@@ -27,6 +27,14 @@ type GoogleTextSearchItem = {
   geometry?: { location?: { lat?: number; lng?: number } }
 }
 
+/** 이름 비교용 정규화 — 공백·구두점 제거, 소문자화. "마리나 베이"와 "마리나베이"를 같게 본다. */
+function normalizeName(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[\s·・‧,.()[\]{}'"!?~\-–—_/]/g, "")
+    .trim()
+}
+
 function getPlacesApiKey() {
   return (
     process.env.GOOGLE_PLACES_API_KEY ||
@@ -136,7 +144,10 @@ export async function POST(request: Request) {
 
     const promptText =
       `${destination} 여행을 계획 중이다. 현지인과 여행 인플루언서들 사이에서 유명한 랜드마크, ` +
-      `인스타그램에서 인기 있는 포토스팟, 꼭 가봐야 하는 관광명소를 8곳 추천해줘.\n` +
+      `인스타그램에서 인기 있는 포토스팟, 꼭 가봐야 하는 관광명소를 12곳 추천해줘.\n` +
+      `단, 서로 겹치지 않는 완전히 다른 장소여야 한다. 같은 랜드마크의 다른 이름/표기(예: "마리나베이", ` +
+      `"마리나 베이 샌즈", "마리나베이 야경")나 같은 건물·구역 안의 세부 스팟은 하나로만 추천하고, ` +
+      `서로 다른 지역에 골고루 분포된 대표 명소들로 골라줘.\n` +
       (existingNames.length > 0
         ? `이미 일정/저장 목록에 있어서 제외해야 하는 곳: ${existingNames.join(", ")}\n`
         : "") +
@@ -207,7 +218,7 @@ export async function POST(request: Request) {
 
     // 각 추천을 Google Places Text Search로 그라운딩(실제 좌표/사진/평점 확보).
     const grounded = await Promise.all(
-      attractions.slice(0, 8).map(async (item) => {
+      attractions.slice(0, 12).map(async (item) => {
         const base = await groundAttraction(item.name, city, placesKey)
         if (!base) return null
         const distanceKm = accommodation
@@ -218,20 +229,38 @@ export async function POST(request: Request) {
       })
     )
 
-    const results = grounded
+    const filtered = grounded
       .filter((item): item is SuggestedAttraction => Boolean(item))
       // 이미 저장/일정에 있는 곳과 겹치면 제외.
-      .filter(
-        (item) =>
-          !existingNames.some(
-            (existing) =>
-              item.name.toLowerCase().includes(existing.toLowerCase()) ||
-              existing.toLowerCase().includes(item.name.toLowerCase())
-          )
-      )
+      .filter((item) => {
+        const itemNorm = normalizeName(item.name)
+        return !existingNames.some((existing) => {
+          const exNorm = normalizeName(existing)
+          if (!exNorm) return false
+          return itemNorm.includes(exNorm) || exNorm.includes(itemNorm)
+        })
+      })
 
+    // 숙소가 있으면 가까운 순으로 먼저 정렬 → 아래 중복 제거에서 클러스터의 가장 가까운 곳을 남긴다.
     if (accommodation) {
-      results.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+      filtered.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+    }
+
+    // 추천끼리의 중복 제거: 이름이 같거나 포함관계이거나, 좌표가 매우 가까우면(같은 장소가
+    // 다른 이름으로 그라운딩된 경우) 하나만 남긴다. "마리나베이"류 중복 방지.
+    const results: SuggestedAttraction[] = []
+    for (const item of filtered) {
+      const norm = normalizeName(item.name)
+      if (!norm) continue
+      const overlaps = results.some((kept) => {
+        const keptNorm = normalizeName(kept.name)
+        if (norm === keptNorm) return true
+        if (norm.length >= 3 && (norm.includes(keptNorm) || keptNorm.includes(norm))) return true
+        return (
+          distanceMeters({ lat: item.lat, lng: item.lng }, { lat: kept.lat, lng: kept.lng }) < 120
+        )
+      })
+      if (!overlaps) results.push(item)
     }
 
     return NextResponse.json({ results: results.slice(0, 8) })
