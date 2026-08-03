@@ -20,10 +20,13 @@ const TABS: { key: TabKey; label: string; icon: LucideIcon }[] = [
 ]
 
 /**
- * 여행 상세 보드 — 중카테고리(일정·이동수단·숙소·가고싶은곳)를 세로로 길게 쌓지 않고
- * 인스타그램 프로필 피드 상단처럼 탭으로 나눠 한 번에 하나씩 보여준다. 스크롤을 줄여
- * 한눈에 들어오게 하는 게 목적. 모든 섹션은 마운트된 채 숨김만 토글하므로 탭 전환 시
- * 재로딩 없이 즉시 바뀌고 각 섹션의 상태·기능은 그대로 유지된다.
+ * 여행 상세 보드 — 중카테고리(일정·이동수단·숙소·가고싶은곳)를 한 번에 하나씩 보여준다.
+ *
+ * 플랫폼별로 다른 양식:
+ * - 모바일: 인스타 피드처럼 상단 가로 탭 + 아래 콘텐츠 (앱 느낌)
+ * - 웹: 왼쪽 세로 카테고리 사이드바 + 오른쪽 콘텐츠 (데스크탑 대시보드 느낌)
+ *
+ * 모든 섹션은 마운트된 채 숨김만 토글하므로 전환이 즉시 되고 상태·기능은 그대로.
  */
 export function TripScheduleBoard({
   trip,
@@ -45,18 +48,68 @@ export function TripScheduleBoard({
 
   const tripCity = trip.title.split(/[·•]/)[0]?.trim() || trip.region
 
+  const panels = (
+    <>
+      <section
+        id="trip-panel-schedule"
+        role="tabpanel"
+        aria-label="일정"
+        hidden={active !== "schedule"}
+      >
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
+          <ScheduleSection
+            tripId={trip.id}
+            tripStartDate={trip.startDate}
+            tripDays={trip.days}
+            tripCity={tripCity}
+          />
+        </div>
+      </section>
+
+      <section
+        id="trip-panel-transport"
+        role="tabpanel"
+        aria-label="이동수단"
+        hidden={active !== "transport"}
+      >
+        <TransportSection tripId={trip.id} onTransportChange={onFlightChange} />
+      </section>
+
+      <section
+        id="trip-panel-stay"
+        role="tabpanel"
+        aria-label="숙소"
+        hidden={active !== "stay"}
+      >
+        <AccommodationSection
+          tripId={trip.id}
+          tripStartDate={trip.startDate}
+          tripEndDate={trip.endDate}
+        />
+      </section>
+
+      <section
+        id="trip-panel-wishlist"
+        role="tabpanel"
+        aria-label="가고 싶은 곳"
+        hidden={active !== "wishlist"}
+      >
+        <WishlistSection
+          trip={trip}
+          autoOpenAdd={autoOpenAddPlace}
+          onAutoOpenHandled={onAutoOpenAddPlaceHandled}
+        />
+      </section>
+    </>
+  )
+
   return (
     <div className="w-full">
-      {/*
-        인스타그램 피드 상단 탭 스타일.
-        - 모바일: 아이콘+라벨 세로, 화면 꽉 채우는 4등분 (앱 느낌)
-        - 웹: 아이콘+라벨 가로 인라인, 가운데 정렬 + 넉넉한 간격 (인스타 웹 피드 탭 느낌)
-        활성 탭은 상단 라인으로 강조.
-      */}
+      {/* 모바일: 인스타 피드 상단 가로 탭 (아이콘+라벨 세로, 화면 꽉 채우는 4등분) */}
       <nav
         role="tablist"
         aria-label="여행 상세 카테고리"
-        className="flex items-stretch border-y border-slate-200/80 bg-white md:justify-center md:gap-10"
+        className="flex items-stretch border-y border-slate-200/80 bg-white md:hidden"
       >
         {TABS.map((tab) => {
           const isActive = active === tab.key
@@ -71,14 +124,11 @@ export function TripScheduleBoard({
               onClick={() => setActive(tab.key)}
               className={cn(
                 "relative flex flex-1 flex-col items-center justify-center gap-1 py-3 transition-colors",
-                "md:flex-none md:flex-row md:gap-2 md:px-5 md:py-4",
-                isActive ? "text-slate-900" : "text-slate-400 hover:text-slate-600"
+                isActive ? "text-slate-900" : "text-slate-400"
               )}
             >
-              <Icon className="size-5 md:size-4" strokeWidth={isActive ? 2.1 : 1.7} />
-              <span className="text-[11px] font-semibold tracking-tight md:text-[13px] md:tracking-normal">
-                {tab.label}
-              </span>
+              <Icon className="size-5" strokeWidth={isActive ? 2.1 : 1.7} />
+              <span className="text-[11px] font-semibold tracking-tight">{tab.label}</span>
               <span
                 aria-hidden
                 className={cn(
@@ -91,57 +141,50 @@ export function TripScheduleBoard({
         })}
       </nav>
 
-      <div className="pt-5">
-        <section
-          id="trip-panel-schedule"
-          role="tabpanel"
-          aria-label="일정"
-          hidden={active !== "schedule"}
-        >
-          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
-            <ScheduleSection
-              tripId={trip.id}
-              tripStartDate={trip.startDate}
-              tripDays={trip.days}
-              tripCity={tripCity}
-            />
+      {/* 웹: 왼쪽 세로 카테고리 사이드바 + 오른쪽 콘텐츠 (대시보드 레이아웃) */}
+      <div className="md:grid md:grid-cols-[210px_minmax(0,1fr)] md:gap-8">
+        <aside className="hidden md:block">
+          <div
+            role="tablist"
+            aria-label="여행 상세 카테고리"
+            className="sticky top-20 flex flex-col gap-1"
+          >
+            <p className="px-4 pb-2 text-[11px] font-bold tracking-widest text-slate-300 uppercase">
+              Categories
+            </p>
+            {TABS.map((tab) => {
+              const isActive = active === tab.key
+              const Icon = tab.icon
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls={`trip-panel-${tab.key}`}
+                  onClick={() => setActive(tab.key)}
+                  className={cn(
+                    "group flex items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold transition-all",
+                    isActive
+                      ? "bg-amber-50 text-slate-900 ring-1 ring-amber-200/70"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      "size-[18px] shrink-0 transition-colors",
+                      isActive ? "text-amber-500" : "text-slate-400 group-hover:text-slate-600"
+                    )}
+                    strokeWidth={1.9}
+                  />
+                  <span>{tab.label}</span>
+                </button>
+              )
+            })}
           </div>
-        </section>
+        </aside>
 
-        <section
-          id="trip-panel-transport"
-          role="tabpanel"
-          aria-label="이동수단"
-          hidden={active !== "transport"}
-        >
-          <TransportSection tripId={trip.id} onTransportChange={onFlightChange} />
-        </section>
-
-        <section
-          id="trip-panel-stay"
-          role="tabpanel"
-          aria-label="숙소"
-          hidden={active !== "stay"}
-        >
-          <AccommodationSection
-            tripId={trip.id}
-            tripStartDate={trip.startDate}
-            tripEndDate={trip.endDate}
-          />
-        </section>
-
-        <section
-          id="trip-panel-wishlist"
-          role="tabpanel"
-          aria-label="가고 싶은 곳"
-          hidden={active !== "wishlist"}
-        >
-          <WishlistSection
-            trip={trip}
-            autoOpenAdd={autoOpenAddPlace}
-            onAutoOpenHandled={onAutoOpenAddPlaceHandled}
-          />
-        </section>
+        <div className="min-w-0 pt-5 md:pt-0">{panels}</div>
       </div>
     </div>
   )
