@@ -7,6 +7,14 @@ import { Loader2, RefreshCw, Search, UserPlus, Users, X } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { FieldError } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
@@ -140,7 +148,10 @@ export function FriendsView() {
   const [activeTab, setActiveTab] = useState<CategoryTab>("list")
   const [animatedItemIds, setAnimatedItemIds] = useState<Set<string>>(() => new Set())
   const [searchExiting, setSearchExiting] = useState(false)
+  const [searchFocused, setSearchFocused] = useState(false)
   const [coTravelers, setCoTravelers] = useState<CoTraveler[]>([])
+  const [confirmUnfriend, setConfirmUnfriend] = useState<{ id: string; nickname: string } | null>(null)
+  const [unfriending, setUnfriending] = useState(false)
 
   const friendshipsSnapshotRef = useRef<FriendshipJoinedRow[]>([])
   const trimmedQuery = searchQuery.trim()
@@ -473,13 +484,20 @@ export function FriendsView() {
     [friendships, showToast, silentRefresh]
   )
 
-  const handleUnfriend = useCallback(
-    (requestId: string, nickname: string) => {
-      if (!window.confirm(`${nickname}님을 친구 목록에서 삭제할까요?`)) return
-      void handleRejectOrCancel(requestId, "unfriend")
-    },
-    [handleRejectOrCancel]
-  )
+  const handleUnfriend = useCallback((requestId: string, nickname: string) => {
+    setConfirmUnfriend({ id: requestId, nickname })
+  }, [])
+
+  const confirmUnfriendNow = useCallback(async () => {
+    if (!confirmUnfriend) return
+    setUnfriending(true)
+    try {
+      await handleRejectOrCancel(confirmUnfriend.id, "unfriend")
+    } finally {
+      setUnfriending(false)
+      setConfirmUnfriend(null)
+    }
+  }, [confirmUnfriend, handleRejectOrCancel])
 
   const handleSendRequest = useCallback(
     async (target: UserSummary) => {
@@ -637,6 +655,7 @@ export function FriendsView() {
               setSearchExiting(false)
               setSearchQuery(event.target.value)
             }}
+            onFocus={() => setSearchFocused(true)}
             placeholder="친구 검색"
             className="h-10 rounded-xl border-0 bg-secondary/70 pr-10 pl-9 shadow-none transition-colors duration-200 focus-visible:ring-1 focus-visible:ring-primary/40"
             disabled={!currentUserId}
@@ -706,8 +725,8 @@ export function FriendsView() {
               </ul>
             )}
           </div>
-        ) : recentSearches.length > 0 ? (
-          <div className="pb-2">
+        ) : searchFocused && recentSearches.length > 0 ? (
+          <div className="animate-in fade-in-50 slide-in-from-top-2 pb-2 duration-300 ease-out">
             <div className="flex items-center justify-between px-4 pt-3 pb-1">
               <p className="text-xs font-bold">최근 검색</p>
               <button
@@ -1044,6 +1063,44 @@ export function FriendsView() {
           </section>
         </>
       )}
+
+      {/* 친구 삭제 확인 */}
+      <Dialog
+        open={Boolean(confirmUnfriend)}
+        onOpenChange={(next) => {
+          if (!next) setConfirmUnfriend(null)
+        }}
+      >
+        <DialogContent className="rounded-3xl border-slate-100 sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>친구 삭제</DialogTitle>
+            <DialogDescription>
+              {confirmUnfriend
+                ? `${confirmUnfriend.nickname}님을 친구 목록에서 삭제하시겠습니까?`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={unfriending}
+              onClick={() => setConfirmUnfriend(null)}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              disabled={unfriending}
+              onClick={() => void confirmUnfriendNow()}
+              className="bg-destructive font-bold text-white hover:bg-destructive/90"
+            >
+              {unfriending ? <Loader2 className="size-3.5 animate-spin" /> : null}
+              삭제
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
