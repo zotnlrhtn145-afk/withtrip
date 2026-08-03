@@ -121,11 +121,16 @@ export function MobileGlobalChrome() {
     viewParam === "signup" ||
     viewParam === "forgot-password"
 
+  // The trip detail page (/trips/[id]) renders its own header (with a "목록으로"
+  // back button), so the global mobile header would stack a second bar on top of
+  // it. Hide the global header there — but keep the bottom nav.
+  const hideHeader = hideChrome || pathname.startsWith("/trips/")
+
   const hideBottomNav = hideChrome
 
   return (
     <>
-      {!hideChrome ? (
+      {!hideHeader ? (
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md md:hidden">
           <div className="flex items-center justify-between px-4 py-3">
             <button
