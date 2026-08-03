@@ -134,10 +134,11 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
         trip={displayTrip}
         compact={view === "mobile"}
         flightsRevision={flightsRevision}
-        flushBottom
+        flushBottom={view === "mobile"}
       />
       <TripScheduleBoard
         trip={displayTrip}
+        view={view}
         onFlightChange={handleFlightChange}
         autoOpenAddPlace={autoOpenAddPlace}
         onAutoOpenAddPlaceHandled={() => setAutoOpenAddPlace(false)}
@@ -213,7 +214,7 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
           </div>
         </header>
 
-        <main className="mx-auto flex w-full max-w-4xl flex-col gap-5 p-6">{mainBody}</main>
+        <main className="flex flex-col gap-5 p-6">{mainBody}</main>
       </div>
 
       <TripSearchDialog open={searchOpen} onOpenChange={setSearchOpen} onSelectTrip={openTrip} />
