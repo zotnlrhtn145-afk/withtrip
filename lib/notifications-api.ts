@@ -7,6 +7,8 @@ export type NotificationType =
   | "friend_request"
   | "clip_like"
   | "clip_comment"
+  | "friend_accepted"
+  | "clip_post"
 
 export type NotificationRowStatus =
   | "pending"
@@ -481,6 +483,29 @@ export async function updateNotificationStatus(
   }
 
   throw new Error(messageText || "알림 상태 업데이트에 실패했어요.")
+}
+
+/**
+ * Mark notifications as seen (is_read=true) WITHOUT changing status —
+ * used when the notification list is simply viewed, not acted upon.
+ */
+export async function markNotificationsSeen(notificationIds: string[]): Promise<void> {
+  const ids = [...new Set(notificationIds.map((id) => String(id ?? "").trim()).filter(Boolean))]
+  if (ids.length === 0) return
+
+  const userId = await getCurrentUserId()
+  if (!userId) return
+
+  const client = createClient()
+  const { error } = await client
+    .from("notifications")
+    .update({ is_read: true })
+    .in("id", ids)
+    .eq("user_id", userId)
+
+  if (error) {
+    console.error("[markNotificationsSeen]", formatError(error))
+  }
 }
 
 /** @deprecated Prefer updateNotificationStatus */

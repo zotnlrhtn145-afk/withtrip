@@ -1,4 +1,6 @@
 import { getCurrentUserId } from "@/lib/auth-session"
+import { createNotification, resolveActorDisplayName } from "@/lib/notifications-api"
+import { fetchTripRoster } from "@/lib/trip-members-api"
 import { createClient } from "@/utils/supabase/client"
 
 export type TripClip = {
@@ -141,7 +143,40 @@ export async function insertTripClip(input: {
     throw new Error(formatError(error) || "클립 게시에 실패했어요.")
   }
 
-  return mapRow(data as TripClipRow)
+  const clip = mapRow(data as TripClipRow)
+
+  // 같은 여행의 다른 멤버들에게 새 클립 알림을 보낸다 (본인 제외).
+  try {
+    const roster = await fetchTripRoster(tripId)
+    const recipients = roster
+      .map((member) => member.userId)
+      .filter((id) => id && id !== userId)
+    if (recipients.length > 0) {
+      const actorName = await resolveActorDisplayName(userId)
+      const tripTitle = clip.tripTitle ? `'${clip.tripTitle}'에` : "여행에"
+      await Promise.all(
+        recipients.map((recipientId) =>
+          createNotification(
+            {
+              userId: recipientId,
+              actorId: userId,
+              type: "clip_post",
+              message: `${actorName}님이 ${tripTitle} 새 클립을 올렸습니다.`,
+              referenceId: clip.id,
+            },
+            { throwOnError: false }
+          )
+        )
+      )
+    }
+  } catch (err) {
+    console.error(
+      "[insertTripClip] notification fan-out error:",
+      err instanceof Error ? err.message : err
+    )
+  }
+
+  return clip
 }
 
 export async function deleteTripClip(clipId: string): Promise<void> {

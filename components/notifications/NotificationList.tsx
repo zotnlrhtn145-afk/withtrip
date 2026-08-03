@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { BellOff, Loader2, UserRoundPlus } from "lucide-react"
 
@@ -12,6 +12,7 @@ import {
   filterNotifications,
   formatRelativeTimeKo,
   groupNotificationsByTime,
+  markVisibleNotificationsSeen,
   rejectFeedNotification,
   type FeedNotification,
   type NotificationFilter,
@@ -167,6 +168,33 @@ export function NotificationList({
   )
   const sections = useMemo(() => groupNotificationsByTime(visible), [visible])
 
+  const seenIdsRef = useRef<Set<string>>(new Set())
+
+  // 알림 목록을 열람하면 잠시 후 안읽음 → 읽음으로 전환한다 (액션과 무관하게).
+  useEffect(() => {
+    const unread = visible.filter(
+      (item) => !item.isRead && !seenIdsRef.current.has(item.id)
+    )
+    if (unread.length === 0) return
+    for (const item of unread) seenIdsRef.current.add(item.id)
+
+    const timer = window.setTimeout(() => {
+      void markVisibleNotificationsSeen(unread).then((markedNotificationIds) => {
+        if (markedNotificationIds.length === 0) return
+        const marked = new Set(markedNotificationIds)
+        setItems((current) =>
+          current.map((row) =>
+            row.notificationId && marked.has(row.notificationId)
+              ? { ...row, isRead: true }
+              : row
+          )
+        )
+      })
+    }, 1200)
+
+    return () => window.clearTimeout(timer)
+  }, [visible, setItems])
+
   const handleAccept = async (item: FeedNotification) => {
     if (actingId || item.actionState !== "pending") return
     setActingId(item.id)
@@ -174,7 +202,7 @@ export function NotificationList({
       const result = await acceptFeedNotification(item)
       setItems((current) =>
         current.map((row) =>
-          row.id === item.id ? { ...row, actionState: "accepted" } : row
+          row.id === item.id ? { ...row, actionState: "accepted", isRead: true } : row
         )
       )
       if (item.type === "trip_invite" || item.type === "clip_invite") {
@@ -199,7 +227,7 @@ export function NotificationList({
       const result = await rejectFeedNotification(item)
       setItems((current) =>
         current.map((row) =>
-          row.id === item.id ? { ...row, actionState: "declined" } : row
+          row.id === item.id ? { ...row, actionState: "declined", isRead: true } : row
         )
       )
       showNotice(result.toast)
@@ -268,7 +296,8 @@ export function NotificationList({
                       >
                         <div
                           className={cn(
-                            "flex items-center gap-3 rounded-2xl px-1 py-2.5 transition-colors hover:bg-slate-50/80",
+                            "flex items-center gap-3 rounded-2xl px-2 py-2.5 transition-colors duration-300 hover:bg-slate-100/80",
+                            item.isRead ? "bg-slate-50" : "bg-white",
                             item.actionState !== "pending" && "opacity-80"
                           )}
                         >

@@ -6,6 +6,7 @@ import {
   resolveUsersByIds,
 } from "@/lib/friends-api"
 import {
+  markNotificationsSeen,
   updateNotificationStatus,
   fetchMyNotifications,
   type NotificationType,
@@ -40,14 +41,16 @@ export type FeedNotification = {
   actionId: string
   /** notifications.id when sourced from notifications table */
   notificationId?: string
+  /** Read/seen state — false for anything without a real notifications row. */
+  isRead: boolean
 }
 
 export type NotificationTimeGroup = "today" | "week" | "earlier"
 
-const CLIP_TYPES: NotificationType[] = ["clip_invite", "clip_like", "clip_comment"]
+const CLIP_TYPES: NotificationType[] = ["clip_invite", "clip_like", "clip_comment", "clip_post"]
 
 function categoryFromType(type: NotificationType): NotificationCategory {
-  if (type === "friend_request") return "friend"
+  if (type === "friend_request" || type === "friend_accepted") return "friend"
   if (CLIP_TYPES.includes(type)) return "clip"
   return "trip"
 }
@@ -61,7 +64,9 @@ export function filterNotifications(
     return items.filter((item) => item.type === "trip_invite")
   }
   if (filter === "friend") {
-    return items.filter((item) => item.type === "friend_request")
+    return items.filter(
+      (item) => item.type === "friend_request" || item.type === "friend_accepted"
+    )
   }
   return items.filter((item) => CLIP_TYPES.includes(item.type))
 }
@@ -151,6 +156,7 @@ async function fetchFriendRequestNotificationsFallback(): Promise<FeedNotificati
           createdAt: String(row.created_at ?? new Date().toISOString()),
           actionState: "pending" as const,
           actionId: row.id,
+          isRead: false,
         }
       })
   } catch (err) {
@@ -176,6 +182,7 @@ async function fetchTripInviteNotificationsFallback(): Promise<FeedNotification[
     createdAt: invite.createdAt ?? new Date().toISOString(),
     actionState: "pending" as const,
     actionId: invite.id,
+    isRead: false,
   }))
 }
 
@@ -230,6 +237,7 @@ async function fetchClipActivityFallback(): Promise<FeedNotification[]> {
         createdAt: String(row.created_at ?? new Date().toISOString()),
         actionState: "pending" as const,
         actionId: id,
+        isRead: false,
       } satisfies FeedNotification
     })
     .filter((item): item is FeedNotification => Boolean(item))
@@ -265,6 +273,7 @@ function mapDbNotification(row: Awaited<ReturnType<typeof fetchMyNotifications>>
     actionState,
     actionId: String(actionId ?? "").trim(),
     notificationId: row.id,
+    isRead: row.isRead,
   }
 }
 
@@ -370,6 +379,20 @@ export async function rejectFeedNotification(
     await updateNotificationStatus(item.notificationId, "declined")
   }
   return { toast: "알림을 거절했어요." }
+}
+
+/**
+ * Mark currently-visible unread items as seen. Only real DB-backed rows
+ * (notificationId set) can be persisted this way — synthesized fallback
+ * items have no notifications row to update.
+ */
+export async function markVisibleNotificationsSeen(items: FeedNotification[]): Promise<string[]> {
+  const ids = items
+    .filter((item) => !item.isRead && item.notificationId)
+    .map((item) => item.notificationId as string)
+  if (ids.length === 0) return []
+  await markNotificationsSeen(ids)
+  return ids
 }
 
 /** Pending actionable count (trip/clip invites + friend requests). */

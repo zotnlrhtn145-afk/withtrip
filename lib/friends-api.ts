@@ -157,14 +157,40 @@ export async function fetchFriendships(currentUserId: string): Promise<Friendshi
 
 export async function acceptFriendRequest(requestId: string) {
   const supabase = createClient()
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("friendships")
     .update({ status: "accepted" })
     .eq("id", requestId)
+    .select("id, user_id, friend_id")
+    .single()
 
   if (error) {
     logSupabaseError("acceptFriendRequest", error)
     throw error
+  }
+
+  // 원래 요청을 보낸 사람(user_id)에게 "수락되었다"는 알림을 보낸다.
+  const requesterId = String((data as { user_id?: string } | null)?.user_id ?? "").trim()
+  const accepterId = String((data as { friend_id?: string } | null)?.friend_id ?? "").trim()
+  if (requesterId && accepterId && requesterId !== accepterId) {
+    try {
+      const accepterName = await resolveActorDisplayName(accepterId)
+      await createNotification(
+        {
+          userId: requesterId,
+          actorId: accepterId,
+          type: "friend_accepted",
+          message: `${accepterName}님이 친구 요청을 수락했습니다.`,
+          referenceId: String((data as { id?: string } | null)?.id ?? "").trim() || null,
+        },
+        { throwOnError: false }
+      )
+    } catch (err) {
+      console.error(
+        "[acceptFriendRequest] notification insert error:",
+        err instanceof Error ? err.message : err
+      )
+    }
   }
 }
 
