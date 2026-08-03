@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { Check, Loader2, MapPin, Sparkles, Star } from "lucide-react"
 
@@ -12,8 +12,9 @@ import { WISHLIST_CATEGORY_VALUE } from "@/lib/trip-itinerary"
 import { cn } from "@/lib/utils"
 
 /**
- * 가고 싶은 곳 > 제안하는 관광지 — Gemini로 여행지의 유명 관광명소를 추천받고,
- * 숙소와 가까운 순으로 정렬해 보여준다. 마음에 드는 곳만 "담기"로 위시리스트에 추가.
+ * 가고 싶은 곳 > 위드트립의 추천 관광지 — 페이지 진입 시 자동으로 Gemini에게
+ * 여행지의 유명 관광명소를 추천받아 숙소와 가까운 순으로 정렬해 보여준다.
+ * 마음에 드는 곳만 "담기"로 위시리스트에 추가.
  */
 export function AttractionSuggestions({
   tripId,
@@ -34,6 +35,7 @@ export function AttractionSuggestions({
   const [hasSearched, setHasSearched] = useState(false)
   const [savingKey, setSavingKey] = useState<string | null>(null)
   const [savedKeys, setSavedKeys] = useState<Set<string>>(() => new Set())
+  const autoFetchedRef = useRef(false)
 
   const handleSuggest = useCallback(async () => {
     setLoading(true)
@@ -99,6 +101,15 @@ export function AttractionSuggestions({
     [tripId, onSaved]
   )
 
+  // 페이지에 들어오면 버튼을 누르지 않아도 바로 추천을 한 번 불러온다.
+  useEffect(() => {
+    if (autoFetchedRef.current) return
+    if (!city.trim()) return
+    autoFetchedRef.current = true
+    void handleSuggest()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-once, not on every existingPlaces change
+  }, [city])
+
   return (
     <div className="rounded-2xl border border-dashed border-amber-300/70 bg-gradient-to-br from-amber-50/60 to-white p-4">
       <div className="flex items-start justify-between gap-3">
@@ -107,10 +118,8 @@ export function AttractionSuggestions({
             <Sparkles className="size-3.5" />
           </span>
           <div>
-            <p className="text-sm font-bold text-slate-900">제안하는 관광지</p>
-            <p className="text-xs text-slate-500">
-              AI가 여행지의 유명 명소를 찾아 숙소와 가까운 순으로 보여줘요
-            </p>
+            <p className="text-sm font-bold text-slate-900">위드트립의 추천 관광지</p>
+            <p className="text-xs text-slate-500">숙소와 가까운 순으로 보여줘요</p>
           </div>
         </div>
         <Button
@@ -121,13 +130,29 @@ export function AttractionSuggestions({
           className="shrink-0 rounded-full bg-amber-400 px-4 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 hover:bg-amber-500"
         >
           {loading ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-          {hasSearched ? "다시 추천받기" : "AI 추천받기"}
+          {hasSearched ? "다시 추천받기" : "추천받기"}
         </Button>
       </div>
 
       {error ? <p className="mt-3 text-xs text-rose-600">{error}</p> : null}
 
-      {suggestions.length > 0 ? (
+      {loading && suggestions.length === 0 ? (
+        <ul className="mt-4 flex gap-3 overflow-x-auto pb-1">
+          {[0, 1, 2].map((i) => (
+            <li
+              key={i}
+              className="flex w-56 shrink-0 flex-col overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm"
+            >
+              <div className="h-28 w-full shrink-0 animate-pulse bg-slate-100" />
+              <div className="flex flex-col gap-2 p-3">
+                <div className="h-4 w-3/4 animate-pulse rounded bg-slate-100" />
+                <div className="h-3 w-1/2 animate-pulse rounded bg-slate-100" />
+                <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : suggestions.length > 0 ? (
         <ul className="mt-4 flex gap-3 overflow-x-auto pb-1">
           {suggestions.map((item) => {
             const key = `${item.lat},${item.lng}`

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { distanceMeters, type LatLng } from "@/lib/geo"
+import { buildGooglePlacePhotoUrl, resolveCoverImageUrl } from "@/lib/place-cover-image"
 
 export const runtime = "nodejs"
 
@@ -17,28 +18,95 @@ type SuggestedAttraction = {
   distanceKm?: number
 }
 
-type PlaceSearchResultItem = {
-  placeName?: string
-  localName?: string
-  address?: string
-  imageUrl?: string
+type GoogleTextSearchItem = {
+  name?: string
+  formatted_address?: string
   rating?: number
-  reviewCount?: number
-  lat?: number
-  lng?: number
+  user_ratings_total?: number
+  photos?: { photo_reference?: string }[]
+  geometry?: { location?: { lat?: number; lng?: number } }
+}
+
+function getPlacesApiKey() {
+  return (
+    process.env.GOOGLE_PLACES_API_KEY ||
+    process.env.GOOGLE_MAPS_API_KEY ||
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
+    ""
+  ).trim()
 }
 
 /**
- * AI(Gemini)로 여행지의 유명 관광명소를 추천받고, 각 결과를 기존 Google Places
- * 검색(/api/places/search)으로 실제 좌표·사진·평점에 그라운딩한다.
+ * 가벼운 그라운딩 — Text Search 1회만 호출한다(장소당 최대 8곳의 상세정보를
+ * 추가로 부르는 /api/places/search를 거치면 지연이 커져 타임아웃 위험이 있다).
+ */
+async function groundAttraction(
+  name: string,
+  city: string,
+  apiKey: string
+): Promise<Omit<SuggestedAttraction, "reason" | "distanceKm"> | null> {
+  try {
+    const url = new URL("https://maps.googleapis.com/maps/api/place/textsearch/json")
+    url.searchParams.set("query", `${name} ${city}`)
+    url.searchParams.set("key", apiKey)
+    url.searchParams.set("language", "ko")
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8_000)
+    let res: Response
+    try {
+      res = await fetch(url.toString(), { cache: "no-store", signal: controller.signal })
+    } finally {
+      clearTimeout(timeout)
+    }
+    if (!res.ok) return null
+    const json = (await res.json()) as { results?: GoogleTextSearchItem[] }
+    const top = json.results?.[0]
+    const lat = top?.geometry?.location?.lat
+    const lng = top?.geometry?.location?.lng
+    if (typeof lat !== "number" || typeof lng !== "number") return null
+
+    const placeName = String(top?.name ?? name).trim()
+    const photoRef = top?.photos?.[0]?.photo_reference
+    const photoUrl = photoRef ? buildGooglePlacePhotoUrl(photoRef, apiKey, 1200) : ""
+    const imageUrl =
+      photoUrl ||
+      resolveCoverImageUrl({ imageUrl: "", kind: "attraction", category: "관광지" })
+
+    return {
+      name: placeName,
+      localName: placeName,
+      address: String(top?.formatted_address ?? "").trim(),
+      imageUrl,
+      rating: typeof top?.rating === "number" ? top.rating : undefined,
+      reviewCount:
+        typeof top?.user_ratings_total === "number" ? top.user_ratings_total : undefined,
+      lat,
+      lng,
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * AI(Gemini)로 여행지의 유명 관광명소를 추천받고, 각 결과를 Google Places
+ * Text Search로 실제 좌표·사진·평점에 그라운딩한다.
  * 숙소 좌표가 있으면 가까운 순으로 정렬한다.
  */
 export async function POST(request: Request) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY
-    if (!apiKey) {
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY
+    if (!geminiKey) {
       return NextResponse.json(
         { results: [], error: "GEMINI_API_KEY가 설정되어 있지 않아요." },
+        { status: 200 }
+      )
+    }
+    const placesKey = getPlacesApiKey()
+    if (!placesKey) {
+      return NextResponse.json(
+        { results: [], error: "GOOGLE_PLACES_API_KEY가 설정되어 있지 않아요." },
         { status: 200 }
       )
     }
@@ -68,50 +136,45 @@ export async function POST(request: Request) {
 
     const promptText =
       `${destination} 여행을 계획 중이다. 현지인과 여행 인플루언서들 사이에서 유명한 랜드마크, ` +
-      `인스타그램에서 인기 있는 포토스팟, 꼭 가봐야 하는 관광명소를 8~10곳 추천해줘.\n` +
+      `인스타그램에서 인기 있는 포토스팟, 꼭 가봐야 하는 관광명소를 8곳 추천해줘.\n` +
       (existingNames.length > 0
         ? `이미 일정/저장 목록에 있어서 제외해야 하는 곳: ${existingNames.join(", ")}\n`
         : "") +
       `각 장소마다 왜 추천하는지 한국어로 아주 짧게(15자 내외) 이유를 함께 알려줘.\n` +
       `반드시 다음 JSON 형태로만 응답해: {"attractions": [{"name": "지도 검색이 가능한 정확한 장소명", "reason": "짧은 추천 이유"}]}`
 
-    const preferredFirst = ["gemini-flash-latest"]
-    let candidateModels: string[] = []
-    try {
-      const modelsResponse = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models",
-        { headers: { "x-goog-api-key": apiKey } }
-      )
-      if (modelsResponse.ok) {
-        const modelsData = (await modelsResponse.json()) as {
-          models?: { name?: string; supportedGenerationMethods?: string[] }[]
-        }
-        candidateModels = (modelsData.models || [])
-          .filter((m) => m.supportedGenerationMethods?.includes("generateContent"))
-          .map((m) => String(m.name ?? "").replace(/^models\//, ""))
-          .filter((m) => Boolean(m) && !/tts|image/i.test(m))
-      }
-    } catch {
-      // best-effort; fall back to the pinned defaults below
-    }
-    const allModelsToTry = Array.from(
-      new Set([...preferredFirst, ...candidateModels, "gemini-1.5-flash-latest", "gemini-1.5-flash"])
-    )
+    // 모델 목록 조회(GET /v1beta/models)는 왕복 하나를 더 태워 지연만 키우므로 생략하고,
+    // 알려진 빠른 모델을 고정 순서로 바로 시도한다. 시도당 12초 타임아웃으로 느린
+    // 모델에서 전체가 멈추지 않게 한다.
+    const allModelsToTry = [
+      "gemini-flash-latest",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash-latest",
+      "gemini-1.5-flash",
+    ]
 
     let attractions: { name: string; reason: string }[] = []
     for (const model of allModelsToTry) {
       try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: promptText }] }],
-              generationConfig: { responseMimeType: "application/json" },
-            }),
-          }
-        )
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 12_000)
+        let response: Response
+        try {
+          response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: promptText }] }],
+                generationConfig: { responseMimeType: "application/json" },
+              }),
+              signal: controller.signal,
+            }
+          )
+        } finally {
+          clearTimeout(timeout)
+        }
         if (!response.ok) continue
 
         const data = (await response.json()) as {
@@ -142,38 +205,16 @@ export async function POST(request: Request) {
       )
     }
 
-    // 각 추천을 기존 Google Places 검색 라우트로 그라운딩(실제 좌표/사진/평점 확보).
-    const origin = new URL(request.url).origin
+    // 각 추천을 Google Places Text Search로 그라운딩(실제 좌표/사진/평점 확보).
     const grounded = await Promise.all(
-      attractions.slice(0, 10).map(async (item) => {
-        try {
-          const searchUrl = `${origin}/api/places/search?q=${encodeURIComponent(`${item.name} ${city}`)}`
-          const res = await fetch(searchUrl, { cache: "no-store" })
-          if (!res.ok) return null
-          const json = (await res.json()) as { results?: PlaceSearchResultItem[] }
-          const top = json.results?.[0]
-          if (!top || typeof top.lat !== "number" || typeof top.lng !== "number") return null
-
-          const distanceKm = accommodation
-            ? Math.round(distanceMeters(accommodation, { lat: top.lat, lng: top.lng }) / 100) / 10
-            : undefined
-
-          const result: SuggestedAttraction = {
-            name: top.placeName || item.name,
-            localName: top.localName || item.name,
-            reason: item.reason,
-            address: top.address ?? "",
-            imageUrl: top.imageUrl ?? "",
-            rating: top.rating,
-            reviewCount: top.reviewCount,
-            lat: top.lat,
-            lng: top.lng,
-            distanceKm,
-          }
-          return result
-        } catch {
-          return null
-        }
+      attractions.slice(0, 8).map(async (item) => {
+        const base = await groundAttraction(item.name, city, placesKey)
+        if (!base) return null
+        const distanceKm = accommodation
+          ? Math.round(distanceMeters(accommodation, { lat: base.lat, lng: base.lng }) / 100) / 10
+          : undefined
+        const result: SuggestedAttraction = { ...base, reason: item.reason, distanceKm }
+        return result
       })
     )
 

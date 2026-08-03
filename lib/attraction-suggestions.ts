@@ -24,7 +24,8 @@ export async function suggestAttractions(input: {
 
   try {
     const controller = new AbortController()
-    const timeout = window.setTimeout(() => controller.abort(), 30_000)
+    // 서버는 최대 4개 Gemini 모델 × 12초 + 그라운딩 8초를 시도할 수 있어 여유 있게 잡는다.
+    const timeout = window.setTimeout(() => controller.abort(), 55_000)
     const response = await fetch("/api/suggest-attractions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
