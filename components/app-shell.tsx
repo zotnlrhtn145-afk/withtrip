@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, type ReactNode } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { AnimatePresence, motion } from "framer-motion"
 
 import { MobileGlobalChrome } from "@/components/mobile-global-chrome"
 import { LoginNavigationProvider } from "@/components/login-navigation"
@@ -45,18 +44,13 @@ function AppShellInner({ children }: { children: ReactNode }) {
           style={{ ["--app-sidebar-width" as string]: `${SIDEBAR_WIDTH_PX}px` }}
         >
           <MobileGlobalChrome />
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname.split("/")[1] || "home"}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.24, ease: "easeOut" }}
-              className="w-full flex-1 pb-24 md:pt-0 md:pb-0"
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          {/*
+            Render the active route directly — no cross-route mount/unmount
+            animation. The previous AnimatePresence mode="wait" faded the old
+            screen fully out before fading the new one in, leaving a blank
+            frame on every menu switch (a visible flicker across all tabs).
+          */}
+          <div className="w-full flex-1 pb-24 md:pt-0 md:pb-0">{children}</div>
         </div>
       </div>
 

@@ -31,6 +31,34 @@ import { type Trip } from "@/lib/trip-data"
 import { pickPreferredTripId } from "@/lib/trip-group"
 import { createClient } from "@/utils/supabase/client"
 
+/**
+ * Resolve the correct nav/view synchronously from the URL so a freshly mounted
+ * shell paints the right screen on the first frame — no "home" flash while the
+ * path-sync effect catches up when switching menus.
+ */
+function resolveInitialNavView(
+  pathname: string,
+  search: { get(key: string): string | null }
+): { nav: NavKey; view: AppView } {
+  if (pathname === "/friends") return { nav: "friends", view: "friends" }
+  if (pathname === "/around" || pathname === "/spots")
+    return { nav: "spots", view: "spots" }
+  if (pathname === "/saved") return { nav: "saved", view: "saved" }
+  // mypage requires auth; the auth effect promotes it to "mypage" once known.
+  if (pathname === "/mypage") return { nav: "mypage", view: "login" }
+  if (pathname === "/login") return { nav: "home", view: "login" }
+
+  const nav = search.get("nav")
+  const viewParam = search.get("view")
+  if (viewParam === "login") return { nav: "home", view: "login" }
+  if (nav === "friends") return { nav: "friends", view: "friends" }
+  if (nav === "spots") return { nav: "spots", view: "spots" }
+  if (nav === "saved") return { nav: "saved", view: "saved" }
+  if (nav === "mypage") return { nav: "mypage", view: "login" }
+
+  return { nav: "home", view: "home" }
+}
+
 export function WithtripApp() {
   return (
     <Suspense
@@ -51,9 +79,12 @@ function WithtripShell() {
   const searchParams = useSearchParams()
   const [view, setView] = useState<ViewMode>("mobile")
   const [searchOpen, setSearchOpen] = useState(false)
-  const [currentView, setCurrentView] = useState<AppView>("home")
+  // Derive the starting screen from the URL so switching menus doesn't flash
+  // the home view for a frame before the path-sync effect runs.
+  const initialNavView = resolveInitialNavView(pathname, searchParams)
+  const [currentView, setCurrentView] = useState<AppView>(initialNavView.view)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [activeNav, setActiveNav] = useState<NavKey>("home")
+  const [activeNav, setActiveNav] = useState<NavKey>(initialNavView.nav)
   const [activeDay, setActiveDay] = useState("day1")
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null)
   const { trips } = useTrips()
