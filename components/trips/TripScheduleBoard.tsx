@@ -1,15 +1,29 @@
 "use client"
 
+import { useEffect, useState } from "react"
+import { BedDouble, CalendarRange, MapPin, Plane, type LucideIcon } from "lucide-react"
+
 import { WishlistSection } from "@/components/itinerary/wishlist-section"
 import { AccommodationSection } from "@/components/trips/AccommodationSection"
 import { TransportSection } from "@/components/trips/TransportSection"
 import { ScheduleSection } from "@/components/trips/ScheduleSection"
 import { type Trip } from "@/lib/trip-data"
+import { cn } from "@/lib/utils"
+
+type TabKey = "schedule" | "transport" | "stay" | "wishlist"
+
+const TABS: { key: TabKey; label: string; icon: LucideIcon }[] = [
+  { key: "schedule", label: "일정", icon: CalendarRange },
+  { key: "transport", label: "이동수단", icon: Plane },
+  { key: "stay", label: "숙소", icon: BedDouble },
+  { key: "wishlist", label: "가고싶은곳", icon: MapPin },
+]
 
 /**
- * 상세 페이지 2컬럼 보드
- * 좌(5): 이동수단 → 숙소 정보 → 가고 싶은 곳
- * 우(7): 여행 일정 타임라인
+ * 여행 상세 보드 — 중카테고리(일정·이동수단·숙소·가고싶은곳)를 세로로 길게 쌓지 않고
+ * 인스타그램 프로필 피드 상단처럼 탭으로 나눠 한 번에 하나씩 보여준다. 스크롤을 줄여
+ * 한눈에 들어오게 하는 게 목적. 모든 섹션은 마운트된 채 숨김만 토글하므로 탭 전환 시
+ * 재로딩 없이 즉시 바뀌고 각 섹션의 상태·기능은 그대로 유지된다.
  */
 export function TripScheduleBoard({
   trip,
@@ -22,30 +36,104 @@ export function TripScheduleBoard({
   autoOpenAddPlace?: boolean
   onAutoOpenAddPlaceHandled?: () => void
 }) {
+  const [active, setActive] = useState<TabKey>("schedule")
+
+  // 퀵등록의 "장소 추가"로 진입하면 위시리스트 탭으로 이동해 추가 모달 맥락을 보여준다.
+  useEffect(() => {
+    if (autoOpenAddPlace) setActive("wishlist")
+  }, [autoOpenAddPlace])
+
+  const tripCity = trip.title.split(/[·•]/)[0]?.trim() || trip.region
+
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-      <div className="flex flex-col gap-5 lg:col-span-5">
-        <TransportSection tripId={trip.id} onTransportChange={onFlightChange} />
-        <AccommodationSection
-          tripId={trip.id}
-          tripStartDate={trip.startDate}
-          tripEndDate={trip.endDate}
-        />
-        <WishlistSection
-          trip={trip}
-          autoOpenAdd={autoOpenAddPlace}
-          onAutoOpenHandled={onAutoOpenAddPlaceHandled}
-        />
-      </div>
-      <div className="min-w-0 lg:col-span-7">
-        <div className="h-full rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md sm:p-6">
-          <ScheduleSection
+    <div className="w-full">
+      {/* 인스타그램 피드 상단 탭 스타일 — 미니멀 아이콘 + 라벨, 활성 탭은 상단 라인 강조 */}
+      <nav
+        role="tablist"
+        aria-label="여행 상세 카테고리"
+        className="flex items-stretch border-y border-slate-200/80 bg-white"
+      >
+        {TABS.map((tab) => {
+          const isActive = active === tab.key
+          const Icon = tab.icon
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              aria-controls={`trip-panel-${tab.key}`}
+              onClick={() => setActive(tab.key)}
+              className={cn(
+                "relative flex flex-1 flex-col items-center justify-center gap-1 py-3 transition-colors",
+                isActive ? "text-slate-900" : "text-slate-400 hover:text-slate-600"
+              )}
+            >
+              <Icon className="size-5" strokeWidth={isActive ? 2.1 : 1.7} />
+              <span className="text-[11px] font-semibold tracking-tight">{tab.label}</span>
+              <span
+                aria-hidden
+                className={cn(
+                  "absolute inset-x-0 -top-px h-0.5 transition-colors",
+                  isActive ? "bg-slate-900" : "bg-transparent"
+                )}
+              />
+            </button>
+          )
+        })}
+      </nav>
+
+      <div className="pt-5">
+        <section
+          id="trip-panel-schedule"
+          role="tabpanel"
+          aria-label="일정"
+          hidden={active !== "schedule"}
+        >
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
+            <ScheduleSection
+              tripId={trip.id}
+              tripStartDate={trip.startDate}
+              tripDays={trip.days}
+              tripCity={tripCity}
+            />
+          </div>
+        </section>
+
+        <section
+          id="trip-panel-transport"
+          role="tabpanel"
+          aria-label="이동수단"
+          hidden={active !== "transport"}
+        >
+          <TransportSection tripId={trip.id} onTransportChange={onFlightChange} />
+        </section>
+
+        <section
+          id="trip-panel-stay"
+          role="tabpanel"
+          aria-label="숙소"
+          hidden={active !== "stay"}
+        >
+          <AccommodationSection
             tripId={trip.id}
             tripStartDate={trip.startDate}
-            tripDays={trip.days}
-            tripCity={trip.title.split(/[·•]/)[0]?.trim() || trip.region}
+            tripEndDate={trip.endDate}
           />
-        </div>
+        </section>
+
+        <section
+          id="trip-panel-wishlist"
+          role="tabpanel"
+          aria-label="가고 싶은 곳"
+          hidden={active !== "wishlist"}
+        >
+          <WishlistSection
+            trip={trip}
+            autoOpenAdd={autoOpenAddPlace}
+            onAutoOpenHandled={onAutoOpenAddPlaceHandled}
+          />
+        </section>
       </div>
     </div>
   )
