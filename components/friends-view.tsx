@@ -752,11 +752,11 @@ export function FriendsView() {
         ) : null}
       </section>
 
-      {/* 중카테고리: 친구 목록 / 친구 요청 */}
+      {/* 중카테고리: 친구 목록 / 친구 요청 — 인스타그램식 언더라인 탭 */}
       {!isSearchMode ? (
         <nav
           aria-label="친구 보기 전환"
-          className="grid grid-cols-2 gap-1 rounded-2xl bg-secondary/70 p-1"
+          className="flex items-stretch overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm"
         >
           {CATEGORY_TABS.map((tab) => {
             const isActive = activeTab === tab.key
@@ -767,16 +767,16 @@ export function FriendsView() {
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  "relative flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-bold transition-all duration-150",
+                  "relative flex flex-1 items-center justify-center gap-1.5 border-b-2 py-3.5 text-sm font-semibold transition-colors duration-150",
                   isActive
-                    ? "bg-white text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "border-foreground text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground/70"
                 )}
               >
-                <tab.icon className="size-4 stroke-[1.75]" />
+                <tab.icon className={cn("size-4", isActive ? "stroke-[2]" : "stroke-[1.5]")} />
                 {tab.label}
                 {badge > 0 ? (
-                  <span className="ml-0.5 flex min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  <span className="ml-0.5 flex min-w-4.5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white">
                     {badge}
                   </span>
                 ) : null}
