@@ -24,13 +24,15 @@ export const COVER_FALLBACK = {
     "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=1200&q=80",
   defaultDining:
     "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80",
+  landmark:
+    "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1200&q=80",
 } as const
 
 export function resolveCoverImageUrl(input: {
   imageUrl?: string | null
   category?: string | null
   subCategory?: string | null
-  kind?: "restaurant" | "bar" | "stay" | string | null
+  kind?: "restaurant" | "bar" | "stay" | "attraction" | string | null
 }): string {
   const primary = String(input.imageUrl ?? "").trim()
   if (primary && !isLocalPlaceholder(primary)) return primary
@@ -44,6 +46,10 @@ export function resolveCoverImageUrl(input: {
     return /resort|리조트|료칸|ryokan/.test(hay)
       ? COVER_FALLBACK.luxuryResort
       : COVER_FALLBACK.luxuryHotel
+  }
+
+  if (/관광|명소|랜드마크|landmark|공원|park|사원|temple|박물관|museum|전망대|타워|tower/.test(hay) || input.kind === "attraction") {
+    return COVER_FALLBACK.landmark
   }
 
   if (/바\b|bar|라운지|lounge|칵테일|cocktail|위스키|하이볼/.test(hay) || input.kind === "bar") {

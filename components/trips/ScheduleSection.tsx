@@ -122,6 +122,7 @@ function ScheduleRegisterModal({
       restaurant: [],
       bar: [],
       stay: [],
+      attraction: [],
     }
     for (const place of savedPlaces) {
       groups[toWishlistKind(place.category)].push(place)

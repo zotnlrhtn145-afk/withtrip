@@ -188,7 +188,8 @@ export function AddSavedPlaceModal({
     setError(null)
 
     // 정규식으로 못 잡는 경우(유명 체인점 등)를 Gemini 상식으로 한 번 더 보정한다.
-    if (guessed === "기타") {
+    // (관광지는 /api/classify-subcategory가 아직 지원하지 않아 제외)
+    if (guessed === "기타" && resolvedKind !== "attraction") {
       const token = ++selectionTokenRef.current
       setClassifyingSubCategory(true)
       void classifySubCategory({ kind: resolvedKind, placeName: name, localName, address })

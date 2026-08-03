@@ -159,7 +159,9 @@ export function SavedPlaceCard({
                     ? "bg-orange-100 text-orange-800"
                     : kind === "stay"
                       ? "bg-sky-100 text-sky-800"
-                      : "bg-indigo-100 text-indigo-800"
+                      : kind === "attraction"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-indigo-100 text-indigo-800"
                 )}
               >
                 {categoryLabel}

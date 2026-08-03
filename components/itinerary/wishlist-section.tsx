@@ -1,9 +1,10 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Heart, Loader2, Martini, Plus, BedDouble, Utensils } from "lucide-react"
+import { Heart, Landmark, Loader2, Martini, Plus, BedDouble, Utensils } from "lucide-react"
 
 import { AddSavedPlaceModal } from "@/components/itinerary/AddSavedPlaceModal"
+import { AttractionSuggestions } from "@/components/itinerary/AttractionSuggestions"
 import { SavedPlaceCard } from "@/components/itinerary/SavedPlaceCard"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,6 +27,7 @@ const KIND_ICON: Record<WishlistKind, typeof Utensils> = {
   restaurant: Utensils,
   bar: Martini,
   stay: BedDouble,
+  attraction: Landmark,
 }
 
 function CategorySummary({
@@ -112,8 +114,11 @@ export function WishlistSection({
     const restaurant = places.filter((place) => toWishlistKind(place.category) === "restaurant").length
     const bar = places.filter((place) => toWishlistKind(place.category) === "bar").length
     const stay = places.filter((place) => toWishlistKind(place.category) === "stay").length
-    return { restaurant, bar, stay }
+    const attraction = places.filter((place) => toWishlistKind(place.category) === "attraction").length
+    return { restaurant, bar, stay, attraction }
   }, [places])
+
+  const tripCity = trip.title.split(/[·•]/)[0]?.trim() || trip.region
 
   const visiblePlaces = useMemo(
     () => places.filter((place) => toWishlistKind(place.category) === selectedKind),
@@ -162,12 +167,20 @@ export function WishlistSection({
           가고 싶은 곳
         </CardTitle>
         <CardDescription className="text-pretty text-slate-500">
-          멤버들이 저장한 레스토랑, 라운지 & 바, 숙소
+          멤버들이 저장한 레스토랑, 라운지 & 바, 숙소, 관광지
         </CardDescription>
         <CardAction>{addButton}</CardAction>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-5">
+        <AttractionSuggestions
+          tripId={trip.id}
+          city={tripCity}
+          country={trip.country}
+          existingPlaces={places}
+          onSaved={() => void load()}
+        />
+
         <div
           role="tablist"
           aria-label="위시리스트 카테고리"

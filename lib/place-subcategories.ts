@@ -36,10 +36,21 @@ export const STAY_SUBCATEGORIES = [
   "기타",
 ] as const
 
+export const ATTRACTION_SUBCATEGORIES = [
+  "랜드마크",
+  "박물관·미술관",
+  "공원·자연",
+  "사원·종교시설",
+  "전망대",
+  "쇼핑·거리",
+  "기타",
+] as const
+
 export const SUBCATEGORIES_BY_KIND: Record<WishlistKind, readonly string[]> = {
   restaurant: RESTAURANT_SUBCATEGORIES,
   bar: BAR_SUBCATEGORIES,
   stay: STAY_SUBCATEGORIES,
+  attraction: ATTRACTION_SUBCATEGORIES,
 }
 
 /**
@@ -108,7 +119,7 @@ export function guessSubCategory(input: {
   } else if (input.kind === "bar") {
     const byType = matchByTypes(input.types, BAR_TYPE_RULES)
     if (byType) return byType
-  } else {
+  } else if (input.kind === "restaurant") {
     const byType = matchByTypes(input.types, RESTAURANT_TYPE_RULES)
     if (byType) return byType
   }
@@ -130,6 +141,16 @@ export function guessSubCategory(input: {
     if (/루프탑|rooftop/.test(hay)) return "루프탑 라운지"
     if (/펍|\bpub\b|beer|맥주/.test(hay)) return "펍"
     if (/칵테일|cocktail|하이볼|바\b|bar\b|라운지|lounge/.test(hay)) return "칵테일 바"
+    return "기타"
+  }
+
+  if (input.kind === "attraction") {
+    if (/박물관|museum|미술관|gallery/.test(hay)) return "박물관·미술관"
+    if (/공원|park|정원|garden|자연|산\b|해변|beach/.test(hay)) return "공원·자연"
+    if (/사원|temple|신사|shrine|성당|cathedral|교회|church|절\b/.test(hay)) return "사원·종교시설"
+    if (/전망대|타워|tower|observatory|스카이/.test(hay)) return "전망대"
+    if (/시장|market|거리|street|쇼핑|shopping/.test(hay)) return "쇼핑·거리"
+    if (/랜드마크|landmark|성\b|castle|궁\b|palace/.test(hay)) return "랜드마크"
     return "기타"
   }
 

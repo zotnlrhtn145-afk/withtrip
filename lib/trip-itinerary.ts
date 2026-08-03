@@ -163,7 +163,7 @@ export const seedStays: Record<string, StayEntry[]> = {}
 
 /* ── 가고 싶은 곳 (Wishlist) ───────────────────────────────────────── */
 
-export type WishlistKind = 'restaurant' | 'bar' | 'stay'
+export type WishlistKind = 'restaurant' | 'bar' | 'stay' | 'attraction'
 
 export type WishlistEntry = Place & { kind: WishlistKind }
 
@@ -175,6 +175,7 @@ export const wishlistCategories: {
   { kind: 'restaurant', label: '레스토랑', guide: 'Restaurant' },
   { kind: 'bar', label: '라운지 & 바', guide: 'Lounge & Bar' },
   { kind: 'stay', label: '숙소', guide: 'Hotel & Stay' },
+  { kind: 'attraction', label: '관광지', guide: 'Attraction' },
 ]
 
 /** Canonical category values stored in `saved_places.category`. */
@@ -182,14 +183,19 @@ export const WISHLIST_CATEGORY_VALUE: Record<WishlistKind, string> = {
   restaurant: '레스토랑',
   bar: '라운지 & 바',
   stay: '숙소',
+  attraction: '관광지',
 }
 
 export function toWishlistKind(category: unknown): WishlistKind {
   const raw = String(category ?? '').trim()
   if (raw === WISHLIST_CATEGORY_VALUE.stay || raw === 'stay' || raw === '숙소') return 'stay'
   if (raw === WISHLIST_CATEGORY_VALUE.bar || raw === 'bar') return 'bar'
+  if (raw === WISHLIST_CATEGORY_VALUE.attraction || raw === 'attraction') return 'attraction'
   if (/숙소|hotel|lodging|resort|리조트|료칸|ryokan|stay/i.test(raw)) return 'stay'
   if (/라운지|lounge|\bbar\b|바/i.test(raw)) return 'bar'
+  if (/관광|명소|랜드마크|landmark|공원|park|사원|temple|박물관|museum|미술관|gallery|전망대|타워|tower|신사|shrine|성당|cathedral/i.test(raw)) {
+    return 'attraction'
+  }
   return 'restaurant'
 }
 
