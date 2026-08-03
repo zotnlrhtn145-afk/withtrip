@@ -49,7 +49,9 @@ export function TripScheduleBoard({
 
   const tripCity = trip.title.split(/[·•]/)[0]?.trim() || trip.region
 
-  // ── 웹: 원래 2단 보드 (좌 5 / 우 7) ──────────────────────────────
+  // ── 웹: 상단 2단(좌: 이동수단·숙소 / 우: 일정) + 하단 전체폭 가고싶은곳 ──
+  //   가고싶은곳을 좁은 열에 두면 세로로 길어지므로 좌우 끝까지 펼쳐 카드가
+  //   가로로 여러 개 배치되게(짧고 넓게) 한다.
   if (view !== "mobile") {
     return (
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
@@ -59,11 +61,6 @@ export function TripScheduleBoard({
             tripId={trip.id}
             tripStartDate={trip.startDate}
             tripEndDate={trip.endDate}
-          />
-          <WishlistSection
-            trip={trip}
-            autoOpenAdd={autoOpenAddPlace}
-            onAutoOpenHandled={onAutoOpenAddPlaceHandled}
           />
         </div>
         <div className="min-w-0 lg:col-span-7">
@@ -75,6 +72,13 @@ export function TripScheduleBoard({
               tripCity={tripCity}
             />
           </div>
+        </div>
+        <div className="min-w-0 lg:col-span-12">
+          <WishlistSection
+            trip={trip}
+            autoOpenAdd={autoOpenAddPlace}
+            onAutoOpenHandled={onAutoOpenAddPlaceHandled}
+          />
         </div>
       </div>
     )

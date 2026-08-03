@@ -205,7 +205,7 @@ export function WishlistSection({
             <p className="text-sm text-slate-500">저장된 장소를 불러오는 중…</p>
           </div>
         ) : visiblePlaces.length > 0 ? (
-          <ul className="grid gap-4 md:grid-cols-1 xl:grid-cols-2">
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {visiblePlaces.map((place) => (
               <SavedPlaceCard
                 key={place.id}
