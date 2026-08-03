@@ -3,10 +3,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { differenceInHours, format, formatDistanceToNow, parseISO } from "date-fns"
 import { ko } from "date-fns/locale"
-import { Loader2, RefreshCw, Search, UserPlus, Users, X } from "lucide-react"
+import { ChevronDown, Loader2, RefreshCw, Search, UserPlus, Users, X } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { FieldError } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
@@ -117,13 +124,6 @@ function resolveOtherUser(
   )
 }
 
-type CategoryTab = "list" | "requests"
-
-const CATEGORY_TABS: { key: CategoryTab; label: string; icon: typeof Users }[] = [
-  { key: "list", label: "친구 목록", icon: Users },
-  { key: "requests", label: "친구 요청", icon: UserPlus },
-]
-
 export function FriendsView() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
@@ -137,12 +137,15 @@ export function FriendsView() {
   const [error, setError] = useState<string | null>(null)
   const [pendingActionId, setPendingActionId] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<CategoryTab>("list")
+  const [requestsOpen, setRequestsOpen] = useState(false)
+  const [suggestionsCollapsed, setSuggestionsCollapsed] = useState(false)
+  const [listCollapsed, setListCollapsed] = useState(false)
   const [animatedItemIds, setAnimatedItemIds] = useState<Set<string>>(() => new Set())
   const [searchExiting, setSearchExiting] = useState(false)
   const [coTravelers, setCoTravelers] = useState<CoTraveler[]>([])
 
   const friendshipsSnapshotRef = useRef<FriendshipJoinedRow[]>([])
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
   const trimmedQuery = searchQuery.trim()
   const isSearchMode = trimmedQuery.length > 0 && !searchExiting
 
@@ -598,23 +601,45 @@ export function FriendsView() {
   const requestBadgeCount = receivedRequests.length
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-4 pb-6 sm:max-w-2xl">
-      {/* Top bar */}
+    <div className="mx-auto flex w-full max-w-xl flex-col gap-3 pb-6 sm:max-w-2xl">
+      {/* Top bar — 카카오톡식: 타이틀 + 검색/요청/새로고침 아이콘 */}
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight">친구</h2>
-          <p className="text-xs text-muted-foreground">친구 목록과 요청 현황을 한눈에 확인하세요</p>
+        <h2 className="text-xl font-bold tracking-tight">친구</h2>
+        <div className="flex items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="rounded-full"
+            onClick={() => searchInputRef.current?.focus()}
+            aria-label="친구 검색으로 이동"
+          >
+            <Search className="size-4 stroke-[1.5]" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="relative rounded-full"
+            onClick={() => setRequestsOpen(true)}
+            aria-label="친구 요청"
+          >
+            <UserPlus className="size-4 stroke-[1.5]" />
+            {requestBadgeCount > 0 ? (
+              <span className="absolute top-0.5 right-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white">
+                {requestBadgeCount}
+              </span>
+            ) : null}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="rounded-full"
+            onClick={() => void refreshFriends()}
+            disabled={loading}
+            aria-label="새로고침"
+          >
+            {loading ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4 stroke-[1.5]" />}
+          </Button>
         </div>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="rounded-full"
-          onClick={() => void refreshFriends()}
-          disabled={loading}
-          aria-label="새로고침"
-        >
-          {loading ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4 stroke-[1.5]" />}
-        </Button>
       </div>
 
       {toast ? (
@@ -627,11 +652,12 @@ export function FriendsView() {
         </div>
       ) : null}
 
-      {/* Search */}
+      {/* Search — 카카오톡식 상시 노출 검색창 */}
       <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
         <div className="relative border-b border-border px-3 py-2.5">
           <Search className="pointer-events-none absolute top-1/2 left-6 size-3.5 -translate-y-1/2 stroke-[1.5] text-muted-foreground" />
           <Input
+            ref={searchInputRef}
             value={searchQuery}
             onChange={(event) => {
               setSearchExiting(false)
@@ -752,101 +778,90 @@ export function FriendsView() {
         ) : null}
       </section>
 
-      {/* 중카테고리: 친구 목록 / 친구 요청 — 인스타그램식 언더라인 탭 */}
       {!isSearchMode ? (
-        <nav
-          aria-label="친구 보기 전환"
-          className="flex items-stretch overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm"
-        >
-          {CATEGORY_TABS.map((tab) => {
-            const isActive = activeTab === tab.key
-            const badge = tab.key === "requests" ? requestBadgeCount : 0
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setActiveTab(tab.key)}
-                className={cn(
-                  "relative flex flex-1 items-center justify-center gap-1.5 border-b-2 py-3.5 text-sm font-semibold transition-colors duration-150",
-                  isActive
-                    ? "border-foreground text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground/70"
-                )}
-              >
-                <tab.icon className={cn("size-4", isActive ? "stroke-[2]" : "stroke-[1.5]")} />
-                {tab.label}
-                {badge > 0 ? (
-                  <span className="ml-0.5 flex min-w-4.5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white">
-                    {badge}
-                  </span>
-                ) : null}
-              </button>
-            )
-          })}
-        </nav>
-      ) : null}
-
-      {isSearchMode ? null : activeTab === "list" ? (
         <>
-          {/* 소카테고리: 추천 (같이 여행 중인 친구) */}
+          {/* 소카테고리: 추천 (같이 여행 중인 친구) — 접고 펼 수 있음 */}
           {suggestedCoTravelers.length > 0 ? (
             <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
-              <div className="flex items-end justify-between gap-3 border-b border-border px-4 py-3">
-                <div>
+              <button
+                type="button"
+                onClick={() => setSuggestionsCollapsed((v) => !v)}
+                className="flex w-full items-center justify-between gap-3 px-4 py-3"
+              >
+                <span className="flex items-baseline gap-2">
                   <h3 className="text-sm font-bold">추천 · 같이 여행 중인 친구</h3>
-                  <p className="text-xs text-muted-foreground">같은 여행 그룹에 속한 멤버예요</p>
-                </div>
-                <span className="text-xs font-medium tabular-nums text-muted-foreground">
-                  {suggestedCoTravelers.length}명
+                  <span className="text-xs font-medium tabular-nums text-muted-foreground">
+                    {suggestedCoTravelers.length}
+                  </span>
                 </span>
-              </div>
-              <ul className="divide-y divide-border">
-                {suggestedCoTravelers.map((traveler) => (
-                  <li key={traveler.userId} className="flex items-center gap-3 px-4 py-3">
-                    <Avatar className="size-11 shrink-0">
-                      {traveler.avatarUrl ? <AvatarImage src={traveler.avatarUrl} alt="" /> : null}
-                      <AvatarFallback className="text-xs font-semibold">
-                        {initialsFromName(traveler.nickname)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate text-sm font-semibold">{traveler.nickname}</p>
-                        <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900">
-                          {traveler.groupTag}
-                        </span>
+                <ChevronDown
+                  className={cn(
+                    "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                    suggestionsCollapsed && "-rotate-90"
+                  )}
+                />
+              </button>
+              {!suggestionsCollapsed ? (
+                <ul className="divide-y divide-border border-t border-border">
+                  {suggestedCoTravelers.map((traveler) => (
+                    <li key={traveler.userId} className="flex items-center gap-3 px-4 py-2.5">
+                      <Avatar className="size-10 shrink-0">
+                        {traveler.avatarUrl ? <AvatarImage src={traveler.avatarUrl} alt="" /> : null}
+                        <AvatarFallback className="text-xs font-semibold">
+                          {initialsFromName(traveler.nickname)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate text-sm font-semibold">{traveler.nickname}</p>
+                          <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900">
+                            {traveler.groupTag}
+                          </span>
+                        </div>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {traveler.tripTitle}
+                          {traveler.email ? ` · ${traveler.email}` : ""}
+                        </p>
                       </div>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {traveler.tripTitle}
-                        {traveler.email ? ` · ${traveler.email}` : ""}
-                      </p>
-                    </div>
-                    {renderSearchAction(traveler)}
-                  </li>
-                ))}
-              </ul>
+                      {renderSearchAction(traveler)}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </section>
           ) : null}
 
-          {/* 소카테고리: 전체 친구 목록 (초성 그룹) */}
+          {/* 소카테고리: 친구 (초성 그룹) — 접고 펼 수 있음 */}
           <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
-            <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-              <h3 className="text-sm font-bold">전체 친구</h3>
-              <span className="text-xs font-medium tabular-nums text-muted-foreground">
-                {acceptedFriends.length}명
+            <button
+              type="button"
+              onClick={() => setListCollapsed((v) => !v)}
+              className="flex w-full items-center justify-between gap-3 px-4 py-3"
+            >
+              <span className="flex items-baseline gap-2">
+                <h3 className="text-sm font-bold">친구</h3>
+                <span className="text-xs font-medium tabular-nums text-muted-foreground">
+                  {acceptedFriends.length}
+                </span>
               </span>
-            </div>
-            {error ? (
-              <div className="px-4 py-4">
+              <ChevronDown
+                className={cn(
+                  "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                  listCollapsed && "-rotate-90"
+                )}
+              />
+            </button>
+            {listCollapsed ? null : error ? (
+              <div className="border-t border-border px-4 py-4">
                 <FieldError>{error}</FieldError>
               </div>
             ) : loading ? (
-              <div className="flex items-center justify-center gap-2 px-4 py-16 text-sm text-muted-foreground">
+              <div className="flex items-center justify-center gap-2 border-t border-border px-4 py-16 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" />
                 친구 목록을 불러오는 중…
               </div>
             ) : acceptedFriends.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
+              <div className="flex flex-col items-center gap-3 border-t border-border px-6 py-16 text-center">
                 <span className="flex size-16 items-center justify-center rounded-full border border-border text-muted-foreground">
                   <Users className="size-7 stroke-[1.25]" />
                 </span>
@@ -856,25 +871,25 @@ export function FriendsView() {
                 </p>
               </div>
             ) : (
-              <div className="flex flex-col">
+              <div className="flex flex-col border-t border-border">
                 {groupedFriends.map((group) => (
-                  <div key={group.key}>
-                    <p className="px-4 pt-3 pb-1 text-xs font-bold text-muted-foreground">
+                  <div key={group.key} className="flex">
+                    <p className="w-8 shrink-0 pt-2.5 pl-4 text-xs font-bold text-muted-foreground/70">
                       {group.key}
                     </p>
-                    <ul>
+                    <ul className="min-w-0 flex-1">
                       {group.items.map(({ row, user }) => (
                         <li
                           key={row.id}
                           className={cn(
-                            "flex items-center gap-3 px-4 py-2.5 transition-colors duration-200 hover:bg-secondary/40",
+                            "flex items-center gap-2.5 py-2 pr-2 transition-colors duration-200 hover:bg-secondary/40",
                             animatedItemIds.has(row.id) &&
                               "animate-in fade-in-50 slide-in-from-top-2 duration-300"
                           )}
                         >
-                          <Avatar className="size-11 shrink-0">
+                          <Avatar className="size-9 shrink-0">
                             {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
-                            <AvatarFallback className="text-xs font-semibold">
+                            <AvatarFallback className="text-[11px] font-semibold">
                               {initialsFromName(user.nickname)}
                             </AvatarFallback>
                           </Avatar>
@@ -886,10 +901,11 @@ export function FriendsView() {
                           </div>
                           <button
                             type="button"
-                            className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-destructive"
+                            aria-label={`${user.nickname} 친구 삭제`}
+                            className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground/60 transition-colors duration-150 hover:bg-secondary hover:text-destructive"
                             onClick={() => handleUnfriend(row.id, user.nickname)}
                           >
-                            삭제
+                            <X className="size-3.5 stroke-[1.5]" />
                           </button>
                         </li>
                       ))}
@@ -900,150 +916,128 @@ export function FriendsView() {
             )}
           </section>
         </>
-      ) : (
-        <>
-          {/* 소카테고리: 받은 요청 */}
-          <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
-            <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-              <h3 className="text-sm font-bold">받은 요청</h3>
-              <span className="text-xs font-medium tabular-nums text-muted-foreground">
-                {receivedRequests.length}건
-              </span>
-            </div>
-            {loading ? (
-              <div className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
-                불러오는 중…
-              </div>
-            ) : receivedRequests.length === 0 ? (
-              <p className="px-4 py-10 text-center text-sm text-muted-foreground">
-                받은 친구 요청이 없어요.
+      ) : null}
+
+      {/* 친구 요청 — 받은 요청 / 보낸 요청 */}
+      <Dialog open={requestsOpen} onOpenChange={setRequestsOpen}>
+        <DialogContent className="max-h-[85svh] overflow-y-auto rounded-3xl border-slate-100 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>친구 요청</DialogTitle>
+            <DialogDescription>받은 요청을 수락하거나, 보낸 요청을 취소할 수 있어요.</DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-5">
+            <div>
+              <p className="mb-2 flex items-center gap-2 text-xs font-bold text-muted-foreground">
+                받은 요청
+                <span className="tabular-nums">{receivedRequests.length}</span>
               </p>
-            ) : (
-              <ul>
-                {receivedRequests.map((row) => {
-                  const user = currentUserId
-                    ? resolveOtherUser(row, currentUserId, usersById)
-                    : { userId: row.user_id, nickname: "사용자", email: "" }
-                  const accepting = pendingActionId === `accepted:${row.id}`
-                  const rejecting = pendingActionId === `reject:${row.id}`
-                  return (
-                    <li
-                      key={row.id}
-                      className={cn(
-                        "flex items-center gap-3 px-4 py-3 transition-colors duration-200 hover:bg-secondary/40",
-                        animatedItemIds.has(row.id) &&
-                          "animate-in fade-in-50 slide-in-from-top-2 duration-300"
-                      )}
-                    >
-                      <span className="shrink-0 rounded-full bg-gradient-to-tr from-primary via-primary to-amber-300 p-[1.5px]">
-                        <Avatar className="size-11 border-2 border-card">
+              {receivedRequests.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  받은 친구 요청이 없어요.
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {receivedRequests.map((row) => {
+                    const user = currentUserId
+                      ? resolveOtherUser(row, currentUserId, usersById)
+                      : { userId: row.user_id, nickname: "사용자", email: "" }
+                    const accepting = pendingActionId === `accepted:${row.id}`
+                    const rejecting = pendingActionId === `reject:${row.id}`
+                    return (
+                      <li key={row.id} className="flex items-center gap-3 rounded-xl px-1 py-2">
+                        <Avatar className="size-11">
                           {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
                           <AvatarFallback className="text-xs font-semibold">
                             {initialsFromName(user.nickname)}
                           </AvatarFallback>
                         </Avatar>
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-bold">{user.nickname}</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {formatRelativeKo(parseCreatedAt(row.created_at))}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        <Button
-                          size="sm"
-                          className={cn(
-                            actionBtnClass,
-                            "bg-primary font-bold text-primary-foreground hover:bg-primary/90"
-                          )}
-                          disabled={accepting || rejecting}
-                          onClick={() => void handleAccept(row.id)}
-                        >
-                          {accepting ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                          수락
-                        </Button>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold">{user.nickname}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {formatRelativeKo(parseCreatedAt(row.created_at))}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 gap-1.5">
+                          <Button
+                            size="sm"
+                            className={cn(
+                              actionBtnClass,
+                              "bg-primary font-bold text-primary-foreground hover:bg-primary/90"
+                            )}
+                            disabled={accepting || rejecting}
+                            onClick={() => void handleAccept(row.id)}
+                          >
+                            {accepting ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                            수락
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className={actionBtnClass}
+                            disabled={accepting || rejecting}
+                            onClick={() => void handleRejectOrCancel(row.id, "reject")}
+                          >
+                            {rejecting ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                            거절
+                          </Button>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+
+            <div>
+              <p className="mb-2 flex items-center gap-2 text-xs font-bold text-muted-foreground">
+                보낸 요청
+                <span className="tabular-nums">{sentRequests.length}</span>
+              </p>
+              {sentRequests.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  보낸 친구 요청이 없어요.
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {sentRequests.map((row) => {
+                    const user = currentUserId
+                      ? resolveOtherUser(row, currentUserId, usersById)
+                      : { userId: row.friend_id, nickname: "사용자", email: "" }
+                    const cancelling = pendingActionId === `cancel:${row.id}`
+                    return (
+                      <li key={row.id} className="flex items-center gap-3 rounded-xl px-1 py-2">
+                        <Avatar className="size-11">
+                          {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
+                          <AvatarFallback className="text-xs font-semibold">
+                            {initialsFromName(user.nickname)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold">{user.nickname}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            대기 중 · {formatRelativeKo(parseCreatedAt(row.created_at))}
+                          </p>
+                        </div>
                         <Button
                           size="sm"
                           variant="secondary"
-                          className={actionBtnClass}
-                          disabled={accepting || rejecting}
-                          onClick={() => void handleRejectOrCancel(row.id, "reject")}
+                          className={cn(actionBtnClass, "text-muted-foreground")}
+                          disabled={cancelling}
+                          onClick={() => void handleRejectOrCancel(row.id, "cancel")}
                         >
-                          {rejecting ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                          거절
+                          {cancelling ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                          취소
                         </Button>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </section>
-
-          {/* 소카테고리: 보낸 요청 */}
-          <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
-            <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-              <h3 className="text-sm font-bold">보낸 요청</h3>
-              <span className="text-xs font-medium tabular-nums text-muted-foreground">
-                {sentRequests.length}건
-              </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
             </div>
-            {loading ? (
-              <div className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
-                불러오는 중…
-              </div>
-            ) : sentRequests.length === 0 ? (
-              <p className="px-4 py-10 text-center text-sm text-muted-foreground">
-                보낸 친구 요청이 없어요.
-              </p>
-            ) : (
-              <ul>
-                {sentRequests.map((row) => {
-                  const user = currentUserId
-                    ? resolveOtherUser(row, currentUserId, usersById)
-                    : { userId: row.friend_id, nickname: "사용자", email: "" }
-                  const cancelling = pendingActionId === `cancel:${row.id}`
-                  return (
-                    <li
-                      key={row.id}
-                      className={cn(
-                        "flex items-center gap-3 px-4 py-3 transition-colors duration-200 hover:bg-secondary/40",
-                        animatedItemIds.has(row.id) &&
-                          "animate-in fade-in-50 slide-in-from-top-2 duration-300"
-                      )}
-                    >
-                      <Avatar className="size-11 shrink-0">
-                        {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
-                        <AvatarFallback className="text-xs font-semibold">
-                          {initialsFromName(user.nickname)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-bold">{user.nickname}</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          대기 중 · {formatRelativeKo(parseCreatedAt(row.created_at))}
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className={cn(actionBtnClass, "text-muted-foreground")}
-                        disabled={cancelling}
-                        onClick={() => void handleRejectOrCancel(row.id, "cancel")}
-                      >
-                        {cancelling ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                        취소
-                      </Button>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </section>
-        </>
-      )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
