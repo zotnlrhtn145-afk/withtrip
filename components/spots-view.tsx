@@ -380,12 +380,12 @@ export function SpotsView() {
   }
 
   return (
-    <div className="flex flex-col gap-5 bg-white">
+    <div className="flex w-full max-w-full flex-col gap-5 overflow-x-hidden bg-white">
       {locationBanner}
       {permissionHelp}
       {authorFilterRow}
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <NearbyMap
           center={geo.position}
           accuracy={geo.accuracy}
@@ -395,9 +395,10 @@ export function SpotsView() {
           onRecenter={handleRecenter}
           recenterKey={recenterKey}
           locating={geo.status === "locating"}
+          className="min-w-0"
         />
 
-        <section className="flex flex-col gap-3">
+        <section className="flex min-w-0 flex-col gap-3">
           <p className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">거리순</p>
           {filteredSpots.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-400">

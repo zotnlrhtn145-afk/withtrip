@@ -441,6 +441,7 @@ export function SavedPlacesView() {
               locating={geo.status === "locating"}
               className="h-full rounded-none border-x-0"
               gestureHandling="cooperative"
+              recenterBottomClass="bottom-28 md:bottom-24"
               fill
             />
           </div>

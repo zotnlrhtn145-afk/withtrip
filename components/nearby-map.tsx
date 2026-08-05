@@ -197,6 +197,7 @@ function NearbyMapInner({
   locating,
   fill = false,
   gestureHandling = "greedy",
+  recenterBottomClass = "bottom-3",
 }: {
   center: LatLng
   accuracy: number | null
@@ -207,6 +208,8 @@ function NearbyMapInner({
   recenterKey: number
   locating?: boolean
   fill?: boolean
+  /** 내 위치 버튼의 bottom 위치 (저장 화면은 리스트가 지도 하단을 덮어서 위로 올림) */
+  recenterBottomClass?: string
   /** "cooperative"면 마우스 휠 한 번/한 손가락 스와이프는 지도를 확대하지 않고
    *  페이지를 스크롤한다 — 지도가 페이지 스크롤에 얹혀 있는 화면에서 필요하다. */
   gestureHandling?: "greedy" | "cooperative"
@@ -274,7 +277,7 @@ function NearbyMapInner({
         </div>
       </div>
 
-      <div className="absolute bottom-3 right-3 z-10">
+      <div className={cn("absolute right-3 z-10", recenterBottomClass)}>
         <Button
           type="button"
           aria-label="내 현재 위치로 이동"
@@ -306,6 +309,7 @@ export function NearbyMap({
   className,
   fill = false,
   gestureHandling = "greedy",
+  recenterBottomClass,
 }: {
   center: LatLng
   accuracy: number | null
@@ -318,6 +322,7 @@ export function NearbyMap({
   className?: string
   /** Stretch map to parent height instead of fixed aspect ratio. */
   fill?: boolean
+  recenterBottomClass?: string
   /** "cooperative"면 마우스 휠/한 손가락 스와이프가 지도 확대 대신 페이지 스크롤로 간다. */
   gestureHandling?: "greedy" | "cooperative"
 }) {
@@ -380,6 +385,7 @@ export function NearbyMap({
             locating={locating}
             fill={fill}
             gestureHandling={gestureHandling}
+            recenterBottomClass={recenterBottomClass}
           />
         </div>
       </APIProvider>
