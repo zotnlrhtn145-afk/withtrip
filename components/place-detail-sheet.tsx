@@ -1,10 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ChevronLeft, Clock, MapPin, Phone, Star } from "lucide-react"
+import { ChevronLeft, Clock, MapPin, Navigation, Phone, Star } from "lucide-react"
 
 import { MiniMap } from "@/components/mini-map"
+import { distanceMeters, estimateWalkMinutes, formatDistance } from "@/lib/geo"
 import { cn } from "@/lib/utils"
+
+const NEAR_THRESHOLD_M = 40000 // 40km 이내면 내 위치도 함께
 
 export type PlaceDetailInput = {
   name: string
@@ -39,9 +42,11 @@ const todayIdx = (() => {
 
 export function PlaceDetailSheet({
   place,
+  userLoc,
   onClose,
 }: {
   place: PlaceDetailInput | null
+  userLoc?: { lat: number; lng: number } | null
   onClose: () => void
 }) {
   const [detail, setDetail] = useState<ApiDetail | null>(null)
@@ -98,6 +103,8 @@ export function PlaceDetailSheet({
   const summary = detail?.summary || ""
   const lat = place.lat ?? detail?.lat
   const lng = place.lng ?? detail?.lng
+  const dist = userLoc && lat != null && lng != null ? distanceMeters(userLoc, { lat, lng }) : null
+  const near = dist != null && dist < NEAR_THRESHOLD_M
   const directionsHref =
     lat != null && lng != null
       ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
@@ -188,7 +195,16 @@ export function PlaceDetailSheet({
             </div>
           ) : null}
 
-          {lat != null && lng != null ? <MiniMap lat={lat} lng={lng} /> : null}
+          {dist != null ? (
+            <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2.5">
+              <Navigation className="size-4 shrink-0 text-amber-500" />
+              <span className="text-[13px] font-bold text-amber-700">
+                내 위치에서 {formatDistance(dist)} · 도보 {estimateWalkMinutes(dist)}분
+              </span>
+            </div>
+          ) : null}
+
+          {lat != null && lng != null ? <MiniMap lat={lat} lng={lng} user={near ? userLoc : null} /> : null}
 
           {detail?.phone ? (
             <div className="flex items-center gap-3">

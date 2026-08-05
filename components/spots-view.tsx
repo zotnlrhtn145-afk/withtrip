@@ -544,7 +544,7 @@ export function SpotsView() {
         </section>
       </div>
 
-      <PlaceDetailSheet place={detailPlace} onClose={() => setDetailPlace(null)} />
+      <PlaceDetailSheet place={detailPlace} userLoc={geo.position} onClose={() => setDetailPlace(null)} />
     </div>
   )
 }

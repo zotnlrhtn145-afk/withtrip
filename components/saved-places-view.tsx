@@ -505,7 +505,7 @@ export function SavedPlacesView() {
         onSelect={(trip) => void handleAssignTrip(trip.id)}
       />
 
-      <PlaceDetailSheet place={detailPlace} onClose={() => setDetailPlace(null)} />
+      <PlaceDetailSheet place={detailPlace} userLoc={geo.position} onClose={() => setDetailPlace(null)} />
     </div>
   )
 }
