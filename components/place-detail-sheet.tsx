@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { ChevronLeft, Clock, MapPin, Phone, Star } from "lucide-react"
 
+import { MiniMap } from "@/components/mini-map"
 import { cn } from "@/lib/utils"
 
 export type PlaceDetailInput = {
@@ -186,6 +187,8 @@ export function PlaceDetailSheet({
               </a>
             </div>
           ) : null}
+
+          {lat != null && lng != null ? <MiniMap lat={lat} lng={lng} /> : null}
 
           {detail?.phone ? (
             <div className="flex items-center gap-3">
