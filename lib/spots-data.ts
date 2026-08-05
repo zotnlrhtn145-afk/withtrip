@@ -15,6 +15,9 @@ export type NearbySpot = {
   authorAvatarUrl?: string | null
   /** Trip-less "나의 관심 맛집" — marker gets a distinct border color on the map. */
   isInterest?: boolean
+  /** 여행클립(trip) — 주변스팟을 여행별로 묶기 위한 값. */
+  tripId?: string | null
+  tripTitle?: string | null
 }
 
 /** Fallback when `avatar_url` is missing. */

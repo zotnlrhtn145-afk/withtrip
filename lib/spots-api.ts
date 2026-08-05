@@ -117,7 +117,7 @@ const SAVED_PLACE_SELECT = `
 
 export function mapSavedPlaceRowToNearbySpot(
   row: SavedPlaceRow,
-  options?: { isInterest?: boolean }
+  options?: { isInterest?: boolean; tripTitle?: string | null }
 ): NearbySpot | null {
   const lat = toNumber(row.lat)
   const lng = toNumber(row.lng)
@@ -144,6 +144,8 @@ export function mapSavedPlaceRowToNearbySpot(
     authorNickname: nickname || null,
     authorAvatarUrl: avatarUrl || null,
     isInterest: options?.isInterest ?? false,
+    tripId: (row.trip_id as string | null) ?? null,
+    tripTitle: options?.tripTitle ?? null,
   }
 }
 
@@ -162,7 +164,7 @@ export async function fetchNearbySpots(): Promise<NearbySpot[]> {
 
     // Get all trip IDs where user is owner or accepted member
     const [{ data: ownedTrips }, { data: memberTrips }] = await Promise.all([
-      client.from("trips").select("id").eq("user_id", userId),
+      client.from("trips").select("id, title").eq("user_id", userId),
       client.from("trip_members").select("trip_id").eq("user_id", userId).eq("status", "accepted"),
     ])
 
@@ -173,7 +175,21 @@ export async function fetchNearbySpots(): Promise<NearbySpot[]> {
       ]),
     ]
 
-    const [savedPlacesResult, legacySpotsResult, interestPlacesResult] = await Promise.all([
+    // 여행 제목 맵 (주변스팟을 여행클립별로 묶어 보여주기 위함).
+    const titleById = new Map<string, string>()
+    for (const t of (ownedTrips ?? []) as { id: string; title?: string | null }[]) {
+      if (t.title) titleById.set(t.id, t.title)
+    }
+    const missingTitleIds = tripIds.filter((id) => !titleById.has(id))
+    if (missingTitleIds.length > 0) {
+      const { data: moreTrips } = await client.from("trips").select("id, title").in("id", missingTitleIds)
+      for (const t of (moreTrips ?? []) as { id: string; title?: string | null }[]) {
+        if (t.title) titleById.set(t.id, t.title)
+      }
+    }
+
+    // 주변스팟 = 여행클립에 등록된 "가고 싶은 곳"만 (관심 맛집은 제외 — 앱과 동일).
+    const [savedPlacesResult, legacySpotsResult] = await Promise.all([
       tripIds.length > 0
         ? client
             .from("saved_places")
@@ -188,13 +204,6 @@ export async function fetchNearbySpots(): Promise<NearbySpot[]> {
             .or(`trip_id.in.(${tripIds.join(",")}),user_id.eq.${userId}`)
             .order("created_at", { ascending: false })
         : Promise.resolve({ data: [] as SpotRow[], error: null }),
-      // 여행에 속하지 않은 "나의 관심 맛집" — 지도에도 함께 표시 (테두리 색으로 구분).
-      client
-        .from("saved_places")
-        .select(SAVED_PLACE_SELECT)
-        .is("trip_id", null)
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false }),
     ])
 
     if (savedPlacesResult.error) {
@@ -203,25 +212,18 @@ export async function fetchNearbySpots(): Promise<NearbySpot[]> {
     if (legacySpotsResult.error) {
       console.warn("[fetchNearbySpots] spots:", legacySpotsResult.error.message)
     }
-    if (interestPlacesResult.error) {
-      console.warn("[fetchNearbySpots] interest saved_places:", interestPlacesResult.error.message)
-    }
 
     const savedRows = (savedPlacesResult.data as SavedPlaceRow[] | null) ?? []
     const legacyRows = (legacySpotsResult.data as SpotRow[] | null) ?? []
-    const interestRows = (interestPlacesResult.data as SavedPlaceRow[] | null) ?? []
 
     const fromSaved = savedRows
-      .map((row) => mapSavedPlaceRowToNearbySpot(row))
+      .map((row) => mapSavedPlaceRowToNearbySpot(row, { tripTitle: row.trip_id ? titleById.get(row.trip_id) ?? null : null }))
       .filter((spot): spot is NearbySpot => Boolean(spot))
     const fromLegacy = legacyRows
       .map(mapSpotRowToNearbySpot)
       .filter((spot): spot is NearbySpot => Boolean(spot))
-    const fromInterest = interestRows
-      .map((row) => mapSavedPlaceRowToNearbySpot(row, { isInterest: true }))
-      .filter((spot): spot is NearbySpot => Boolean(spot))
 
-    return [...fromSaved, ...fromLegacy, ...fromInterest]
+    return [...fromSaved, ...fromLegacy]
   } catch (err) {
     console.warn("[fetchNearbySpots] unexpected:", err)
     return []

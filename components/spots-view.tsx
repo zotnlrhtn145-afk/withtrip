@@ -9,6 +9,7 @@ import {
   MapPin,
   MapPinOff,
   Navigation,
+  Plane,
   RefreshCw,
   Star,
 } from "lucide-react"
@@ -75,7 +76,7 @@ export function SpotsView() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detailPlace, setDetailPlace] = useState<PlaceDetailInput | null>(null)
   const [authorFilter, setAuthorFilter] = useState<string | null>(null)
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
+  const [meId, setMeId] = useState<string | null>(null)
   const [recenterKey, setRecenterKey] = useState(0)
   const didAutoCenter = useRef(false)
   const followNextFix = useRef(false)
@@ -90,6 +91,7 @@ export function SpotsView() {
           data: { user },
         } = await supabase.auth.getUser()
         if (cancelled) return
+        setMeId(user?.id ?? null)
         setAuthPhase(user ? "authed" : "guest")
       } catch {
         if (!cancelled) setAuthPhase("guest")
@@ -164,24 +166,29 @@ export function SpotsView() {
     return Array.from(map.values()).sort((a, b) => b.count - a.count)
   }, [spots])
 
-  /** 스팟에 실제로 있는 음식 카테고리만 칩으로 — 맛집/카페/라운지&바… */
-  const categories = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const spot of spots) {
-      const c = (spot.category ?? "").trim()
-      if (!c) continue
-      map.set(c, (map.get(c) ?? 0) + 1)
-    }
-    return Array.from(map.entries())
-      .map(([label, count]) => ({ label, count }))
-      .sort((a, b) => b.count - a.count)
-  }, [spots])
-
   const filteredSpots = useMemo(() => {
-    return spots
-      .filter((spot) => !authorFilter || spot.userId === authorFilter)
-      .filter((spot) => !categoryFilter || (spot.category ?? "").trim() === categoryFilter)
-  }, [spots, authorFilter, categoryFilter])
+    return spots.filter((spot) => !authorFilter || spot.userId === authorFilter)
+  }, [spots, authorFilter])
+
+  /** 여행클립별 그룹 — 각 클립 안은 거리순, 그룹은 가장 가까운 장소 기준으로 정렬. */
+  const tripGroups = useMemo(() => {
+    const map = new Map<
+      string,
+      { tripId: string; title: string; items: typeof filteredSpots }
+    >()
+    for (const spot of filteredSpots) {
+      const key = spot.tripId ?? "none"
+      const existing = map.get(key)
+      if (existing) {
+        existing.items.push(spot)
+      } else {
+        map.set(key, { tripId: key, title: spot.tripTitle?.trim() || "내 여행", items: [spot] })
+      }
+    }
+    return Array.from(map.values()).sort(
+      (a, b) => (a.items[0]?.distanceMeters ?? Infinity) - (b.items[0]?.distanceMeters ?? Infinity)
+    )
+  }, [filteredSpots])
 
   const selected = filteredSpots.find((spot) => spot.id === selectedId) ?? null
 
@@ -356,42 +363,6 @@ export function SpotsView() {
       </div>
     ) : null
 
-  const categoryFilterRow =
-    categories.length > 1 ? (
-      <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">
-        <button
-          type="button"
-          onClick={() => setCategoryFilter(null)}
-          className={cn(
-            "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
-            !categoryFilter
-              ? "border-amber-400 bg-amber-400 text-slate-950 shadow-sm"
-              : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/60"
-          )}
-        >
-          전체
-        </button>
-        {categories.map((cat) => {
-          const active = categoryFilter === cat.label
-          return (
-            <button
-              key={cat.label}
-              type="button"
-              onClick={() => setCategoryFilter((current) => (current === cat.label ? null : cat.label))}
-              className={cn(
-                "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
-                active
-                  ? "border-amber-400 bg-amber-400 text-slate-950 shadow-sm"
-                  : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/60"
-              )}
-            >
-              {cat.label}
-            </button>
-          )
-        })}
-      </div>
-    ) : null
-
   if (authPhase === "checking") {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3 bg-white px-6 text-center">
@@ -453,7 +424,6 @@ export function SpotsView() {
       {locationBanner}
       {permissionHelp}
       {authorFilterRow}
-      {categoryFilterRow}
 
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <NearbyMap
@@ -469,104 +439,122 @@ export function SpotsView() {
         />
 
         <section className="flex min-w-0 flex-col gap-3">
-          <p className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">거리순</p>
+          <p className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+            여행 {tripGroups.length} · 스팟 {filteredSpots.length}
+            {geo.status === "ready" ? " · 가까운 순" : ""}
+          </p>
           {filteredSpots.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-400">
               이 멤버가 등록한 장소가 없어요.
             </div>
           ) : (
-            <ul className="flex max-h-[min(70vh,640px)] flex-col gap-2 overflow-y-auto pr-0.5">
-              {filteredSpots.map((spot) => {
-                const isActive = spot.id === selectedId
-                const author =
-                  spot.authorNickname?.trim() ||
-                  (spot.userId ? "여행자" : null)
-                return (
-                  <li
-                    key={spot.id}
-                    ref={(node) => {
-                      cardRefs.current[spot.id] = node
-                    }}
-                  >
-                    <div
-                      className={cn(
-                        "flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-all",
-                        isActive
-                          ? "border-amber-300 bg-amber-50 shadow-sm"
-                          : "border-slate-100 bg-white shadow-sm hover:bg-slate-50"
-                      )}
-                    >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setDetailPlace({
-                            name: spot.name,
-                            lat: spot.lat,
-                            lng: spot.lng,
-                            imageUrl: spot.image,
-                            category: spot.category,
-                            rating: spot.rating > 0 ? spot.rating : null,
-                          })
-                        }
-                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                      >
-                        <Avatar
-                          className={cn(
-                            "size-10 shrink-0 border-2",
-                            isActive ? "border-amber-400" : "border-slate-100"
-                          )}
+            <div className="flex max-h-[min(70vh,640px)] flex-col gap-5 overflow-y-auto pr-0.5">
+              {tripGroups.map((group) => (
+                <div key={group.tripId} className="flex flex-col gap-2">
+                  {/* 여행클립 헤더 */}
+                  <div className="flex items-center gap-2 px-0.5">
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+                      <Plane className="size-4" />
+                    </span>
+                    <h3 className="min-w-0 flex-1 truncate text-[15px] font-extrabold text-slate-900">
+                      {group.title}
+                    </h3>
+                    <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-slate-500">
+                      {group.items.length}곳
+                    </span>
+                  </div>
+
+                  <ul className="flex flex-col gap-2">
+                    {group.items.map((spot) => {
+                      const isActive = spot.id === selectedId
+                      const mine = !!meId && spot.userId === meId
+                      const author = spot.authorNickname?.trim() || "멤버"
+                      return (
+                        <li
+                          key={spot.id}
+                          ref={(node) => {
+                            cardRefs.current[spot.id] = node
+                          }}
                         >
-                          <AvatarImage
-                            src={spot.authorAvatarUrl || DEFAULT_SPOT_AVATAR}
-                            alt=""
-                          />
-                          <AvatarFallback className="bg-slate-100 text-xs font-bold text-slate-500">
-                            {(author || spot.name).slice(0, 1)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div
-                          className="size-14 shrink-0 overflow-hidden rounded-xl bg-slate-100 bg-cover bg-center"
-                          style={{ backgroundImage: `url(${spot.image})` }}
-                          role="img"
-                          aria-label={spot.imageAlt}
-                        />
-                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                          <div className="flex items-center gap-2">
-                            <span className="truncate text-sm font-bold text-slate-900">
-                              {spot.name}
-                            </span>
-                            {spot.rating > 0 ? (
-                              <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium tabular-nums text-slate-400">
-                                <Star className="size-3 fill-amber-400 text-amber-400" />
-                                {spot.rating}
-                              </span>
-                            ) : null}
+                          <div
+                            className={cn(
+                              "flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-all",
+                              isActive
+                                ? "border-amber-300 bg-amber-50 shadow-sm"
+                                : "border-slate-100 bg-white shadow-sm hover:bg-slate-50"
+                            )}
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDetailPlace({
+                                  name: spot.name,
+                                  lat: spot.lat,
+                                  lng: spot.lng,
+                                  imageUrl: spot.image,
+                                  category: spot.category,
+                                  rating: spot.rating > 0 ? spot.rating : null,
+                                })
+                              }
+                              className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                            >
+                              {/* 장소 사진 + 등록자 카톡 프로필 뱃지 */}
+                              <div className="relative shrink-0">
+                                <div
+                                  className="size-14 overflow-hidden rounded-xl bg-slate-100 bg-cover bg-center"
+                                  style={{ backgroundImage: `url(${spot.image})` }}
+                                  role="img"
+                                  aria-label={spot.imageAlt}
+                                />
+                                <Avatar className="absolute -bottom-1 -right-1 size-6 border-2 border-white">
+                                  <AvatarImage src={spot.authorAvatarUrl || DEFAULT_SPOT_AVATAR} alt="" />
+                                  <AvatarFallback className="bg-slate-100 text-[9px] font-bold text-slate-500">
+                                    {author.slice(0, 1)}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </div>
+                              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="truncate text-sm font-bold text-slate-900">
+                                    {spot.name}
+                                  </span>
+                                  {spot.rating > 0 ? (
+                                    <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium tabular-nums text-slate-400">
+                                      <Star className="size-3 fill-amber-400 text-amber-400" />
+                                      {spot.rating}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <span className="truncate text-xs text-slate-400">
+                                  {spot.category}
+                                  <span className={cn("font-bold", mine ? "text-amber-600" : "text-slate-500")}>
+                                    {mine ? " · 내가 추가" : ` · ${author} 추가`}
+                                  </span>
+                                </span>
+                                <span className="flex items-center gap-2 text-[11px] text-slate-400">
+                                  <span className="inline-flex items-center gap-1 font-bold text-slate-700 tabular-nums">
+                                    <MapPin className="size-3 text-amber-500" />
+                                    {spot.distanceLabel}
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 tabular-nums">
+                                    <Footprints className="size-3" />
+                                    도보 {spot.walkMinutes}분
+                                  </span>
+                                </span>
+                              </div>
+                            </button>
+                            <DirectionsMenu
+                              destination={{ name: spot.name, lat: spot.lat, lng: spot.lng }}
+                              variant="icon"
+                            />
                           </div>
-                          <span className="truncate text-xs text-slate-400">
-                            {spot.category}
-                            {author ? ` · ${author}` : ` · ${spot.nameLocal}`}
-                          </span>
-                          <span className="flex items-center gap-2 text-[11px] text-slate-400">
-                            <span className="inline-flex items-center gap-1 font-bold text-slate-700 tabular-nums">
-                              <MapPin className="size-3 text-amber-500" />
-                              {spot.distanceLabel}
-                            </span>
-                            <span className="inline-flex items-center gap-1 tabular-nums">
-                              <Footprints className="size-3" />
-                              도보 {spot.walkMinutes}분
-                            </span>
-                          </span>
-                        </div>
-                      </button>
-                      <DirectionsMenu
-                        destination={{ name: spot.name, lat: spot.lat, lng: spot.lng }}
-                        variant="icon"
-                      />
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
           )}
 
           {selected ? (
