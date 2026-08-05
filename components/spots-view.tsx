@@ -75,6 +75,7 @@ export function SpotsView() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detailPlace, setDetailPlace] = useState<PlaceDetailInput | null>(null)
   const [authorFilter, setAuthorFilter] = useState<string | null>(null)
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
   const [recenterKey, setRecenterKey] = useState(0)
   const didAutoCenter = useRef(false)
   const followNextFix = useRef(false)
@@ -163,10 +164,24 @@ export function SpotsView() {
     return Array.from(map.values()).sort((a, b) => b.count - a.count)
   }, [spots])
 
+  /** 스팟에 실제로 있는 음식 카테고리만 칩으로 — 맛집/카페/라운지&바… */
+  const categories = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const spot of spots) {
+      const c = (spot.category ?? "").trim()
+      if (!c) continue
+      map.set(c, (map.get(c) ?? 0) + 1)
+    }
+    return Array.from(map.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count)
+  }, [spots])
+
   const filteredSpots = useMemo(() => {
-    if (!authorFilter) return spots
-    return spots.filter((spot) => spot.userId === authorFilter)
-  }, [spots, authorFilter])
+    return spots
+      .filter((spot) => !authorFilter || spot.userId === authorFilter)
+      .filter((spot) => !categoryFilter || (spot.category ?? "").trim() === categoryFilter)
+  }, [spots, authorFilter, categoryFilter])
 
   const selected = filteredSpots.find((spot) => spot.id === selectedId) ?? null
 
@@ -341,6 +356,42 @@ export function SpotsView() {
       </div>
     ) : null
 
+  const categoryFilterRow =
+    categories.length > 1 ? (
+      <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">
+        <button
+          type="button"
+          onClick={() => setCategoryFilter(null)}
+          className={cn(
+            "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
+            !categoryFilter
+              ? "border-amber-400 bg-amber-400 text-slate-950 shadow-sm"
+              : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/60"
+          )}
+        >
+          전체
+        </button>
+        {categories.map((cat) => {
+          const active = categoryFilter === cat.label
+          return (
+            <button
+              key={cat.label}
+              type="button"
+              onClick={() => setCategoryFilter((current) => (current === cat.label ? null : cat.label))}
+              className={cn(
+                "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
+                active
+                  ? "border-amber-400 bg-amber-400 text-slate-950 shadow-sm"
+                  : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/60"
+              )}
+            >
+              {cat.label}
+            </button>
+          )
+        })}
+      </div>
+    ) : null
+
   if (authPhase === "checking") {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3 bg-white px-6 text-center">
@@ -402,6 +453,7 @@ export function SpotsView() {
       {locationBanner}
       {permissionHelp}
       {authorFilterRow}
+      {categoryFilterRow}
 
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <NearbyMap
