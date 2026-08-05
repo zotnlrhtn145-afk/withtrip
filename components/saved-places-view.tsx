@@ -210,6 +210,24 @@ export function SavedPlacesView() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
+  // 지도 마커 클릭 → 해당 장소 상세 열기
+  const openPlaceDetail = (placeId: string) => {
+    setSelectedMapId(placeId)
+    const place = places.find((p) => p.id === placeId)
+    if (place) {
+      setDetailPlace({
+        name: place.placeName,
+        address: place.address,
+        lat: place.lat,
+        lng: place.lng,
+        imageUrl: place.imageUrl,
+        category: place.subCategory || place.category,
+        rating: place.rating ?? null,
+        reviewCount: place.reviewCount ?? null,
+      })
+    }
+  }
+
   const handleAssignTrip = async (tripId: string) => {
     if (!assigningPlace) return
     const place = assigningPlace
@@ -448,7 +466,7 @@ export function SavedPlacesView() {
               accuracy={geo.accuracy}
               spots={mapSpots}
               selectedId={selectedMapId}
-              onSelect={setSelectedMapId}
+              onSelect={openPlaceDetail}
               onRecenter={handleRecenter}
               recenterKey={recenterKey}
               locating={geo.status === "locating"}

@@ -198,6 +198,22 @@ export function SpotsView() {
     geo.locate()
   }
 
+  // 지도 마커 클릭 → 해당 식당 상세 열기 (+ 리스트 하이라이트)
+  const openSpotDetail = (id: string) => {
+    setSelectedId(id)
+    const s = spots.find((spot) => spot.id === id)
+    if (s) {
+      setDetailPlace({
+        name: s.name,
+        lat: s.lat,
+        lng: s.lng,
+        imageUrl: s.image,
+        category: s.category,
+        rating: s.rating > 0 ? s.rating : null,
+      })
+    }
+  }
+
   const statusLabel = (() => {
     switch (geo.status) {
       case "locating":
@@ -393,7 +409,7 @@ export function SpotsView() {
           accuracy={geo.accuracy}
           spots={filteredSpots}
           selectedId={selectedId}
-          onSelect={setSelectedId}
+          onSelect={openSpotDetail}
           onRecenter={handleRecenter}
           recenterKey={recenterKey}
           locating={geo.status === "locating"}
