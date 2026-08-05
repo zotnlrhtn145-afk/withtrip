@@ -274,25 +274,20 @@ function NearbyMapInner({
         </div>
       </div>
 
-      <div className="absolute bottom-3 right-3 z-[2]">
+      <div className="absolute bottom-3 right-3 z-10">
         <Button
           type="button"
-          size="icon"
           aria-label="내 현재 위치로 이동"
           title="내 현재 위치로 이동 / 재설정"
           onClick={onRecenter}
           disabled={locating}
           className={cn(
-            "size-11 rounded-full border border-border bg-card text-foreground shadow-lg hover:bg-secondary",
+            "flex h-11 items-center gap-1.5 rounded-full border border-primary/40 bg-white px-3.5 text-primary shadow-lg hover:bg-primary/5",
             locating && "animate-pulse"
           )}
         >
-          <LocateFixed
-            className={cn(
-              "size-5",
-              locating ? "text-muted-foreground" : "text-primary"
-            )}
-          />
+          <LocateFixed className="size-5" />
+          <span className="text-sm font-bold">{locating ? "찾는 중…" : "내 위치"}</span>
         </Button>
       </div>
     </div>
