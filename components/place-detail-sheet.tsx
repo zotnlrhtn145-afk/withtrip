@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Clock, MapPin, Phone, Star, X } from "lucide-react"
+import { ChevronLeft, Clock, MapPin, Phone, Star } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -103,9 +103,10 @@ export function PlaceDetailSheet({
       : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
-      <button type="button" aria-label="닫기" onClick={onClose} className="absolute inset-0 bg-black/50" />
-      <div className="relative flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+    <div className="fixed inset-0 z-[80] sm:flex sm:items-center sm:justify-center sm:bg-black/50 sm:p-4">
+      {/* 데스크톱: 바깥 클릭으로 닫기 (모바일은 전체화면이라 배경 없음) */}
+      <button type="button" aria-label="닫기" onClick={onClose} className="absolute inset-0 hidden sm:block" />
+      <div className="relative flex h-full w-full flex-col overflow-hidden bg-white duration-300 animate-in slide-in-from-right sm:h-auto sm:max-h-[88vh] sm:max-w-md sm:rounded-3xl sm:shadow-2xl sm:zoom-in-95 sm:slide-in-from-right-0">
         {/* 사진 캐러셀 */}
         <div className="relative aspect-[4/3] w-full shrink-0 bg-slate-100">
           {photos.length > 0 ? (
@@ -130,15 +131,15 @@ export function PlaceDetailSheet({
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur transition-colors hover:bg-black/55"
-            aria-label="닫기"
+            className="absolute left-3 top-3 flex size-9 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/55"
+            aria-label="뒤로"
           >
-            <X className="size-5" />
+            <ChevronLeft className="size-6" />
           </button>
         </div>
 
         {/* 본문 */}
-        <div className="flex flex-col gap-4 overflow-y-auto p-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5">
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-xl font-extrabold text-slate-900">{name}</h2>
