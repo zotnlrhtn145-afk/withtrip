@@ -417,8 +417,8 @@ function WithtripShell() {
 
   if (view === "mobile") {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="relative mx-auto flex w-full max-w-md flex-col pb-28">
+      <div className="min-h-screen overflow-x-hidden bg-background">
+        <div className="relative mx-auto flex w-full max-w-md flex-col overflow-x-hidden pb-28">
           <main
             className={
               currentView === "friends"

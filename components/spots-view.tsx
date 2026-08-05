@@ -397,7 +397,7 @@ export function SpotsView() {
           onRecenter={handleRecenter}
           recenterKey={recenterKey}
           locating={geo.status === "locating"}
-          className="min-w-0"
+          className="w-full min-w-0 max-w-full"
         />
 
         <section className="flex min-w-0 flex-col gap-3">
