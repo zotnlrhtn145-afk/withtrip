@@ -76,6 +76,7 @@ import {
   fetchUserPayoutAccount,
   patchTripSettleStatus,
 } from "@/lib/user-api"
+import { getCurrentUserId } from "@/lib/auth-session"
 import { cn } from "@/lib/utils"
 
 type SettlementViewProps = {
@@ -179,6 +180,7 @@ export function SettlementView({
   const [category, setCategory] = useState<ExpenseCategory>("식사")
   const [categoryChipId, setCategoryChipId] = useState("식사")
   const [payerId, setPayerId] = useState("")
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [expenseDate, setExpenseDate] = useState(todayIsoDate())
   const [participantIds, setParticipantIds] = useState<string[]>([])
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
@@ -306,13 +308,19 @@ export function SettlementView({
   }, [])
 
   useEffect(() => {
-    if (!payerId && members[0]?.userId) {
-      setPayerId(members[0].userId)
+    void getCurrentUserId().then((id) => setCurrentUserId(id))
+  }, [])
+
+  // 결제자 기본값 = 현재 로그인 유저(작성자). 멤버 목록에 있으면 그 사람으로, 없으면 첫 멤버.
+  useEffect(() => {
+    if (!payerId && members.length > 0) {
+      const mine = currentUserId && members.some((m) => m.userId === currentUserId) ? currentUserId : members[0].userId
+      setPayerId(mine)
     }
     if (members.length > 0 && participantIds.length === 0) {
       setParticipantIds(members.map((member) => member.userId))
     }
-  }, [members, payerId, participantIds.length])
+  }, [members, payerId, participantIds.length, currentUserId])
 
   const total = useMemo(
     () => expenses.reduce((sum, item) => sum + item.amount, 0),
@@ -374,7 +382,9 @@ export function SettlementView({
     setAmount("")
     setCategory("식사")
     setCategoryChipId("식사")
-    setPayerId(members[0]?.userId ?? "")
+    setPayerId(
+      currentUserId && members.some((m) => m.userId === currentUserId) ? currentUserId : members[0]?.userId ?? ""
+    )
     setExpenseDate(todayIsoDate())
     setParticipantIds(members.map((member) => member.userId))
     setReceiptFile(null)
