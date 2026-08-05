@@ -127,6 +127,8 @@ type ReviewItem = {
   chipId: string
   date: string
   selected: boolean
+  /** 이 내역의 정산 대상자 (내역마다 다르게 지정 가능) */
+  participantIds: string[]
 }
 
 function chipIdToCategory(chipId: string): ExpenseCategory {
@@ -147,6 +149,7 @@ function toReviewItem(item: ParsedReceiptItem): ReviewItem {
     chipId,
     date: /^\d{4}-\d{2}-\d{2}$/.test(item.date) ? item.date : todayIsoDate(),
     selected: true,
+    participantIds: [],
   }
 }
 
@@ -431,7 +434,9 @@ export function SettlementView({
         const { items } = await parseReceiptImage(file)
         if (items.length > 1) {
           // 카드/은행 앱 거래내역처럼 한 이미지에 여러 건 — 검토 목록으로 전환.
-          setReviewItems(items.map(toReviewItem))
+          // 각 내역의 정산 대상자는 기본으로 전체 멤버, 이후 내역별로 조정 가능.
+          const allMemberIds = members.map((m) => m.userId)
+          setReviewItems(items.map((it) => ({ ...toReviewItem(it), participantIds: allMemberIds })))
           showToast(
             `영수증에서 ${items.length}건의 지출을 찾았어요. 등록할 항목을 확인해 주세요.`
           )
@@ -563,10 +568,6 @@ export function SettlementView({
       setFormError("결제자를 선택해 주세요.")
       return
     }
-    if (participantIds.length === 0) {
-      setFormError("정산 대상자를 한 명 이상 선택해 주세요.")
-      return
-    }
     for (const item of selectedReviewItems) {
       if (!item.title.trim()) {
         setFormError("모든 항목의 지출명을 입력해 주세요.")
@@ -578,6 +579,10 @@ export function SettlementView({
       }
       if (!item.date) {
         setFormError("모든 항목의 날짜를 입력해 주세요.")
+        return
+      }
+      if (item.participantIds.length === 0) {
+        setFormError(`"${item.title.trim() || "지출"}"의 나눠낼 사람을 한 명 이상 선택해 주세요.`)
         return
       }
     }
@@ -599,7 +604,7 @@ export function SettlementView({
           payerId,
           expenseDate: item.date,
           receiptUrl,
-          participantIds,
+          participantIds: item.participantIds, // 내역별 정산 대상자
         })
       }
       const count = selectedReviewItems.length
@@ -1324,6 +1329,34 @@ export function SettlementView({
                             )
                           })}
                         </div>
+                        {/* 내역별 정산 대상자 */}
+                        <div className="flex flex-wrap items-center gap-1 border-t border-gray-100 pt-2 pl-7">
+                          <span className="mr-0.5 text-[10px] font-bold text-gray-400">나눠낼 사람</span>
+                          {members.map((member) => {
+                            const on = item.participantIds.includes(member.userId)
+                            return (
+                              <button
+                                key={member.userId}
+                                type="button"
+                                onClick={() =>
+                                  updateReviewItem(item.id, {
+                                    participantIds: on
+                                      ? item.participantIds.filter((mid) => mid !== member.userId)
+                                      : [...item.participantIds, member.userId],
+                                  })
+                                }
+                                className={cn(
+                                  "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] transition-colors",
+                                  on
+                                    ? "border-yellow-400 bg-yellow-400 font-bold text-gray-900"
+                                    : "border-gray-200 bg-white font-medium text-gray-400 hover:bg-gray-50"
+                                )}
+                              >
+                                {member.userId === currentUserId ? "나" : member.nickname}
+                              </button>
+                            )
+                          })}
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -1612,7 +1645,7 @@ export function SettlementView({
                   submitting ||
                   scanningReceipt ||
                   members.length === 0 ||
-                  participantIds.length === 0 ||
+                  (reviewItems.length === 0 && participantIds.length === 0) ||
                   (reviewItems.length > 0 && selectedReviewItems.length === 0)
                 }
               >
