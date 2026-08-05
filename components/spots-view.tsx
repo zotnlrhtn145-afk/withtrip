@@ -13,6 +13,7 @@ import {
   Star,
 } from "lucide-react"
 
+import { PlaceDetailSheet, type PlaceDetailInput } from "@/components/place-detail-sheet"
 import { useGeolocation } from "@/hooks/use-geolocation"
 import { DirectionsMenu } from "@/components/directions-menu"
 import { LoginRedirectOverlay } from "@/components/login-redirect-overlay"
@@ -72,6 +73,7 @@ export function SpotsView() {
   const [rawSpots, setRawSpots] = useState<NearbySpot[]>([])
   const [spotsLoading, setSpotsLoading] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [detailPlace, setDetailPlace] = useState<PlaceDetailInput | null>(null)
   const [authorFilter, setAuthorFilter] = useState<string | null>(null)
   const [recenterKey, setRecenterKey] = useState(0)
   const didAutoCenter = useRef(false)
@@ -428,7 +430,17 @@ export function SpotsView() {
                     >
                       <button
                         type="button"
-                        onClick={() => setSelectedId(spot.id)}
+                        onClick={() => {
+                          setSelectedId(spot.id)
+                          setDetailPlace({
+                            name: spot.name,
+                            lat: spot.lat,
+                            lng: spot.lng,
+                            imageUrl: spot.image,
+                            category: spot.category,
+                            rating: spot.rating > 0 ? spot.rating : null,
+                          })
+                        }}
                         className="flex min-w-0 flex-1 items-center gap-3 text-left"
                       >
                         <Avatar
@@ -532,6 +544,8 @@ export function SpotsView() {
           ) : null}
         </section>
       </div>
+
+      <PlaceDetailSheet place={detailPlace} onClose={() => setDetailPlace(null)} />
     </div>
   )
 }

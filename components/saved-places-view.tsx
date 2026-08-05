@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Heart, Loader2, MapPin, Plane, Plus, Star, X } from "lucide-react"
 
+import { PlaceDetailSheet, type PlaceDetailInput } from "@/components/place-detail-sheet"
 import { useGeolocation } from "@/hooks/use-geolocation"
 import { DirectionsMenu } from "@/components/directions-menu"
 import { LoginRedirectOverlay } from "@/components/login-redirect-overlay"
@@ -52,6 +53,7 @@ export function SavedPlacesView() {
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null)
+  const [detailPlace, setDetailPlace] = useState<PlaceDetailInput | null>(null)
   const [recenterKey, setRecenterKey] = useState(0)
   const didAutoCenter = useRef(false)
   const followNextFix = useRef(false)
@@ -301,7 +303,19 @@ export function SavedPlacesView() {
   const renderPlaceCard = (place: SavedPlace) => (
     <li
       key={place.id}
-      onClick={() => handleSelectOnMap(place.id)}
+      onClick={() => {
+        handleSelectOnMap(place.id)
+        setDetailPlace({
+          name: place.placeName,
+          address: place.address,
+          lat: place.lat,
+          lng: place.lng,
+          imageUrl: place.imageUrl,
+          category: place.subCategory || place.category,
+          rating: place.rating ?? null,
+          reviewCount: place.reviewCount ?? null,
+        })
+      }}
       className={cn(
         "flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-2.5 shadow-sm transition-colors",
         selectedMapId === place.id
@@ -491,6 +505,8 @@ export function SavedPlacesView() {
         description={assigningError ?? "선택한 여행의 가고 싶은 곳에 바로 등록돼요."}
         onSelect={(trip) => void handleAssignTrip(trip.id)}
       />
+
+      <PlaceDetailSheet place={detailPlace} onClose={() => setDetailPlace(null)} />
     </div>
   )
 }
