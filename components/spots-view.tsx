@@ -430,8 +430,7 @@ export function SpotsView() {
                     >
                       <button
                         type="button"
-                        onClick={() => {
-                          setSelectedId(spot.id)
+                        onClick={() =>
                           setDetailPlace({
                             name: spot.name,
                             lat: spot.lat,
@@ -440,7 +439,7 @@ export function SpotsView() {
                             category: spot.category,
                             rating: spot.rating > 0 ? spot.rating : null,
                           })
-                        }}
+                        }
                         className="flex min-w-0 flex-1 items-center gap-3 text-left"
                       >
                         <Avatar

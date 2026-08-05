@@ -100,10 +100,11 @@ export async function GET(request: Request) {
 
     const photos = (r.photos ?? [])
       .slice(0, 4)
-      .map((p) => (p.photo_reference ? buildGooglePlacePhotoUrl(p.photo_reference, apiKey, 1000) : ""))
+      .map((p) => (p.photo_reference ? buildGooglePlacePhotoUrl(p.photo_reference, apiKey, 720) : ""))
       .filter(Boolean)
 
-    return NextResponse.json({
+    return NextResponse.json(
+      {
       detail: {
         placeId: r.place_id ?? placeId,
         name: r.name ?? q,
@@ -120,7 +121,9 @@ export async function GET(request: Request) {
         lng: r.geometry?.location?.lng ?? (lng ? Number(lng) : null),
         photos,
       },
-    })
+      },
+      { headers: { "Cache-Control": "public, s-maxage=86400, max-age=3600, stale-while-revalidate=604800" } }
+    )
   } catch (error) {
     const message = error instanceof Error ? error.message : "장소 상세 조회 실패"
     return NextResponse.json({ error: message }, { status: 500 })

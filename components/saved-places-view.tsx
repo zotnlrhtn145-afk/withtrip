@@ -303,8 +303,7 @@ export function SavedPlacesView() {
   const renderPlaceCard = (place: SavedPlace) => (
     <li
       key={place.id}
-      onClick={() => {
-        handleSelectOnMap(place.id)
+      onClick={() =>
         setDetailPlace({
           name: place.placeName,
           address: place.address,
@@ -315,7 +314,7 @@ export function SavedPlacesView() {
           rating: place.rating ?? null,
           reviewCount: place.reviewCount ?? null,
         })
-      }}
+      }
       className={cn(
         "flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-2.5 shadow-sm transition-colors",
         selectedMapId === place.id

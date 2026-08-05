@@ -103,9 +103,9 @@ export function PlaceDetailSheet({
       : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center">
-      <button type="button" aria-label="닫기" onClick={onClose} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+      <button type="button" aria-label="닫기" onClick={onClose} className="absolute inset-0 bg-black/50" />
+      <div className="relative flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
         {/* 사진 캐러셀 */}
         <div className="relative aspect-[4/3] w-full shrink-0 bg-slate-100">
           {photos.length > 0 ? (
