@@ -3,11 +3,10 @@
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Heart, Info, Loader2, MapPin, Plane, Plus, Star, X } from "lucide-react"
+import { Heart, Info, Loader2, MapPin, Plus, Star, X } from "lucide-react"
 
 import { PlaceDetailSheet, type PlaceDetailInput } from "@/components/place-detail-sheet"
 import { useGeolocation } from "@/hooks/use-geolocation"
-import { DirectionsMenu } from "@/components/directions-menu"
 import { LoginRedirectOverlay } from "@/components/login-redirect-overlay"
 import { AddSavedPlaceModal } from "@/components/itinerary/AddSavedPlaceModal"
 import { type MapSpot } from "@/components/nearby-map"
@@ -54,6 +53,7 @@ export function SavedPlacesView() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null)
   const [detailPlace, setDetailPlace] = useState<PlaceDetailInput | null>(null)
+  const [detailAssign, setDetailAssign] = useState<SavedPlace | null>(null) // 상세에서 "담기" 대상
   const [recenterKey, setRecenterKey] = useState(0)
   const didAutoCenter = useRef(false)
   const followNextFix = useRef(false)
@@ -139,9 +139,14 @@ export function SavedPlacesView() {
   }, [places])
 
   const filteredPlaces = useMemo(() => {
-    if (!subFilter) return places
-    return places.filter((place) => place.subCategory.trim() === subFilter)
-  }, [places, subFilter])
+    const base = subFilter ? places.filter((place) => place.subCategory.trim() === subFilter) : places
+    // 내 위치에서 가까운 순 (좌표 없는 곳은 뒤로)
+    return [...base].sort((a, b) => {
+      const da = a.lat != null && a.lng != null ? distanceMeters(geo.position, { lat: a.lat, lng: a.lng }) : Infinity
+      const db = b.lat != null && b.lng != null ? distanceMeters(geo.position, { lat: b.lat, lng: b.lng }) : Infinity
+      return da - db
+    })
+  }, [places, subFilter, geo.position])
 
   /** 리스트 카드에도 거리를 보여준다 — 좌표 없는 곳은 null. */
   const placeDistanceLabels = useMemo(() => {
@@ -204,34 +209,25 @@ export function SavedPlacesView() {
     geo.locate()
   }
 
-  /** 리스트 카드를 누르면 지도가 그 위치로 이동하고, 지도가 다시 보이도록 맨 위로 스크롤한다. */
-  const handleSelectOnMap = (placeId: string) => {
-    setSelectedMapId(placeId)
-    window.scrollTo({ top: 0, behavior: "smooth" })
-  }
-
-  // 지도 마커 클릭 → 해당 장소 상세 열기
-  const openPlaceDetail = (placeId: string) => {
-    setSelectedMapId(placeId)
-    const place = places.find((p) => p.id === placeId)
-    if (place) {
-      setDetailPlace({
-        name: place.placeName,
-        address: place.address,
-        lat: place.lat,
-        lng: place.lng,
-        imageUrl: place.imageUrl,
-        category: place.subCategory || place.category,
-        rating: place.rating ?? null,
-        reviewCount: place.reviewCount ?? null,
-      })
-    }
-  }
-
   // 리스트 클릭 → 지도가 그 위치로 이동(하이라이트) + 스티키 지도 보이게 맨 위로
   const showOnMap = (id: string) => {
     setSelectedMapId(id)
     window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  // 상세 열기 (+ 담기 대상 기억)
+  const openDetail = (place: SavedPlace) => {
+    setDetailAssign(place)
+    setDetailPlace({
+      name: place.placeName,
+      address: place.address,
+      lat: place.lat,
+      lng: place.lng,
+      imageUrl: place.imageUrl,
+      category: place.subCategory || place.category,
+      rating: place.rating ?? null,
+      reviewCount: place.reviewCount ?? null,
+    })
   }
 
   const handleAssignTrip = async (tripId: string) => {
@@ -365,45 +361,14 @@ export function SavedPlacesView() {
           type="button"
           onClick={(event) => {
             event.stopPropagation()
-            setDetailPlace({
-              name: place.placeName,
-              address: place.address,
-              lat: place.lat,
-              lng: place.lng,
-              imageUrl: place.imageUrl,
-              category: place.subCategory || place.category,
-              rating: place.rating ?? null,
-              reviewCount: place.reviewCount ?? null,
-            })
+            openDetail(place)
           }}
           aria-label="상세 보기"
-          className="flex items-center justify-center gap-1 rounded-full border border-slate-200 px-3 py-1.5 text-[11px] font-bold text-amber-600 transition-colors hover:bg-amber-50"
+          className="flex items-center justify-center gap-1 rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-bold text-slate-950 transition-colors hover:bg-amber-500 active:scale-95"
         >
           <Info className="size-3" />
           상세
         </button>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            setAssigningError(null)
-            setAssigningPlace(place)
-          }}
-          className="flex items-center justify-center gap-1 rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-bold text-slate-950 transition-colors hover:bg-amber-500 active:scale-95"
-        >
-          <Plane className="size-3" />
-          담기
-        </button>
-        <DirectionsMenu
-          destination={
-            place.lat != null && place.lng != null
-              ? { name: place.placeName, lat: place.lat, lng: place.lng }
-              : null
-          }
-          fallbackQuery={place.address || place.placeName}
-          variant="icon"
-          className="size-7 border-slate-200 text-amber-600"
-        />
         <button
           type="button"
           onClick={(event) => {
@@ -482,7 +447,7 @@ export function SavedPlacesView() {
               accuracy={geo.accuracy}
               spots={mapSpots}
               selectedId={selectedMapId}
-              onSelect={openPlaceDetail}
+              onSelect={setSelectedMapId}
               onRecenter={handleRecenter}
               recenterKey={recenterKey}
               locating={geo.status === "locating"}
@@ -539,7 +504,25 @@ export function SavedPlacesView() {
         onSelect={(trip) => void handleAssignTrip(trip.id)}
       />
 
-      <PlaceDetailSheet place={detailPlace} userLoc={geo.position} onClose={() => setDetailPlace(null)} />
+      <PlaceDetailSheet
+        place={detailPlace}
+        userLoc={geo.position}
+        onClose={() => {
+          setDetailPlace(null)
+          setDetailAssign(null)
+        }}
+        onAddToTrip={
+          detailAssign
+            ? () => {
+                const target = detailAssign
+                setDetailPlace(null)
+                setDetailAssign(null)
+                setAssigningError(null)
+                setAssigningPlace(target)
+              }
+            : undefined
+        }
+      />
     </div>
   )
 }

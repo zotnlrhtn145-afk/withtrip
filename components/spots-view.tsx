@@ -17,7 +17,6 @@ import {
 
 import { PlaceDetailSheet, type PlaceDetailInput } from "@/components/place-detail-sheet"
 import { useGeolocation } from "@/hooks/use-geolocation"
-import { DirectionsMenu } from "@/components/directions-menu"
 import { LoginRedirectOverlay } from "@/components/login-redirect-overlay"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -192,7 +191,6 @@ export function SpotsView() {
     )
   }, [filteredSpots])
 
-  const selected = filteredSpots.find((spot) => spot.id === selectedId) ?? null
 
   useEffect(() => {
     if (authPhase !== "authed") return
@@ -220,22 +218,6 @@ export function SpotsView() {
     followNextFix.current = true
     setRecenterKey((key) => key + 1)
     geo.locate()
-  }
-
-  // 지도 마커 클릭 → 해당 식당 상세 열기 (+ 리스트 하이라이트)
-  const openSpotDetail = (id: string) => {
-    setSelectedId(id)
-    const s = spots.find((spot) => spot.id === id)
-    if (s) {
-      setDetailPlace({
-        name: s.name,
-        lat: s.lat,
-        lng: s.lng,
-        imageUrl: s.image,
-        category: s.category,
-        rating: s.rating > 0 ? s.rating : null,
-      })
-    }
   }
 
   // 리스트 클릭 → 지도가 그 위치로 이동(하이라이트) + 지도 보이게 스크롤
@@ -452,7 +434,7 @@ export function SpotsView() {
             accuracy={geo.accuracy}
             spots={filteredSpots}
             selectedId={selectedId}
-            onSelect={openSpotDetail}
+            onSelect={setSelectedId}
             onRecenter={handleRecenter}
             recenterKey={recenterKey}
             locating={geo.status === "locating"}
@@ -564,10 +546,6 @@ export function SpotsView() {
                             >
                               <Info className="size-5" />
                             </button>
-                            <DirectionsMenu
-                              destination={{ name: spot.name, lat: spot.lat, lng: spot.lng }}
-                              variant="icon"
-                            />
                           </div>
                         </li>
                       )
@@ -578,46 +556,6 @@ export function SpotsView() {
             </div>
           )}
 
-          {selected ? (
-            <div className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-3">
-                  <Avatar className="size-9 shrink-0 border border-slate-100">
-                    <AvatarImage
-                      src={selected.authorAvatarUrl || DEFAULT_SPOT_AVATAR}
-                      alt=""
-                    />
-                    <AvatarFallback className="text-xs font-bold text-slate-500">
-                      {(selected.authorNickname || selected.name).slice(0, 1)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-slate-900">{selected.name}</p>
-                    <p className="mt-1 text-xs text-slate-400">
-                      {selected.address}
-                    </p>
-                    {selected.authorNickname ? (
-                      <p className="mt-1 text-[11px] text-slate-400">
-                        등록 · {selected.authorNickname}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-                <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold tabular-nums text-amber-700">
-                  {selected.distanceLabel}
-                </span>
-              </div>
-              <p className="mt-2 text-xs text-slate-400 tabular-nums">
-                위도 {selected.lat.toFixed(5)} · 경도 {selected.lng.toFixed(5)} ·
-                도보 약 {selected.walkMinutes}분
-              </p>
-              <DirectionsMenu
-                destination={{ name: selected.name, lat: selected.lat, lng: selected.lng }}
-                variant="cta"
-                className="mt-3"
-              />
-            </div>
-          ) : null}
         </section>
       </div>
 

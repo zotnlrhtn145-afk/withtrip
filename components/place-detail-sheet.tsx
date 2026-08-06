@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ChevronLeft, Clock, MapPin, Navigation, Phone, Star } from "lucide-react"
+import { ChevronLeft, Clock, MapPin, Navigation, Phone, Plane, Star } from "lucide-react"
 
+import { DirectionsMenu } from "@/components/directions-menu"
 import { MiniMap } from "@/components/mini-map"
 import { distanceMeters, estimateWalkMinutes, formatDistance } from "@/lib/geo"
 import { cn } from "@/lib/utils"
@@ -44,10 +45,13 @@ export function PlaceDetailSheet({
   place,
   userLoc,
   onClose,
+  onAddToTrip,
 }: {
   place: PlaceDetailInput | null
   userLoc?: { lat: number; lng: number } | null
   onClose: () => void
+  /** 있으면 상세 안에 "여행에 담기" 버튼 노출 (저장 화면 전용). */
+  onAddToTrip?: () => void
 }) {
   const [detail, setDetail] = useState<ApiDetail | null>(null)
   const [loading, setLoading] = useState(false)
@@ -105,10 +109,6 @@ export function PlaceDetailSheet({
   const lng = place.lng ?? detail?.lng
   const dist = userLoc && lat != null && lng != null ? distanceMeters(userLoc, { lat, lng }) : null
   const near = dist != null && dist < NEAR_THRESHOLD_M
-  const directionsHref =
-    lat != null && lng != null
-      ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
-      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`
 
   return (
     <div className="fixed inset-0 z-[80] sm:flex sm:items-center sm:justify-center sm:bg-black/50 sm:p-4">
@@ -178,20 +178,29 @@ export function PlaceDetailSheet({
             </div>
           </div>
 
+          {onAddToTrip ? (
+            <button
+              type="button"
+              onClick={onAddToTrip}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-amber-400 py-3 text-sm font-bold text-slate-950 transition-colors hover:bg-amber-500 active:scale-[0.99]"
+            >
+              <Plane className="size-4" />
+              여행에 담기
+            </button>
+          ) : null}
+
           {summary ? <p className="text-sm leading-relaxed text-slate-500">{summary}</p> : null}
 
           {address ? (
             <div className="flex items-center gap-3">
               <MapPin className="size-5 shrink-0 text-amber-500" />
               <span className="min-w-0 flex-1 text-sm text-slate-800">{address}</span>
-              <a
-                href={directionsHref}
-                target="_blank"
-                rel="noreferrer"
-                className="shrink-0 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-50"
-              >
-                길찾기
-              </a>
+              <DirectionsMenu
+                destination={lat != null && lng != null ? { name, lat, lng } : null}
+                fallbackQuery={address || name}
+                variant="pill"
+                className="shrink-0"
+              />
             </div>
           ) : null}
 

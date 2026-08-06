@@ -101,9 +101,15 @@ export function openUberDirections(dest: NavDestination) {
   window.open(url, "_blank", "noopener,noreferrer")
 }
 
-/** Universal, worldwide fallback for destinations outside Korea. */
+/**
+ * Universal, worldwide Google Maps directions.
+ * 목적지를 좌표 대신 업장 이름으로 넣어 이름이 표시되게 하고(없으면 좌표),
+ * travelmode 를 지정하지 않아 자동차·대중교통·도보를 사용자가 고를 수 있게 한다.
+ */
 export function buildGoogleMapsDirectionsUrl(dest: NavDestination): string {
-  return `https://www.google.com/maps/dir/?api=1&destination=${dest.lat},${dest.lng}`
+  const name = dest.name?.trim()
+  const destination = name ? encodeURIComponent(name) : `${dest.lat},${dest.lng}`
+  return `https://www.google.com/maps/dir/?api=1&destination=${destination}`
 }
 
 export function openGoogleMapsDirections(dest: NavDestination) {
