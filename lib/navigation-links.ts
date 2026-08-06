@@ -1,7 +1,13 @@
 export type NavDestination = {
   name: string
-  lat: number
-  lng: number
+  /** 좌표는 선택 — 없으면 업장 이름으로 검색 기반 길찾기를 연다. */
+  lat?: number | null
+  lng?: number | null
+}
+
+/** 좌표가 유효한 숫자로 둘 다 있는지 확인. */
+function hasCoords(dest: NavDestination): dest is NavDestination & { lat: number; lng: number } {
+  return typeof dest.lat === "number" && typeof dest.lng === "number"
 }
 
 const TMAP_ANDROID_PACKAGE = "com.skt.tmap.ku"
@@ -17,9 +23,13 @@ function isAndroid(): boolean {
   return /android/i.test(navigator.userAgent)
 }
 
-/** Tmap's app-scheme deep link — unofficial but long-standing, no API key needed. */
+/** Tmap's app-scheme deep link — unofficial but long-standing, no API key needed.
+ *  좌표가 있으면 경로안내, 없으면 업장 이름으로 검색을 연다. */
 export function buildTmapAppUrl(dest: NavDestination): string {
-  return `tmap://route?goalname=${encodeURIComponent(dest.name)}&goalx=${dest.lng}&goaly=${dest.lat}`
+  if (hasCoords(dest)) {
+    return `tmap://route?goalname=${encodeURIComponent(dest.name)}&goalx=${dest.lng}&goaly=${dest.lat}`
+  }
+  return `tmap://search?name=${encodeURIComponent(dest.name)}`
 }
 
 function buildTmapStoreUrl(): string {
@@ -28,9 +38,13 @@ function buildTmapStoreUrl(): string {
     : `https://apps.apple.com/app/id${TMAP_IOS_APP_ID}`
 }
 
-/** Kakao Map's official universal link — opens the app if installed, the web map otherwise. */
+/** Kakao Map's official universal link — opens the app if installed, the web map otherwise.
+ *  좌표가 있으면 경로안내, 없으면 업장 이름으로 검색을 연다. */
 export function buildKakaoMapUrl(dest: NavDestination): string {
-  return `https://map.kakao.com/link/to/${encodeURIComponent(dest.name)},${dest.lat},${dest.lng}`
+  if (hasCoords(dest)) {
+    return `https://map.kakao.com/link/to/${encodeURIComponent(dest.name)},${dest.lat},${dest.lng}`
+  }
+  return `https://map.kakao.com/link/search/${encodeURIComponent(dest.name)}`
 }
 
 export const isNavAppAvailable = isMobileUserAgent
@@ -68,8 +82,10 @@ export function openKakaoMapDirections(dest: NavDestination) {
   window.open(buildKakaoMapUrl(dest), "_blank", "noopener,noreferrer")
 }
 
-/** Rough bounding box for South Korea (mainland + Jeju) — good enough to decide 국내/해외 UI. */
-export function isInKorea(lat: number, lng: number): boolean {
+/** Rough bounding box for South Korea (mainland + Jeju) — good enough to decide 국내/해외 UI.
+ *  좌표를 모르면 국내로 간주(티맵·카카오·구글 모두 노출)한다. */
+export function isInKorea(lat?: number | null, lng?: number | null): boolean {
+  if (typeof lat !== "number" || typeof lng !== "number") return true
   return lat >= 33 && lat <= 38.7 && lng >= 124.5 && lng <= 131.9
 }
 
@@ -80,7 +96,7 @@ export function isInKorea(lat: number, lng: number): boolean {
  */
 export function buildUberUrl(dest: NavDestination): string | null {
   const clientId = process.env.NEXT_PUBLIC_UBER_CLIENT_ID
-  if (!clientId) return null
+  if (!clientId || !hasCoords(dest)) return null
 
   const query = [
     "action=setPickup",

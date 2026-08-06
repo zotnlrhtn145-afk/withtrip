@@ -44,34 +44,24 @@ export function DirectionsMenu({
   const baseClass = VARIANT_CLASS[variant]
   const triggerIcon = variant === "cta" ? MapPin : Navigation
   const TriggerIcon = triggerIcon
-  const overseas = destination ? !isInKorea(destination.lat, destination.lng) : false
-  const uberUrl = destination && overseas ? buildUberUrl(destination) : null
 
-  if (!destination) {
-    if (!fallbackQuery) return null
-    const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      fallbackQuery
-    )}`
-    return (
-      <a
-        href={mapHref}
-        target="_blank"
-        rel="noreferrer"
-        onClick={(event) => event.stopPropagation()}
-        aria-label={`${fallbackQuery} ${label}`}
-        className={cn(baseClass, className)}
-      >
-        <TriggerIcon className={variant === "pill" ? "size-3.5" : "size-4"} />
-        {variant !== "icon" ? label : null}
-      </a>
-    )
-  }
+  // 좌표가 없어도 업장 이름(fallbackQuery)만 있으면 검색 기반 길찾기 피커를 연다.
+  const effectiveDest: NavDestination | null = destination
+    ? destination
+    : fallbackQuery
+      ? { name: fallbackQuery }
+      : null
+
+  if (!effectiveDest) return null
+
+  const overseas = !isInKorea(effectiveDest.lat, effectiveDest.lng)
+  const uberUrl = overseas ? buildUberUrl(effectiveDest) : null
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         onClick={(event) => event.stopPropagation()}
-        aria-label={`${destination.name} ${label}`}
+        aria-label={`${effectiveDest.name} ${label}`}
         className={cn(baseClass, className)}
       >
         <TriggerIcon className={variant === "pill" ? "size-3.5" : "size-4"} />
@@ -88,7 +78,7 @@ export function DirectionsMenu({
               <button
                 type="button"
                 onClick={() => {
-                  openUberDirections(destination)
+                  openUberDirections(effectiveDest)
                   setOpen(false)
                 }}
                 className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-amber-50"
@@ -100,7 +90,7 @@ export function DirectionsMenu({
             <button
               type="button"
               onClick={() => {
-                openGoogleMapsDirections(destination)
+                openGoogleMapsDirections(effectiveDest)
                 setOpen(false)
               }}
               className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-amber-50"
@@ -114,7 +104,7 @@ export function DirectionsMenu({
             <button
               type="button"
               onClick={() => {
-                openTmapDirections(destination)
+                openTmapDirections(effectiveDest)
                 setOpen(false)
               }}
               className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-amber-50"
@@ -125,7 +115,7 @@ export function DirectionsMenu({
             <button
               type="button"
               onClick={() => {
-                openKakaoMapDirections(destination)
+                openKakaoMapDirections(effectiveDest)
                 setOpen(false)
               }}
               className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-amber-50"
@@ -136,7 +126,7 @@ export function DirectionsMenu({
             <button
               type="button"
               onClick={() => {
-                openGoogleMapsDirections(destination)
+                openGoogleMapsDirections(effectiveDest)
                 setOpen(false)
               }}
               className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-amber-50"
