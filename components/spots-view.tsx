@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   Footprints,
+  Info,
   Loader2,
   MapPin,
   MapPinOff,
@@ -81,6 +82,7 @@ export function SpotsView() {
   const didAutoCenter = useRef(false)
   const followNextFix = useRef(false)
   const cardRefs = useRef<Record<string, HTMLLIElement | null>>({})
+  const mapRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -234,6 +236,24 @@ export function SpotsView() {
         rating: s.rating > 0 ? s.rating : null,
       })
     }
+  }
+
+  // 리스트 클릭 → 지도가 그 위치로 이동(하이라이트) + 지도 보이게 스크롤
+  const showOnMap = (id: string) => {
+    setSelectedId(id)
+    mapRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
+  // 상세 버튼 → 상세 시트 열기
+  const openDetail = (spot: (typeof filteredSpots)[number]) => {
+    setDetailPlace({
+      name: spot.name,
+      lat: spot.lat,
+      lng: spot.lng,
+      imageUrl: spot.image,
+      category: spot.category,
+      rating: spot.rating > 0 ? spot.rating : null,
+    })
   }
 
   const statusLabel = (() => {
@@ -426,17 +446,19 @@ export function SpotsView() {
       {authorFilterRow}
 
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <NearbyMap
-          center={geo.position}
-          accuracy={geo.accuracy}
-          spots={filteredSpots}
-          selectedId={selectedId}
-          onSelect={openSpotDetail}
-          onRecenter={handleRecenter}
-          recenterKey={recenterKey}
-          locating={geo.status === "locating"}
-          className="w-full min-w-0 max-w-full"
-        />
+        <div ref={mapRef} className="min-w-0 scroll-mt-4">
+          <NearbyMap
+            center={geo.position}
+            accuracy={geo.accuracy}
+            spots={filteredSpots}
+            selectedId={selectedId}
+            onSelect={openSpotDetail}
+            onRecenter={handleRecenter}
+            recenterKey={recenterKey}
+            locating={geo.status === "locating"}
+            className="w-full min-w-0 max-w-full"
+          />
+        </div>
 
         <section className="flex min-w-0 flex-col gap-3">
           <p className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
@@ -486,16 +508,7 @@ export function SpotsView() {
                           >
                             <button
                               type="button"
-                              onClick={() =>
-                                setDetailPlace({
-                                  name: spot.name,
-                                  lat: spot.lat,
-                                  lng: spot.lng,
-                                  imageUrl: spot.image,
-                                  category: spot.category,
-                                  rating: spot.rating > 0 ? spot.rating : null,
-                                })
-                              }
+                              onClick={() => showOnMap(spot.id)}
                               className="flex min-w-0 flex-1 items-center gap-3 text-left"
                             >
                               {/* 장소 사진 + 등록자 카톡 프로필 뱃지 */}
@@ -542,6 +555,14 @@ export function SpotsView() {
                                   </span>
                                 </span>
                               </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openDetail(spot)}
+                              aria-label="상세 보기"
+                              className="flex size-9 shrink-0 items-center justify-center rounded-full text-amber-600 transition-colors hover:bg-amber-50"
+                            >
+                              <Info className="size-5" />
                             </button>
                             <DirectionsMenu
                               destination={{ name: spot.name, lat: spot.lat, lng: spot.lng }}

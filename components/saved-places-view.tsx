@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Heart, Loader2, MapPin, Plane, Plus, Star, X } from "lucide-react"
+import { Heart, Info, Loader2, MapPin, Plane, Plus, Star, X } from "lucide-react"
 
 import { PlaceDetailSheet, type PlaceDetailInput } from "@/components/place-detail-sheet"
 import { useGeolocation } from "@/hooks/use-geolocation"
@@ -228,6 +228,12 @@ export function SavedPlacesView() {
     }
   }
 
+  // 리스트 클릭 → 지도가 그 위치로 이동(하이라이트) + 스티키 지도 보이게 맨 위로
+  const showOnMap = (id: string) => {
+    setSelectedMapId(id)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
   const handleAssignTrip = async (tripId: string) => {
     if (!assigningPlace) return
     const place = assigningPlace
@@ -321,18 +327,7 @@ export function SavedPlacesView() {
   const renderPlaceCard = (place: SavedPlace) => (
     <li
       key={place.id}
-      onClick={() =>
-        setDetailPlace({
-          name: place.placeName,
-          address: place.address,
-          lat: place.lat,
-          lng: place.lng,
-          imageUrl: place.imageUrl,
-          category: place.subCategory || place.category,
-          rating: place.rating ?? null,
-          reviewCount: place.reviewCount ?? null,
-        })
-      }
+      onClick={() => showOnMap(place.id)}
       className={cn(
         "flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-2.5 shadow-sm transition-colors",
         selectedMapId === place.id
@@ -366,6 +361,27 @@ export function SavedPlacesView() {
         ) : null}
       </div>
       <div className="flex shrink-0 flex-col gap-1.5">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            setDetailPlace({
+              name: place.placeName,
+              address: place.address,
+              lat: place.lat,
+              lng: place.lng,
+              imageUrl: place.imageUrl,
+              category: place.subCategory || place.category,
+              rating: place.rating ?? null,
+              reviewCount: place.reviewCount ?? null,
+            })
+          }}
+          aria-label="상세 보기"
+          className="flex items-center justify-center gap-1 rounded-full border border-slate-200 px-3 py-1.5 text-[11px] font-bold text-amber-600 transition-colors hover:bg-amber-50"
+        >
+          <Info className="size-3" />
+          상세
+        </button>
         <button
           type="button"
           onClick={(event) => {
