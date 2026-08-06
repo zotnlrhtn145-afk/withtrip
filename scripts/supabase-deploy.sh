@@ -64,21 +64,44 @@ run_sql() {
   fi
 }
 
-# ── 2) device_push_tokens 테이블 보장 ───────────────────────
-echo "▸ device_push_tokens 테이블 확인/생성"
+# ── 2) 필수 테이블 보장 (없으면 생성; 전부 idempotent) ──────
+echo "▸ 테이블 확인/생성 (device_push_tokens · DM · 단톡)"
 run_sql "$(cat "$ROOT/supabase/device_push_tokens.sql")"
+run_sql "$(cat "$ROOT/supabase/dm_chat.sql")"
+run_sql "$(cat "$ROOT/supabase/trip_chat.sql")"
 
-# ── 3) Webhook 트리거 생성 (idempotent) ─────────────────────
-# 테이블 → 함수 매핑
+# ── 3) Webhook 트리거 (pg_net 직접 호출; supabase_functions 불필요) ──
+# 테이블 → (함수, 트리거명) 매핑
 declare -a HOOKS=(
-  "trip_messages:send-chat-push:trip_chat_push"
-  "dm_messages:send-dm-push:dm_push"
-  "notifications:send-notify-push:notify_push"
+  "trip_messages:send-chat-push:wt_push_trip_chat"
+  "dm_messages:send-dm-push:wt_push_dm"
+  "notifications:send-notify-push:wt_push_notify"
 )
-FN_HEADERS="{\"Content-Type\":\"application/json\",\"Authorization\":\"Bearer ${ANON_KEY}\"}"
 
-echo "▸ Webhook 트리거 생성"
-run_sql "create extension if not exists pg_net with schema extensions;"
+echo "▸ pg_net 웹훅 트리거 생성"
+run_sql "create extension if not exists pg_net;"
+
+# 공통 트리거 함수: INSERT 된 행을 Edge Function 으로 POST (record 형태)
+run_sql "
+create or replace function public.wt_push_webhook() returns trigger
+language plpgsql security definer set search_path = public as \$fn\$
+declare v_url text := TG_ARGV[0];
+begin
+  perform net.http_post(
+    url := v_url,
+    body := jsonb_build_object('type', TG_OP, 'table', TG_TABLE_NAME, 'record', to_jsonb(NEW)),
+    headers := jsonb_build_object(
+      'Content-Type','application/json',
+      'Authorization','Bearer ${ANON_KEY}',
+      'apikey','${ANON_KEY}'
+    ),
+    timeout_milliseconds := 5000
+  );
+  return NEW;
+end
+\$fn\$;
+"
+
 for hook in "${HOOKS[@]}"; do
   IFS=':' read -r table fn trigger <<< "$hook"
   url="${SUPA_URL%/}/functions/v1/${fn}"
@@ -86,9 +109,7 @@ for hook in "${HOOKS[@]}"; do
     drop trigger if exists ${trigger} on public.${table};
     create trigger ${trigger}
       after insert on public.${table}
-      for each row execute function supabase_functions.http_request(
-        '${url}', 'POST', '${FN_HEADERS}', '{}', '5000'
-      );
+      for each row execute function public.wt_push_webhook('${url}');
   "
   echo "  ✓ ${table} → ${fn}"
 done
