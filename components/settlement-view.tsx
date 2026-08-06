@@ -45,6 +45,8 @@ import {
 import { calcPerPerson, calcVariableMemberBalances } from "@/lib/settlement-math"
 import { parseReceiptImage, type ParsedReceiptItem } from "@/lib/parse-receipt"
 import {
+  addSettlementGuest,
+  deleteSettlementGuest,
   fetchSettlementMembers,
   fetchTripExpenses,
   fetchTripSettlements,
@@ -215,6 +217,11 @@ export function SettlementView({
     return map
   }, [members])
 
+  // 정산 전용 게스트 id (지출 저장 시 guest_id 로 구분)
+  const guestIds = useMemo(() => members.filter((m) => m.isGuest).map((m) => m.userId), [members])
+  // 결제자 후보 = 게스트 제외 (게스트는 payer 가 될 수 없음)
+  const payerMembers = useMemo(() => members.filter((m) => !m.isGuest), [members])
+
   const showToast = useCallback((message: string, durationMs = 2200) => {
     setToast(message)
     window.setTimeout(() => {
@@ -269,6 +276,33 @@ export function SettlementView({
   useEffect(() => {
     void refreshSettlementData()
   }, [refreshSettlementData])
+
+  // 정산 전용 게스트 추가/삭제
+  const handleAddGuest = useCallback(async () => {
+    if (!activeTripId) return
+    const name = window.prompt("게스트 이름 (여행 멤버가 아니지만 정산에 함께 넣을 사람)")?.trim()
+    if (!name) return
+    try {
+      await addSettlementGuest(activeTripId, name)
+      await refreshSettlementData()
+      showToast(`게스트 "${name}"을(를) 추가했어요.`)
+    } catch {
+      showToast("게스트 추가에 실패했어요.")
+    }
+  }, [activeTripId, refreshSettlementData, showToast])
+
+  const handleDeleteGuest = useCallback(
+    async (guestId: string, name: string) => {
+      if (!window.confirm(`게스트 "${name}"을(를) 정산에서 뺄까요?`)) return
+      try {
+        await deleteSettlementGuest(guestId)
+        await refreshSettlementData()
+      } catch {
+        showToast("게스트 삭제에 실패했어요.")
+      }
+    },
+    [refreshSettlementData, showToast]
+  )
 
   useEffect(() => {
     if (!activeTripId) {
@@ -532,6 +566,7 @@ export function SettlementView({
         expenseDate,
         receiptUrl,
         participantIds,
+        guestIds,
       })
       resetForm()
       setOpen(false)
@@ -605,6 +640,7 @@ export function SettlementView({
           expenseDate: item.date,
           receiptUrl,
           participantIds: item.participantIds, // 내역별 정산 대상자
+          guestIds,
         })
       }
       const count = selectedReviewItems.length
@@ -767,9 +803,19 @@ export function SettlementView({
                     {loading ? "—" : formatWon(total)}
                   </p>
                 </div>
-                <p className="shrink-0 text-[11px] text-neutral-400 tabular-nums">
-                  {expenses.length}건 · {memberCount}명
-                </p>
+                <div className="flex shrink-0 items-center gap-2">
+                  <p className="text-[11px] text-neutral-400 tabular-nums">
+                    {expenses.length}건 · {memberCount}명
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void handleAddGuest()}
+                    className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 transition-colors hover:bg-amber-100"
+                  >
+                    <Plus className="size-3" />
+                    게스트
+                  </button>
+                </div>
               </div>
 
               {/* 지출마다 참여자가 달라질 수 있어 "1인당" 균등분할 대신, 실제 부담액을 인원별로 보여준다. */}
@@ -792,20 +838,37 @@ export function SettlementView({
                           <span className="truncate text-xs font-medium text-neutral-700">
                             {name}
                           </span>
+                          {member?.isGuest ? (
+                            <span className="shrink-0 rounded-full bg-neutral-100 px-1.5 text-[9px] font-bold text-neutral-500">
+                              게스트
+                            </span>
+                          ) : null}
                         </span>
-                        <span
-                          className={cn(
-                            "shrink-0 text-xs font-bold tabular-nums",
-                            isSettled
-                              ? "text-neutral-400"
-                              : balance > 0
-                                ? "text-emerald-600"
-                                : "text-red-500"
-                          )}
-                        >
-                          {isSettled
-                            ? "정산 완료"
-                            : `${balance > 0 ? "+" : "-"}${formatWon(Math.abs(balance))}`}
+                        <span className="flex shrink-0 items-center gap-1.5">
+                          <span
+                            className={cn(
+                              "text-xs font-bold tabular-nums",
+                              isSettled
+                                ? "text-neutral-400"
+                                : balance > 0
+                                  ? "text-emerald-600"
+                                  : "text-red-500"
+                            )}
+                          >
+                            {isSettled
+                              ? "정산 완료"
+                              : `${balance > 0 ? "+" : "-"}${formatWon(Math.abs(balance))}`}
+                          </span>
+                          {member?.isGuest ? (
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteGuest(userId, name)}
+                              aria-label="게스트 삭제"
+                              className="text-neutral-300 transition-colors hover:text-red-500"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          ) : null}
                         </span>
                       </li>
                     )
@@ -1455,7 +1518,7 @@ export function SettlementView({
                 <div className="flex flex-col gap-1">
                   <span className="text-[11px] font-semibold text-gray-700">결제자</span>
                   <Select
-                    items={members.map((member) => ({
+                    items={payerMembers.map((member) => ({
                       value: member.userId,
                       label: member.nickname,
                     }))}
@@ -1483,7 +1546,7 @@ export function SettlementView({
                       </div>
                     </SelectTrigger>
                     <SelectContent>
-                      {members.map((member) => (
+                      {payerMembers.map((member) => (
                         <SelectItem key={member.userId} value={member.userId}>
                           <span className="flex items-center gap-2">
                             <Avatar className="size-5">

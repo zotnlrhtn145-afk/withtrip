@@ -14,6 +14,8 @@ export type SettlementMember = {
   nickname: string
   email: string
   avatarUrl?: string
+  /** 여행 멤버가 아닌 정산 전용 게스트(settlement_guests). */
+  isGuest?: boolean
 }
 
 export type ExpenseRecord = {
@@ -230,6 +232,20 @@ export async function fetchSettlementMembers(tripId: string): Promise<Settlement
     }
   }
 
+  // 정산 전용 게스트 (앱 계정 없는 이름-only 참가자) — 멤버 뒤에 붙인다.
+  const { data: guestRows, error: guestError } = await supabase
+    .from("settlement_guests")
+    .select("id, name")
+    .eq("trip_id", id)
+    .order("created_at", { ascending: true })
+  if (guestError) {
+    logError("fetchSettlementMembers.guests", guestError)
+  } else {
+    for (const g of (guestRows as Array<{ id: string; name: string }> | null) ?? []) {
+      result.push({ userId: String(g.id), email: "", nickname: (g.name || "게스트").trim(), isGuest: true })
+    }
+  }
+
   return result
 }
 
@@ -256,7 +272,7 @@ export async function fetchTripExpenses(tripId: string): Promise<ExpenseRecord[]
   if (expenseIds.length > 0) {
     const { data: participantRows, error: participantError } = await supabase
       .from("expense_participants")
-      .select("expense_id, user_id")
+      .select("expense_id, user_id, guest_id")
       .in("expense_id", expenseIds)
 
     if (participantError) {
@@ -265,13 +281,14 @@ export async function fetchTripExpenses(tripId: string): Promise<ExpenseRecord[]
     } else {
       for (const row of (participantRows as Array<{
         expense_id?: string
-        user_id?: string
+        user_id?: string | null
+        guest_id?: string | null
       }> | null) ?? []) {
         const expenseId = String(row.expense_id ?? "").trim()
-        const userId = String(row.user_id ?? "").trim()
-        if (!expenseId || !userId) continue
+        const pid = String(row.user_id ?? row.guest_id ?? "").trim()
+        if (!expenseId || !pid) continue
         const list = participantsByExpense.get(expenseId) ?? []
-        list.push(userId)
+        list.push(pid)
         participantsByExpense.set(expenseId, list)
       }
     }
@@ -363,6 +380,8 @@ export async function insertExpense(input: {
   expenseDate: string
   receiptUrl?: string | null
   participantIds?: string[]
+  /** participantIds 중 정산 전용 게스트(settlement_guests) 의 id 목록 → guest_id 로 저장. */
+  guestIds?: string[]
 }) {
   const supabase = createClient()
   const payload = {
@@ -393,10 +412,12 @@ export async function insertExpense(input: {
   }
 
   if (participantIds.length > 0) {
-    const rows = participantIds.map((userId) => ({
-      expense_id: expenseId,
-      user_id: userId,
-    }))
+    const guestSet = new Set((input.guestIds ?? []).map((id) => String(id ?? "").trim()))
+    const rows = participantIds.map((id) =>
+      guestSet.has(id)
+        ? { expense_id: expenseId, guest_id: id }
+        : { expense_id: expenseId, user_id: id }
+    )
     const { error: participantError } = await supabase.from("expense_participants").insert(rows)
     if (participantError) {
       logError("insertExpense.participants", participantError)
@@ -405,6 +426,26 @@ export async function insertExpense(input: {
   }
 
   return expenseId
+}
+
+/** 정산 전용 게스트(앱 계정 없는 이름-only 참가자) 추가. */
+export async function addSettlementGuest(tripId: string, name: string) {
+  const supabase = createClient()
+  const { error } = await supabase.from("settlement_guests").insert({ trip_id: tripId, name: name.trim() })
+  if (error) {
+    logError("addSettlementGuest", error)
+    throw error
+  }
+}
+
+/** 정산 전용 게스트 삭제. */
+export async function deleteSettlementGuest(guestId: string) {
+  const supabase = createClient()
+  const { error } = await supabase.from("settlement_guests").delete().eq("id", guestId)
+  if (error) {
+    logError("deleteSettlementGuest", error)
+    throw error
+  }
 }
 
 export async function toggleSettlementStatus(
