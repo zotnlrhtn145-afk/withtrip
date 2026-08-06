@@ -199,7 +199,7 @@ export function PlaceDetailSheet({
                 destination={lat != null && lng != null ? { name, lat, lng } : null}
                 fallbackQuery={address || name}
                 variant="pill"
-                className="shrink-0"
+                className="h-9 shrink-0 border-amber-400 bg-amber-400 px-3.5 text-sm font-bold text-slate-950 hover:border-amber-500 hover:bg-amber-500"
               />
             </div>
           ) : null}
