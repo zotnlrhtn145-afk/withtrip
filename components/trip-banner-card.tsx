@@ -5,7 +5,11 @@ import { useEffect, useRef, useState } from "react"
 import {
   CalendarDays,
   ChevronRight,
+  Cloud,
+  CloudFog,
+  CloudLightning,
   CloudRain,
+  CloudSnow,
   CloudSun,
   Loader2,
   MapPin,
@@ -25,10 +29,17 @@ import { getTripMembers, formatTripDuration, type Trip } from "@/lib/trip-data"
 import { formatMemberSummary } from "@/lib/trip-group"
 import { deleteTripFromSupabase } from "@/lib/trips-api"
 import { cn } from "@/lib/utils"
+import { useWeather } from "@/hooks/use-weather"
+import { weatherIconKey } from "@/lib/weather"
 
 const weatherIcons = {
   sun: Sun,
   "cloud-sun": CloudSun,
+  cloud: Cloud,
+  "cloud-fog": CloudFog,
+  "cloud-rain": CloudRain,
+  "cloud-snow": CloudSnow,
+  "cloud-lightning": CloudLightning,
   rain: CloudRain,
 } as const
 
@@ -42,7 +53,8 @@ export function TripBannerCard({
   priority?: boolean
 }) {
   const { members, refreshTrips } = useTrips()
-  const WeatherIcon = weatherIcons[trip.weatherIcon]
+  const { weather } = useWeather(trip.region)
+  const WeatherIcon = weather ? weatherIcons[weatherIconKey(weather.code)] : weatherIcons[trip.weatherIcon]
   const tripMembers = trip.groupMembers?.length
     ? trip.groupMembers
     : getTripMembers(trip, members)
@@ -125,10 +137,12 @@ export function TripBannerCard({
           </Badge>
 
           <div className="pointer-events-auto relative flex items-center gap-1.5" ref={menuRef}>
-            <Badge variant="secondary" className="h-8 rounded-full px-3">
-              <WeatherIcon data-icon="inline-start" />
-              {trip.weather}
-            </Badge>
+            {weather ? (
+              <Badge variant="secondary" className="h-8 rounded-full px-3">
+                <WeatherIcon data-icon="inline-start" />
+                {weather.label}
+              </Badge>
+            ) : null}
             <button
               type="button"
               aria-label="여행 더보기"

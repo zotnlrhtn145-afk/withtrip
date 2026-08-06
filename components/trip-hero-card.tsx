@@ -7,7 +7,11 @@ import {
   Car,
   Check,
   Copy,
+  Cloud,
+  CloudFog,
+  CloudLightning,
   CloudRain,
+  CloudSnow,
   CloudSun,
   Loader2,
   MapPin,
@@ -58,10 +62,17 @@ import {
 import { getTripMembers, formatTripDuration, type Trip } from "@/lib/trip-data"
 import { formatMemberSummary } from "@/lib/trip-group"
 import { FALLBACK_TRIP_COVER } from "@/lib/getCityImage"
+import { useWeather } from "@/hooks/use-weather"
+import { weatherIconKey } from "@/lib/weather"
 
 const weatherIcons = {
   sun: Sun,
   "cloud-sun": CloudSun,
+  cloud: Cloud,
+  "cloud-fog": CloudFog,
+  "cloud-rain": CloudRain,
+  "cloud-snow": CloudSnow,
+  "cloud-lightning": CloudLightning,
   rain: CloudRain,
 } as const
 
@@ -188,7 +199,8 @@ export function TripHeroCard({
     [joinedMembers]
   )
 
-  const WeatherIcon = weatherIcons[trip.weatherIcon]
+  const { weather } = useWeather(trip.region)
+  const WeatherIcon = weather ? weatherIcons[weatherIconKey(weather.code)] : weatherIcons[trip.weatherIcon]
   const shareUrl =
     typeof window !== "undefined" ? `${window.location.origin}/trips/${trip.id}` : `/trips/${trip.id}`
   const inviteUrl =
@@ -381,10 +393,12 @@ export function TripHeroCard({
           <span className="rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-slate-950 shadow-sm tabular-nums">
             D-{trip.dDay}
           </span>
-          <span className="flex items-center gap-1 rounded-full border border-white/20 bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur-md">
-            <WeatherIcon className="size-3.5" />
-            {trip.weather}
-          </span>
+          {weather ? (
+            <span className="flex items-center gap-1 rounded-full border border-white/20 bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur-md">
+              <WeatherIcon className="size-3.5" />
+              {weather.label}
+            </span>
+          ) : null}
         </div>
 
         <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col p-4 sm:p-5">
