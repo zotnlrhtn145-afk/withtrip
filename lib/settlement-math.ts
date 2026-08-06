@@ -103,6 +103,32 @@ export function calcVariableMemberBalances(
 }
 
 /**
+ * 공동 자금(이월) 반영 — 정산 전에 모아둔 돈으로 먼저 부담을 덜어준다.
+ * 적용 대상(applicableIds; 비었으면 전체)끼리 carryover 를 균등하게 나눠
+ * 각자의 owed 를 줄인다 = balance 에 carryPerHead 를 더한다.
+ * (합계 balance 가 carryover 만큼 (+) 로 남고, 그 금액은 모아둔 돈이 대신 갚는다.)
+ */
+export function applyCarryoverCredit(
+  balances: SettlementBalance[],
+  carryover: number,
+  applicableIds?: string[]
+): SettlementBalance[] {
+  const carry = Math.max(0, Math.round(carryover || 0))
+  if (carry <= 0) return balances
+  const memberIds = balances.map((b) => b.userId)
+  const sel =
+    applicableIds && applicableIds.length > 0
+      ? applicableIds.filter((id) => memberIds.includes(id))
+      : memberIds
+  if (sel.length === 0) return balances
+  const perHead = Math.round(carry / sel.length)
+  const applicable = new Set(sel)
+  return balances.map((b) =>
+    applicable.has(b.userId) ? { ...b, balance: b.balance + perHead } : b
+  )
+}
+
+/**
  * balance = paid - fairShare (equal split across all members).
  * Prefer calcVariableMemberBalances for selective participants.
  */

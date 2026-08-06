@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/client"
 import {
+  applyCarryoverCredit,
   calcVariableMemberBalances,
   computeMinTransfers,
   formatExpenseSplitLabel,
@@ -448,21 +449,47 @@ export async function deleteSettlementGuest(guestId: string) {
   }
 }
 
-/** 공동 자금(이월) 조회 — 정산에서 먼저 빼고 나눌 금액. */
-export async function fetchTripCarryover(tripId: string): Promise<number> {
-  const supabase = createClient()
-  const { data, error } = await supabase.from("trips").select("carryover").eq("id", tripId).maybeSingle()
-  if (error) {
-    logError("fetchTripCarryover", error)
-    return 0
-  }
-  return Math.max(0, Math.round(Number((data as { carryover?: number } | null)?.carryover ?? 0)))
+export type CarryoverConfig = {
+  /** 정산에서 먼저 빼고 나눌 공동 자금(이월). */
+  carryover: number
+  /** 이월 적용 대상 멤버 user_id (빈 배열 = 전체 멤버). */
+  members: string[]
+  /** 여행을 만든 호스트 — 이 사람만 이월 금액을 지정할 수 있다. */
+  ownerId: string | null
 }
 
-/** 공동 자금(이월) 저장. */
-export async function setTripCarryover(tripId: string, amount: number) {
+/** 공동 자금(이월) 설정 조회 — 금액·적용 대상·호스트. */
+export async function fetchTripCarryoverConfig(tripId: string): Promise<CarryoverConfig> {
   const supabase = createClient()
-  const { error } = await supabase.from("trips").update({ carryover: Math.max(0, Math.round(amount)) }).eq("id", tripId)
+  const { data, error } = await supabase
+    .from("trips")
+    .select("carryover, carryover_members, user_id")
+    .eq("id", tripId)
+    .maybeSingle()
+  if (error) {
+    logError("fetchTripCarryoverConfig", error)
+    return { carryover: 0, members: [], ownerId: null }
+  }
+  const row = (data ?? null) as {
+    carryover?: number | null
+    carryover_members?: string[] | null
+    user_id?: string | null
+  } | null
+  return {
+    carryover: Math.max(0, Math.round(Number(row?.carryover ?? 0))),
+    members: Array.isArray(row?.carryover_members) ? row!.carryover_members! : [],
+    ownerId: row?.user_id ?? null,
+  }
+}
+
+/** 공동 자금(이월) 저장 — 금액과 적용 대상 멤버. */
+export async function setTripCarryover(tripId: string, amount: number, members: string[] = []) {
+  const supabase = createClient()
+  const value = Math.max(0, Math.round(amount))
+  const { error } = await supabase
+    .from("trips")
+    .update({ carryover: value, carryover_members: value > 0 ? members : [] })
+    .eq("id", tripId)
   if (error) {
     logError("setTripCarryover", error)
     throw error
@@ -493,12 +520,14 @@ export async function syncSettlementsForTrip(
   tripId: string,
   memberIds: string[],
   expenses: ExpenseRecord[],
-  existing: SettlementRecord[]
+  existing: SettlementRecord[],
+  carryover = 0,
+  carryoverMembers: string[] = []
 ): Promise<SettlementRecord[]> {
   const id = String(tripId ?? "").trim()
   if (!id || memberIds.length === 0) return []
 
-  const balances = calcVariableMemberBalances(
+  const rawBalances = calcVariableMemberBalances(
     memberIds,
     expenses.map((expense) => ({
       amount: expense.amount,
@@ -507,6 +536,8 @@ export async function syncSettlementsForTrip(
         expense.participantIds.length > 0 ? expense.participantIds : [...memberIds],
     }))
   )
+  // 공동 자금(이월)을 반영해 실제 송금 대상/금액을 줄인다.
+  const balances = applyCarryoverCredit(rawBalances, carryover, carryoverMembers)
   const computed = computeMinTransfers(balances)
 
   const existingByPair = new Map<string, SettlementRecord>(

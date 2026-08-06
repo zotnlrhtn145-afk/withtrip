@@ -42,12 +42,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { calcPerPerson, calcVariableMemberBalances } from "@/lib/settlement-math"
+import {
+  applyCarryoverCredit,
+  calcPerPerson,
+  calcVariableMemberBalances,
+} from "@/lib/settlement-math"
 import { parseReceiptImage, type ParsedReceiptItem } from "@/lib/parse-receipt"
 import {
   addSettlementGuest,
   deleteSettlementGuest,
   fetchSettlementMembers,
+  fetchTripCarryoverConfig,
   fetchTripExpenses,
   fetchTripSettlements,
   formatExpenseDateLabel,
@@ -55,6 +60,7 @@ import {
   formatWon,
   initialsFromNickname,
   insertExpense,
+  setTripCarryover,
   syncSettlementsForTrip,
   toggleSettlementStatus,
   uploadReceiptImage,
@@ -178,6 +184,15 @@ export function SettlementView({
   const [payoutAccount, setPayoutAccount] = useState<PayoutAccount>(EMPTY_PAYOUT_ACCOUNT)
   const [sharing, setSharing] = useState(false)
 
+  // 공동 자금(이월) — 호스트만 지정 가능, 적용 대상 멤버 선택 가능.
+  const [carryover, setCarryover] = useState(0)
+  const [carryMembers, setCarryMembers] = useState<string[]>([])
+  const [carryOwnerId, setCarryOwnerId] = useState<string | null>(null)
+  const [carryModalOpen, setCarryModalOpen] = useState(false)
+  const [carryInput, setCarryInput] = useState("")
+  const [carrySel, setCarrySel] = useState<Set<string>>(new Set())
+  const [savingCarry, setSavingCarry] = useState(false)
+
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [title, setTitle] = useState("")
@@ -242,21 +257,27 @@ export function SettlementView({
     setLoading(true)
     setError(null)
     try {
-      const [loadedMembers, loadedExpenses, loadedSettlements] = await Promise.all([
+      const [loadedMembers, loadedExpenses, loadedSettlements, carryConfig] = await Promise.all([
         fetchSettlementMembers(activeTripId),
         fetchTripExpenses(activeTripId),
         fetchTripSettlements(activeTripId),
+        fetchTripCarryoverConfig(activeTripId),
       ])
 
       setMembers(loadedMembers)
       setExpenses(loadedExpenses)
+      setCarryover(carryConfig.carryover)
+      setCarryMembers(carryConfig.members)
+      setCarryOwnerId(carryConfig.ownerId)
 
       const memberIds = loadedMembers.map((member) => member.userId)
       const synced = await syncSettlementsForTrip(
         activeTripId,
         memberIds,
         loadedExpenses,
-        loadedSettlements
+        loadedSettlements,
+        carryConfig.carryover,
+        carryConfig.members
       )
       setSettlements(synced)
     } catch (err) {
@@ -303,6 +324,36 @@ export function SettlementView({
     },
     [refreshSettlementData, showToast]
   )
+
+  // 공동 자금(이월) 모달 열기 — 현재 값으로 초기화. 대상 미지정이면 게스트 제외 전체 멤버.
+  const openCarryModal = useCallback(() => {
+    setCarryInput(carryover ? String(carryover) : "")
+    setCarrySel(
+      new Set(
+        carryMembers.length > 0
+          ? carryMembers
+          : members.filter((m) => !m.isGuest).map((m) => m.userId)
+      )
+    )
+    setCarryModalOpen(true)
+  }, [carryover, carryMembers, members])
+
+  const saveCarryover = useCallback(async () => {
+    if (!activeTripId || savingCarry) return
+    const value = Math.max(0, Math.round(Number(carryInput.replace(/[^0-9]/g, "")) || 0))
+    const mems = value > 0 ? [...carrySel] : []
+    setSavingCarry(true)
+    try {
+      await setTripCarryover(activeTripId, value, mems)
+      setCarryModalOpen(false)
+      await refreshSettlementData()
+      showToast(value > 0 ? `공동 자금 ${value.toLocaleString()}원을 반영했어요.` : "공동 자금을 해제했어요.")
+    } catch {
+      showToast("공동 자금 저장에 실패했어요.")
+    } finally {
+      setSavingCarry(false)
+    }
+  }, [activeTripId, savingCarry, carryInput, carrySel, refreshSettlementData, showToast])
 
   useEffect(() => {
     if (!activeTripId) {
@@ -365,24 +416,33 @@ export function SettlementView({
   )
   const memberCount = members.length
 
-  /** 정산 대상 인원별 실제 부담액 — 지출마다 다른 참여자 구성을 반영한다. */
+  const isCarryOwner = !!currentUserId && currentUserId === carryOwnerId
+  // 공동 자금을 먼저 뺀 뒤 남는 금액과 1인당 균등분할(참고용).
+  const netTotal = Math.max(0, total - carryover)
+  const perPerson = members.length ? Math.round(netTotal / members.length) : 0
+
+  /** 정산 대상 인원별 실제 부담액 — 지출마다 다른 참여자 구성 + 공동 자금(이월)을 반영한다. */
   const memberBalances = useMemo(() => {
     if (members.length === 0 || expenses.length === 0) return []
     const memberIds = members.map((member) => member.userId)
-    const balances = calcVariableMemberBalances(
-      memberIds,
-      expenses.map((expense) => ({
-        amount: expense.amount,
-        payerId: expense.payerId,
-        participantIds:
-          expense.participantIds.length > 0 ? expense.participantIds : memberIds,
-      }))
+    const balances = applyCarryoverCredit(
+      calcVariableMemberBalances(
+        memberIds,
+        expenses.map((expense) => ({
+          amount: expense.amount,
+          payerId: expense.payerId,
+          participantIds:
+            expense.participantIds.length > 0 ? expense.participantIds : memberIds,
+        }))
+      ),
+      carryover,
+      carryMembers
     )
     return balances
       .map((entry) => ({ ...entry, member: membersById.get(entry.userId) }))
       .filter((entry) => entry.member)
       .sort((a, b) => b.balance - a.balance)
-  }, [members, expenses, membersById])
+  }, [members, expenses, membersById, carryover, carryMembers])
 
   const parsedAmount = useMemo(() => {
     const value = Number(String(amount).replace(/,/g, ""))
@@ -817,6 +877,41 @@ export function SettlementView({
                   </button>
                 </div>
               </div>
+
+              {/* 공동 자금(이월) — 정산에서 먼저 빼고 나눈다. 호스트만 지정 가능. */}
+              {!loading ? (
+                isCarryOwner ? (
+                  <button
+                    type="button"
+                    onClick={openCarryModal}
+                    className={cn(
+                      "mt-2.5 flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left transition-colors",
+                      carryover > 0
+                        ? "border-emerald-200 bg-emerald-50/70 hover:bg-emerald-50"
+                        : "border-dashed border-neutral-200 bg-neutral-50/60 hover:bg-neutral-50"
+                    )}
+                  >
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <Wallet className={cn("size-3.5 shrink-0", carryover > 0 ? "text-emerald-600" : "text-neutral-400")} />
+                      <span className={cn("truncate text-xs font-semibold", carryover > 0 ? "text-emerald-700" : "text-neutral-500")}>
+                        {carryover > 0
+                          ? `공동 자금 −${carryover.toLocaleString()}원 · 1인당 ${formatWon(perPerson)}`
+                          : "공동 자금(이월) 추가"}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-[11px] font-bold text-neutral-400">
+                      {carryover > 0 ? "수정" : "＋"}
+                    </span>
+                  </button>
+                ) : carryover > 0 ? (
+                  <div className="mt-2.5 flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-2">
+                    <Wallet className="size-3.5 shrink-0 text-emerald-600" />
+                    <span className="truncate text-xs font-semibold text-emerald-700">
+                      공동 자금 −{carryover.toLocaleString()}원 (호스트 지정)
+                    </span>
+                  </div>
+                ) : null
+              ) : null}
 
               {/* 지출마다 참여자가 달라질 수 있어 "1인당" 균등분할 대신, 실제 부담액을 인원별로 보여준다. */}
               {!loading && memberBalances.length > 0 ? (
@@ -1723,6 +1818,80 @@ export function SettlementView({
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 공동 자금(이월) 설정 — 호스트 전용 */}
+      <Dialog open={carryModalOpen} onOpenChange={setCarryModalOpen}>
+        <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden rounded-3xl p-0 sm:max-w-md">
+          <DialogHeader className="shrink-0 space-y-0.5 border-b border-gray-100 px-5 py-3.5 text-left">
+            <DialogTitle className="text-lg font-extrabold text-gray-900">공동 자금(이월)</DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">
+              모아둔 돈에서 먼저 빼고 남은 금액만 정산해요. 아래에서 이 돈을 함께 쓴 사람만 골라 주세요.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-bold text-gray-700">이월 금액 (원)</label>
+              <Input
+                inputMode="numeric"
+                value={carryInput ? Number(carryInput.replace(/[^0-9]/g, "")).toLocaleString() : ""}
+                onChange={(event) => setCarryInput(event.target.value.replace(/[^0-9]/g, ""))}
+                placeholder="예: 300,000"
+                className="h-11 rounded-xl border-gray-200 bg-gray-50 text-right text-base font-bold tabular-nums shadow-none focus-visible:border-yellow-400 focus-visible:ring-1 focus-visible:ring-yellow-400/30"
+              />
+            </div>
+
+            <div>
+              <p className="mb-1.5 text-xs font-bold text-gray-700">
+                이 돈을 함께 쓴 사람 <span className="font-normal text-gray-400">(선택 인원끼리 나눠 부담을 덜어요)</span>
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {payerMembers.map((member) => {
+                  const on = carrySel.has(member.userId)
+                  return (
+                    <button
+                      key={member.userId}
+                      type="button"
+                      onClick={() =>
+                        setCarrySel((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(member.userId)) next.delete(member.userId)
+                          else next.add(member.userId)
+                          return next
+                        })
+                      }
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                        on
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                          : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+                      )}
+                    >
+                      {on ? <Check className="size-3 stroke-[3]" /> : null}
+                      {member.nickname}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="mt-2 text-[11px] text-gray-400">
+                아무도 안 고르면 전원에게 균등 적용돼요. 멤버가 바뀌면 여기서 조절하세요.
+              </p>
+            </div>
+          </div>
+
+          <div className="shrink-0 border-t border-gray-100 px-5 pt-3 py-3.5">
+            <Button
+              type="button"
+              onClick={() => void saveCarryover()}
+              disabled={savingCarry}
+              className="w-full rounded-2xl bg-yellow-400 py-3.5 text-base font-bold text-gray-900 shadow-none transition-all hover:bg-yellow-500 active:scale-[0.98]"
+            >
+              {savingCarry ? <Loader2 className="animate-spin" /> : null}
+              {carryInput && Number(carryInput.replace(/[^0-9]/g, "")) > 0 ? "적용하기" : "공동 자금 해제"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
