@@ -16,7 +16,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-SUPABASE_BIN="$ROOT/node_modules/.bin/supabase"
+# supabase CLI 는 프로젝트 의존성으로 넣지 않는다(Vercel 빌드 깨짐). npx 로 실행.
+supa() { npx --yes supabase@latest "$@"; }
 ENV_FILE="$ROOT/.env.local"
 
 # ── 사전 점검 ────────────────────────────────────────────────
@@ -27,7 +28,6 @@ if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" ]]; then
   echo "   한 뒤 다시 실행하세요."
   exit 1
 fi
-[[ -x "$SUPABASE_BIN" ]] || { echo "❌ supabase CLI 없음. 'npm i -D supabase' 후 재시도"; exit 1; }
 [[ -f "$ENV_FILE" ]]     || { echo "❌ .env.local 없음"; exit 1; }
 
 # ── 프로젝트 ref / anon key 추출 ─────────────────────────────
@@ -46,7 +46,7 @@ FUNCS=(send-chat-push send-dm-push send-notify-push)
 # ── 1) 함수 배포 (webhook-triggered → JWT 검증 끔) ───────────
 for fn in "${FUNCS[@]}"; do
   echo "▸ 배포: $fn"
-  "$SUPABASE_BIN" functions deploy "$fn" --project-ref "$REF" --no-verify-jwt
+  supa functions deploy "$fn" --project-ref "$REF" --no-verify-jwt
 done
 
 # ── Management API 로 SQL 실행하는 헬퍼 ─────────────────────
