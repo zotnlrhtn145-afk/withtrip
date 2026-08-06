@@ -448,6 +448,27 @@ export async function deleteSettlementGuest(guestId: string) {
   }
 }
 
+/** 공동 자금(이월) 조회 — 정산에서 먼저 빼고 나눌 금액. */
+export async function fetchTripCarryover(tripId: string): Promise<number> {
+  const supabase = createClient()
+  const { data, error } = await supabase.from("trips").select("carryover").eq("id", tripId).maybeSingle()
+  if (error) {
+    logError("fetchTripCarryover", error)
+    return 0
+  }
+  return Math.max(0, Math.round(Number((data as { carryover?: number } | null)?.carryover ?? 0)))
+}
+
+/** 공동 자금(이월) 저장. */
+export async function setTripCarryover(tripId: string, amount: number) {
+  const supabase = createClient()
+  const { error } = await supabase.from("trips").update({ carryover: Math.max(0, Math.round(amount)) }).eq("id", tripId)
+  if (error) {
+    logError("setTripCarryover", error)
+    throw error
+  }
+}
+
 export async function toggleSettlementStatus(
   settlementId: string,
   nextStatus: "pending" | "completed"
