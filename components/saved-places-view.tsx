@@ -57,7 +57,14 @@ export function SavedPlacesView() {
   const [recenterKey, setRecenterKey] = useState(0)
   const didAutoCenter = useRef(false)
   const followNextFix = useRef(false)
+  const cardRefs = useRef<Record<string, HTMLLIElement | null>>({})
   const geo = useGeolocation()
+
+  // 지도 마커 클릭 등으로 선택되면 그 리스트 카드로 스크롤 이동
+  useEffect(() => {
+    if (!selectedMapId) return
+    cardRefs.current[selectedMapId]?.scrollIntoView({ behavior: "smooth", block: "center" })
+  }, [selectedMapId])
 
   useEffect(() => {
     let cancelled = false
@@ -323,6 +330,9 @@ export function SavedPlacesView() {
   const renderPlaceCard = (place: SavedPlace) => (
     <li
       key={place.id}
+      ref={(node) => {
+        cardRefs.current[place.id] = node
+      }}
       onClick={() => showOnMap(place.id)}
       className={cn(
         "flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-2.5 shadow-sm transition-colors",

@@ -210,7 +210,7 @@ export function SpotsView() {
     if (!selectedId) return
     cardRefs.current[selectedId]?.scrollIntoView({
       behavior: "smooth",
-      block: "nearest",
+      block: "center",
     })
   }, [selectedId])
 
