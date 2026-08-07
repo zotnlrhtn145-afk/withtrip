@@ -193,6 +193,9 @@ export function SettlementView({
   const [carrySel, setCarrySel] = useState<Set<string>>(new Set())
   const [savingCarry, setSavingCarry] = useState(false)
 
+  // 모바일 액션 FAB(speed-dial) 열림 상태
+  const [fabOpen, setFabOpen] = useState(false)
+
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [title, setTitle] = useState("")
@@ -1059,8 +1062,8 @@ export function SettlementView({
               )}
             </div>
 
-            {/* 3. Action buttons */}
-            <div className="flex flex-col gap-2">
+            {/* 3. Action buttons — 데스크톱은 사이드바에 그대로, 모바일은 우하단 FAB로 대체 */}
+            <div className="hidden flex-col gap-2 md:flex">
               <Button
                 type="button"
                 onClick={() => setOpen(true)}
@@ -1304,6 +1307,96 @@ export function SettlementView({
             )}
           </div>
         </section>
+      </div>
+
+      {/* 모바일 액션 FAB (speed-dial) — 데스크톱은 사이드바 버튼 사용 */}
+      <div className="md:hidden">
+        {fabOpen ? (
+          <button
+            type="button"
+            aria-label="메뉴 닫기"
+            onClick={() => setFabOpen(false)}
+            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px] duration-200 animate-in fade-in-0"
+          />
+        ) : null}
+        <div className="fixed right-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-50 flex flex-col items-end gap-3">
+          {fabOpen ? (
+            <>
+              {/* 카카오 공유 */}
+              <div
+                className="flex items-center gap-2 duration-200 animate-in fade-in-0 slide-in-from-bottom-2 zoom-in-95"
+                style={{ animationDelay: "80ms" }}
+              >
+                <span className="rounded-lg bg-neutral-900/85 px-2.5 py-1 text-xs font-semibold text-white shadow">
+                  카카오 공유
+                </span>
+                <button
+                  type="button"
+                  disabled={sharing || loading}
+                  onClick={() => {
+                    setFabOpen(false)
+                    void handleShareSettlement()
+                  }}
+                  className="flex size-12 items-center justify-center rounded-full bg-[#FEE500] text-[#191600] shadow-lg transition-transform active:scale-90 disabled:opacity-50"
+                >
+                  {sharing ? <Loader2 className="size-5 animate-spin" /> : <MessageCircle className="size-5" />}
+                </button>
+              </div>
+              {/* 정산 완료 / 재개 */}
+              <div
+                className="flex items-center gap-2 duration-200 animate-in fade-in-0 slide-in-from-bottom-2 zoom-in-95"
+                style={{ animationDelay: "40ms" }}
+              >
+                <span className="rounded-lg bg-neutral-900/85 px-2.5 py-1 text-xs font-semibold text-white shadow">
+                  {tripSettled ? "정산 재개" : "정산 완료"}
+                </span>
+                <button
+                  type="button"
+                  disabled={settlingTrip || loading}
+                  onClick={() => {
+                    setFabOpen(false)
+                    void handleToggleTripSettled()
+                  }}
+                  className={cn(
+                    "flex size-12 items-center justify-center rounded-full shadow-lg transition-transform active:scale-90 disabled:opacity-50",
+                    tripSettled
+                      ? "bg-emerald-500 text-white"
+                      : "bg-white text-neutral-800 ring-1 ring-neutral-200"
+                  )}
+                >
+                  {settlingTrip ? <Loader2 className="size-5 animate-spin" /> : <CheckCircle2 className="size-5" />}
+                </button>
+              </div>
+              {/* 지출 추가 */}
+              <div className="flex items-center gap-2 duration-200 animate-in fade-in-0 slide-in-from-bottom-2 zoom-in-95">
+                <span className="rounded-lg bg-neutral-900/85 px-2.5 py-1 text-xs font-semibold text-white shadow">
+                  지출 추가
+                </span>
+                <button
+                  type="button"
+                  disabled={tripSettled}
+                  onClick={() => {
+                    setFabOpen(false)
+                    setOpen(true)
+                  }}
+                  className="flex size-12 items-center justify-center rounded-full bg-amber-400 text-neutral-900 shadow-lg transition-transform active:scale-90 disabled:opacity-50"
+                >
+                  <Receipt className="size-5" />
+                </button>
+              </div>
+            </>
+          ) : null}
+          {/* 메인 FAB */}
+          <button
+            type="button"
+            aria-label={fabOpen ? "정산 메뉴 닫기" : "정산 메뉴 열기"}
+            aria-expanded={fabOpen}
+            onClick={() => setFabOpen((prev) => !prev)}
+            className="flex size-14 items-center justify-center rounded-full bg-neutral-900 text-white shadow-xl shadow-neutral-900/30 transition-transform active:scale-90"
+          >
+            <Plus className={cn("size-7 transition-transform duration-300 ease-out", fabOpen && "rotate-45")} />
+          </button>
+        </div>
       </div>
 
       {/* Add expense dialog */}
