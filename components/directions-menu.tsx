@@ -8,7 +8,8 @@ import {
   buildUberUrl,
   isInKorea,
   openGoogleMapsDirections,
-  openKakaoMapDirections,
+  openGoogleTransitDirections,
+  openKakaoWalkDirections,
   openTmapDirections,
   openUberDirections,
   type NavDestination,
@@ -110,38 +111,38 @@ export function DirectionsMenu({
               }}
               className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-amber-50"
             >
-              <Navigation className="size-4 shrink-0 text-amber-500" />
+              <span className="text-base leading-none">🚗</span>
               <span className="flex min-w-0 flex-col">
-                <span className="text-sm font-semibold text-slate-800">티맵</span>
-                <span className="text-[11px] text-slate-400">자동차 내비</span>
+                <span className="text-sm font-semibold text-slate-800">자동차</span>
+                <span className="text-[11px] text-slate-400">티맵</span>
               </span>
             </button>
             <button
               type="button"
               onClick={() => {
-                openKakaoMapDirections(effectiveDest)
+                openGoogleTransitDirections(effectiveDest)
                 setOpen(false)
               }}
               className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-amber-50"
             >
-              <MapPin className="size-4 shrink-0 text-amber-500" />
+              <span className="text-base leading-none">🚌</span>
               <span className="flex min-w-0 flex-col">
-                <span className="text-sm font-semibold text-slate-800">카카오맵</span>
-                <span className="text-[11px] text-slate-400">자동차·대중교통·도보 선택</span>
+                <span className="text-sm font-semibold text-slate-800">대중교통</span>
+                <span className="text-[11px] text-slate-400">구글 지도</span>
               </span>
             </button>
             <button
               type="button"
               onClick={() => {
-                openGoogleMapsDirections(effectiveDest)
+                openKakaoWalkDirections(effectiveDest)
                 setOpen(false)
               }}
               className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-amber-50"
             >
-              <MapPin className="size-4 shrink-0 text-amber-500" />
+              <span className="text-base leading-none">🚶</span>
               <span className="flex min-w-0 flex-col">
-                <span className="text-sm font-semibold text-slate-800">구글 지도</span>
-                <span className="text-[11px] text-slate-400">대중교통 · 해외</span>
+                <span className="text-sm font-semibold text-slate-800">도보</span>
+                <span className="text-[11px] text-slate-400">카카오맵</span>
               </span>
             </button>
           </>

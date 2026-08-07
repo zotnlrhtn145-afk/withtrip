@@ -136,3 +136,34 @@ export function openGoogleMapsDirections(dest: NavDestination) {
   if (typeof window === "undefined") return
   window.open(buildGoogleMapsDirectionsUrl(dest), "_blank", "noopener,noreferrer")
 }
+
+/** 대중교통 길찾기 — 구글 지도(travelmode=transit). 국내 대중교통은 구글이 지원한다. */
+export function openGoogleTransitDirections(dest: NavDestination) {
+  if (typeof window === "undefined") return
+  const name = dest.name?.trim()
+  const destination = name ? encodeURIComponent(name) : `${dest.lat},${dest.lng}`
+  window.open(
+    `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=transit`,
+    "_blank",
+    "noopener,noreferrer"
+  )
+}
+
+/**
+ * 도보 길찾기 — 카카오맵. 모바일은 앱 스킴(kakaomap://…&by=FOOT)으로 도보 경로를 열고,
+ * 미설치/데스크톱이면 카카오 웹 경로로 폴백한다. (구글은 국내 도보 미제공)
+ */
+export function openKakaoWalkDirections(dest: NavDestination) {
+  if (typeof window === "undefined") return
+  if (!isMobileUserAgent() || !hasCoords(dest)) {
+    window.open(buildKakaoMapUrl(dest), "_blank", "noopener,noreferrer")
+    return
+  }
+  const timer = window.setTimeout(() => {
+    if (document.visibilityState === "visible") {
+      window.open(buildKakaoMapUrl(dest), "_blank", "noopener,noreferrer")
+    }
+  }, 1500)
+  document.addEventListener("visibilitychange", () => window.clearTimeout(timer), { once: true })
+  window.location.href = `kakaomap://route?ep=${dest.lat},${dest.lng}&by=FOOT`
+}
