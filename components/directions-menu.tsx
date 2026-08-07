@@ -133,7 +133,7 @@ export function DirectionsMenu({
               className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-amber-50"
             >
               <MapPin className="size-3.5 text-amber-500" />
-              구글 지도로 길찾기
+              구글 지도 (대중교통)
             </button>
           </>
         )}

@@ -119,8 +119,12 @@ export function openUberDirections(dest: NavDestination) {
 
 /**
  * Universal, worldwide Google Maps directions.
- * 목적지를 좌표 대신 업장 이름으로 넣어 이름이 표시되게 하고(없으면 좌표),
- * travelmode 를 지정하지 않아 자동차·대중교통·도보를 사용자가 고를 수 있게 한다.
+ * 목적지를 좌표 대신 업장 이름으로 넣어 이름이 표시되게 한다(없으면 좌표).
+ *
+ * ⚠️ 구글은 한국 내 자동차·도보 경로를 제공하지 않는다(지도 데이터 반출 규제 → 국내는 대중교통만).
+ *   travelmode 를 강제하지 않는 이유: 현재 위치가 한국이면 자가용 경로가 "범위 초과" 오류를 낸다.
+ *   미지정 시 구글이 지역에 맞게(국내=대중교통, 사용자가 있는 해외=자가용) 알아서 고른다.
+ *   국내 자가용/도보 길찾기는 티맵·카카오맵이 담당한다.
  */
 export function buildGoogleMapsDirectionsUrl(dest: NavDestination): string {
   const name = dest.name?.trim()
