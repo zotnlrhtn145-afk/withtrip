@@ -1003,16 +1003,16 @@ export function SettlementView({
               ) : null}
             </div>
 
-            {/* 2. Payout account card */}
+            {/* 2. Payout account card — 계좌 있으면 헤더+상세, 없으면 한 줄 컴팩트 프롬프트 */}
             <div className="rounded-2xl border border-neutral-100 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-              <div className="mb-3 flex items-center gap-2.5">
-                <span className="flex size-8 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
-                  <Wallet className="size-4 stroke-[1.5]" />
-                </span>
-                <p className="text-sm font-semibold text-neutral-900">내 수령 계좌</p>
-              </div>
               {hasAnyPayout(payoutAccount) ? (
                 <div className="flex flex-col gap-2.5 text-sm">
+                  <div className="mb-0.5 flex items-center gap-2.5">
+                    <span className="flex size-8 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
+                      <Wallet className="size-4 stroke-[1.5]" />
+                    </span>
+                    <p className="text-sm font-semibold text-neutral-900">내 수령 계좌</p>
+                  </div>
                   {hasBankPayout(payoutAccount) ? (
                     <div className="rounded-xl bg-neutral-50/90 px-3 py-2.5 ring-1 ring-neutral-100">
                       <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-neutral-500">
@@ -1043,22 +1043,22 @@ export function SettlementView({
                   ) : null}
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
-                  <p className="text-sm leading-relaxed text-neutral-500">
-                    마이페이지에서 수령 계좌를 등록해 보세요.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      window.location.href = "/?nav=mypage"
-                    }}
-                    className="h-9 w-full rounded-xl border-neutral-200 font-semibold text-neutral-700 shadow-none hover:bg-neutral-50"
-                  >
-                    마이페이지로 이동
-                  </Button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.location.href = "/?nav=mypage"
+                  }}
+                  className="flex w-full items-center gap-2.5 text-left"
+                >
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-500">
+                    <Wallet className="size-4 stroke-[1.5]" />
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-sm font-semibold text-neutral-900">내 수령 계좌</span>
+                    <span className="text-xs text-neutral-400">등록하면 멤버가 바로 송금할 수 있어요</span>
+                  </span>
+                  <span className="shrink-0 text-xs font-bold text-amber-600">등록 →</span>
+                </button>
               )}
             </div>
 
