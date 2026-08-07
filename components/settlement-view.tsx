@@ -101,9 +101,9 @@ const PANEL_TABS: {
   label: string
   icon: typeof LayoutGrid
 }[] = [
-  { key: "all", label: "전체 보기", icon: LayoutGrid },
-  { key: "transfers", label: "송금 현황만", icon: ArrowLeftRight },
-  { key: "expenses", label: "지출 내역만", icon: ReceiptText },
+  { key: "all", label: "전체", icon: LayoutGrid },
+  { key: "transfers", label: "송금", icon: ArrowLeftRight },
+  { key: "expenses", label: "지출", icon: ReceiptText },
 ]
 
 const CATEGORY_CHIPS: {
@@ -841,6 +841,34 @@ export function SettlementView({
 
   return (
     <div className="mx-auto w-full max-w-6xl">
+      {/* 인스타그램식 상단 탭 — 정산 보기 전환(전체/송금/지출). 모바일·데스크톱 모두 최상단 고정. */}
+      <div
+        role="tablist"
+        aria-label="정산 보기"
+        className="sticky top-0 z-30 mb-4 flex gap-1 overflow-x-auto rounded-2xl border border-neutral-100 bg-white/95 p-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] backdrop-blur-md"
+      >
+        {PANEL_TABS.map((tab) => {
+          const isActive = activeTab === tab.key
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                "inline-flex flex-1 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200",
+                isActive
+                  ? "bg-neutral-900 text-white shadow-sm"
+                  : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
+              )}
+            >
+              <tab.icon className="size-4 stroke-[1.75]" />
+              {tab.label}
+            </button>
+          )
+        })}
+      </div>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-12 md:gap-8">
         {/* Left panel — filters → payout → actions */}
         <aside className="md:col-span-4">
@@ -971,42 +999,6 @@ export function SettlementView({
                 </ul>
               ) : null}
             </div>
-
-            {/* 1. View filter tabs */}
-            <nav
-              aria-label="정산 보기 필터"
-              className="rounded-2xl border border-neutral-100 bg-white p-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-            >
-              <ul className="flex flex-col gap-0.5">
-                {PANEL_TABS.map((tab) => {
-                  const isActive = activeTab === tab.key
-                  return (
-                    <li key={tab.key}>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab(tab.key)}
-                        className={cn(
-                          "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors duration-200",
-                          isActive
-                            ? "bg-neutral-100 text-neutral-900"
-                            : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-800"
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "flex size-8 shrink-0 items-center justify-center rounded-lg",
-                            isActive ? "bg-white text-neutral-800 shadow-sm" : "bg-transparent text-neutral-400"
-                          )}
-                        >
-                          <tab.icon className="size-4 stroke-[1.5]" />
-                        </span>
-                        {tab.label}
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            </nav>
 
             {/* 2. Payout account card */}
             <div className="rounded-2xl border border-neutral-100 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
