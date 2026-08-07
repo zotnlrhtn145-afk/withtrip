@@ -8,8 +8,7 @@ import {
   buildUberUrl,
   isInKorea,
   openGoogleMapsDirections,
-  openGoogleTransitDirections,
-  openKakaoWalkDirections,
+  openKakaoMapDirections,
   openTmapDirections,
   openUberDirections,
   type NavDestination,
@@ -109,41 +108,35 @@ export function DirectionsMenu({
                 openTmapDirections(effectiveDest)
                 setOpen(false)
               }}
-              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-amber-50"
+              className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left text-sm font-semibold text-slate-800 transition-colors hover:bg-amber-50"
             >
-              <span className="text-base leading-none">🚗</span>
-              <span className="flex min-w-0 flex-col">
-                <span className="text-sm font-semibold text-slate-800">자동차</span>
-                <span className="text-[11px] text-slate-400">티맵</span>
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icons/tmap.svg" alt="" width={22} height={22} className="size-[22px] shrink-0 rounded-[6px]" />
+              티맵
             </button>
             <button
               type="button"
               onClick={() => {
-                openGoogleTransitDirections(effectiveDest)
+                openKakaoMapDirections(effectiveDest)
                 setOpen(false)
               }}
-              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-amber-50"
+              className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left text-sm font-semibold text-slate-800 transition-colors hover:bg-amber-50"
             >
-              <span className="text-base leading-none">🚌</span>
-              <span className="flex min-w-0 flex-col">
-                <span className="text-sm font-semibold text-slate-800">대중교통</span>
-                <span className="text-[11px] text-slate-400">구글 지도</span>
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icons/kakao.svg" alt="" width={22} height={22} className="size-[22px] shrink-0 rounded-[6px]" />
+              카카오맵
             </button>
             <button
               type="button"
               onClick={() => {
-                openKakaoWalkDirections(effectiveDest)
+                openGoogleMapsDirections(effectiveDest)
                 setOpen(false)
               }}
-              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-amber-50"
+              className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left text-sm font-semibold text-slate-800 transition-colors hover:bg-amber-50"
             >
-              <span className="text-base leading-none">🚶</span>
-              <span className="flex min-w-0 flex-col">
-                <span className="text-sm font-semibold text-slate-800">도보</span>
-                <span className="text-[11px] text-slate-400">카카오맵</span>
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icons/google.svg" alt="" width={22} height={22} className="size-[22px] shrink-0" />
+              구글
             </button>
           </>
         )}
