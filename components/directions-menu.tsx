@@ -69,7 +69,8 @@ export function DirectionsMenu({
       </PopoverTrigger>
       <PopoverContent
         align={variant === "cta" ? "center" : "end"}
-        className="z-[100] w-48 p-1.5"
+        className="w-48 p-1.5"
+        positionerClassName="z-[100]"
         onClick={(event) => event.stopPropagation()}
       >
         {overseas ? (
