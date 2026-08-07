@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { DirectionsMenu } from "@/components/directions-menu"
 import {
   Dialog,
   DialogContent,
@@ -626,32 +627,43 @@ function TimelineItem({
               </p>
             ) : null}
           </div>
-          {isAuthor ? (
-            <div className="flex shrink-0 items-center gap-0.5">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="일정 수정"
-                disabled={deleting}
-                onClick={() => onEdit(item)}
-                className="text-gray-400 hover:text-amber-600"
-              >
-                <Pencil />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="일정 삭제"
-                disabled={deleting}
-                onClick={() => onDelete(item.id)}
-                className="text-gray-400 hover:text-destructive"
-              >
-                {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
-              </Button>
-            </div>
-          ) : null}
+          <div className="flex shrink-0 items-center gap-0.5">
+            {/* 길찾기 — 좌표가 없어도 이름/주소로 검색(3모드 피커). 모두에게 노출. */}
+            {item.placeName || item.address ? (
+              <DirectionsMenu
+                destination={null}
+                fallbackQuery={item.address || item.placeName}
+                variant="icon"
+                className="size-8 text-amber-600"
+              />
+            ) : null}
+            {isAuthor ? (
+              <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="일정 수정"
+                  disabled={deleting}
+                  onClick={() => onEdit(item)}
+                  className="text-gray-400 hover:text-amber-600"
+                >
+                  <Pencil />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="일정 삭제"
+                  disabled={deleting}
+                  onClick={() => onDelete(item.id)}
+                  className="text-gray-400 hover:text-destructive"
+                >
+                  {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+                </Button>
+              </>
+            ) : null}
+          </div>
         </div>
       </div>
     </li>
