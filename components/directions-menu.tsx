@@ -69,7 +69,7 @@ export function DirectionsMenu({
       </PopoverTrigger>
       <PopoverContent
         align={variant === "cta" ? "center" : "end"}
-        className="w-48 p-1.5"
+        className="w-60 p-1.5"
         positionerClassName="z-[100]"
         onClick={(event) => event.stopPropagation()}
       >
@@ -108,10 +108,13 @@ export function DirectionsMenu({
                 openTmapDirections(effectiveDest)
                 setOpen(false)
               }}
-              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-amber-50"
+              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-amber-50"
             >
-              <Navigation className="size-3.5 text-amber-500" />
-              티맵으로 길찾기
+              <Navigation className="size-4 shrink-0 text-amber-500" />
+              <span className="flex min-w-0 flex-col">
+                <span className="text-sm font-semibold text-slate-800">티맵</span>
+                <span className="text-[11px] text-slate-400">자동차 내비</span>
+              </span>
             </button>
             <button
               type="button"
@@ -119,10 +122,13 @@ export function DirectionsMenu({
                 openKakaoMapDirections(effectiveDest)
                 setOpen(false)
               }}
-              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-amber-50"
+              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-amber-50"
             >
-              <MapPin className="size-3.5 text-amber-500" />
-              카카오맵으로 길찾기
+              <MapPin className="size-4 shrink-0 text-amber-500" />
+              <span className="flex min-w-0 flex-col">
+                <span className="text-sm font-semibold text-slate-800">카카오맵</span>
+                <span className="text-[11px] text-slate-400">자동차·대중교통·도보 선택</span>
+              </span>
             </button>
             <button
               type="button"
@@ -130,10 +136,13 @@ export function DirectionsMenu({
                 openGoogleMapsDirections(effectiveDest)
                 setOpen(false)
               }}
-              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-amber-50"
+              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-amber-50"
             >
-              <MapPin className="size-3.5 text-amber-500" />
-              구글 지도 (대중교통)
+              <MapPin className="size-4 shrink-0 text-amber-500" />
+              <span className="flex min-w-0 flex-col">
+                <span className="text-sm font-semibold text-slate-800">구글 지도</span>
+                <span className="text-[11px] text-slate-400">대중교통 · 해외</span>
+              </span>
             </button>
           </>
         )}
