@@ -328,6 +328,15 @@ export async function insertSchedule(input: CreateTripScheduleInput): Promise<Tr
   return mapScheduleRow(data as TripScheduleRow)
 }
 
+/** 호스트(방장) = trips.user_id. 방장은 작성자가 아니어도 수정·삭제할 수 있다. */
+async function isTripHost(tripId: string, authUserId: string | null): Promise<boolean> {
+  const uid = String(authUserId ?? "").trim()
+  const tid = String(tripId ?? "").trim()
+  if (!uid || !tid) return false
+  const { data } = await supabase.from("trips").select("user_id").eq("id", tid).maybeSingle()
+  return String((data as { user_id?: string | null } | null)?.user_id ?? "").trim() === uid
+}
+
 export async function updateSchedule(
   scheduleId: string,
   input: CreateTripScheduleInput
@@ -342,7 +351,7 @@ export async function updateSchedule(
   const authUserId = await getCurrentUserId()
   const { data: existing, error: lookupError } = await supabase
     .from("trip_schedules")
-    .select("id, created_by")
+    .select("id, created_by, trip_id")
     .eq("id", id)
     .maybeSingle()
 
@@ -354,8 +363,10 @@ export async function updateSchedule(
 
   const authorId = String((existing as { created_by?: string | null }).created_by ?? "").trim()
   const authorFields = { createdBy: authorId, userId: authorId }
-  if (!isScheduleAuthor(authorFields, authUserId)) {
-    throw new Error("작성자만 일정을 수정할 수 있어요.")
+  const existingTripId = String((existing as { trip_id?: string | null }).trip_id ?? tripId).trim()
+  // 작성자 또는 방장(호스트)만 수정 가능
+  if (!isScheduleAuthor(authorFields, authUserId) && !(await isTripHost(existingTripId, authUserId))) {
+    throw new Error("작성자 또는 방장만 일정을 수정할 수 있어요.")
   }
 
   // Keep original author; never blank created_by on update
@@ -386,7 +397,7 @@ export async function deleteSchedule(scheduleId: string): Promise<boolean> {
     const authUserId = await getCurrentUserId()
     const { data: existing, error: lookupError } = await supabase
       .from("trip_schedules")
-      .select("id, created_by")
+      .select("id, created_by, trip_id")
       .eq("id", id)
       .maybeSingle()
 
@@ -398,8 +409,10 @@ export async function deleteSchedule(scheduleId: string): Promise<boolean> {
 
     const authorId = String((existing as { created_by?: string | null }).created_by ?? "").trim()
     const authorFields = { createdBy: authorId, userId: authorId }
-    if (!isScheduleAuthor(authorFields, authUserId)) {
-      console.warn("[deleteSchedule] blocked: not schedule author")
+    const existingTripId = String((existing as { trip_id?: string | null }).trip_id ?? "").trim()
+    // 작성자 또는 방장(호스트)만 삭제 가능
+    if (!isScheduleAuthor(authorFields, authUserId) && !(await isTripHost(existingTripId, authUserId))) {
+      console.warn("[deleteSchedule] blocked: not author or host")
       return false
     }
 

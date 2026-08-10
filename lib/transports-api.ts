@@ -337,6 +337,15 @@ export async function insertTripTransports(
   return sortTripTransports(((data as TripTransportRow[] | null) ?? []).map(mapTransportRow))
 }
 
+/** 호스트(방장) = trips.user_id. 방장은 작성자가 아니어도 수정·삭제할 수 있다. */
+async function isTripHost(tripId: string, authUserId: string | null): Promise<boolean> {
+  const uid = String(authUserId ?? "").trim()
+  const tid = String(tripId ?? "").trim()
+  if (!uid || !tid) return false
+  const { data } = await supabase.from("trips").select("user_id").eq("id", tid).maybeSingle()
+  return String((data as { user_id?: string | null } | null)?.user_id ?? "").trim() === uid
+}
+
 export async function updateTripTransport(
   transportId: string,
   input: CreateTripTransportInput
@@ -350,7 +359,7 @@ export async function updateTripTransport(
   const authUserId = await getCurrentUserId()
   const { data: existing, error: lookupError } = await supabase
     .from("trip_transports")
-    .select("id, created_by")
+    .select("id, created_by, trip_id")
     .eq("id", id)
     .maybeSingle()
 
@@ -362,8 +371,10 @@ export async function updateTripTransport(
 
   const authorId = String((existing as { created_by?: string | null }).created_by ?? "").trim()
   const authorFields = { userId: authorId, createdBy: authorId }
-  if (!isTransportAuthor(authorFields, authUserId)) {
-    throw new Error("작성자만 이동수단을 수정할 수 있어요.")
+  const existingTripId = String((existing as { trip_id?: string | null }).trip_id ?? tripId).trim()
+  // 작성자 또는 방장(호스트)만 수정 가능
+  if (!isTransportAuthor(authorFields, authUserId) && !(await isTripHost(existingTripId, authUserId))) {
+    throw new Error("작성자 또는 방장만 이동수단을 수정할 수 있어요.")
   }
 
   const segmentOrder = input.segmentOrder && input.segmentOrder > 0 ? input.segmentOrder : 1
@@ -399,7 +410,7 @@ export async function deleteTripTransport(transportId: string): Promise<boolean>
     const authUserId = await getCurrentUserId()
     const { data: existing, error: lookupError } = await supabase
       .from("trip_transports")
-      .select("id, created_by")
+      .select("id, created_by, trip_id")
       .eq("id", id)
       .maybeSingle()
 
@@ -411,8 +422,10 @@ export async function deleteTripTransport(transportId: string): Promise<boolean>
 
     const authorId = String((existing as { created_by?: string | null }).created_by ?? "").trim()
     const existingMapped = { userId: authorId, createdBy: authorId }
-    if (!isTransportAuthor(existingMapped, authUserId)) {
-      console.warn("[deleteTripTransport] blocked: not transport author")
+    const existingTripId = String((existing as { trip_id?: string | null }).trip_id ?? "").trim()
+    // 작성자 또는 방장(호스트)만 삭제 가능
+    if (!isTransportAuthor(existingMapped, authUserId) && !(await isTripHost(existingTripId, authUserId))) {
+      console.warn("[deleteTripTransport] blocked: not author or host")
       return false
     }
 
