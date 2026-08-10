@@ -5,81 +5,67 @@ import { Trash2 } from "lucide-react"
 
 /**
  * 카드를 왼→오른쪽으로 밀면 왼쪽에 삭제 패널이 부드럽게 드러나고, 임계값을 넘겨 놓으면 삭제된다.
- * 모바일 터치 + 데스크톱 포인터(마우스 드래그) 모두 지원. 세로 스크롤은 막지 않는다.
+ * 모바일 터치 + 데스크톱 마우스 드래그 지원. touch-action:pan-y 로 세로 스크롤은 그대로 둔다.
  */
 export function SwipeToDelete({
   onDelete,
   children,
-  disabled,
 }: {
   onDelete: () => void
   children: ReactNode
-  disabled?: boolean
 }) {
   const [dx, setDx] = useState(0)
-  const [animating, setAnimating] = useState(false)
-  const startX = useRef(0)
-  const startY = useRef(0)
-  const activeAxis = useRef<"none" | "x" | "y">("none")
-  const movedRef = useRef(false)
+  const [snap, setSnap] = useState(false)
+  const start = useRef<{ x: number; y: number } | null>(null)
+  const axis = useRef<"none" | "x" | "y">("none")
+  const moved = useRef(false)
+  const dragging = useRef(false)
 
-  const MAX = 110
-  const THRESHOLD = 84
+  const MAX = 108
+  const THRESHOLD = 78
 
-  const reset = () => {
-    setAnimating(true)
-    setDx(0)
+  const begin = (x: number, y: number) => {
+    start.current = { x, y }
+    axis.current = "none"
+    moved.current = false
+    setSnap(false)
   }
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (disabled) return
-    startX.current = e.clientX
-    startY.current = e.clientY
-    activeAxis.current = "none"
-    movedRef.current = false
-    setAnimating(false)
-  }
-
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (disabled || e.buttons === 0) return
-    const dX = e.clientX - startX.current
-    const dY = e.clientY - startY.current
-    if (activeAxis.current === "none") {
-      if (Math.abs(dX) < 8 && Math.abs(dY) < 8) return
-      activeAxis.current = Math.abs(dX) > Math.abs(dY) ? "x" : "y"
-      if (activeAxis.current === "x") {
-        try {
-          ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
-        } catch {}
-      }
+  const move = (x: number, y: number) => {
+    if (!start.current) return
+    const dX = x - start.current.x
+    const dY = y - start.current.y
+    if (axis.current === "none") {
+      if (Math.abs(dX) < 6 && Math.abs(dY) < 6) return
+      axis.current = Math.abs(dX) > Math.abs(dY) ? "x" : "y"
     }
-    if (activeAxis.current !== "x") return
-    movedRef.current = true
+    if (axis.current !== "x") return
+    moved.current = true
     setDx(Math.max(0, Math.min(MAX, dX)))
   }
-
-  const onPointerUp = () => {
-    if (activeAxis.current === "x") {
+  const end = () => {
+    if (!start.current) return
+    start.current = null
+    if (axis.current === "x") {
+      setSnap(true)
       if (dx >= THRESHOLD) {
-        setAnimating(true)
         setDx(MAX)
         window.setTimeout(() => {
           onDelete()
           setDx(0)
-        }, 140)
+        }, 130)
       } else {
-        reset()
+        setDx(0)
       }
     }
-    activeAxis.current = "none"
+    axis.current = "none"
   }
 
   return (
     <div className="relative overflow-hidden rounded-2xl">
       {/* 왼쪽 삭제 패널 */}
       <div
-        className="absolute inset-y-0 left-0 flex items-center justify-center bg-rose-500 text-white transition-opacity"
-        style={{ width: MAX, opacity: dx > 4 ? 1 : 0 }}
+        className="absolute inset-y-0 left-0 flex items-center justify-center bg-rose-500 text-white"
+        style={{ width: MAX, opacity: dx > 4 ? 1 : 0, transition: "opacity 0.1s" }}
         aria-hidden
       >
         <div className="flex flex-col items-center gap-0.5">
@@ -88,24 +74,41 @@ export function SwipeToDelete({
         </div>
       </div>
       <div
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={reset}
+        onTouchStart={(e) => begin(e.touches[0].clientX, e.touches[0].clientY)}
+        onTouchMove={(e) => move(e.touches[0].clientX, e.touches[0].clientY)}
+        onTouchEnd={end}
+        onTouchCancel={end}
+        onMouseDown={(e) => {
+          dragging.current = true
+          begin(e.clientX, e.clientY)
+        }}
+        onMouseMove={(e) => {
+          if (dragging.current) move(e.clientX, e.clientY)
+        }}
+        onMouseUp={() => {
+          dragging.current = false
+          end()
+        }}
+        onMouseLeave={() => {
+          if (dragging.current) {
+            dragging.current = false
+            end()
+          }
+        }}
         onClickCapture={(e) => {
           // 드래그 직후의 클릭(상세 열기 등)은 무시
-          if (movedRef.current) {
+          if (moved.current) {
             e.preventDefault()
             e.stopPropagation()
-            movedRef.current = false
+            moved.current = false
           }
         }}
         style={{
           transform: `translateX(${dx}px)`,
-          transition: animating ? "transform 0.2s ease" : "none",
+          transition: snap ? "transform 0.18s ease" : "none",
           touchAction: "pan-y",
         }}
-        className="relative"
+        className="relative bg-white"
       >
         {children}
       </div>

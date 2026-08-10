@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Car, MapPin, Navigation } from "lucide-react"
+import { Car, MapPin, Navigation, type LucideIcon } from "lucide-react"
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
@@ -33,17 +33,18 @@ export function DirectionsMenu({
   variant = "pill",
   className,
   label = "길찾기",
+  icon,
 }: {
   destination: NavDestination | null
   fallbackQuery?: string
   variant?: "pill" | "icon" | "cta"
   className?: string
   label?: string
+  icon?: LucideIcon
 }) {
   const [open, setOpen] = useState(false)
   const baseClass = VARIANT_CLASS[variant]
-  const triggerIcon = variant === "cta" ? MapPin : Navigation
-  const TriggerIcon = triggerIcon
+  const TriggerIcon = icon ?? (variant === "cta" ? MapPin : Navigation)
 
   // 좌표가 없어도 업장 이름(fallbackQuery)만 있으면 검색 기반 길찾기 피커를 연다.
   const effectiveDest: NavDestination | null = destination

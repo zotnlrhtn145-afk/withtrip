@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Bookmark, Check, Heart, Info, Loader2, MapPin, Plus, Send, Star } from "lucide-react"
+import { Bookmark, Check, Heart, Info, Loader2, Map as MapIcon, MapPin, Plus, Send, Star } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DirectionsMenu } from "@/components/directions-menu"
@@ -419,7 +419,7 @@ export function SavedPlacesView() {
               </span>
             ) : null}
           </div>
-          <div className="flex shrink-0 flex-col gap-1.5">
+          <div className="flex w-[74px] shrink-0 flex-col gap-1.5">
             <button
               type="button"
               onClick={(event) => {
@@ -427,9 +427,9 @@ export function SavedPlacesView() {
                 openDetail(place)
               }}
               aria-label="상세 보기"
-              className="flex items-center justify-center gap-1 rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-bold text-slate-950 transition-colors hover:bg-amber-500 active:scale-95"
+              className="flex h-7 w-full items-center justify-center gap-1 rounded-full bg-amber-400 text-[11px] font-bold text-slate-950 transition-colors hover:bg-amber-500 active:scale-95"
             >
-              <Info className="size-3" />
+              <Info className="size-3.5" />
               상세
             </button>
             <button
@@ -455,16 +455,19 @@ export function SavedPlacesView() {
                 })
               }}
               aria-label={`${place.placeName} 친구에게 추천`}
-              className="flex items-center justify-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1.5 text-[11px] font-bold text-amber-700 transition-colors hover:bg-amber-50 active:scale-95"
+              className="flex h-7 w-full items-center justify-center gap-1 rounded-full border border-amber-300 bg-white text-[11px] font-bold text-amber-700 transition-colors hover:bg-amber-50 active:scale-95"
             >
-              <Send className="size-3" />
+              <Send className="size-3.5" />
               추천
             </button>
             <div onClick={(event) => event.stopPropagation()}>
               <DirectionsMenu
                 destination={{ name: place.placeName, lat: place.lat, lng: place.lng }}
                 fallbackQuery={place.address || place.placeName}
-                variant="icon"
+                variant="pill"
+                label="길찾기"
+                icon={MapIcon}
+                className="h-7 w-full justify-center gap-1 border-slate-200 text-[11px] text-slate-700"
               />
             </div>
           </div>
