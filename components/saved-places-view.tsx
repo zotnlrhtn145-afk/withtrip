@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Bookmark, Check, Heart, Info, Loader2, Map as MapIcon, MapPin, Plus, Send, Star } from "lucide-react"
+import { Bookmark, Check, Heart, Info, Loader2, Map as MapIcon, MapPin, Plus, Send, SlidersHorizontal, Star } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -57,6 +57,12 @@ const NearbyMap = dynamic(
 )
 
 type AuthPhase = "checking" | "guest" | "authed"
+type SortMode = "distance" | "name" | "rating"
+const SORT_LABELS: Record<SortMode, string> = {
+  distance: "가까운 순",
+  name: "이름순",
+  rating: "평점 높은순",
+}
 
 /** "저장한 장소" — 여행에 상관없이 담아둔 관심 맛집을 한곳에 모아보는 탭. */
 export function SavedPlacesView() {
@@ -77,6 +83,8 @@ export function SavedPlacesView() {
   const [detailAssign, setDetailAssign] = useState<SavedPlace | null>(null) // 상세에서 "담기" 대상
   const [tab, setTab] = useState<"mine" | "friends">("mine")
   const [subTab, setSubTab] = useState<"wish" | "trip">("wish")
+  const [sort, setSort] = useState<"distance" | "name" | "rating">("distance")
+  const [filterOpen, setFilterOpen] = useState(false)
   const [tripSpots, setTripSpots] = useState<NearbySpot[]>([])
   const [recs, setRecs] = useState<IncomingRec[]>([])
   const [recTarget, setRecTarget] = useState<RecommendTarget | null>(null)
@@ -193,13 +201,16 @@ export function SavedPlacesView() {
 
   const filteredPlaces = useMemo(() => {
     const base = subFilter ? places.filter((place) => place.subCategory.trim() === subFilter) : places
+    const arr = [...base]
+    if (sort === "name") return arr.sort((a, b) => a.placeName.localeCompare(b.placeName, "ko"))
+    if (sort === "rating") return arr.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
     // 내 위치에서 가까운 순 (좌표 없는 곳은 뒤로)
-    return [...base].sort((a, b) => {
+    return arr.sort((a, b) => {
       const da = a.lat != null && a.lng != null ? distanceMeters(geo.position, { lat: a.lat, lng: a.lng }) : Infinity
       const db = b.lat != null && b.lng != null ? distanceMeters(geo.position, { lat: b.lat, lng: b.lng }) : Infinity
       return da - db
     })
-  }, [places, subFilter, geo.position])
+  }, [places, subFilter, geo.position, sort])
 
   /** 리스트 카드에도 거리를 보여준다 — 좌표 없는 곳은 null. */
   const placeDistanceLabels = useMemo(() => {
@@ -258,12 +269,15 @@ export function SavedPlacesView() {
 
   const filteredTripSpots = useMemo(() => {
     const base = subFilter ? tripSpots.filter((s) => (s.category ?? "").trim() === subFilter) : tripSpots
-    return [...base].sort((a, b) => {
+    const arr = [...base]
+    if (sort === "name") return arr.sort((a, b) => a.name.localeCompare(b.name, "ko"))
+    if (sort === "rating") return arr.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+    return arr.sort((a, b) => {
       const da = a.lat != null && a.lng != null ? distanceMeters(geo.position, { lat: a.lat, lng: a.lng }) : Infinity
       const db = b.lat != null && b.lng != null ? distanceMeters(geo.position, { lat: b.lat, lng: b.lng }) : Infinity
       return da - db
     })
-  }, [tripSpots, subFilter, geo.position])
+  }, [tripSpots, subFilter, geo.position, sort])
 
   const tripDistanceLabels = useMemo(() => {
     const map = new Map<string, string>()
@@ -771,8 +785,25 @@ export function SavedPlacesView() {
               </div>
             </div>
 
-            <div className="sticky z-10 top-[62px] flex items-center gap-2 overflow-x-auto bg-white/95 px-4 pb-2.5 backdrop-blur md:top-[40px] md:px-6">
-              {filterChipsNode}
+            <div className="sticky z-10 top-[62px] flex items-center justify-between gap-2 bg-white/95 px-4 pb-2.5 backdrop-blur md:top-[40px] md:px-6">
+              <p className="truncate text-xs font-bold text-slate-400">
+                {(subTab === "wish" ? "나의 찜 " : "여행클립 찜 ") +
+                  (subTab === "wish" ? filteredPlaces.length : filteredTripSpots.length)}
+                {subFilter ? ` · ${subFilter}` : ""} · {SORT_LABELS[sort]}
+              </p>
+              <button
+                type="button"
+                onClick={() => setFilterOpen(true)}
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",
+                  subFilter || sort !== "distance"
+                    ? "border-amber-400 bg-amber-50 text-amber-700"
+                    : "border-slate-200 text-slate-500 hover:bg-slate-50"
+                )}
+              >
+                <SlidersHorizontal className="size-3.5" />
+                필터
+              </button>
             </div>
 
             <div className="px-4 pt-3 pb-6 md:px-6">
@@ -843,6 +874,41 @@ export function SavedPlacesView() {
       />
 
       <RecommendPlaceDialog target={recTarget} onClose={() => setRecTarget(null)} />
+
+      {/* 필터 · 정렬 */}
+      <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
+        <DialogContent className="w-full max-w-sm rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl">
+          <DialogHeader className="mb-1 text-left">
+            <DialogTitle className="text-base font-bold text-slate-900">필터 · 정렬</DialogTitle>
+          </DialogHeader>
+          <p className="mb-2 text-xs font-bold text-slate-500">카테고리</p>
+          <div className="mb-5 flex flex-wrap gap-2">{filterChipsNode}</div>
+          <p className="mb-2 text-xs font-bold text-slate-500">정렬</p>
+          <div className="flex flex-col gap-1">
+            {(["distance", "name", "rating"] as SortMode[]).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setSort(s)}
+                className={cn(
+                  "flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors",
+                  sort === s ? "bg-amber-50 text-slate-900" : "text-slate-500 hover:bg-slate-50"
+                )}
+              >
+                {SORT_LABELS[s]}
+                {sort === s ? <Check className="size-4 text-amber-600" /> : null}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setFilterOpen(false)}
+            className="mt-5 w-full rounded-xl bg-amber-400 py-2.5 text-sm font-bold text-slate-950 transition-colors hover:bg-amber-500"
+          >
+            완료
+          </button>
+        </DialogContent>
+      </Dialog>
 
       {/* 삭제 확인 */}
       <Dialog open={Boolean(deleteConfirm)} onOpenChange={(next) => { if (!next) setDeleteConfirm(null) }}>
