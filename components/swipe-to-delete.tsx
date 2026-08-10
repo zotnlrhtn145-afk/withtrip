@@ -4,8 +4,10 @@ import { useRef, useState, type ReactNode } from "react"
 import { Trash2 } from "lucide-react"
 
 /**
- * 카드를 왼→오른쪽으로 밀면 왼쪽에 삭제 패널이 부드럽게 드러나고, 임계값을 넘겨 놓으면 삭제된다.
- * 모바일 터치 + 데스크톱 마우스 드래그 지원. touch-action:pan-y 로 세로 스크롤은 그대로 둔다.
+ * iOS 메일 방식 스와이프: 카드를 우→좌로 밀면 오른쪽에 "삭제" 버튼이 드러난다.
+ * - 버튼을 눌러야 실제 삭제된다(밀었다고 바로 삭제 X).
+ * - 열린 상태에서 카드(다른 곳)를 누르면 원위치로 복귀.
+ * 모바일 터치 + 데스크톱 마우스 드래그 지원.
  */
 export function SwipeToDelete({
   onDelete,
@@ -14,18 +16,19 @@ export function SwipeToDelete({
   onDelete: () => void
   children: ReactNode
 }) {
-  const [dx, setDx] = useState(0)
+  const REVEAL = 84 // 삭제 버튼 너비
+  const OPEN_THRESHOLD = 34 // 이만큼 밀면 열림 확정
+
+  const [dx, setDx] = useState(0) // 0(닫힘) ~ -REVEAL(열림)
   const [snap, setSnap] = useState(false)
-  const start = useRef<{ x: number; y: number } | null>(null)
+  const open = useRef(false)
+  const start = useRef<{ x: number; y: number; base: number } | null>(null)
   const axis = useRef<"none" | "x" | "y">("none")
   const moved = useRef(false)
   const dragging = useRef(false)
 
-  const MAX = 108
-  const THRESHOLD = 78
-
   const begin = (x: number, y: number) => {
-    start.current = { x, y }
+    start.current = { x, y, base: open.current ? -REVEAL : 0 }
     axis.current = "none"
     moved.current = false
     setSnap(false)
@@ -40,44 +43,50 @@ export function SwipeToDelete({
     }
     if (axis.current !== "x") return
     moved.current = true
-    setDx(Math.max(0, Math.min(MAX, dX)))
+    setDx(Math.max(-REVEAL, Math.min(0, start.current.base + dX)))
   }
-  const end = () => {
+  const settle = () => {
     if (!start.current) return
     start.current = null
     if (axis.current === "x") {
       setSnap(true)
-      if (dx >= THRESHOLD) {
-        setDx(MAX)
-        window.setTimeout(() => {
-          onDelete()
-          setDx(0)
-        }, 130)
+      if (dx <= -OPEN_THRESHOLD) {
+        setDx(-REVEAL)
+        open.current = true
       } else {
         setDx(0)
+        open.current = false
       }
     }
     axis.current = "none"
   }
+  const close = () => {
+    setSnap(true)
+    setDx(0)
+    open.current = false
+  }
 
   return (
     <div className="relative overflow-hidden rounded-2xl">
-      {/* 왼쪽 삭제 패널 */}
-      <div
-        className="absolute inset-y-0 left-0 flex items-center justify-center bg-rose-500 text-white"
-        style={{ width: MAX, opacity: dx > 4 ? 1 : 0, transition: "opacity 0.1s" }}
-        aria-hidden
+      {/* 오른쪽 삭제 버튼 (카드가 왼쪽으로 밀리면 드러남) */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onDelete()
+        }}
+        aria-label="삭제"
+        className="absolute inset-y-0 right-0 flex flex-col items-center justify-center gap-0.5 bg-rose-500 text-white"
+        style={{ width: REVEAL }}
       >
-        <div className="flex flex-col items-center gap-0.5">
-          <Trash2 className="size-5" />
-          <span className="text-xs font-bold">삭제</span>
-        </div>
-      </div>
+        <Trash2 className="size-5" />
+        <span className="text-xs font-bold">삭제</span>
+      </button>
       <div
         onTouchStart={(e) => begin(e.touches[0].clientX, e.touches[0].clientY)}
         onTouchMove={(e) => move(e.touches[0].clientX, e.touches[0].clientY)}
-        onTouchEnd={end}
-        onTouchCancel={end}
+        onTouchEnd={settle}
+        onTouchCancel={settle}
         onMouseDown={(e) => {
           dragging.current = true
           begin(e.clientX, e.clientY)
@@ -87,20 +96,27 @@ export function SwipeToDelete({
         }}
         onMouseUp={() => {
           dragging.current = false
-          end()
+          settle()
         }}
         onMouseLeave={() => {
           if (dragging.current) {
             dragging.current = false
-            end()
+            settle()
           }
         }}
         onClickCapture={(e) => {
-          // 드래그 직후의 클릭(상세 열기 등)은 무시
+          // 드래그 직후의 클릭 무시
           if (moved.current) {
             e.preventDefault()
             e.stopPropagation()
             moved.current = false
+            return
+          }
+          // 열린 상태에서 카드를 누르면 원위치(내비게이션 등 실행 안 함)
+          if (open.current) {
+            e.preventDefault()
+            e.stopPropagation()
+            close()
           }
         }}
         style={{
