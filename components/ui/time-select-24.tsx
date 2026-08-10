@@ -4,7 +4,7 @@ import { useMemo } from "react"
 
 import { cn } from "@/lib/utils"
 
-/** 24시간제(00~23시) + 10분 단위 시·분 선택. 값은 "HH:MM" 문자열. */
+/** 24시간제(00~23시) + 5분 단위 시·분 선택. 값은 "HH:MM" 문자열. */
 export function TimeSelect24({
   id,
   value,
@@ -19,7 +19,7 @@ export function TimeSelect24({
   const [h = "", m = ""] = (value || "").split(":")
 
   const minuteOptions = useMemo(() => {
-    const base = [0, 10, 20, 30, 40, 50]
+    const base = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
     const cur = m ? Number.parseInt(m, 10) : null
     if (cur != null && Number.isFinite(cur) && !base.includes(cur)) {
       return [...base, cur].sort((a, b) => a - b)
