@@ -40,6 +40,22 @@ export async function shareLocationToFriend(friendId: string, loc: ShareLocation
   const { data: auth } = await supabase.auth.getUser()
   const me = auth.user?.id
   if (!me) return false
+  // 1) 1:1 대화에 위치 카드 (앱에서 카드로 렌더)
+  try {
+    const { data: threadId } = await supabase.rpc("get_or_create_dm_thread", { p_other: friendId })
+    if (threadId) {
+      await supabase.from("dm_messages").insert({
+        thread_id: threadId,
+        sender_id: me,
+        content: `📍 위치 공유: ${loc.name}`,
+        kind: "location",
+        payload: payloadOf(loc),
+      })
+    }
+  } catch (e) {
+    console.error("[shareLocationToFriend] dm", e)
+  }
+  // 2) 알림
   const { error } = await supabase.rpc("notify_location_friend", {
     p_user_id: friendId,
     p_actor_id: me,
@@ -48,7 +64,6 @@ export async function shareLocationToFriend(friendId: string, loc: ShareLocation
   })
   if (error) {
     console.error("[shareLocationToFriend]", error.message)
-    return false
   }
   return true
 }
@@ -58,6 +73,16 @@ export async function shareLocationToTrip(tripId: string, loc: ShareLocation): P
   const { data: auth } = await supabase.auth.getUser()
   const me = auth.user?.id
   if (!me) return false
+  // 1) 여행 단톡에 위치 카드
+  const { error: msgErr } = await supabase.from("trip_messages").insert({
+    trip_id: tripId,
+    user_id: me,
+    content: `📍 위치 공유: ${loc.name}`,
+    kind: "location",
+    payload: payloadOf(loc),
+  })
+  if (msgErr) console.error("[shareLocationToTrip] msg", msgErr.message)
+  // 2) 알림
   const { error } = await supabase.rpc("notify_location_trip", {
     p_trip_id: tripId,
     p_actor_id: me,
@@ -66,7 +91,6 @@ export async function shareLocationToTrip(tripId: string, loc: ShareLocation): P
   })
   if (error) {
     console.error("[shareLocationToTrip]", error.message)
-    return false
   }
   return true
 }
