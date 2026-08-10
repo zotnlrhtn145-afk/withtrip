@@ -65,10 +65,11 @@ run_sql() {
 }
 
 # ── 2) 필수 테이블 보장 (없으면 생성; 전부 idempotent) ──────
-echo "▸ 테이블 확인/생성 (device_push_tokens · DM · 단톡)"
+echo "▸ 테이블 확인/생성 (device_push_tokens · DM · 단톡 · 신고/차단)"
 run_sql "$(cat "$ROOT/supabase/device_push_tokens.sql")"
 run_sql "$(cat "$ROOT/supabase/dm_chat.sql")"
 run_sql "$(cat "$ROOT/supabase/trip_chat.sql")"
+run_sql "$(cat "$ROOT/supabase/moderation.sql")"
 
 # ── 3) Webhook 트리거 (pg_net 직접 호출; supabase_functions 불필요) ──
 # 테이블 → (함수, 트리거명) 매핑

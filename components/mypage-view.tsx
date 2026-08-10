@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { BlockedUsersDialog } from "@/components/blocked-users-dialog"
 import { useTrips } from "@/components/trips-store"
 import {
   BANK_OPTIONS,
@@ -564,6 +565,7 @@ export function MyPageView({
             <LogOut className="size-4" />
             로그아웃
           </button>
+          <BlockedUsersDialog />
           <div className="h-px bg-slate-100" />
           {profile?.deletionRequestedAt ? (
             <p className="self-center text-xs text-slate-400">

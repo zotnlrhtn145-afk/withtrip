@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { differenceInHours, format, formatDistanceToNow, parseISO } from "date-fns"
 import { ko } from "date-fns/locale"
-import { Loader2, RefreshCw, Search, UserPlus, Users, X } from "lucide-react"
+import { Ban, Flag, Loader2, RefreshCw, Search, UserPlus, Users, X } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -30,6 +30,13 @@ import {
   type FriendshipRow,
   type UserSummary,
 } from "@/lib/friends-api"
+import {
+  REPORT_REASONS,
+  blockUser,
+  fetchBlockedIds,
+  reportContent,
+  type ReportReason,
+} from "@/lib/moderation-api"
 import {
   loadRecentSearches,
   removeRecentSearch,
@@ -152,6 +159,11 @@ export function FriendsView() {
   const [coTravelers, setCoTravelers] = useState<CoTraveler[]>([])
   const [confirmUnfriend, setConfirmUnfriend] = useState<{ id: string; nickname: string } | null>(null)
   const [unfriending, setUnfriending] = useState(false)
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(() => new Set())
+  const [confirmBlock, setConfirmBlock] = useState<{ id: string; nickname: string } | null>(null)
+  const [blocking, setBlocking] = useState(false)
+  const [reportTarget, setReportTarget] = useState<{ id: string; nickname: string } | null>(null)
+  const [reporting, setReporting] = useState(false)
 
   const friendshipsSnapshotRef = useRef<FriendshipJoinedRow[]>([])
   const trimmedQuery = searchQuery.trim()
@@ -280,12 +292,14 @@ export function FriendsView() {
     setLoading(true)
     setError(null)
     try {
-      const [rows, travelers] = await Promise.all([
+      const [rows, travelers, blocked] = await Promise.all([
         fetchFriendships(authUserId),
         fetchCoTravelers(authUserId),
+        fetchBlockedIds(),
       ])
       setFriendships(rows)
       setCoTravelers(travelers)
+      setBlockedIds(blocked)
 
       const nextUsersById: Record<string, UserSummary> = {}
       for (const row of rows) {
@@ -341,7 +355,14 @@ export function FriendsView() {
     return friendships
       .filter((row) => row.status === "accepted")
       .map((row) => ({ row, user: resolveOtherUser(row, currentUserId, usersById) }))
-  }, [currentUserId, friendships, usersById])
+      .filter(({ user }) => !blockedIds.has(user.userId)) // 차단한(또는 나를 차단한) 사용자 숨김
+  }, [currentUserId, friendships, usersById, blockedIds])
+
+  /** 차단한 사용자를 검색 결과에서도 숨긴다. */
+  const visibleSearchResults = useMemo(
+    () => searchResults.filter((user) => !blockedIds.has(user.userId)),
+    [searchResults, blockedIds]
+  )
 
   /** 친구 목록을 카카오톡식 초성 그룹으로 묶어 보여준다. */
   const groupedFriends = useMemo(() => {
@@ -498,6 +519,32 @@ export function FriendsView() {
       setConfirmUnfriend(null)
     }
   }, [confirmUnfriend, handleRejectOrCancel])
+
+  const confirmBlockNow = useCallback(async () => {
+    if (!confirmBlock) return
+    setBlocking(true)
+    const ok = await blockUser(confirmBlock.id)
+    setBlocking(false)
+    if (ok) {
+      setBlockedIds((prev) => new Set(prev).add(confirmBlock.id))
+      showToast(`${confirmBlock.nickname}님을 차단했어요.`)
+    } else {
+      showToast("차단에 실패했어요.")
+    }
+    setConfirmBlock(null)
+  }, [confirmBlock, showToast])
+
+  const submitReport = useCallback(
+    async (reason: ReportReason) => {
+      if (!reportTarget) return
+      setReporting(true)
+      const ok = await reportContent({ targetUserId: reportTarget.id, contentType: "user", reason })
+      setReporting(false)
+      setReportTarget(null)
+      showToast(ok ? "신고가 접수되었어요. 24시간 이내 검토됩니다." : "신고에 실패했어요.")
+    },
+    [reportTarget, showToast]
+  )
 
   const handleSendRequest = useCallback(
     async (target: UserSummary) => {
@@ -691,11 +738,11 @@ export function FriendsView() {
                 <Loader2 className="size-4 animate-spin" />
                 검색 중…
               </div>
-            ) : searchResults.length === 0 ? (
+            ) : visibleSearchResults.length === 0 ? (
               <p className="px-4 py-8 text-center text-sm text-muted-foreground">검색 결과가 없습니다.</p>
             ) : (
               <ul className="flex flex-col">
-                {searchResults.map((user, index) => (
+                {visibleSearchResults.map((user, index) => (
                   <li
                     key={user.userId}
                     className="flex items-center gap-3 px-3 py-2.5 animate-in fade-in-50 slide-in-from-top-1 duration-300 hover:bg-secondary/50"
@@ -903,13 +950,33 @@ export function FriendsView() {
                               {user.email || user.userId}
                             </p>
                           </div>
-                          <button
-                            type="button"
-                            className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-destructive"
-                            onClick={() => handleUnfriend(row.id, user.nickname)}
-                          >
-                            삭제
-                          </button>
+                          <div className="flex shrink-0 items-center gap-0.5">
+                            <button
+                              type="button"
+                              title="신고"
+                              aria-label={`${user.nickname} 신고`}
+                              className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-foreground"
+                              onClick={() => setReportTarget({ id: user.userId, nickname: user.nickname })}
+                            >
+                              <Flag className="size-4" />
+                            </button>
+                            <button
+                              type="button"
+                              title="차단"
+                              aria-label={`${user.nickname} 차단`}
+                              className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-destructive"
+                              onClick={() => setConfirmBlock({ id: user.userId, nickname: user.nickname })}
+                            >
+                              <Ban className="size-4" />
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-destructive"
+                              onClick={() => handleUnfriend(row.id, user.nickname)}
+                            >
+                              삭제
+                            </button>
+                          </div>
                         </li>
                       ))}
                     </ul>
@@ -1099,6 +1166,70 @@ export function FriendsView() {
               삭제
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 사용자 차단 확인 */}
+      <Dialog
+        open={Boolean(confirmBlock)}
+        onOpenChange={(next) => {
+          if (!next) setConfirmBlock(null)
+        }}
+      >
+        <DialogContent className="rounded-3xl border-slate-100 sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>사용자 차단</DialogTitle>
+            <DialogDescription>
+              {confirmBlock
+                ? `${confirmBlock.nickname}님을 차단하면 서로의 프로필과 대화, 저장한 콘텐츠가 더 이상 보이지 않습니다.`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="secondary" disabled={blocking} onClick={() => setConfirmBlock(null)}>
+              취소
+            </Button>
+            <Button
+              type="button"
+              disabled={blocking}
+              onClick={() => void confirmBlockNow()}
+              className="bg-destructive font-bold text-white hover:bg-destructive/90"
+            >
+              {blocking ? <Loader2 className="size-3.5 animate-spin" /> : null}
+              차단
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 신고 사유 선택 */}
+      <Dialog
+        open={Boolean(reportTarget)}
+        onOpenChange={(next) => {
+          if (!next) setReportTarget(null)
+        }}
+      >
+        <DialogContent className="rounded-3xl border-slate-100 sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>신고하기</DialogTitle>
+            <DialogDescription>
+              {reportTarget ? `${reportTarget.nickname}님을 신고하는 사유를 선택해 주세요.` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col">
+            {REPORT_REASONS.map((r) => (
+              <button
+                key={r.key}
+                type="button"
+                disabled={reporting}
+                onClick={() => void submitReport(r.key)}
+                className="flex items-center justify-between border-t border-border py-3 text-left text-sm font-medium transition-colors hover:bg-secondary/50 disabled:opacity-60"
+              >
+                {r.label}
+                <span className="text-muted-foreground">›</span>
+              </button>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
