@@ -50,9 +50,6 @@ type TabFormData = {
   multiCity: SegmentDraft[]
 }
 
-const DUPLICATE_ROLE_MESSAGE =
-  "이미 가는 편(또는 오는 편)이 등록되어 있습니다. 기존 일정을 수정해 주세요."
-
 const TRANSPORT_TYPE_META: Record<
   TransportType,
   {
@@ -154,23 +151,8 @@ function segmentFromTransport(transport: TripTransport): SegmentDraft {
   }
 }
 
-function hasRoleTaken(
-  existing: TripTransport[],
-  transportType: TransportType,
-  role: TransportRole,
-  excludeId?: string | null
-) {
-  if (role === "LAYOVER") return false
-  return existing.some(
-    (item) =>
-      item.transportType === transportType && item.transportRole === role && item.id !== excludeId
-  )
-}
-
-function pickDefaultRole(existing: TripTransport[], transportType: TransportType): TransportRole {
-  if (!hasRoleTaken(existing, transportType, "OUTBOUND")) return "OUTBOUND"
-  if (!hasRoleTaken(existing, transportType, "RETURN")) return "RETURN"
-  return "LAYOVER"
+function pickDefaultRole(): TransportRole {
+  return "OUTBOUND"
 }
 
 function tabKeyFromRole(role: TransportRole): keyof TabFormData {
@@ -409,7 +391,6 @@ export function TransportRegisterModal({
   onSaved: (transports?: TripTransport[]) => void
 }) {
   const isEditMode = Boolean(editingTransport)
-  const excludeId = editingTransport?.id ?? null
 
   const [transportType, setTransportType] = useState<TransportType>("FLIGHT")
   const [role, setRole] = useState<TransportRole>("OUTBOUND")
@@ -420,31 +401,14 @@ export function TransportRegisterModal({
   const [passengerIds, setPassengerIds] = useState<string[]>([])
   const [rosterLoading, setRosterLoading] = useState(false)
 
-  const outboundTaken = hasRoleTaken(existingTransports, transportType, "OUTBOUND", excludeId)
-  const returnTaken = hasRoleTaken(existingTransports, transportType, "RETURN", excludeId)
-
+  // 멤버마다 각자 가는 편/오는 편을 등록할 수 있으므로 role 은 항상 선택 가능
   const roleOptions = useMemo(
     () => [
-      {
-        value: "OUTBOUND" as const,
-        label: outboundTaken ? "가는 편 완료" : "가는 편",
-        hint: "출발",
-        disabled: outboundTaken,
-      },
-      {
-        value: "RETURN" as const,
-        label: returnTaken ? "오는 편 완료" : "오는 편",
-        hint: "귀환",
-        disabled: returnTaken,
-      },
-      {
-        value: "LAYOVER" as const,
-        label: "경유",
-        hint: "환승",
-        disabled: false,
-      },
+      { value: "OUTBOUND" as const, label: "가는 편", hint: "출발", disabled: false },
+      { value: "RETURN" as const, label: "오는 편", hint: "귀환", disabled: false },
+      { value: "LAYOVER" as const, label: "경유", hint: "환승", disabled: false },
     ],
-    [outboundTaken, returnTaken]
+    []
   )
 
   const activeSegments: SegmentDraft[] = useMemo(() => {
@@ -499,7 +463,7 @@ export function TransportRegisterModal({
       setRole(editingTransport.transportRole)
       setFormData(next)
     } else {
-      setRole(pickDefaultRole(existingTransports, transportType))
+      setRole(pickDefaultRole())
       setFormData(createEmptyFormData())
     }
 
@@ -513,7 +477,7 @@ export function TransportRegisterModal({
   const selectTransportType = (next: TransportType) => {
     if (isEditMode) return
     setTransportType(next)
-    setRole(pickDefaultRole(existingTransports, next))
+    setRole(pickDefaultRole())
     setError(null)
   }
 
@@ -593,10 +557,8 @@ export function TransportRegisterModal({
 
     const resolvedRole: TransportRole = !isEditMode && segments.length > 1 ? "LAYOVER" : role
 
-    if (hasRoleTaken(existingTransports, transportType, resolvedRole, excludeId)) {
-      setError(DUPLICATE_ROLE_MESSAGE)
-      return
-    }
+    // 여행 멤버마다 각자 이동수단을 등록할 수 있어야 함(선발대/후발대 등 서로 다른 시간·루트)
+    // → 가는 편/오는 편 중복 등록 제한을 두지 않는다.
 
     setSaving(true)
     setError(null)
