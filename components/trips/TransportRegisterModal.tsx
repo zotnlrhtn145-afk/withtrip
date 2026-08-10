@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { TimeSelect24 } from "@/components/ui/time-select-24"
 import { AIRLINE_PRESETS, AIRPORT_OPTIONS } from "@/lib/flight-presets"
 import { STATION_OPTIONS, TRAIN_PRESETS } from "@/lib/transport-presets"
 import {
@@ -281,12 +282,10 @@ function SegmentFields({
             <FieldLabel htmlFor={`${baseId}-depart-time`} className="text-xs text-gray-500">
               출발 시간
             </FieldLabel>
-            <Input
+            <TimeSelect24
               id={`${baseId}-depart-time`}
-              type="time"
               value={segment.departTime}
-              onChange={(event) => patch({ departTime: event.target.value })}
-              className="h-9 rounded-xl border-gray-200 bg-gray-50/80 tabular-nums focus-visible:bg-white"
+              onChange={(value) => patch({ departTime: value })}
             />
           </Field>
         </div>
@@ -333,12 +332,10 @@ function SegmentFields({
             <FieldLabel htmlFor={`${baseId}-arrive-time`} className="text-xs text-gray-500">
               도착 시간
             </FieldLabel>
-            <Input
+            <TimeSelect24
               id={`${baseId}-arrive-time`}
-              type="time"
               value={segment.arriveTime}
-              onChange={(event) => patch({ arriveTime: event.target.value })}
-              className="h-9 rounded-xl border-gray-200 bg-gray-50/80 tabular-nums focus-visible:bg-white"
+              onChange={(value) => patch({ arriveTime: value })}
             />
           </Field>
         </div>
