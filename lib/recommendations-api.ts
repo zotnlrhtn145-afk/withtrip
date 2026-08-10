@@ -31,6 +31,7 @@ export type IncomingRec = {
   lat: number | null
   lng: number | null
   createdAt: string
+  status: string
 }
 
 function logErr(scope: string, error: { message?: string }) {
@@ -120,10 +121,10 @@ export async function fetchIncomingRecommendations(): Promise<IncomingRec[]> {
   const { data, error } = await supabase
     .from("place_recommendations")
     .select(
-      "id, sender_id, place_name, category, sub_category, address, image_url, rating, review_count, lat, lng, created_at, sender:profiles!place_recommendations_sender_id_fkey(id, nickname, email, avatar_url)"
+      "id, sender_id, place_name, category, sub_category, address, image_url, rating, review_count, lat, lng, created_at, status, sender:profiles!place_recommendations_sender_id_fkey(id, nickname, email, avatar_url)"
     )
     .eq("recipient_id", me)
-    .eq("status", "pending")
+    .in("status", ["pending", "saved"])
     .order("created_at", { ascending: false })
   if (error) {
     logErr("fetchIncomingRecommendations", error)
@@ -149,6 +150,7 @@ export async function fetchIncomingRecommendations(): Promise<IncomingRec[]> {
       lat: (r.lat as number) ?? null,
       lng: (r.lng as number) ?? null,
       createdAt: String(r.created_at),
+      status: String(r.status ?? "pending"),
     })
   }
   return out
@@ -173,6 +175,7 @@ export async function saveRecommendation(rec: IncomingRec): Promise<boolean> {
       review_count: rec.reviewCount ?? 0,
       lat: rec.lat,
       lng: rec.lng,
+      recommended_by: rec.sender.userId, // 추천인 흔적
     })
     .select("id")
     .single()

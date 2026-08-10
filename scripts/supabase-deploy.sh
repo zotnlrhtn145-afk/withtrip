@@ -72,6 +72,7 @@ run_sql "$(cat "$ROOT/supabase/trip_chat.sql")"
 run_sql "$(cat "$ROOT/supabase/moderation.sql")"
 run_sql "$(cat "$ROOT/supabase/place_recommendations.sql")"
 run_sql "$(cat "$ROOT/supabase/notifications_place_rec_type.sql")"
+run_sql "$(cat "$ROOT/supabase/saved_places_recommended_by.sql")"
 
 # ── 3) Webhook 트리거 (pg_net 직접 호출; supabase_functions 불필요) ──
 # 테이블 → (함수, 트리거명) 매핑

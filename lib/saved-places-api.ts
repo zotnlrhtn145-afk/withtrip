@@ -32,6 +32,8 @@ export type SavedPlace = {
   lat: number | null
   lng: number | null
   createdAt: string
+  recommendedBy: string | null
+  recommender: { nickname: string | null; avatarUrl: string | null } | null
 }
 
 export type SavedPlaceRow = {
@@ -60,6 +62,8 @@ export type SavedPlaceRow = {
   lat?: number | null
   lng?: number | null
   created_at?: string | null
+  recommended_by?: string | null
+  recommender?: { nickname?: string | null; avatar_url?: string | null } | null
 }
 
 export type CreateSavedPlaceInput = {
@@ -142,6 +146,13 @@ export function mapSavedPlaceRow(row: SavedPlaceRow): SavedPlace {
     lat: typeof row.lat === "number" ? row.lat : null,
     lng: typeof row.lng === "number" ? row.lng : null,
     createdAt: String(row.created_at ?? ""),
+    recommendedBy: row.recommended_by ? String(row.recommended_by) : null,
+    recommender: row.recommender
+      ? {
+          nickname: row.recommender.nickname ?? null,
+          avatarUrl: row.recommender.avatar_url ?? null,
+        }
+      : null,
   }
 }
 
@@ -351,7 +362,7 @@ export async function fetchInterestPlacesByUserId(userId: string): Promise<Saved
 
   const { data, error } = await supabase
     .from("saved_places")
-    .select("*")
+    .select("*, recommender:profiles!saved_places_recommended_by_fkey(nickname, avatar_url)")
     .is("trip_id", null)
     .eq("user_id", id)
     .order("created_at", { ascending: false })
@@ -361,7 +372,7 @@ export async function fetchInterestPlacesByUserId(userId: string): Promise<Saved
     return []
   }
 
-  return ((data as SavedPlaceRow[] | null) ?? [])
+  return ((data as unknown as SavedPlaceRow[] | null) ?? [])
     .map(mapSavedPlaceRow)
     .filter((place) => Boolean(place.placeName))
 }

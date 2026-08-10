@@ -3,11 +3,13 @@
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Bookmark, Heart, Info, Loader2, MapPin, Plus, Send, Star, X } from "lucide-react"
+import { Bookmark, Check, Heart, Info, Loader2, MapPin, Plus, Send, Star } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { DirectionsMenu } from "@/components/directions-menu"
 import { PlaceDetailSheet, type PlaceDetailInput } from "@/components/place-detail-sheet"
 import { RecommendPlaceDialog, type RecommendTarget } from "@/components/recommend-place-dialog"
+import { SwipeToDelete } from "@/components/swipe-to-delete"
 import {
   dismissRecommendation,
   fetchIncomingRecommendations,
@@ -122,7 +124,8 @@ export function SavedPlacesView() {
     const ok = await saveRecommendation(rec)
     setSavingRecId(null)
     if (ok) {
-      setRecs((prev) => prev.filter((r) => r.id !== rec.id))
+      // 담아도 카드는 유지 — 상태만 saved 로 표시
+      setRecs((prev) => prev.map((r) => (r.id === rec.id ? { ...r, status: "saved" } : r)))
       if (userId) void loadPlaces(userId)
     }
   }
@@ -361,97 +364,112 @@ export function SavedPlacesView() {
       ref={(node) => {
         cardRefs.current[place.id] = node
       }}
-      onClick={() => showOnMap(place.id)}
-      className={cn(
-        "flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-2.5 shadow-sm transition-colors",
-        selectedMapId === place.id
-          ? "border-amber-300 bg-amber-50/60"
-          : "border-slate-100 hover:bg-slate-50"
-      )}
+      className="list-none"
     >
-      <div className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-slate-100">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={place.imageUrl} alt="" className="size-full object-cover" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <p className="truncate text-sm font-bold text-slate-900">{place.placeName}</p>
-          {place.rating ? (
-            <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium tabular-nums text-slate-400">
-              <Star className="size-3 fill-amber-400 text-amber-400" />
-              {place.rating}
-            </span>
-          ) : null}
-        </div>
-        <p className="truncate text-xs text-slate-400">
-          {place.subCategory || place.category || "관심 장소"}
-          {place.address ? ` · ${place.address}` : ""}
-        </p>
-        {placeDistanceLabels.has(place.id) ? (
-          <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-amber-700">
-            <MapPin className="size-3" />
-            {placeDistanceLabels.get(place.id)}
-          </span>
-        ) : null}
-      </div>
-      <div className="flex shrink-0 flex-col gap-1.5">
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            openDetail(place)
-          }}
-          aria-label="상세 보기"
-          className="flex items-center justify-center gap-1 rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-bold text-slate-950 transition-colors hover:bg-amber-500 active:scale-95"
-        >
-          <Info className="size-3" />
-          상세
-        </button>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            setRecTarget({
-              label: place.placeName,
-              sourceId: place.id,
-              place: {
-                place_name: place.placeName,
-                category: place.category,
-                sub_category: place.subCategory,
-                local_name: place.localName,
-                address: place.address,
-                phone_number: place.phoneNumber,
-                image_url: place.imageUrl,
-                rating: place.rating,
-                review_count: place.reviewCount,
-                lat: place.lat,
-                lng: place.lng,
-              },
-            })
-          }}
-          aria-label={`${place.placeName} 친구에게 추천`}
-          className="flex items-center justify-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1.5 text-[11px] font-bold text-amber-700 transition-colors hover:bg-amber-50 active:scale-95"
-        >
-          <Send className="size-3" />
-          추천
-        </button>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            void handleRemove(place.id)
-          }}
-          disabled={removingId === place.id}
-          aria-label={`${place.placeName} 삭제`}
-          className="flex items-center justify-center rounded-full border border-slate-200 p-1.5 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600 disabled:opacity-50"
-        >
-          {removingId === place.id ? (
-            <Loader2 className="size-3 animate-spin" />
-          ) : (
-            <X className="size-3" />
+      <SwipeToDelete onDelete={() => void handleRemove(place.id)}>
+        <div
+          onClick={() => showOnMap(place.id)}
+          className={cn(
+            "flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-2.5 shadow-sm transition-colors",
+            selectedMapId === place.id
+              ? "border-amber-300 bg-amber-50/60"
+              : "border-slate-100 hover:bg-slate-50"
           )}
-        </button>
-      </div>
+        >
+          <div className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={place.imageUrl} alt="" className="size-full object-cover" />
+            {/* 친구 추천 흔적 — 보낸 사람 카카오 프로필 */}
+            {place.recommendedBy && place.recommender ? (
+              <span className="absolute -right-1 -bottom-1 z-10">
+                <Avatar className="size-6 border-2 border-white">
+                  {place.recommender.avatarUrl ? (
+                    <AvatarImage src={place.recommender.avatarUrl} alt="" />
+                  ) : null}
+                  <AvatarFallback className="bg-amber-400 text-[9px] font-bold text-slate-950">
+                    {(place.recommender.nickname ?? "친구").slice(0, 1)}
+                  </AvatarFallback>
+                </Avatar>
+              </span>
+            ) : null}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <p className="truncate text-sm font-bold text-slate-900">{place.placeName}</p>
+              {place.rating ? (
+                <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium tabular-nums text-slate-400">
+                  <Star className="size-3 fill-amber-400 text-amber-400" />
+                  {place.rating}
+                </span>
+              ) : null}
+            </div>
+            <p className="truncate text-xs text-slate-400">
+              {place.subCategory || place.category || "관심 장소"}
+              {place.address ? ` · ${place.address}` : ""}
+            </p>
+            {placeDistanceLabels.has(place.id) ? (
+              <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-amber-700">
+                <MapPin className="size-3" />
+                {placeDistanceLabels.get(place.id)}
+              </span>
+            ) : null}
+            {place.recommendedBy && place.recommender ? (
+              <span className="mt-0.5 block truncate text-[11px] text-slate-400">
+                {place.recommender.nickname ?? "친구"}님의 추천
+              </span>
+            ) : null}
+          </div>
+          <div className="flex shrink-0 flex-col gap-1.5">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                openDetail(place)
+              }}
+              aria-label="상세 보기"
+              className="flex items-center justify-center gap-1 rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-bold text-slate-950 transition-colors hover:bg-amber-500 active:scale-95"
+            >
+              <Info className="size-3" />
+              상세
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                setRecTarget({
+                  label: place.placeName,
+                  sourceId: place.id,
+                  place: {
+                    place_name: place.placeName,
+                    category: place.category,
+                    sub_category: place.subCategory,
+                    local_name: place.localName,
+                    address: place.address,
+                    phone_number: place.phoneNumber,
+                    image_url: place.imageUrl,
+                    rating: place.rating,
+                    review_count: place.reviewCount,
+                    lat: place.lat,
+                    lng: place.lng,
+                  },
+                })
+              }}
+              aria-label={`${place.placeName} 친구에게 추천`}
+              className="flex items-center justify-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1.5 text-[11px] font-bold text-amber-700 transition-colors hover:bg-amber-50 active:scale-95"
+            >
+              <Send className="size-3" />
+              추천
+            </button>
+            <div onClick={(event) => event.stopPropagation()}>
+              <DirectionsMenu
+                destination={{ name: place.placeName, lat: place.lat, lng: place.lng }}
+                fallbackQuery={place.address || place.placeName}
+                variant="icon"
+              />
+            </div>
+          </div>
+        </div>
+      </SwipeToDelete>
     </li>
   )
 
@@ -692,21 +710,28 @@ function FriendRecsList({
           </div>
           {/* 액션 */}
           <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={savingId === rec.id}
-              onClick={() => onSave(rec)}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-sm font-bold text-slate-950 transition-colors hover:bg-amber-500 disabled:opacity-60"
-            >
-              {savingId === rec.id ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <>
-                  <Bookmark className="size-4" />
-                  내 저장에 담기
-                </>
-              )}
-            </button>
+            {rec.status === "saved" ? (
+              <span className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 py-2.5 text-sm font-bold text-slate-500">
+                <Check className="size-4 text-emerald-600" />
+                내 저장에 담김
+              </span>
+            ) : (
+              <button
+                type="button"
+                disabled={savingId === rec.id}
+                onClick={() => onSave(rec)}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-sm font-bold text-slate-950 transition-colors hover:bg-amber-500 disabled:opacity-60"
+              >
+                {savingId === rec.id ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <>
+                    <Bookmark className="size-4" />
+                    내 저장에 담기
+                  </>
+                )}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onDismiss(rec)}
