@@ -3,7 +3,7 @@
 import { useEffect, useState, type MouseEvent } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { Bookmark, Home, MapPin, Users, Wallet, type LucideIcon } from "lucide-react"
+import { Bookmark, Home, Users, Wallet, type LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -11,10 +11,9 @@ export type NavKey = "home" | "friends" | "spots" | "settlement" | "mypage" | "s
 
 export const navItems: { key: NavKey; label: string; icon: LucideIcon }[] = [
   { key: "home", label: "홈", icon: Home },
-  { key: "spots", label: "주변 스팟", icon: MapPin },
+  { key: "saved", label: "저장", icon: Bookmark },
   { key: "friends", label: "친구", icon: Users },
   { key: "settlement", label: "정산", icon: Wallet },
-  { key: "saved", label: "저장", icon: Bookmark },
 ]
 
 function toHref(key: NavKey): string {
@@ -83,7 +82,7 @@ export function BottomNav({
         compact ? "scale-90 opacity-90 py-1.5" : "scale-100 opacity-100 py-3"
       )}
     >
-      <ul className="relative m-0 grid w-full list-none grid-cols-5 items-center px-3 py-1.5">
+      <ul className="relative m-0 grid w-full list-none grid-cols-4 items-center px-3 py-1.5">
         {navItems.map((item) => {
           const isActive = item.key === active
           return (

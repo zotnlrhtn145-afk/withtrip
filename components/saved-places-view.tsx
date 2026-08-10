@@ -19,6 +19,8 @@ import { DirectionsMenu } from "@/components/directions-menu"
 import { PlaceDetailSheet, type PlaceDetailInput } from "@/components/place-detail-sheet"
 import { RecommendPlaceDialog, type RecommendTarget } from "@/components/recommend-place-dialog"
 import { SwipeToDelete } from "@/components/swipe-to-delete"
+import { fetchNearbySpots } from "@/lib/spots-api"
+import { type NearbySpot } from "@/lib/spots-data"
 import {
   dismissRecommendation,
   fetchIncomingRecommendations,
@@ -74,6 +76,8 @@ export function SavedPlacesView() {
   const [detailPlace, setDetailPlace] = useState<PlaceDetailInput | null>(null)
   const [detailAssign, setDetailAssign] = useState<SavedPlace | null>(null) // 상세에서 "담기" 대상
   const [tab, setTab] = useState<"mine" | "friends">("mine")
+  const [subTab, setSubTab] = useState<"wish" | "trip">("wish")
+  const [tripSpots, setTripSpots] = useState<NearbySpot[]>([])
   const [recs, setRecs] = useState<IncomingRec[]>([])
   const [recTarget, setRecTarget] = useState<RecommendTarget | null>(null)
   const [savingRecId, setSavingRecId] = useState<string | null>(null)
@@ -127,6 +131,7 @@ export function SavedPlacesView() {
     if (authPhase !== "authed" || !userId) return
     void loadPlaces(userId)
     void fetchIncomingRecommendations().then(setRecs)
+    void fetchNearbySpots().then((s) => setTripSpots(s.filter((x) => x.tripId)))
   }, [authPhase, userId])
 
   const handleSaveRec = async (rec: IncomingRec) => {
@@ -238,6 +243,67 @@ export function SavedPlacesView() {
       .sort((a, b) => a.distanceMeters - b.distanceMeters)
   }, [filteredPlaces, geo.position, avatarUrl, userId])
 
+  // ── 여행클립 찜 (여행별 멤버 기여) ──────────────────────
+  const tripChips = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const s of tripSpots) {
+      const c = (s.category ?? "").trim()
+      if (!c) continue
+      map.set(c, (map.get(c) ?? 0) + 1)
+    }
+    return Array.from(map.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count)
+  }, [tripSpots])
+
+  const filteredTripSpots = useMemo(() => {
+    const base = subFilter ? tripSpots.filter((s) => (s.category ?? "").trim() === subFilter) : tripSpots
+    return [...base].sort((a, b) => {
+      const da = a.lat != null && a.lng != null ? distanceMeters(geo.position, { lat: a.lat, lng: a.lng }) : Infinity
+      const db = b.lat != null && b.lng != null ? distanceMeters(geo.position, { lat: b.lat, lng: b.lng }) : Infinity
+      return da - db
+    })
+  }, [tripSpots, subFilter, geo.position])
+
+  const tripDistanceLabels = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const s of filteredTripSpots) {
+      if (typeof s.lat !== "number" || typeof s.lng !== "number") continue
+      map.set(s.id, formatDistance(distanceMeters(geo.position, { lat: s.lat, lng: s.lng })))
+    }
+    return map
+  }, [filteredTripSpots, geo.position])
+
+  const tripMapSpots: MapSpot[] = useMemo(() => {
+    return filteredTripSpots
+      .filter((s): s is NearbySpot & { lat: number; lng: number } => typeof s.lat === "number" && typeof s.lng === "number")
+      .map((s) => {
+        const meters = distanceMeters(geo.position, { lat: s.lat, lng: s.lng })
+        return {
+          id: s.id,
+          name: s.name,
+          nameLocal: s.nameLocal || s.name,
+          category: s.category || "여행 장소",
+          address: s.address,
+          lat: s.lat,
+          lng: s.lng,
+          rating: s.rating ?? 0,
+          image: s.image,
+          imageAlt: s.imageAlt || s.name,
+          userId: s.userId ?? null,
+          authorNickname: s.authorNickname ?? null,
+          authorAvatarUrl: s.authorAvatarUrl ?? null,
+          isInterest: false,
+          distanceMeters: meters,
+          distanceLabel: formatDistance(meters),
+        }
+      })
+      .sort((a, b) => a.distanceMeters - b.distanceMeters)
+  }, [filteredTripSpots, geo.position])
+
+  const activeChips = subTab === "wish" ? subChips : tripChips
+  const activeMapSpots = subTab === "wish" ? mapSpots : tripMapSpots
+
   useEffect(() => {
     if (geo.status !== "ready") return
     if (!didAutoCenter.current) {
@@ -336,10 +402,10 @@ export function SavedPlacesView() {
             !subFilter ? "bg-slate-950/15" : "bg-slate-100"
           )}
         >
-          {places.length}
+          {subTab === "wish" ? places.length : tripSpots.length}
         </span>
       </button>
-      {subChips.map((chip) => {
+      {activeChips.map((chip) => {
         const active = subFilter === chip.label
         return (
           <button
@@ -486,6 +552,90 @@ export function SavedPlacesView() {
     </li>
   )
 
+  const renderTripSpotCard = (spot: NearbySpot) => (
+    <li key={spot.id} className="list-none">
+      <div
+        onClick={() => setSelectedMapId(spot.id)}
+        className={cn(
+          "flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-2.5 shadow-sm transition-colors",
+          selectedMapId === spot.id ? "border-amber-300 bg-amber-50/60" : "border-slate-100 hover:bg-slate-50"
+        )}
+      >
+        <div className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={spot.image} alt="" className="size-full object-cover" />
+          {/* 담은 멤버 프로필 */}
+          <span className="absolute -right-1 -bottom-1 z-10">
+            <Avatar className="size-6 border-2 border-white">
+              {spot.authorAvatarUrl ? <AvatarImage src={spot.authorAvatarUrl} alt="" /> : null}
+              <AvatarFallback className="bg-amber-400 text-[9px] font-bold text-slate-950">
+                {(spot.authorNickname ?? "친구").slice(0, 1)}
+              </AvatarFallback>
+            </Avatar>
+          </span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <p className="truncate text-sm font-bold text-slate-900">{spot.name}</p>
+            {spot.rating ? (
+              <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium tabular-nums text-slate-400">
+                <Star className="size-3 fill-amber-400 text-amber-400" />
+                {spot.rating}
+              </span>
+            ) : null}
+          </div>
+          <p className="truncate text-xs text-slate-400">
+            {spot.category || "여행 장소"}
+            {spot.address ? ` · ${spot.address}` : ""}
+          </p>
+          <p className="truncate text-[11px] text-slate-400">
+            {spot.tripTitle || "여행"}
+            {spot.authorNickname ? ` · ${spot.authorNickname}` : ""}
+          </p>
+          {tripDistanceLabels.has(spot.id) ? (
+            <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold text-amber-700">
+              <MapPin className="size-3" />
+              {tripDistanceLabels.get(spot.id)}
+            </span>
+          ) : null}
+        </div>
+        <div className="flex w-[74px] shrink-0 flex-col gap-1.5">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              setDetailAssign(null)
+              setDetailPlace({
+                name: spot.name,
+                address: spot.address,
+                lat: spot.lat,
+                lng: spot.lng,
+                imageUrl: spot.image,
+                category: spot.category,
+                rating: spot.rating ?? null,
+                reviewCount: null,
+              })
+            }}
+            className="flex h-7 w-full items-center justify-center gap-1 rounded-full bg-amber-400 text-[11px] font-bold text-slate-950 transition-colors hover:bg-amber-500 active:scale-95"
+          >
+            <Info className="size-3.5" />
+            상세
+          </button>
+          <div onClick={(event) => event.stopPropagation()}>
+            <DirectionsMenu
+              destination={{ name: spot.name, lat: spot.lat, lng: spot.lng }}
+              fallbackQuery={spot.address || spot.name}
+              variant="pill"
+              label="길찾기"
+              icon={MapIcon}
+              className="h-7 w-full justify-center gap-1 border-slate-200 text-[11px] text-slate-700"
+            />
+          </div>
+        </div>
+      </div>
+    </li>
+  )
+
   return (
     <div className="flex w-full flex-col gap-5 bg-white">
       <div className="flex items-center justify-between gap-2">
@@ -511,8 +661,8 @@ export function SavedPlacesView() {
       <div className="flex border-b border-slate-100">
         {(
           [
-            { k: "mine", label: "내 저장" },
-            { k: "friends", label: recs.length > 0 ? `친구 추천 ${recs.length}` : "친구 추천" },
+            { k: "mine", label: "저장" },
+            { k: "friends", label: recs.length > 0 ? `친구 추천찜 ${recs.length}` : "친구 추천찜" },
           ] as const
         ).map((it) => (
           <button
@@ -543,7 +693,7 @@ export function SavedPlacesView() {
         <div className="flex min-h-[40vh] items-center justify-center">
           <Loader2 className="size-7 animate-spin text-amber-500" />
         </div>
-      ) : places.length === 0 ? (
+      ) : places.length === 0 && tripSpots.length === 0 ? (
         <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-amber-300/80 bg-amber-50/20 p-8 text-center">
           <span className="flex size-12 items-center justify-center rounded-full bg-amber-400 text-slate-950">
             <Heart className="size-5" />
@@ -576,7 +726,7 @@ export function SavedPlacesView() {
             <NearbyMap
               center={geo.position}
               accuracy={geo.accuracy}
-              spots={mapSpots}
+              spots={activeMapSpots}
               selectedId={selectedMapId}
               onSelect={setSelectedMapId}
               onRecenter={handleRecenter}
@@ -594,18 +744,55 @@ export function SavedPlacesView() {
               <span className="h-1.5 w-10 rounded-full bg-slate-300" />
             </div>
 
+            {/* 소탭: 나의 찜 / 여행클립 찜 */}
+            <div className="px-4 pb-1 md:px-6">
+              <div className="flex rounded-full bg-slate-100 p-1">
+                {(
+                  [
+                    { k: "wish", label: `나의 찜 ${places.length}` },
+                    { k: "trip", label: `여행클립 찜 ${tripSpots.length}` },
+                  ] as const
+                ).map((it) => (
+                  <button
+                    key={it.k}
+                    type="button"
+                    onClick={() => {
+                      setSubTab(it.k)
+                      setSubFilter(null)
+                    }}
+                    className={cn(
+                      "flex-1 rounded-full py-2 text-sm font-bold transition-colors",
+                      subTab === it.k ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                    )}
+                  >
+                    {it.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="sticky z-10 top-[62px] flex items-center gap-2 overflow-x-auto bg-white/95 px-4 pb-2.5 backdrop-blur md:top-[40px] md:px-6">
               {filterChipsNode}
             </div>
 
             <div className="px-4 pt-3 pb-6 md:px-6">
-              {filteredPlaces.length === 0 ? (
+              {subTab === "wish" ? (
+                filteredPlaces.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
+                    이 카테고리에 저장된 장소가 없어요.
+                  </div>
+                ) : (
+                  <ul className="flex flex-col gap-2.5 md:grid md:grid-cols-2 xl:grid-cols-3">
+                    {filteredPlaces.map((place) => renderPlaceCard(place))}
+                  </ul>
+                )
+              ) : filteredTripSpots.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
-                  이 카테고리에 저장된 장소가 없어요.
+                  여행에 담은 장소가 없어요. 여행에서 가고 싶은 곳을 담으면 멤버들과 함께 여기에 모여요.
                 </div>
               ) : (
                 <ul className="flex flex-col gap-2.5 md:grid md:grid-cols-2 xl:grid-cols-3">
-                  {filteredPlaces.map((place) => renderPlaceCard(place))}
+                  {filteredTripSpots.map((spot) => renderTripSpotCard(spot))}
                 </ul>
               )}
             </div>
