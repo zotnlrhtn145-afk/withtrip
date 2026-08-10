@@ -39,6 +39,7 @@ import {
   deleteSavedPlace,
   fetchInterestPlacesByUserId,
   getErrorMessage,
+  insertSavedPlace,
   type SavedPlace,
 } from "@/lib/saved-places-api"
 import { cn } from "@/lib/utils"
@@ -76,6 +77,10 @@ export function SavedPlacesView() {
   const [addOpen, setAddOpen] = useState(false)
   const [assigningPlace, setAssigningPlace] = useState<SavedPlace | null>(null)
   const [assigningError, setAssigningError] = useState<string | null>(null)
+  // 나의 찜 → 여행클립 찜 "담기"(복제): 원본은 나의 찜에 남고, 선택한 여행 찜에도 추가된다.
+  const [sendTarget, setSendTarget] = useState<SavedPlace | null>(null)
+  const [sendingTo, setSendingTo] = useState<string | null>(null)
+  const [sendDoneName, setSendDoneName] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null)
@@ -380,6 +385,55 @@ export function SavedPlacesView() {
     }
   }
 
+  // 여행 예정/진행 중인 여행만 "담기" 대상으로 (종료된 여행 제외) — 앱과 동일.
+  const sendableTrips = useMemo(() => {
+    const startOfToday = new Date()
+    startOfToday.setHours(0, 0, 0, 0)
+    const todayMs = startOfToday.getTime()
+    return trips
+      .filter((trip) => {
+        const end = trip.endDate ? new Date(trip.endDate) : null
+        if (!end || Number.isNaN(end.getTime())) return true
+        end.setHours(0, 0, 0, 0)
+        return todayMs <= end.getTime()
+      })
+      .map((trip) => ({ id: trip.id, title: trip.title }))
+  }, [trips])
+
+  // 선택한 여행의 "여행클립 찜"에 장소를 복제 등록 (원본은 나의 찜에 그대로 유지).
+  const handleSendToTrip = async (tripId: string) => {
+    const place = sendTarget
+    if (!place || !userId) return
+    setSendingTo(tripId)
+    try {
+      await insertSavedPlace({
+        tripId,
+        userId,
+        placeName: place.placeName,
+        category: place.category,
+        subCategory: place.subCategory,
+        localName: place.localName,
+        address: place.address,
+        phoneNumber: place.phoneNumber,
+        imageUrl: place.imageUrl,
+        rating: place.rating,
+        reviewCount: place.reviewCount,
+        lat: place.lat,
+        lng: place.lng,
+      })
+      // 여행클립 찜 목록·카운트 갱신
+      const spots = await fetchNearbySpots()
+      setTripSpots(spots.filter((x) => x.tripId))
+      setSendTarget(null)
+      setSendDoneName(place.placeName)
+    } catch (err) {
+      console.error("[SavedPlacesView] send to trip failed:", err)
+      setAssigningError(getErrorMessage(err) || "여행클립 찜에 담지 못했어요.")
+    } finally {
+      setSendingTo(null)
+    }
+  }
+
   const handleRemove = async (placeId: string) => {
     setRemovingId(placeId)
     const ok = await deleteSavedPlace(placeId)
@@ -535,6 +589,18 @@ export function SavedPlacesView() {
               type="button"
               onClick={(event) => {
                 event.stopPropagation()
+                setSendTarget(place)
+              }}
+              aria-label={`${place.placeName} 여행클립 찜에 담기`}
+              className="flex h-7 w-full items-center justify-center gap-1 rounded-full border border-amber-300 bg-white text-[11px] font-bold text-amber-700 transition-colors hover:bg-amber-50 active:scale-95"
+            >
+              <Plane className="size-3.5" />
+              여행담기
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
                 setRecTarget({
                   label: place.placeName,
                   sourceId: place.id,
@@ -554,7 +620,7 @@ export function SavedPlacesView() {
                 })
               }}
               aria-label={`${place.placeName} 친구에게 추천`}
-              className="flex h-7 w-full items-center justify-center gap-1 rounded-full border border-amber-300 bg-white text-[11px] font-bold text-amber-700 transition-colors hover:bg-amber-50 active:scale-95"
+              className="flex h-7 w-full items-center justify-center gap-1 rounded-full border border-slate-200 bg-white text-[11px] font-bold text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
             >
               <Send className="size-3.5" />
               추천
@@ -865,6 +931,40 @@ export function SavedPlacesView() {
         description={assigningError ?? "선택한 여행의 가고 싶은 곳에 바로 등록돼요."}
         onSelect={(trip) => void handleAssignTrip(trip.id)}
       />
+
+      {/* 나의 찜 → 여행클립 찜 담기 (복제) — 예정/진행 중인 여행만 노출 */}
+      <TripPickerModal
+        open={sendTarget !== null}
+        onOpenChange={(next) => {
+          if (!next && !sendingTo) setSendTarget(null)
+        }}
+        trips={sendableTrips}
+        title={sendTarget ? `「${sendTarget.placeName}」을 어느 여행에 담을까요?` : "여행 선택"}
+        description="선택한 여행의 여행클립 찜에 담겨요. 나의 찜에도 그대로 남아 있어요."
+        emptyMessage="담을 수 있는 예정·진행 중인 여행이 없어요."
+        onSelect={(trip) => void handleSendToTrip(trip.id)}
+      />
+
+      {/* 담기 완료 */}
+      <Dialog open={Boolean(sendDoneName)} onOpenChange={(next) => { if (!next) setSendDoneName(null) }}>
+        <DialogContent className="rounded-3xl border-slate-100 sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>담기 완료</DialogTitle>
+            <DialogDescription>
+              {sendDoneName ? `"${sendDoneName}"을(를) 여행클립 찜에 담았어요.` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => setSendDoneName(null)}
+              className="bg-amber-400 font-bold text-slate-950 hover:bg-amber-500"
+            >
+              확인
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <PlaceDetailSheet
         place={detailPlace}

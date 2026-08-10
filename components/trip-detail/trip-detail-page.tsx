@@ -1,7 +1,7 @@
 "use client"
 
 import { Suspense, useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { ArrowLeft, Loader2, Search } from "lucide-react"
 
 import { AccountMenu } from "@/components/account-menu"
@@ -18,7 +18,6 @@ import { type Trip } from "@/lib/trip-data"
 
 function TripDetailComplete({ tripId }: { tripId: string }) {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { trips } = useTrips()
   const [trip, setTrip] = useState<Trip | null>(null)
   const [loading, setLoading] = useState(true)
@@ -26,21 +25,10 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
   const [view, setView] = useState<ViewMode>("desktop")
   const [searchOpen, setSearchOpen] = useState(false)
   const [flightsRevision, setFlightsRevision] = useState(0)
-  const [autoOpenAddPlace, setAutoOpenAddPlace] = useState(false)
 
   const handleFlightChange = () => {
     setFlightsRevision((current) => current + 1)
   }
-
-  // 퀵등록의 "장소 추가"에서 넘어온 경우 (?addPlace=1) 장소 추가 모달을 바로 연다.
-  useEffect(() => {
-    if (searchParams.get("addPlace") !== "1") return
-    setAutoOpenAddPlace(true)
-    const params = new URLSearchParams(searchParams.toString())
-    params.delete("addPlace")
-    const qs = params.toString()
-    router.replace(qs ? `/trips/${tripId}?${qs}` : `/trips/${tripId}`)
-  }, [searchParams, tripId, router])
 
   useEffect(() => {
     const query = window.matchMedia("(min-width: 768px)")
@@ -140,8 +128,6 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
         trip={displayTrip}
         view={view}
         onFlightChange={handleFlightChange}
-        autoOpenAddPlace={autoOpenAddPlace}
-        onAutoOpenAddPlaceHandled={() => setAutoOpenAddPlace(false)}
       />
     </>
   )

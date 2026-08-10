@@ -14,6 +14,7 @@ export function TripPickerModal({
   trips,
   title,
   description,
+  emptyMessage,
   onSelect,
 }: {
   open: boolean
@@ -21,6 +22,7 @@ export function TripPickerModal({
   trips: QuickTripOption[]
   title: string
   description: string
+  emptyMessage?: string
   onSelect: (trip: QuickTripOption) => void
 }) {
   useEffect(() => {
@@ -72,6 +74,11 @@ export function TripPickerModal({
         </div>
 
         <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-5 py-4">
+          {trips.length === 0 ? (
+            <li className="rounded-2xl border border-dashed border-border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
+              {emptyMessage ?? "선택할 수 있는 여행이 없어요."}
+            </li>
+          ) : null}
           {trips.map((trip) => (
             <li key={trip.id}>
               <button
