@@ -59,6 +59,7 @@ export function AccommodationRegisterModal({
 
   const [name, setName] = useState("")
   const [address, setAddress] = useState("")
+  const [imageUrl, setImageUrl] = useState("")
   const [lat, setLat] = useState<number | null>(null)
   const [lng, setLng] = useState<number | null>(null)
   const [checkInDate, setCheckInDate] = useState("")
@@ -104,6 +105,7 @@ export function AccommodationRegisterModal({
     if (editing) {
       setName(editing.name)
       setAddress(editing.address)
+      setImageUrl(editing.imageUrl)
       setLat(editing.lat)
       setLng(editing.lng)
       setCheckInDate(toInputDate(editing.checkInDate))
@@ -119,6 +121,7 @@ export function AccommodationRegisterModal({
 
     setName("")
     setAddress("")
+    setImageUrl("")
     setLat(null)
     setLng(null)
     setCheckInDate(toInputDate(defaultCheckInDate))
@@ -176,6 +179,7 @@ export function AccommodationRegisterModal({
       setHotelQuery(place.placeName)
       setAddress(place.address)
       setPhoneNumber(place.phoneNumber)
+      setImageUrl(String(place.imageUrl ?? place.image ?? "").trim())
       setLat(typeof place.lat === "number" ? place.lat : null)
       setLng(typeof place.lng === "number" ? place.lng : null)
       setError(null)
@@ -183,6 +187,7 @@ export function AccommodationRegisterModal({
     }
     setName(option.label)
     setHotelQuery(option.label)
+    setImageUrl("")
     setLat(null)
     setLng(null)
   }
@@ -212,6 +217,7 @@ export function AccommodationRegisterModal({
         tripId,
         name: name.trim(),
         address: address.trim(),
+        imageUrl: imageUrl.trim(),
         lat,
         lng,
         checkInDate,

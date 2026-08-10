@@ -108,7 +108,8 @@ function AccommodationCard({
   onDelete: (id: string) => void
 }) {
   const duration = formatStayDuration(item.checkInDate, item.checkOutDate)
-  const bannerSrc = resolveHotelBannerSrc(item.name)
+  // 구글 장소 검색에서 가져온 실제 호텔 사진이 있으면 우선 사용, 없으면 이름 기반 배너.
+  const bannerSrc = item.imageUrl || resolveHotelBannerSrc(item.name)
   const imagePrompt = generateHotelImagePrompt(item.name, {
     cardBackground: ACCOMMODATION_CARD_BG,
   })

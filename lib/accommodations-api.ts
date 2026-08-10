@@ -17,6 +17,8 @@ export type Accommodation = {
   guestIds: string[]
   lat: number | null
   lng: number | null
+  /** 구글 장소 검색에서 가져온 실제 호텔 사진 URL. */
+  imageUrl: string
 }
 
 export type AccommodationRow = {
@@ -37,6 +39,7 @@ export type AccommodationRow = {
   guest_ids?: string[] | null
   lat?: number | null
   lng?: number | null
+  image_url?: string | null
 }
 
 export type CreateAccommodationInput = {
@@ -53,6 +56,7 @@ export type CreateAccommodationInput = {
   guestIds?: string[]
   lat?: number | null
   lng?: number | null
+  imageUrl?: string
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -120,6 +124,7 @@ export function mapAccommodationRow(row: AccommodationRow): Accommodation {
     guestIds: Array.isArray(row.guest_ids) ? row.guest_ids.filter(Boolean) : [],
     lat: typeof row.lat === "number" ? row.lat : null,
     lng: typeof row.lng === "number" ? row.lng : null,
+    imageUrl: String(row.image_url ?? "").trim(),
   }
 }
 
@@ -148,6 +153,7 @@ function buildPayload(input: CreateAccommodationInput) {
     guest_ids: Array.isArray(input.guestIds) ? input.guestIds.filter(Boolean) : [],
     lat: typeof input.lat === "number" ? input.lat : null,
     lng: typeof input.lng === "number" ? input.lng : null,
+    image_url: String(input.imageUrl ?? "").trim() || null,
   }
 }
 
