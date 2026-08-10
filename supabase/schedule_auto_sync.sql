@@ -13,6 +13,68 @@ alter table public.trip_schedules
 create unique index if not exists trip_schedules_source_uidx
   on public.trip_schedules (source_type, source_id);
 
+-- 1.5) 공항 코드 → 한글/영문 이름 (일정 라벨용) ------------------------------
+-- 원본: lib/flight-presets.ts 의 AIRPORT_PRESETS. 국내선은 한글만, 국제선은 한글+영문.
+create table if not exists public.airport_names (
+  code        text primary key,
+  name_ko     text not null,
+  name_en     text not null default '',
+  is_domestic boolean not null default false
+);
+
+insert into public.airport_names (code, name_ko, name_en, is_domestic) values
+  ('ICN','인천국제공항','Incheon International',true),
+  ('GMP','김포국제공항','Gimpo International',true),
+  ('PUS','김해국제공항','Gimhae International',true),
+  ('CJU','제주국제공항','Jeju International',true),
+  ('TAE','대구국제공항','Daegu International',true),
+  ('KWJ','광주공항','Gwangju',true),
+  ('CJJ','청주국제공항','Cheongju International',true),
+  ('USN','울산공항','Ulsan',true),
+  ('RSU','여수공항','Yeosu',true),
+  ('KPO','포항경주공항','Pohang Gyeongju',true),
+  ('YNY','양양국제공항','Yangyang International',true),
+  ('MWX','무안국제공항','Muan International',true),
+  ('HIN','사천공항','Sacheon',true),
+  ('KUV','군산공항','Gunsan',true),
+  ('WJU','원주공항','Wonju',true),
+  ('KIX','간사이국제공항','Kansai International',false),
+  ('NRT','나리타국제공항','Narita International',false),
+  ('HND','하네다국제공항','Haneda Airport',false),
+  ('FUK','후쿠오카공항','Fukuoka Airport',false),
+  ('CTS','신치토세공항','New Chitose Airport',false),
+  ('OKA','나하공항','Naha Airport',false),
+  ('DAD','다낭국제공항','Da Nang International',false),
+  ('SGN','탄손넛국제공항','Tan Son Nhat',false),
+  ('HAN','노이바이국제공항','Noi Bai International',false),
+  ('TPE','대만 타오위안국제공항','Taiwan Taoyuan',false),
+  ('BKK','방콕 수완나품국제공항','Suvarnabhumi',false),
+  ('DMK','돈므앙국제공항','Don Mueang',false),
+  ('SIN','창이국제공항','Changi Airport',false),
+  ('HKG','홍콩국제공항','Hong Kong International',false),
+  ('LAX','로스앤젤레스국제공항','Los Angeles International',false),
+  ('JFK','존 F. 케네디국제공항','John F. Kennedy',false),
+  ('SFO','샌프란시스코국제공항','San Francisco International',false),
+  ('CDG','샤를 드골공항','Charles de Gaulle',false),
+  ('LHR','히드로공항','Heathrow Airport',false),
+  ('DXB','두바이국제공항','Dubai International',false),
+  ('SYD','시드니킹스포드스미스공항','Sydney Airport',false)
+on conflict (code) do update set
+  name_ko = excluded.name_ko, name_en = excluded.name_en, is_domestic = excluded.is_domestic;
+
+-- 라벨: 공항 코드면 이름으로 치환(국내 한글, 국외 한글+영문), 아니면(역·자유입력) 원문 유지.
+create or replace function public.wt_airport_label(p text)
+returns text language plpgsql stable as $$
+declare v_code text; r record;
+begin
+  if p is null or btrim(p) = '' then return ''; end if;
+  v_code := upper(btrim(p));
+  select name_ko, name_en, is_domestic into r from public.airport_names where code = v_code;
+  if not found then return btrim(p); end if;
+  if r.is_domestic or coalesce(btrim(r.name_en), '') = '' then return r.name_ko; end if;
+  return r.name_ko || ' (' || r.name_en || ')';
+end $$;
+
 -- 2) 날짜(text) → Day 번호 계산 헬퍼 ---------------------------------------
 create or replace function public.wt_schedule_day_number(p_trip_id uuid, p_date text)
 returns int language plpgsql stable as $$
@@ -35,7 +97,7 @@ end $$;
 create or replace function public.wt_sync_schedule_transport()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
-  v_from text; v_to text; v_base text; v_carrier text; v_day int; v_arr text;
+  v_carrier text; v_dep_place text; v_arr_place text; v_day int; v_arr text;
 begin
   if TG_OP = 'DELETE' then
     delete from public.trip_schedules
@@ -43,15 +105,19 @@ begin
     return OLD;
   end if;
 
-  v_from    := coalesce(nullif(btrim(NEW.from_label), ''), '');
-  v_to      := coalesce(nullif(btrim(NEW.to_label), ''), '');
   v_carrier := nullif(btrim(NEW.carrier_name), '');
-  v_base := case
-    when v_from <> '' and v_to <> '' then v_from || ' → ' || v_to
-    when v_carrier is not null        then v_carrier
-    when v_from <> ''                 then v_from
-    when v_to <> ''                   then v_to
-    else '이동'
+  -- 출발편은 '출발 공항 이름 + 출발', 도착편은 '도착 공항 이름 + 도착' (역/자유입력은 원문 유지)
+  v_dep_place := public.wt_airport_label(NEW.from_label);
+  v_arr_place := public.wt_airport_label(NEW.to_label);
+  v_dep_place := case
+    when v_dep_place <> ''      then v_dep_place || ' 출발'
+    when v_carrier is not null  then v_carrier || ' 출발'
+    else '출발'
+  end;
+  v_arr_place := case
+    when v_arr_place <> ''      then v_arr_place || ' 도착'
+    when v_carrier is not null  then v_carrier || ' 도착'
+    else '도착'
   end;
 
   -- 출발 일정
@@ -60,7 +126,7 @@ begin
     insert into public.trip_schedules
       (trip_id, day_number, category, place_name, visit_time, memo, created_by, source_type, source_id, member_ids)
     values
-      (NEW.trip_id, v_day, '이동', v_base || ' (출발)', nullif(btrim(NEW.depart_time), ''),
+      (NEW.trip_id, v_day, '이동', v_dep_place, nullif(btrim(NEW.depart_time), ''),
        v_carrier, NEW.created_by, 'transport_depart', NEW.id, coalesce(NEW.passenger_ids, '{}'::uuid[]))
     on conflict (source_type, source_id) do update set
       trip_id = excluded.trip_id, day_number = excluded.day_number, category = excluded.category,
@@ -77,7 +143,7 @@ begin
     insert into public.trip_schedules
       (trip_id, day_number, category, place_name, visit_time, memo, created_by, source_type, source_id, member_ids)
     values
-      (NEW.trip_id, v_day, '이동', v_base || ' (도착)', nullif(btrim(NEW.arrive_time), ''),
+      (NEW.trip_id, v_day, '이동', v_arr_place, nullif(btrim(NEW.arrive_time), ''),
        v_carrier, NEW.created_by, 'transport_arrive', NEW.id, coalesce(NEW.passenger_ids, '{}'::uuid[]))
     on conflict (source_type, source_id) do update set
       trip_id = excluded.trip_id, day_number = excluded.day_number, category = excluded.category,
