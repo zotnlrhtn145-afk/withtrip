@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, MoreHorizontal, Plus, Trash2, X } from "lucide-react"
+import { Loader2, MoreHorizontal, Plus, Trash2, UserRound, X } from "lucide-react"
 
 import { AddTripClipModal } from "@/components/home/AddTripClipModal"
 import { LoginRedirectOverlay } from "@/components/login-redirect-overlay"
@@ -21,6 +21,7 @@ export function TripClipsTray({ trips }: { trips: Trip[] }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [currentUserAvatar, setCurrentUserAvatar] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [isRedirectingToLogin, setIsRedirectingToLogin] = useState(false)
 
@@ -56,7 +57,20 @@ export function TripClipsTray({ trips }: { trips: Trip[] }) {
         const {
           data: { user },
         } = await supabase.auth.getUser()
-        if (!cancelled) setCurrentUserId(user?.id ?? null)
+        const meta = (user?.user_metadata ?? {}) as Record<string, unknown>
+        let avatar = String(meta.avatar_url || meta.picture || meta.profile_image || "").trim()
+        if (!avatar && user?.id) {
+          const { data } = await supabase
+            .from("profiles")
+            .select("avatar_url")
+            .eq("id", user.id)
+            .maybeSingle()
+          avatar = String((data as { avatar_url?: string | null } | null)?.avatar_url ?? "").trim()
+        }
+        if (!cancelled) {
+          setCurrentUserId(user?.id ?? null)
+          setCurrentUserAvatar(avatar || null)
+        }
       } catch {
         if (!cancelled) setCurrentUserId(null)
       }
@@ -144,8 +158,23 @@ export function TripClipsTray({ trips }: { trips: Trip[] }) {
             onClick={() => void openAddModal()}
             className="flex shrink-0 flex-col items-center"
           >
-            <span className="flex h-16 w-16 flex-col items-center justify-center rounded-full border-2 border-dashed border-amber-400 bg-amber-50/50 shadow-sm transition-all hover:scale-105">
-              <Plus className="size-5 text-amber-500" strokeWidth={2.5} />
+            <span className="relative transition-transform hover:scale-105">
+              <span className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-slate-100 ring-2 ring-slate-200">
+                {currentUserAvatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={currentUserAvatar}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <UserRound className="size-6 text-slate-400" />
+                )}
+              </span>
+              <span className="absolute -right-0.5 -bottom-0.5 flex size-6 items-center justify-center rounded-full border-2 border-white bg-amber-400 shadow-sm">
+                <Plus className="size-3.5 text-slate-950" strokeWidth={3} />
+              </span>
             </span>
             <span className="mt-1 text-[11px] font-medium text-slate-700">클립 등록</span>
           </button>
