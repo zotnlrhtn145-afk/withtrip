@@ -7,7 +7,6 @@ import {
   Camera,
   Check,
   ChevronDown,
-  Clock,
   Coffee,
   Loader2,
   MapPin,
@@ -15,6 +14,7 @@ import {
   Phone,
   Plane,
   Plus,
+  Search,
   Trash2,
   UserRound,
   Utensils,
@@ -23,6 +23,8 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { DirectionsMenu } from "@/components/directions-menu"
+import { TimeSelect24 } from "@/components/ui/time-select-24"
+import { searchGooglePlaces, type PlaceSearchResult } from "@/lib/places-search"
 import {
   Dialog,
   DialogContent,
@@ -79,6 +81,14 @@ const CATEGORY_ICON: Record<ScheduleCategory, LucideIcon> = {
   카페: Coffee,
 }
 
+// 구글 장소 종류(kind) → 일정 카테고리 자동 선택
+const SCHEDULE_CATEGORY_OF_KIND: Record<WishlistKind, ScheduleCategory> = {
+  restaurant: "식사",
+  bar: "카페",
+  stay: "숙소",
+  attraction: "관광",
+}
+
 function ScheduleRegisterModal({
   open,
   onOpenChange,
@@ -112,6 +122,11 @@ function ScheduleRegisterModal({
   const [wishlistOpen, setWishlistOpen] = useState(false)
   const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([])
   const [wishlistLoading, setWishlistLoading] = useState(false)
+  // 구글 장소 검색(자동완성) — 선택 시 주소·전화번호·카테고리 자동 기입
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<PlaceSearchResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
 
   const dayMeta = useMemo(
     () => getScheduleDayMeta(tripStartDate, dayNumber),
@@ -172,8 +187,58 @@ function ScheduleRegisterModal({
     setError(null)
     setSaving(false)
     setWishlistOpen(false)
+    setSearchQuery("")
+    setSearchResults([])
+    setSearching(false)
+    setSearchOpen(false)
     void loadSavedPlaces()
   }, [open, defaultDayIndex, editingSchedule, loadSavedPlaces, maxDay])
+
+  // 검색어 입력 → 300ms 디바운스 후 구글 장소 검색
+  useEffect(() => {
+    if (!open) return
+    const q = searchQuery.trim()
+    if (q.length < 1) {
+      setSearchResults([])
+      setSearching(false)
+      return
+    }
+    let cancelled = false
+    setSearching(true)
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const { results } = await searchGooglePlaces(q)
+          if (cancelled) return
+          setSearchResults(results)
+          setSearchOpen(true)
+        } catch (err) {
+          console.error("[ScheduleRegisterModal] place search failed:", err)
+          if (!cancelled) setSearchResults([])
+        } finally {
+          if (!cancelled) setSearching(false)
+        }
+      })()
+    }, 300)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [searchQuery, open])
+
+  const applyGooglePlace = (place: PlaceSearchResult) => {
+    setPlaceName(place.placeName)
+    if (place.address) setAddress(place.address)
+    if (place.phoneNumber) setPhoneNumber(place.phoneNumber)
+    if (place.kind && SCHEDULE_CATEGORY_OF_KIND[place.kind]) {
+      setCategory(SCHEDULE_CATEGORY_OF_KIND[place.kind])
+    }
+    setSearchQuery("")
+    setSearchResults([])
+    setSearchOpen(false)
+    setWishlistOpen(false)
+    setError(null)
+  }
 
   const toggleWishlist = () => {
     setWishlistOpen((current) => {
@@ -270,6 +335,57 @@ function ScheduleRegisterModal({
         >
           <FieldGroup className="gap-5">
             <Field className="gap-1.5">
+              <FieldLabel htmlFor="schedule-search" className={labelClassName}>
+                장소 검색
+              </FieldLabel>
+              <div className="relative">
+                <Search
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-zinc-400"
+                />
+                <Input
+                  id="schedule-search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onFocus={() => {
+                    if (searchResults.length > 0) setSearchOpen(true)
+                  }}
+                  placeholder="맛집·명소·숙소 검색 (예: 해운대 암소갈비집)"
+                  className={cn(inputClassName, "pr-10 pl-10")}
+                  autoComplete="off"
+                />
+                {searching ? (
+                  <Loader2 className="absolute top-1/2 right-3.5 size-4 -translate-y-1/2 animate-spin text-zinc-400" />
+                ) : null}
+                {searchOpen && searchResults.length > 0 ? (
+                  <div className="absolute z-20 mt-1.5 max-h-64 w-full overflow-y-auto rounded-xl border border-zinc-200 bg-white shadow-lg">
+                    <ul className="divide-y divide-zinc-100">
+                      {searchResults.map((place) => (
+                        <li key={place.id}>
+                          <button
+                            type="button"
+                            onClick={() => applyGooglePlace(place)}
+                            className="flex w-full flex-col gap-0.5 px-3 py-2.5 text-left transition-colors hover:bg-zinc-50"
+                          >
+                            <span className="truncate text-sm font-semibold text-zinc-900">
+                              {place.placeName}
+                            </span>
+                            {place.address ? (
+                              <span className="truncate text-xs text-zinc-400">{place.address}</span>
+                            ) : null}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+              <FieldDescription className="text-zinc-400">
+                검색해서 선택하면 주소·전화번호·카테고리가 자동으로 채워져요.
+              </FieldDescription>
+            </Field>
+
+            <Field className="gap-1.5">
               <FieldLabel className={labelClassName}>카테고리</FieldLabel>
               <div className="flex flex-wrap gap-2">
                 {SCHEDULE_CATEGORIES.map((item) => {
@@ -297,19 +413,7 @@ function ScheduleRegisterModal({
               <FieldLabel htmlFor="schedule-time" className={labelClassName}>
                 시간
               </FieldLabel>
-              <div className="relative">
-                <Input
-                  id="schedule-time"
-                  type="time"
-                  value={visitTime}
-                  onChange={(event) => setVisitTime(event.target.value)}
-                  className={cn(inputClassName, "pr-10 tabular-nums")}
-                />
-                <Clock
-                  aria-hidden="true"
-                  className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-zinc-400"
-                />
-              </div>
+              <TimeSelect24 id="schedule-time" value={visitTime} onChange={setVisitTime} />
               <FieldDescription className="text-zinc-400">
                 등록하면 시간 순서대로 자동 정렬됩니다.
               </FieldDescription>
