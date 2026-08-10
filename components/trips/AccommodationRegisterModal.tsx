@@ -17,6 +17,7 @@ import {
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { TimeSelect24 } from "@/components/ui/time-select-24"
 import {
   getErrorMessage,
   insertAccommodation,
@@ -346,13 +347,7 @@ export function AccommodationRegisterModal({
                 <FieldLabel htmlFor="acc-checkin-time" className={labelClass}>
                   체크인 시간
                 </FieldLabel>
-                <Input
-                  id="acc-checkin-time"
-                  type="time"
-                  value={checkInTime}
-                  onChange={(event) => setCheckInTime(event.target.value)}
-                  className={cn(inputClass, "tabular-nums")}
-                />
+                <TimeSelect24 id="acc-checkin-time" value={checkInTime} onChange={setCheckInTime} />
               </Field>
             </div>
 
@@ -374,13 +369,7 @@ export function AccommodationRegisterModal({
                 <FieldLabel htmlFor="acc-checkout-time" className={labelClass}>
                   체크아웃 시간
                 </FieldLabel>
-                <Input
-                  id="acc-checkout-time"
-                  type="time"
-                  value={checkOutTime}
-                  onChange={(event) => setCheckOutTime(event.target.value)}
-                  className={cn(inputClass, "tabular-nums")}
-                />
+                <TimeSelect24 id="acc-checkout-time" value={checkOutTime} onChange={setCheckOutTime} />
               </Field>
             </div>
             <FieldDescription className={cn(helperClass, "-mt-2")}>

@@ -552,6 +552,16 @@ export function TransportRegisterModal({
       return
     }
 
+    // 출발지와 도착지는 같을 수 없다 (예: GMP → GMP).
+    const sameRoute = segments.some(
+      (segment) =>
+        segment.fromLabel.trim().toLowerCase() === segment.toLabel.trim().toLowerCase()
+    )
+    if (sameRoute) {
+      setError("출발지와 도착지가 같을 수 없어요.")
+      return
+    }
+
     const resolvedRole: TransportRole = !isEditMode && segments.length > 1 ? "LAYOVER" : role
 
     // 여행 멤버마다 각자 이동수단을 등록할 수 있어야 함(선발대/후발대 등 서로 다른 시간·루트)
