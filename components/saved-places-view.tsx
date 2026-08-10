@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Bookmark, Check, Heart, Info, Loader2, Map as MapIcon, MapPin, Plus, Send, SlidersHorizontal, Star } from "lucide-react"
+import { Bookmark, Check, Heart, Info, Loader2, Map as MapIcon, MapPin, Plane, Plus, Send, SlidersHorizontal, Star } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -315,6 +315,17 @@ export function SavedPlacesView() {
       .sort((a, b) => a.distanceMeters - b.distanceMeters)
   }, [filteredTripSpots, geo.position])
 
+  // 여행클립 찜을 여행별로 묶기 (여행 이름 헤더 + 그 여행 장소들)
+  const tripGroups = useMemo(() => {
+    const map = new Map<string, { title: string; items: NearbySpot[] }>()
+    for (const s of filteredTripSpots) {
+      const key = s.tripId ?? s.tripTitle ?? "기타"
+      if (!map.has(key)) map.set(key, { title: s.tripTitle ?? "여행", items: [] })
+      map.get(key)!.items.push(s)
+    }
+    return [...map.values()]
+  }, [filteredTripSpots])
+
   const activeChips = subTab === "wish" ? subChips : tripChips
   const activeMapSpots = subTab === "wish" ? mapSpots : tripMapSpots
 
@@ -602,10 +613,9 @@ export function SavedPlacesView() {
             {spot.category || "여행 장소"}
             {spot.address ? ` · ${spot.address}` : ""}
           </p>
-          <p className="truncate text-[11px] text-slate-400">
-            {spot.tripTitle || "여행"}
-            {spot.authorNickname ? ` · ${spot.authorNickname}` : ""}
-          </p>
+          {spot.authorNickname ? (
+            <p className="truncate text-[11px] text-slate-400">{spot.authorNickname}님이 담음</p>
+          ) : null}
           {tripDistanceLabels.has(spot.id) ? (
             <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold text-amber-700">
               <MapPin className="size-3" />
@@ -822,9 +832,24 @@ export function SavedPlacesView() {
                   여행에 담은 장소가 없어요. 여행에서 가고 싶은 곳을 담으면 멤버들과 함께 여기에 모여요.
                 </div>
               ) : (
-                <ul className="flex flex-col gap-2.5 md:grid md:grid-cols-2 xl:grid-cols-3">
-                  {filteredTripSpots.map((spot) => renderTripSpotCard(spot))}
-                </ul>
+                <div className="flex flex-col gap-5">
+                  {tripGroups.map((g) => (
+                    <div key={g.title}>
+                      {/* 여행 이름 헤더 */}
+                      <div className="mb-2 flex items-center gap-2">
+                        <Plane className="size-3.5 text-amber-500" />
+                        <span className="text-sm font-bold text-slate-900">{g.title}</span>
+                        <span className="rounded-full bg-slate-100 px-1.5 text-[10px] font-bold tabular-nums text-slate-500">
+                          {g.items.length}
+                        </span>
+                        <span className="h-px flex-1 bg-slate-100" />
+                      </div>
+                      <ul className="flex flex-col gap-2.5 md:grid md:grid-cols-2 xl:grid-cols-3">
+                        {g.items.map((spot) => renderTripSpotCard(spot))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
