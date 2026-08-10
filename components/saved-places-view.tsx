@@ -6,6 +6,15 @@ import { useRouter } from "next/navigation"
 import { Bookmark, Check, Heart, Info, Loader2, Map as MapIcon, MapPin, Plus, Send, Star } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { DirectionsMenu } from "@/components/directions-menu"
 import { PlaceDetailSheet, type PlaceDetailInput } from "@/components/place-detail-sheet"
 import { RecommendPlaceDialog, type RecommendTarget } from "@/components/recommend-place-dialog"
@@ -68,6 +77,7 @@ export function SavedPlacesView() {
   const [recs, setRecs] = useState<IncomingRec[]>([])
   const [recTarget, setRecTarget] = useState<RecommendTarget | null>(null)
   const [savingRecId, setSavingRecId] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
   const [recenterKey, setRecenterKey] = useState(0)
   const didAutoCenter = useRef(false)
   const followNextFix = useRef(false)
@@ -366,7 +376,7 @@ export function SavedPlacesView() {
       }}
       className="list-none"
     >
-      <SwipeToDelete onDelete={() => void handleRemove(place.id)}>
+      <SwipeToDelete onDelete={() => setDeleteConfirm({ id: place.id, name: place.placeName })}>
         <div
           onClick={() => showOnMap(place.id)}
           className={cn(
@@ -646,6 +656,33 @@ export function SavedPlacesView() {
       />
 
       <RecommendPlaceDialog target={recTarget} onClose={() => setRecTarget(null)} />
+
+      {/* 삭제 확인 */}
+      <Dialog open={Boolean(deleteConfirm)} onOpenChange={(next) => { if (!next) setDeleteConfirm(null) }}>
+        <DialogContent className="rounded-3xl border-slate-100 sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>장소 삭제</DialogTitle>
+            <DialogDescription>
+              {deleteConfirm ? `"${deleteConfirm.name}"을(를) 삭제하시겠습니까?` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => setDeleteConfirm(null)}>
+              취소
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (deleteConfirm) void handleRemove(deleteConfirm.id)
+                setDeleteConfirm(null)
+              }}
+              className="bg-destructive font-bold text-white hover:bg-destructive/90"
+            >
+              삭제
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

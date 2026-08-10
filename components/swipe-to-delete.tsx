@@ -1,12 +1,12 @@
 "use client"
 
-import { useRef, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Trash2 } from "lucide-react"
 
 /**
  * iOS 메일 방식 스와이프: 카드를 우→좌로 밀면 오른쪽에 "삭제" 버튼이 드러난다.
- * - 버튼을 눌러야 실제 삭제된다(밀었다고 바로 삭제 X).
- * - 열린 상태에서 카드(다른 곳)를 누르면 원위치로 복귀.
+ * - 버튼을 누르면 onDelete 호출(부모가 "삭제하시겠습니까?" 확인) — 밀었다고 바로 삭제 X.
+ * - 열린 상태에서 카드/바깥 등 다른 곳을 누르면 원위치로 복귀.
  * 모바일 터치 + 데스크톱 마우스 드래그 지원.
  */
 export function SwipeToDelete({
@@ -16,19 +16,42 @@ export function SwipeToDelete({
   onDelete: () => void
   children: ReactNode
 }) {
-  const REVEAL = 84 // 삭제 버튼 너비
-  const OPEN_THRESHOLD = 34 // 이만큼 밀면 열림 확정
+  const REVEAL = 84
+  const OPEN_THRESHOLD = 34
 
   const [dx, setDx] = useState(0) // 0(닫힘) ~ -REVEAL(열림)
   const [snap, setSnap] = useState(false)
-  const open = useRef(false)
+  const [isOpen, setIsOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
   const start = useRef<{ x: number; y: number; base: number } | null>(null)
   const axis = useRef<"none" | "x" | "y">("none")
   const moved = useRef(false)
   const dragging = useRef(false)
 
+  const openNow = (v: boolean) => {
+    setIsOpen(v)
+    setSnap(true)
+    setDx(v ? -REVEAL : 0)
+  }
+  const close = () => openNow(false)
+
+  // 열린 상태에서 카드 바깥을 터치/클릭하면 원위치
+  useEffect(() => {
+    if (!isOpen) return
+    const onDocDown = (e: Event) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) close()
+    }
+    document.addEventListener("pointerdown", onDocDown, true)
+    document.addEventListener("touchstart", onDocDown, true)
+    return () => {
+      document.removeEventListener("pointerdown", onDocDown, true)
+      document.removeEventListener("touchstart", onDocDown, true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
+
   const begin = (x: number, y: number) => {
-    start.current = { x, y, base: open.current ? -REVEAL : 0 }
+    start.current = { x, y, base: isOpen ? -REVEAL : 0 }
     axis.current = "none"
     moved.current = false
     setSnap(false)
@@ -48,31 +71,18 @@ export function SwipeToDelete({
   const settle = () => {
     if (!start.current) return
     start.current = null
-    if (axis.current === "x") {
-      setSnap(true)
-      if (dx <= -OPEN_THRESHOLD) {
-        setDx(-REVEAL)
-        open.current = true
-      } else {
-        setDx(0)
-        open.current = false
-      }
-    }
+    if (axis.current === "x") openNow(dx <= -OPEN_THRESHOLD)
     axis.current = "none"
-  }
-  const close = () => {
-    setSnap(true)
-    setDx(0)
-    open.current = false
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl">
+    <div ref={rootRef} className="relative overflow-hidden rounded-2xl">
       {/* 오른쪽 삭제 버튼 (카드가 왼쪽으로 밀리면 드러남) */}
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation()
+          close()
           onDelete()
         }}
         aria-label="삭제"
@@ -105,15 +115,13 @@ export function SwipeToDelete({
           }
         }}
         onClickCapture={(e) => {
-          // 드래그 직후의 클릭 무시
           if (moved.current) {
             e.preventDefault()
             e.stopPropagation()
             moved.current = false
             return
           }
-          // 열린 상태에서 카드를 누르면 원위치(내비게이션 등 실행 안 함)
-          if (open.current) {
+          if (isOpen) {
             e.preventDefault()
             e.stopPropagation()
             close()
