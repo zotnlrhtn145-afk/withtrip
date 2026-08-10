@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Compass, Loader2, Plus, SearchX, X } from "lucide-react"
+import { Compass, History, Loader2, Plane, Plus, SearchX, X } from "lucide-react"
 
 import { CreateTripDialog } from "@/components/create-trip-dialog"
 import { TripClipsTray } from "@/components/home/TripClipsTray"
@@ -14,6 +14,26 @@ import { Button } from "@/components/ui/button"
 import { type Trip } from "@/lib/trip-data"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/utils/supabase/client"
+
+type TripPhase = "ongoing" | "upcoming" | "past"
+
+function parseYmd(value: string): Date | null {
+  const m = String(value ?? "").match(/(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/)
+  if (!m) return null
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+}
+
+/** 종료일 기준: 오늘 > 종료 → past, 오늘 < 시작 → upcoming, 그 사이 → ongoing. */
+function tripPhase(trip: Trip): TripPhase {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const start = parseYmd(trip.startDate)
+  const end = parseYmd(trip.endDate) ?? start
+  if (!start) return "upcoming"
+  if (end && today > end.getTime()) return "past"
+  if (today < start.getTime()) return "upcoming"
+  return "ongoing"
+}
 
 function AddTripCard({ onClick }: { onClick: () => void }) {
   return (
@@ -46,6 +66,30 @@ export function HomeView({
   const router = useRouter()
   const { trips, filteredTrips, query, setQuery, loading, error, refreshTrips } = useTrips()
   const isFiltered = query.trim().length > 0
+  // 홈 기본은 진행 중+예정, '지난 여행'은 필터로 선택.
+  const [homeFilter, setHomeFilter] = useState<"upcoming" | "past">("upcoming")
+
+  // 진행 중(맨 위) → 예정(가까운 순).
+  const upcomingList = useMemo(() => {
+    const rank: Record<TripPhase, number> = { ongoing: 0, upcoming: 1, past: 9 }
+    return filteredTrips
+      .filter((trip) => tripPhase(trip) !== "past")
+      .sort((a, b) => {
+        const pa = tripPhase(a)
+        const pb = tripPhase(b)
+        if (rank[pa] !== rank[pb]) return rank[pa] - rank[pb]
+        return (parseYmd(a.startDate)?.getTime() ?? 0) - (parseYmd(b.startDate)?.getTime() ?? 0)
+      })
+  }, [filteredTrips])
+
+  // 지난 여행: 최근 끝난 순.
+  const pastList = useMemo(
+    () =>
+      filteredTrips
+        .filter((trip) => tripPhase(trip) === "past")
+        .sort((a, b) => (parseYmd(b.endDate)?.getTime() ?? 0) - (parseYmd(a.endDate)?.getTime() ?? 0)),
+    [filteredTrips]
+  )
   // Keep SSR + first client paint identical (avoids hydration mismatch on subtitle / list).
   const [hasMounted, setHasMounted] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
@@ -193,16 +237,71 @@ export function HomeView({
           </div>
         </div>
       ) : showTripList ? (
-        <div className={compact ? "flex flex-col gap-4" : "grid gap-5 xl:grid-cols-2"}>
-          {filteredTrips.map((trip, index) => (
-            <TripBannerCard
-              key={trip.id}
-              trip={trip}
-              onSelect={onSelectTrip}
-              priority={index === 0}
-            />
-          ))}
-          {!isFiltered ? <AddTripCard onClick={() => void handleStartTrip()} /> : null}
+        <div className="flex flex-col gap-4">
+          {!isFiltered && pastList.length > 0 ? (
+            <nav role="tablist" aria-label="여행 필터" className="flex items-stretch border-b border-slate-200/80">
+              {(
+                [
+                  { key: "upcoming" as const, label: "다가오는", Icon: Plane, count: upcomingList.length },
+                  { key: "past" as const, label: "지난 여행", Icon: History, count: pastList.length },
+                ]
+              ).map((tab) => {
+                const isActive = homeFilter === tab.key
+                const Icon = tab.Icon
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setHomeFilter(tab.key)}
+                    className={cn(
+                      "relative flex flex-1 flex-col items-center justify-center gap-1 py-3 transition-colors",
+                      isActive ? "text-slate-900" : "text-slate-400"
+                    )}
+                  >
+                    <Icon className="size-5" strokeWidth={isActive ? 2.1 : 1.7} />
+                    <span className="text-[11px] font-semibold tracking-tight">
+                      {tab.label}
+                      {tab.count > 0 ? ` ${tab.count}` : ""}
+                    </span>
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "absolute inset-x-0 -bottom-px h-0.5 transition-colors",
+                        isActive ? "bg-amber-400" : "bg-transparent"
+                      )}
+                    />
+                  </button>
+                )
+              })}
+            </nav>
+          ) : null}
+
+          {(() => {
+            const list = isFiltered ? filteredTrips : homeFilter === "past" ? pastList : upcomingList
+            const showAdd = !isFiltered && homeFilter === "upcoming"
+            return (
+              <div className={compact ? "flex flex-col gap-4" : "grid gap-5 xl:grid-cols-2"}>
+                {list.length === 0 ? (
+                  <p className="col-span-full rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 py-10 text-center text-sm text-slate-400">
+                    {homeFilter === "past" ? "지난 여행이 없어요." : "다가오는 여행이 없어요."}
+                  </p>
+                ) : (
+                  list.map((trip, index) => (
+                    <TripBannerCard
+                      key={trip.id}
+                      trip={trip}
+                      onSelect={onSelectTrip}
+                      priority={index === 0 && homeFilter !== "past"}
+                      muted={tripPhase(trip) === "past"}
+                    />
+                  ))
+                )}
+                {showAdd ? <AddTripCard onClick={() => void handleStartTrip()} /> : null}
+              </div>
+            )
+          })()}
         </div>
       ) : null}
 

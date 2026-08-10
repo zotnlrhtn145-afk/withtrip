@@ -47,10 +47,13 @@ export function TripBannerCard({
   trip,
   onSelect,
   priority = false,
+  muted = false,
 }: {
   trip: Trip
   onSelect: (trip: Trip) => void
   priority?: boolean
+  /** 지난 여행 — 흐리게+탈색 처리. */
+  muted?: boolean
 }) {
   const { members, refreshTrips } = useTrips()
   const { weather } = useWeather(trip.region)
@@ -108,7 +111,10 @@ export function TripBannerCard({
   return (
     <>
       <article
-        className="group media-card relative h-64 w-full overflow-hidden rounded-2xl border border-border text-left sm:h-72"
+        className={cn(
+          "group media-card relative h-64 w-full overflow-hidden rounded-2xl border border-border text-left sm:h-72",
+          muted && "opacity-80 saturate-0"
+        )}
       >
         <button
           type="button"
@@ -132,9 +138,15 @@ export function TripBannerCard({
         </button>
 
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-4">
-          <Badge className="pointer-events-none h-8 rounded-full px-3 text-sm font-bold tabular-nums shadow-sm">
-            D-{trip.dDay}
-          </Badge>
+          {muted ? (
+            <Badge className="pointer-events-none h-8 rounded-full bg-slate-700/85 px-3 text-sm font-bold text-white/90 shadow-sm">
+              종료
+            </Badge>
+          ) : (
+            <Badge className="pointer-events-none h-8 rounded-full px-3 text-sm font-bold tabular-nums shadow-sm">
+              D-{trip.dDay}
+            </Badge>
+          )}
 
           <div className="pointer-events-auto relative flex items-center gap-1.5" ref={menuRef}>
             {weather ? (
