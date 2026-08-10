@@ -261,10 +261,13 @@ export function AccommodationSection({
   tripId,
   tripStartDate = "",
   tripEndDate = "",
+  onAccommodationChange,
 }: {
   tripId: string
   tripStartDate?: string
   tripEndDate?: string
+  /** 숙소 생성·수정·삭제 후 호출 → 상위에서 일정(자동 동기화)을 새로고침. */
+  onAccommodationChange?: () => void
 }) {
   const [items, setItems] = useState<Accommodation[]>([])
   const [loading, setLoading] = useState(true)
@@ -326,7 +329,10 @@ export function AccommodationSection({
     setDeletingId(id)
     try {
       const ok = await deleteAccommodation(id)
-      if (ok) setItems((current) => current.filter((item) => item.id !== id))
+      if (ok) {
+        setItems((current) => current.filter((item) => item.id !== id))
+        onAccommodationChange?.()
+      }
     } finally {
       setDeletingId(null)
     }
@@ -414,6 +420,7 @@ export function AccommodationSection({
         defaultCheckOutDate={tripEndDate}
         onSaved={() => {
           void load()
+          onAccommodationChange?.()
         }}
       />
     </Card>

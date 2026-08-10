@@ -41,6 +41,13 @@ export function TripScheduleBoard({
   view?: ViewMode
 }) {
   const [active, setActive] = useState<TabKey>("schedule")
+  // 이동수단·숙소가 바뀌면 값을 올려 일정 섹션이 자동 동기화 결과를 다시 불러오게 한다.
+  const [sourceRev, setSourceRev] = useState(0)
+  const bumpSources = () => setSourceRev((rev) => rev + 1)
+  const handleFlightChange = () => {
+    onFlightChange?.()
+    bumpSources()
+  }
 
   // 퀵등록의 "장소 추가"로 진입하면 위시리스트 탭으로 이동해 추가 모달 맥락을 보여준다.
   useEffect(() => {
@@ -56,11 +63,12 @@ export function TripScheduleBoard({
     return (
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="flex flex-col gap-5 lg:col-span-5">
-          <TransportSection tripId={trip.id} onTransportChange={onFlightChange} />
+          <TransportSection tripId={trip.id} onTransportChange={handleFlightChange} />
           <AccommodationSection
             tripId={trip.id}
             tripStartDate={trip.startDate}
             tripEndDate={trip.endDate}
+            onAccommodationChange={bumpSources}
           />
         </div>
         <div className="min-w-0 lg:col-span-7">
@@ -70,6 +78,7 @@ export function TripScheduleBoard({
               tripStartDate={trip.startDate}
               tripDays={trip.days}
               tripCity={tripCity}
+              refreshKey={sourceRev}
             />
           </div>
         </div>
@@ -135,6 +144,7 @@ export function TripScheduleBoard({
               tripStartDate={trip.startDate}
               tripDays={trip.days}
               tripCity={tripCity}
+              refreshKey={sourceRev}
             />
           </div>
         </section>
@@ -145,7 +155,7 @@ export function TripScheduleBoard({
           aria-label="이동수단"
           hidden={active !== "transport"}
         >
-          <TransportSection tripId={trip.id} onTransportChange={onFlightChange} />
+          <TransportSection tripId={trip.id} onTransportChange={handleFlightChange} />
         </section>
 
         <section
@@ -158,6 +168,7 @@ export function TripScheduleBoard({
             tripId={trip.id}
             tripStartDate={trip.startDate}
             tripEndDate={trip.endDate}
+            onAccommodationChange={bumpSources}
           />
         </section>
 

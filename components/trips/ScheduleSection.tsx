@@ -48,6 +48,7 @@ import {
   getScheduleDayMeta,
   getScheduleErrorMessage,
   insertSchedule,
+  isAutoSchedule,
   isScheduleAuthor,
   SCHEDULE_CATEGORIES,
   sortSchedules,
@@ -641,11 +642,66 @@ function CreatorBadge({
   )
 }
 
+function MemberAvatars({ members }: { members: TripMember[] }) {
+  const [failed, setFailed] = useState<Record<string, boolean>>({})
+  if (members.length === 0) return null
+  const shown = members.slice(0, 4)
+  const extra = members.length - shown.length
+  const names = members
+    .map((member) => member.name)
+    .filter((name) => name && name !== "멤버")
+    .join(", ")
+
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <div className="flex -space-x-1.5">
+        {shown.map((member) => {
+          const showImage = Boolean(member.avatarUrl) && !failed[member.userId]
+          return (
+            <span
+              key={member.userId}
+              title={member.name}
+              className="relative flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100 ring-2 ring-white"
+            >
+              {showImage ? (
+                <img
+                  src={member.avatarUrl}
+                  alt=""
+                  className="size-full object-cover"
+                  referrerPolicy="no-referrer"
+                  onError={() => setFailed((prev) => ({ ...prev, [member.userId]: true }))}
+                />
+              ) : (
+                <span className="flex size-full items-center justify-center bg-zinc-200 text-[9px] font-semibold text-zinc-600">
+                  {member.name && member.name !== "멤버" ? (
+                    profileInitials(member.name)
+                  ) : (
+                    <UserRound className="size-3 text-zinc-500" aria-hidden="true" />
+                  )}
+                </span>
+              )}
+            </span>
+          )
+        })}
+        {extra > 0 ? (
+          <span className="relative flex size-6 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-[9px] font-semibold text-zinc-600 ring-2 ring-white">
+            +{extra}
+          </span>
+        ) : null}
+      </div>
+      <span className="min-w-0 truncate text-xs text-zinc-500">
+        {names ? `함께 · ${names}` : `함께 · ${members.length}명`}
+      </span>
+    </div>
+  )
+}
+
 function TimelineItem({
   item,
   isLast,
   isAuthor,
   authorProfile,
+  memberProfiles,
   deleting,
   onEdit,
   onDelete,
@@ -654,6 +710,7 @@ function TimelineItem({
   isLast: boolean
   isAuthor: boolean
   authorProfile?: TripMember | null
+  memberProfiles: TripMember[]
   deleting: boolean
   onEdit: (item: TripSchedule) => void
   onDelete: (id: string) => void
@@ -661,7 +718,9 @@ function TimelineItem({
   const Icon = CATEGORY_ICON[item.category] ?? MapPin
   const timeLabel = item.visitTime || "--:--"
   const authorName = authorProfile?.name || "멤버"
-  const showAuthor = Boolean(item.createdBy || item.userId)
+  const isAuto = isAutoSchedule(item)
+  // 자동 일정은 원본(이동수단/숙소)에서 관리 → 함께하는 멤버를 대신 노출.
+  const showAuthor = !isAuto && Boolean(item.createdBy || item.userId)
 
   return (
     <li className="relative flex gap-3 pb-6 last:pb-0 sm:gap-4">
@@ -692,13 +751,20 @@ function TimelineItem({
               <p className="text-base leading-snug font-bold text-pretty text-slate-900">
                 {item.placeName}
               </p>
-              <span
-                className={cn(
-                  "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[11px] font-semibold",
-                  CATEGORY_BADGE[item.category]
-                )}
-              >
-                {item.category}
+              <span className="flex shrink-0 items-center gap-1">
+                {isAuto ? (
+                  <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500">
+                    자동
+                  </span>
+                ) : null}
+                <span
+                  className={cn(
+                    "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                    CATEGORY_BADGE[item.category]
+                  )}
+                >
+                  {item.category}
+                </span>
               </span>
             </div>
             {showAuthor ? (
@@ -706,6 +772,7 @@ function TimelineItem({
                 <CreatorBadge name={authorName} avatarUrl={authorProfile?.avatarUrl} />
               </div>
             ) : null}
+            {isAuto ? <MemberAvatars members={memberProfiles} /> : null}
             {item.memo ? (
               <p className="mt-1.5 text-xs leading-relaxed text-pretty text-gray-500">{item.memo}</p>
             ) : null}
@@ -741,7 +808,7 @@ function TimelineItem({
                 className="size-8 text-amber-600"
               />
             ) : null}
-            {isAuthor ? (
+            {isAuthor && !isAuto ? (
               <>
                 <Button
                   type="button"
@@ -782,6 +849,7 @@ export function ScheduleSection({
   tripStartDate = "",
   tripDays = 1,
   tripCity = "",
+  refreshKey = 0,
 }: {
   tripId: string
   tripStartDate?: string
@@ -789,6 +857,8 @@ export function ScheduleSection({
   tripDays?: number
   /** Shown in subtitle, e.g. 오사카 */
   tripCity?: string
+  /** 값이 바뀌면 일정을 다시 불러온다 (이동수단/숙소 자동 동기화 반영용). */
+  refreshKey?: number
 }) {
   const dayOptions = useMemo(
     () => Array.from({ length: Math.max(1, tripDays) }, (_, index) => index + 1),
@@ -813,7 +883,10 @@ export function ScheduleSection({
       const authorIds = [
         ...new Set(
           data
-            .map((item) => String(item.createdBy || item.userId || "").trim())
+            .flatMap((item) => [
+              String(item.createdBy || item.userId || "").trim(),
+              ...item.memberIds.map((id) => String(id ?? "").trim()),
+            ])
             .filter(Boolean)
         ),
       ]
@@ -864,6 +937,11 @@ export function ScheduleSection({
   useEffect(() => {
     void load()
   }, [load])
+
+  // 이동수단/숙소 변경 시(상위 refreshKey 증가) 자동 동기화된 일정을 다시 불러온다.
+  useEffect(() => {
+    if (refreshKey > 0) void load()
+  }, [refreshKey, load])
 
   useEffect(() => {
     setSelectedDay((current) => Math.min(current, dayOptions.length))
@@ -920,7 +998,8 @@ export function ScheduleSection({
 
   const handleDelete = async (id: string) => {
     const target = items.find((item) => item.id === id)
-    if (!target || !authReady || !isScheduleAuthor(target, currentUserId)) return
+    if (!target || isAutoSchedule(target) || !authReady || !isScheduleAuthor(target, currentUserId))
+      return
     if (!window.confirm("이 일정을 삭제할까요?")) return
     setDeletingId(id)
     try {
@@ -937,7 +1016,7 @@ export function ScheduleSection({
   }
 
   const openEdit = (item: TripSchedule) => {
-    if (!authReady || !isScheduleAuthor(item, currentUserId)) return
+    if (isAutoSchedule(item) || !authReady || !isScheduleAuthor(item, currentUserId)) return
     setEditingSchedule(item)
     setModalOpen(true)
   }
@@ -1029,6 +1108,9 @@ export function ScheduleSection({
               authorProfile={
                 profileById.get(String(item.createdBy || item.userId || "").trim()) ?? null
               }
+              memberProfiles={item.memberIds
+                .map((memberId) => profileById.get(String(memberId ?? "").trim()))
+                .filter((member): member is TripMember => Boolean(member))}
               deleting={deletingId === item.id}
               onEdit={openEdit}
               onDelete={(id) => void handleDelete(id)}

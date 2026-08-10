@@ -18,6 +18,12 @@ export type TripSchedule = {
   phoneNumber: string
   memo: string
   createdAt: string
+  /** 이동수단/숙소에서 자동 생성된 일정의 원본 종류. 수동 일정은 "". */
+  sourceType: string
+  /** 원본(이동수단/숙소) row id. */
+  sourceId: string
+  /** 이 일정에 함께하는 멤버(탑승자/투숙객) user id 목록. */
+  memberIds: string[]
 }
 
 export type TripScheduleRow = {
@@ -33,7 +39,19 @@ export type TripScheduleRow = {
   phone_number?: string | null
   memo?: string | null
   created_at?: string | null
+  source_type?: string | null
+  source_id?: string | null
+  member_ids?: string[] | null
 }
+
+/** 자동 동기화(이동수단/숙소) 일정인지 — 수동 편집/삭제 잠금 판단에 사용. */
+export function isAutoSchedule(schedule: Pick<TripSchedule, "sourceType">): boolean {
+  return Boolean(String(schedule.sourceType ?? "").trim())
+}
+
+/** trip_schedules 조회/저장 시 사용하는 컬럼 목록. */
+const SCHEDULE_SELECT =
+  "id, trip_id, created_by, day_number, category, place_name, visit_time, address, phone_number, memo, source_type, source_id, member_ids, created_at"
 
 export type CreateTripScheduleInput = {
   tripId: string
@@ -166,6 +184,11 @@ export function mapScheduleRow(row: TripScheduleRow): TripSchedule {
     phoneNumber: String(row.phone_number ?? "").trim(),
     memo: String(row.memo ?? "").trim(),
     createdAt: String(row.created_at ?? ""),
+    sourceType: String(row.source_type ?? "").trim(),
+    sourceId: String(row.source_id ?? "").trim(),
+    memberIds: Array.isArray(row.member_ids)
+      ? row.member_ids.map((id) => String(id ?? "").trim()).filter(Boolean)
+      : [],
   }
 }
 
@@ -245,8 +268,7 @@ export async function fetchSchedulesByTripId(tripId: string): Promise<TripSchedu
   try {
     const { data, error } = await supabase
       .from("trip_schedules")
-      .select(
-        "id, trip_id, created_by, day_number, category, place_name, visit_time, address, phone_number, memo, created_at"
+      .select(SCHEDULE_SELECT
       )
       .eq("trip_id", id)
       .order("day_number", { ascending: true })
@@ -294,8 +316,7 @@ export async function insertSchedule(input: CreateTripScheduleInput): Promise<Tr
   const { data, error } = await supabase
     .from("trip_schedules")
     .insert(payload)
-    .select(
-      "id, trip_id, created_by, day_number, category, place_name, visit_time, address, phone_number, memo, created_at"
+    .select(SCHEDULE_SELECT
     )
     .single()
 
@@ -345,8 +366,7 @@ export async function updateSchedule(
     .from("trip_schedules")
     .update(payload)
     .eq("id", id)
-    .select(
-      "id, trip_id, created_by, day_number, category, place_name, visit_time, address, phone_number, memo, created_at"
+    .select(SCHEDULE_SELECT
     )
     .single()
 
