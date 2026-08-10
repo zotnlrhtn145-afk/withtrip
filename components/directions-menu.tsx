@@ -1,9 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { Car, MapPin, Navigation, type LucideIcon } from "lucide-react"
+import { Car, MapPin, Navigation, Send, type LucideIcon } from "lucide-react"
 
+import { ShareLocationDialog } from "@/components/share-location-dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { type ShareLocation } from "@/lib/location-share-api"
 import {
   buildUberUrl,
   isInKorea,
@@ -43,6 +45,7 @@ export function DirectionsMenu({
   icon?: LucideIcon
 }) {
   const [open, setOpen] = useState(false)
+  const [share, setShare] = useState<ShareLocation | null>(null)
   const baseClass = VARIANT_CLASS[variant]
   const TriggerIcon = icon ?? (variant === "cta" ? MapPin : Navigation)
 
@@ -59,6 +62,7 @@ export function DirectionsMenu({
   const uberUrl = overseas ? buildUberUrl(effectiveDest) : null
 
   return (
+    <>
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         onClick={(event) => event.stopPropagation()}
@@ -141,7 +145,21 @@ export function DirectionsMenu({
             </button>
           </>
         )}
+        <div className="my-1 h-px bg-slate-100" />
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(false)
+            setShare({ name: effectiveDest.name, lat: effectiveDest.lat, lng: effectiveDest.lng })
+          }}
+          className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left text-sm font-semibold text-amber-700 transition-colors hover:bg-amber-50"
+        >
+          <Send className="size-4 shrink-0 text-amber-600" />
+          위치 공유하기
+        </button>
       </PopoverContent>
     </Popover>
+    <ShareLocationDialog target={share} onClose={() => setShare(null)} />
+    </>
   )
 }

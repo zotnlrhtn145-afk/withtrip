@@ -41,6 +41,8 @@ export type FeedNotification = {
   actionId: string
   /** notifications.id when sourced from notifications table */
   notificationId?: string
+  /** type=location_share 이면 길찾기 좌표 등 { name, lat, lng, address } */
+  payload?: { name?: string; lat?: number | null; lng?: number | null; address?: string | null }
   /** Read/seen state — false for anything without a real notifications row. */
   isRead: boolean
 }
@@ -273,6 +275,7 @@ function mapDbNotification(row: Awaited<ReturnType<typeof fetchMyNotifications>>
     actionState,
     actionId: String(actionId ?? "").trim(),
     notificationId: row.id,
+    payload: row.payload,
     isRead: row.isRead,
   }
 }

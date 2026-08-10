@@ -10,6 +10,7 @@ export type NotificationType =
   | "friend_accepted"
   | "clip_post"
   | "place_recommendation"
+  | "location_share"
 
 export type NotificationRowStatus =
   | "pending"
@@ -17,6 +18,13 @@ export type NotificationRowStatus =
   | "declined"
   | "rejected"
   | "dismissed"
+
+export type LocationPayload = {
+  name?: string
+  lat?: number | null
+  lng?: number | null
+  address?: string | null
+}
 
 export type AppNotificationRow = {
   id: string
@@ -32,6 +40,7 @@ export type AppNotificationRow = {
   actorName?: string
   actorAvatarUrl?: string
   tripTitle?: string
+  payload?: LocationPayload
 }
 
 type DbNotificationRow = {
@@ -46,6 +55,7 @@ type DbNotificationRow = {
   is_read?: boolean | null
   status?: string | null
   created_at?: string | null
+  payload?: LocationPayload | null
 }
 
 function formatError(err: unknown) {
@@ -94,6 +104,7 @@ function mapRow(row: DbNotificationRow): AppNotificationRow | null {
     isRead: Boolean(row.is_read),
     status: (String(row.status ?? "pending").trim() || "pending") as NotificationRowStatus,
     createdAt: String(row.created_at ?? new Date().toISOString()),
+    payload: (row.payload as LocationPayload | null) ?? undefined,
   }
 }
 
@@ -293,7 +304,7 @@ export async function fetchMyNotifications(): Promise<AppNotificationRow[]> {
 
   const client = createClient()
   const selectFull =
-    "id, user_id, sender_id, actor_id, type, message, reference_id, trip_member_id, is_read, status, created_at"
+    "id, user_id, sender_id, actor_id, type, message, reference_id, trip_member_id, is_read, status, created_at, payload"
   const selectBasic =
     "id, user_id, sender_id, actor_id, type, message, reference_id, is_read, created_at"
 

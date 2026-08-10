@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { BellOff, Loader2, UserRoundPlus } from "lucide-react"
 
+import { DirectionsPickerDialog, type DirTarget } from "@/components/directions-picker-dialog"
 import { useNotifications } from "@/components/notifications/notifications-provider"
 import { useTrips } from "@/components/trips-store"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -154,6 +155,7 @@ export function NotificationList({
   const [filter, setFilter] = useState<NotificationFilter>("all")
   const [actingId, setActingId] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [dirTarget, setDirTarget] = useState<DirTarget | null>(null)
 
   const showNotice = useCallback((message: string) => {
     setNotice(message)
@@ -285,6 +287,7 @@ export function NotificationList({
                 <AnimatePresence initial={false}>
                   {section.items.map((item) => {
                     const busy = actingId === item.id
+                    const isLoc = item.type === "location_share" && !!item.payload
                     return (
                       <motion.li
                         key={item.id}
@@ -295,10 +298,21 @@ export function NotificationList({
                         className="overflow-hidden"
                       >
                         <div
+                          onClick={
+                            isLoc
+                              ? () =>
+                                  setDirTarget({
+                                    name: item.payload?.name || "목적지",
+                                    lat: item.payload?.lat,
+                                    lng: item.payload?.lng,
+                                  })
+                              : undefined
+                          }
                           className={cn(
                             "flex items-center gap-3 rounded-2xl px-2 py-2.5 transition-colors duration-300 hover:bg-slate-100/80",
                             item.isRead ? "bg-slate-50" : "bg-white",
-                            item.actionState !== "pending" && "opacity-80"
+                            item.actionState !== "pending" && "opacity-80",
+                            isLoc && "cursor-pointer"
                           )}
                         >
                           <NotificationAvatars item={item} />
@@ -331,6 +345,11 @@ export function NotificationList({
                                 {formatRelativeTimeKo(item.createdAt)}
                               </span>
                             </p>
+                            {isLoc ? (
+                              <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold text-amber-600">
+                                탭하면 길찾기 →
+                              </span>
+                            ) : null}
                           </div>
                           <ActionButtons
                             item={item}
@@ -354,6 +373,8 @@ export function NotificationList({
           {notice}
         </div>
       ) : null}
+
+      <DirectionsPickerDialog target={dirTarget} onClose={() => setDirTarget(null)} />
     </div>
   )
 }
