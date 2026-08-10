@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { BellOff, Loader2, UserRoundPlus } from "lucide-react"
+import { BellOff, Loader2, Navigation, Plus, UserRoundPlus } from "lucide-react"
 
 import { DirectionsPickerDialog, type DirTarget } from "@/components/directions-picker-dialog"
 import { useNotifications } from "@/components/notifications/notifications-provider"
@@ -80,16 +80,18 @@ function ActionButtons({
   busy,
   onAccept,
   onReject,
+  onDirections,
 }: {
   item: FeedNotification
   busy: boolean
   onAccept: () => void
   onReject: () => void
+  onDirections: () => void
 }) {
   if (item.actionState === "accepted") {
     return (
       <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-400">
-        수락됨
+        {item.type === "place_recommendation" ? "추가됨" : "수락됨"}
       </span>
     )
   }
@@ -97,8 +99,50 @@ function ActionButtons({
   if (item.actionState === "declined") {
     return (
       <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-400">
-        거절됨
+        {item.type === "place_recommendation" ? "닫음" : "거절됨"}
       </span>
+    )
+  }
+
+  // 위치 공유 → '닫기' 대신 '길찾기' 버튼 (탭하면 길찾기 피커가 열린다)
+  if (item.type === "location_share") {
+    return (
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation()
+          onDirections()
+        }}
+        className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-400 px-4 py-2 text-xs font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500"
+      >
+        <Navigation className="size-3" />
+        길찾기
+      </button>
+    )
+  }
+
+  // 추천 맛집/장소 → '닫기' + '추가'(가고싶은곳에 담기)
+  if (item.type === "place_recommendation") {
+    return (
+      <div className="flex shrink-0 items-center gap-1.5">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onReject}
+          className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600 transition-all hover:bg-slate-200 disabled:opacity-50"
+        >
+          닫기
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onAccept}
+          className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-4 py-2 text-xs font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 disabled:opacity-50"
+        >
+          {busy ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />}
+          추가
+        </button>
+      </div>
     )
   }
 
@@ -345,17 +389,19 @@ export function NotificationList({
                                 {formatRelativeTimeKo(item.createdAt)}
                               </span>
                             </p>
-                            {isLoc ? (
-                              <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold text-amber-600">
-                                탭하면 길찾기 →
-                              </span>
-                            ) : null}
                           </div>
                           <ActionButtons
                             item={item}
                             busy={busy}
                             onAccept={() => void handleAccept(item)}
                             onReject={() => void handleReject(item)}
+                            onDirections={() =>
+                              setDirTarget({
+                                name: item.payload?.name || "목적지",
+                                lat: item.payload?.lat,
+                                lng: item.payload?.lng,
+                              })
+                            }
                           />
                         </div>
                       </motion.li>

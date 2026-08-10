@@ -202,3 +202,56 @@ export async function dismissRecommendation(recId: string): Promise<boolean> {
   }
   return true
 }
+
+/** 알림의 추천(place_recommendations.id)을 바로 saved_places(가고싶은곳)에 담는다. */
+export async function acceptPlaceRecommendationById(recId: string): Promise<boolean> {
+  const id = String(recId ?? "").trim()
+  if (!id) return false
+  const supabase = createClient()
+  const { data: auth } = await supabase.auth.getUser()
+  const me = auth.user?.id
+  if (!me) return false
+
+  const { data: r, error } = await supabase
+    .from("place_recommendations")
+    .select(
+      "id, sender_id, place_name, category, sub_category, address, image_url, rating, review_count, lat, lng, status, saved_place_id"
+    )
+    .eq("id", id)
+    .maybeSingle()
+  if (error || !r) {
+    if (error) logErr("acceptPlaceRecommendationById lookup", error)
+    return false
+  }
+  const rec = r as Record<string, unknown>
+  // 이미 담은 추천이면 중복 저장하지 않는다.
+  if (String(rec.status ?? "") === "saved" && rec.saved_place_id) return true
+
+  const { data: saved, error: insErr } = await supabase
+    .from("saved_places")
+    .insert({
+      trip_id: null,
+      user_id: me,
+      place_name: rec.place_name,
+      category: rec.category,
+      sub_category: rec.sub_category,
+      address: rec.address,
+      image_url: rec.image_url,
+      rating: rec.rating,
+      review_count: rec.review_count ?? 0,
+      lat: rec.lat,
+      lng: rec.lng,
+      recommended_by: rec.sender_id,
+    })
+    .select("id")
+    .single()
+  if (insErr) {
+    logErr("acceptPlaceRecommendationById insert", insErr)
+    return false
+  }
+  await supabase
+    .from("place_recommendations")
+    .update({ status: "saved", saved_place_id: (saved as { id: string }).id })
+    .eq("id", id)
+  return true
+}

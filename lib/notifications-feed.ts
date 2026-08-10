@@ -16,6 +16,10 @@ import {
   fetchPendingInvitations,
   rejectTripInvitation,
 } from "@/lib/trip-members-api"
+import {
+  acceptPlaceRecommendationById,
+  dismissRecommendation,
+} from "@/lib/recommendations-api"
 import { createClient } from "@/utils/supabase/client"
 
 export type NotificationFilter = "all" | "trip" | "friend" | "clip"
@@ -350,6 +354,16 @@ export async function acceptFeedNotification(
     return { toast: `${item.actorName}님과 친구가 되었어요.` }
   }
 
+  // 추천 맛집/장소 — '추가' 시 가고싶은곳(saved_places)에 담는다.
+  if (item.type === "place_recommendation") {
+    const ok = item.actionId ? await acceptPlaceRecommendationById(item.actionId) : false
+    if (!ok) throw new Error("장소를 추가하지 못했어요.")
+    if (item.notificationId) {
+      await updateNotificationStatus(item.notificationId, "accepted")
+    }
+    return { toast: "가고싶은곳에 추가했어요." }
+  }
+
   // clip_like / clip_comment — mark accepted/read, keep row
   if (item.notificationId) {
     await updateNotificationStatus(item.notificationId, "accepted")
@@ -376,6 +390,14 @@ export async function rejectFeedNotification(
       await updateNotificationStatus(item.notificationId, "declined")
     }
     return { toast: "친구 요청을 거절했어요." }
+  }
+
+  if (item.type === "place_recommendation") {
+    if (item.actionId) await dismissRecommendation(item.actionId)
+    if (item.notificationId) {
+      await updateNotificationStatus(item.notificationId, "declined")
+    }
+    return { toast: "추천을 닫았어요." }
   }
 
   if (item.notificationId) {
