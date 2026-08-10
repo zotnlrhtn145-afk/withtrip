@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { User } from "@supabase/supabase-js"
-import { Car, Loader2, Pencil, Plane, PlaneTakeoff, Plus, TrainFront, Trash2, UserRound } from "lucide-react"
+import { Car, Crown, Loader2, Pencil, Plane, PlaneTakeoff, Plus, TrainFront, Trash2, UserRound } from "lucide-react"
 
 import { TransportRegisterModal } from "@/components/trips/TransportRegisterModal"
 import { Button } from "@/components/ui/button"
@@ -24,6 +24,7 @@ import {
 } from "@/lib/transports-api"
 import {
   fetchProfilesByIds,
+  fetchTripOwnerId,
   fetchTripRoster,
   type TripMember,
 } from "@/lib/trip-members-api"
@@ -77,11 +78,13 @@ function PersonChip({
   name,
   avatarUrl,
   tone = "neutral",
+  isHost = false,
 }: {
   label: string
   name: string
   avatarUrl?: string
   tone?: "neutral" | "amber"
+  isHost?: boolean
 }) {
   const [imgFailed, setImgFailed] = useState(false)
   const showImage = Boolean(avatarUrl) && !imgFailed
@@ -118,6 +121,9 @@ function PersonChip({
       <span className="truncate">
         {label} · {name}
       </span>
+      {isHost ? (
+        <Crown className="size-3 shrink-0 fill-amber-400 text-amber-500" aria-label="방장" />
+      ) : null}
     </span>
   )
 }
@@ -125,9 +131,11 @@ function PersonChip({
 function TransportPeople({
   transport,
   memberById,
+  ownerId = "",
 }: {
   transport: TripTransport
   memberById: Map<string, TripMember>
+  ownerId?: string
 }) {
   const authorId = transport.createdBy || transport.userId
   const author = authorId ? memberById.get(authorId) : undefined
@@ -150,6 +158,7 @@ function TransportPeople({
           name={authorName}
           avatarUrl={author?.avatarUrl}
           tone="neutral"
+          isHost={Boolean(ownerId) && authorId === ownerId}
         />
       ) : null}
       {passengers.map((passenger) => (
@@ -159,6 +168,7 @@ function TransportPeople({
           name={passenger.name}
           avatarUrl={passenger.avatarUrl}
           tone="amber"
+          isHost={Boolean(ownerId) && passenger.id === ownerId}
         />
       ))}
     </div>
@@ -285,6 +295,7 @@ function TransportTicket({
   transport,
   memberById,
   isAuthor,
+  ownerId,
   onEdit,
   onDelete,
   deleting,
@@ -292,6 +303,7 @@ function TransportTicket({
   transport: TripTransport
   memberById: Map<string, TripMember>
   isAuthor: boolean
+  ownerId: string
   onEdit: (transport: TripTransport) => void
   onDelete: (id: string) => void
   deleting: boolean
@@ -338,7 +350,7 @@ function TransportTicket({
 
       <div className="relative px-5 pt-3 pb-5">
         <TicketRoute transport={transport} />
-        <TransportPeople transport={transport} memberById={memberById} />
+        <TransportPeople transport={transport} memberById={memberById} ownerId={ownerId} />
       </div>
     </li>
   )
@@ -348,6 +360,8 @@ function LayoverJourney({
   transports,
   memberById,
   currentUserId,
+  ownerId,
+  isHost,
   authReady,
   deletingId,
   onEdit,
@@ -356,6 +370,8 @@ function LayoverJourney({
   transports: TripTransport[]
   memberById: Map<string, TripMember>
   currentUserId: string | null
+  ownerId: string
+  isHost: boolean
   authReady: boolean
   deletingId: string | null
   onEdit: (transport: TripTransport) => void
@@ -369,7 +385,7 @@ function LayoverJourney({
           const Icon = TRANSPORT_ICON[transport.transportType]
           const badgeLabel = [transport.carrierName, transport.vehicleNo].filter(Boolean).join(" · ")
           const deleting = deletingId === transport.id
-          const isAuthor = authReady && isTransportAuthor(transport, currentUserId)
+          const isAuthor = authReady && (isHost || isTransportAuthor(transport, currentUserId))
 
           return (
             <div key={transport.id} className="relative">
@@ -409,7 +425,7 @@ function LayoverJourney({
                   ) : null}
                 </div>
                 <TicketRoute transport={transport} />
-                <TransportPeople transport={transport} memberById={memberById} />
+                <TransportPeople transport={transport} memberById={memberById} ownerId={ownerId} />
               </div>
             </div>
           )
@@ -438,6 +454,7 @@ export function TransportSection({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [authReady, setAuthReady] = useState(false)
+  const [ownerId, setOwnerId] = useState<string>("")
 
   const memberById = useMemo(() => {
     const map = new Map<string, TripMember>()
@@ -446,6 +463,18 @@ export function TransportSection({
   }, [roster])
 
   const currentUserId = user?.id ?? null
+  // 호스트(방장)는 모든 이동수단을 수정·삭제할 수 있다.
+  const isHost = Boolean(currentUserId && ownerId && currentUserId === ownerId)
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchTripOwnerId(tripId).then((id) => {
+      if (!cancelled) setOwnerId(id)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [tripId])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -579,7 +608,7 @@ export function TransportSection({
   }
 
   const openEditModal = (transport: TripTransport) => {
-    if (!authReady || !isTransportAuthor(transport, currentUserId)) return
+    if (!authReady || !(isHost || isTransportAuthor(transport, currentUserId))) return
     setEditingTransport(transport)
     setModalOpen(true)
   }
@@ -591,7 +620,7 @@ export function TransportSection({
 
   const handleDelete = async (id: string) => {
     const target = transports.find((transport) => transport.id === id)
-    if (!target || !authReady || !isTransportAuthor(target, currentUserId)) return
+    if (!target || !authReady || !(isHost || isTransportAuthor(target, currentUserId))) return
     if (!window.confirm("이 이동수단을 삭제할까요?")) return
 
     setDeletingId(id)
@@ -672,7 +701,8 @@ export function TransportSection({
                         key={transport.id}
                         transport={transport}
                         memberById={memberById}
-                        isAuthor={authReady && isTransportAuthor(transport, currentUserId)}
+                        isAuthor={authReady && (isHost || isTransportAuthor(transport, currentUserId))}
+                        ownerId={ownerId}
                         deleting={deletingId === transport.id}
                         onEdit={openEditModal}
                         onDelete={(id) => void handleDelete(id)}
@@ -684,6 +714,8 @@ export function TransportSection({
                         transports={bucket.layover}
                         memberById={memberById}
                         currentUserId={currentUserId}
+                        ownerId={ownerId}
+                        isHost={isHost}
                         authReady={authReady}
                         deletingId={deletingId}
                         onEdit={openEditModal}
@@ -696,7 +728,8 @@ export function TransportSection({
                         key={transport.id}
                         transport={transport}
                         memberById={memberById}
-                        isAuthor={authReady && isTransportAuthor(transport, currentUserId)}
+                        isAuthor={authReady && (isHost || isTransportAuthor(transport, currentUserId))}
+                        ownerId={ownerId}
                         deleting={deletingId === transport.id}
                         onEdit={openEditModal}
                         onDelete={(id) => void handleDelete(id)}

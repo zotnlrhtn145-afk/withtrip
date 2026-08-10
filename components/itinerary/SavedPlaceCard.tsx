@@ -17,10 +17,13 @@ import { createClient } from "@/utils/supabase/client"
 export function SavedPlaceCard({
   place,
   deleting,
+  ownerId = "",
   onDelete,
 }: {
   place: SavedPlace
   deleting: boolean
+  /** 여행 호스트(방장) user id — 호스트는 모든 장소를 삭제할 수 있다. */
+  ownerId?: string
   onDelete: (id: string) => void
 }) {
   const kind = toWishlistKind(place.category)
@@ -75,8 +78,10 @@ export function SavedPlaceCard({
   }, [])
 
   // Never show delete while auth is loading / missing, or for non-authors.
+  // 단, 호스트(방장)는 모든 장소를 삭제할 수 있다.
+  const isHost = authReady && Boolean(user?.id && ownerId && user.id === ownerId)
   const isAuthor =
-    authReady && Boolean(user?.id && isSavedPlaceAuthor(place, user.id))
+    authReady && (isHost || Boolean(user?.id && isSavedPlaceAuthor(place, user.id)))
 
   const destination =
     place.lat != null && place.lng != null

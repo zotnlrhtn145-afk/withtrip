@@ -8,6 +8,7 @@ import {
   Check,
   ChevronDown,
   Coffee,
+  Crown,
   Loader2,
   MapPin,
   Pencil,
@@ -56,7 +57,7 @@ import {
   type ScheduleCategory,
   type TripSchedule,
 } from "@/lib/schedules-api"
-import { fetchProfilesByIds, type TripMember } from "@/lib/trip-members-api"
+import { fetchProfilesByIds, fetchTripOwnerId, type TripMember } from "@/lib/trip-members-api"
 import {
   toWishlistKind,
   wishlistCategories,
@@ -609,9 +610,11 @@ function profileInitials(name: string) {
 function CreatorBadge({
   name,
   avatarUrl,
+  isHost = false,
 }: {
   name: string
   avatarUrl?: string
+  isHost?: boolean
 }) {
   const [imgFailed, setImgFailed] = useState(false)
   const showImage = Boolean(avatarUrl) && !imgFailed
@@ -638,11 +641,14 @@ function CreatorBadge({
         )}
       </span>
       <span className="truncate font-medium">{name}</span>
+      {isHost ? (
+        <Crown className="size-3.5 shrink-0 fill-amber-400 text-amber-500" aria-label="방장" />
+      ) : null}
     </span>
   )
 }
 
-function MemberAvatars({ members }: { members: TripMember[] }) {
+function MemberAvatars({ members, ownerId = "" }: { members: TripMember[]; ownerId?: string }) {
   const [failed, setFailed] = useState<Record<string, boolean>>({})
   if (members.length === 0) return null
   const shown = members.slice(0, 4)
@@ -657,11 +663,15 @@ function MemberAvatars({ members }: { members: TripMember[] }) {
       <div className="flex -space-x-1.5">
         {shown.map((member) => {
           const showImage = Boolean(member.avatarUrl) && !failed[member.userId]
+          const isHost = Boolean(ownerId) && member.userId === ownerId
           return (
             <span
               key={member.userId}
-              title={member.name}
-              className="relative flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100 ring-2 ring-white"
+              title={isHost ? `${member.name} (방장)` : member.name}
+              className={cn(
+                "relative flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100 ring-2 ring-white",
+                isHost && "ring-amber-300"
+              )}
             >
               {showImage ? (
                 <img
@@ -680,6 +690,12 @@ function MemberAvatars({ members }: { members: TripMember[] }) {
                   )}
                 </span>
               )}
+              {isHost ? (
+                <Crown
+                  className="absolute -top-1 -right-0.5 size-3 fill-amber-400 text-amber-500 drop-shadow-sm"
+                  aria-hidden="true"
+                />
+              ) : null}
             </span>
           )
         })}
@@ -702,6 +718,7 @@ function TimelineItem({
   isAuthor,
   authorProfile,
   memberProfiles,
+  ownerId,
   deleting,
   onEdit,
   onDelete,
@@ -711,6 +728,7 @@ function TimelineItem({
   isAuthor: boolean
   authorProfile?: TripMember | null
   memberProfiles: TripMember[]
+  ownerId: string
   deleting: boolean
   onEdit: (item: TripSchedule) => void
   onDelete: (id: string) => void
@@ -718,6 +736,7 @@ function TimelineItem({
   const Icon = CATEGORY_ICON[item.category] ?? MapPin
   const timeLabel = item.visitTime || "--:--"
   const authorName = authorProfile?.name || "멤버"
+  const authorIsHost = Boolean(ownerId) && (authorProfile?.userId === ownerId || item.createdBy === ownerId)
   const isAuto = isAutoSchedule(item)
   // 자동 일정은 원본(이동수단/숙소)에서 관리 → 함께하는 멤버를 대신 노출.
   const showAuthor = !isAuto && Boolean(item.createdBy || item.userId)
@@ -769,10 +788,10 @@ function TimelineItem({
             </div>
             {showAuthor ? (
               <div className="mt-2">
-                <CreatorBadge name={authorName} avatarUrl={authorProfile?.avatarUrl} />
+                <CreatorBadge name={authorName} avatarUrl={authorProfile?.avatarUrl} isHost={authorIsHost} />
               </div>
             ) : null}
-            {isAuto ? <MemberAvatars members={memberProfiles} /> : null}
+            {isAuto ? <MemberAvatars members={memberProfiles} ownerId={ownerId} /> : null}
             {item.memo ? (
               <p className="mt-1.5 text-xs leading-relaxed text-pretty text-gray-500">{item.memo}</p>
             ) : null}
@@ -873,6 +892,20 @@ export function ScheduleSection({
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [authReady, setAuthReady] = useState(false)
   const [profileById, setProfileById] = useState<Map<string, TripMember>>(new Map())
+  const [ownerId, setOwnerId] = useState<string>("")
+
+  // 호스트(방장)는 모든 일정을 수정·삭제할 수 있다.
+  const isHost = Boolean(currentUserId && ownerId && currentUserId === ownerId)
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchTripOwnerId(tripId).then((id) => {
+      if (!cancelled) setOwnerId(id)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [tripId])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -998,7 +1031,12 @@ export function ScheduleSection({
 
   const handleDelete = async (id: string) => {
     const target = items.find((item) => item.id === id)
-    if (!target || isAutoSchedule(target) || !authReady || !isScheduleAuthor(target, currentUserId))
+    if (
+      !target ||
+      isAutoSchedule(target) ||
+      !authReady ||
+      !(isHost || isScheduleAuthor(target, currentUserId))
+    )
       return
     if (!window.confirm("이 일정을 삭제할까요?")) return
     setDeletingId(id)
@@ -1016,7 +1054,8 @@ export function ScheduleSection({
   }
 
   const openEdit = (item: TripSchedule) => {
-    if (isAutoSchedule(item) || !authReady || !isScheduleAuthor(item, currentUserId)) return
+    if (isAutoSchedule(item) || !authReady || !(isHost || isScheduleAuthor(item, currentUserId)))
+      return
     setEditingSchedule(item)
     setModalOpen(true)
   }
@@ -1104,13 +1143,14 @@ export function ScheduleSection({
               key={item.id}
               item={item}
               isLast={index === visibleItems.length - 1}
-              isAuthor={authReady && isScheduleAuthor(item, currentUserId)}
+              isAuthor={authReady && (isHost || isScheduleAuthor(item, currentUserId))}
               authorProfile={
                 profileById.get(String(item.createdBy || item.userId || "").trim()) ?? null
               }
               memberProfiles={item.memberIds
                 .map((memberId) => profileById.get(String(memberId ?? "").trim()))
                 .filter((member): member is TripMember => Boolean(member))}
+              ownerId={ownerId}
               deleting={deletingId === item.id}
               onEdit={openEdit}
               onDelete={(id) => void handleDelete(id)}

@@ -297,6 +297,30 @@ export async function fetchTripMembers(tripId: string): Promise<TripMember[]> {
 }
 
 /**
+ * 여행의 호스트(방장) = trips.user_id. 호스트는 모든 항목을 수정·삭제할 수 있다.
+ */
+export async function fetchTripOwnerId(tripId: string): Promise<string> {
+  const id = String(tripId ?? "").trim()
+  if (!id) return ""
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from("trips")
+      .select("user_id")
+      .eq("id", id)
+      .maybeSingle()
+    if (error) {
+      console.error("[fetchTripOwnerId]", error.message)
+      return ""
+    }
+    return String((data as { user_id?: string | null } | null)?.user_id ?? "").trim()
+  } catch (err) {
+    console.error("[fetchTripOwnerId] unexpected:", err)
+    return ""
+  }
+}
+
+/**
  * Accepted members + trip owner (owner may not be in trip_members).
  * Used for flight passenger pickers and author display.
  */

@@ -211,6 +211,7 @@ export function WishlistSection({
                 key={place.id}
                 place={place}
                 deleting={deletingId === place.id}
+                ownerId={trip.ownerId ?? ""}
                 onDelete={(id) => void handleDelete(id)}
               />
             ))}

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import {
   BedDouble,
+  Crown,
   Loader2,
   LogIn,
   LogOut,
@@ -40,7 +41,7 @@ import {
   generateHotelImagePrompt,
   resolveHotelBannerSrc,
 } from "@/lib/hotel-image"
-import { fetchProfilesByIds, type TripMember } from "@/lib/trip-members-api"
+import { fetchProfilesByIds, fetchTripOwnerId, type TripMember } from "@/lib/trip-members-api"
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
 const TEXT = "#212121"
@@ -62,7 +63,7 @@ function formatStamp(dateValue: string, timeValue: string) {
   return timeValue ? `${dateLabel} ${timeValue}` : dateLabel
 }
 
-function GuestChip({ member }: { member: TripMember }) {
+function GuestChip({ member, isHost = false }: { member: TripMember; isHost?: boolean }) {
   const [imgFailed, setImgFailed] = useState(false)
   const initials = (member.name || "?").slice(0, 1)
 
@@ -82,6 +83,9 @@ function GuestChip({ member }: { member: TripMember }) {
         </span>
       )}
       <span className="max-w-[72px] truncate">투숙 · {member.name}</span>
+      {isHost ? (
+        <Crown className="size-3 shrink-0 fill-amber-400 text-amber-500" aria-label="방장" />
+      ) : null}
     </span>
   )
 }
@@ -91,6 +95,7 @@ function AccommodationCard({
   deleting,
   isAuthor,
   guests,
+  ownerId = "",
   onEdit,
   onDelete,
 }: {
@@ -98,6 +103,7 @@ function AccommodationCard({
   deleting: boolean
   isAuthor: boolean
   guests: TripMember[]
+  ownerId?: string
   onEdit: (item: Accommodation) => void
   onDelete: (id: string) => void
 }) {
@@ -245,7 +251,7 @@ function AccommodationCard({
         {guests.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {guests.map((g) => (
-              <GuestChip key={g.userId} member={g} />
+              <GuestChip key={g.userId} member={g} isHost={Boolean(ownerId) && g.userId === ownerId} />
             ))}
           </div>
         ) : null}
@@ -276,6 +282,20 @@ export function AccommodationSection({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [memberById, setMemberById] = useState<Map<string, TripMember>>(new Map())
+  const [ownerId, setOwnerId] = useState<string>("")
+
+  // 호스트(방장)는 모든 숙소를 수정·삭제할 수 있다.
+  const isHost = Boolean(currentUserId && ownerId && currentUserId === ownerId)
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchTripOwnerId(tripId).then((id) => {
+      if (!cancelled) setOwnerId(id)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [tripId])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -374,8 +394,9 @@ export function AccommodationSection({
                   key={item.id}
                   item={item}
                   deleting={deletingId === item.id}
-                  isAuthor={isAccommodationAuthor(item, currentUserId)}
+                  isAuthor={isHost || isAccommodationAuthor(item, currentUserId)}
                   guests={item.guestIds.map((id) => memberById.get(id)).filter(Boolean) as TripMember[]}
+                  ownerId={ownerId}
                   onEdit={openEdit}
                   onDelete={(id) => void handleDelete(id)}
                 />
