@@ -84,6 +84,7 @@ export function SavedPlacesView() {
   const [tab, setTab] = useState<"mine" | "friends">("mine")
   const [subTab, setSubTab] = useState<"wish" | "trip">("wish")
   const [sort, setSort] = useState<"distance" | "name" | "rating">("distance")
+  const [tripFilter, setTripFilter] = useState<string>("all")
   const [filterOpen, setFilterOpen] = useState(false)
   const [tripSpots, setTripSpots] = useState<NearbySpot[]>([])
   const [recs, setRecs] = useState<IncomingRec[]>([])
@@ -268,7 +269,8 @@ export function SavedPlacesView() {
   }, [tripSpots])
 
   const filteredTripSpots = useMemo(() => {
-    const base = subFilter ? tripSpots.filter((s) => (s.category ?? "").trim() === subFilter) : tripSpots
+    const byTrip = tripFilter === "all" ? tripSpots : tripSpots.filter((s) => s.tripId === tripFilter)
+    const base = subFilter ? byTrip.filter((s) => (s.category ?? "").trim() === subFilter) : byTrip
     const arr = [...base]
     if (sort === "name") return arr.sort((a, b) => a.name.localeCompare(b.name, "ko"))
     if (sort === "rating") return arr.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
@@ -277,7 +279,7 @@ export function SavedPlacesView() {
       const db = b.lat != null && b.lng != null ? distanceMeters(geo.position, { lat: b.lat, lng: b.lng }) : Infinity
       return da - db
     })
-  }, [tripSpots, subFilter, geo.position, sort])
+  }, [tripSpots, subFilter, geo.position, sort, tripFilter])
 
   const tripDistanceLabels = useMemo(() => {
     const map = new Map<string, string>()
@@ -315,16 +317,12 @@ export function SavedPlacesView() {
       .sort((a, b) => a.distanceMeters - b.distanceMeters)
   }, [filteredTripSpots, geo.position])
 
-  // 여행클립 찜을 여행별로 묶기 (여행 이름 헤더 + 그 여행 장소들)
-  const tripGroups = useMemo(() => {
-    const map = new Map<string, { title: string; items: NearbySpot[] }>()
-    for (const s of filteredTripSpots) {
-      const key = s.tripId ?? s.tripTitle ?? "기타"
-      if (!map.has(key)) map.set(key, { title: s.tripTitle ?? "여행", items: [] })
-      map.get(key)!.items.push(s)
-    }
-    return [...map.values()]
-  }, [filteredTripSpots])
+  // 여행별 선택 옵션 (여행클립 찜 필터용)
+  const tripOptions = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const s of tripSpots) if (s.tripId) map.set(s.tripId, s.tripTitle ?? "여행")
+    return [...map.entries()].map(([id, title]) => ({ id, title }))
+  }, [tripSpots])
 
   const activeChips = subTab === "wish" ? subChips : tripChips
   const activeMapSpots = subTab === "wish" ? mapSpots : tripMapSpots
@@ -613,9 +611,10 @@ export function SavedPlacesView() {
             {spot.category || "여행 장소"}
             {spot.address ? ` · ${spot.address}` : ""}
           </p>
-          {spot.authorNickname ? (
-            <p className="truncate text-[11px] text-slate-400">{spot.authorNickname}님이 담음</p>
-          ) : null}
+          <p className="truncate text-[11px] text-slate-400">
+            {spot.tripTitle || "여행"}
+            {spot.authorNickname ? ` · ${spot.authorNickname}` : ""}
+          </p>
           {tripDistanceLabels.has(spot.id) ? (
             <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold text-amber-700">
               <MapPin className="size-3" />
@@ -783,6 +782,7 @@ export function SavedPlacesView() {
                     onClick={() => {
                       setSubTab(it.k)
                       setSubFilter(null)
+                      setTripFilter("all")
                     }}
                     className={cn(
                       "flex-1 rounded-full py-2 text-sm font-bold transition-colors",
@@ -799,6 +799,9 @@ export function SavedPlacesView() {
               <p className="truncate text-xs font-bold text-slate-400">
                 {(subTab === "wish" ? "나의 찜 " : "여행클립 찜 ") +
                   (subTab === "wish" ? filteredPlaces.length : filteredTripSpots.length)}
+                {subTab === "trip" && tripFilter !== "all"
+                  ? ` · ${tripOptions.find((t) => t.id === tripFilter)?.title ?? ""}`
+                  : ""}
                 {subFilter ? ` · ${subFilter}` : ""} · {SORT_LABELS[sort]}
               </p>
               <button
@@ -806,7 +809,7 @@ export function SavedPlacesView() {
                 onClick={() => setFilterOpen(true)}
                 className={cn(
                   "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",
-                  subFilter || sort !== "distance"
+                  subFilter || sort !== "distance" || (subTab === "trip" && tripFilter !== "all")
                     ? "border-amber-400 bg-amber-50 text-amber-700"
                     : "border-slate-200 text-slate-500 hover:bg-slate-50"
                 )}
@@ -832,24 +835,9 @@ export function SavedPlacesView() {
                   여행에 담은 장소가 없어요. 여행에서 가고 싶은 곳을 담으면 멤버들과 함께 여기에 모여요.
                 </div>
               ) : (
-                <div className="flex flex-col gap-5">
-                  {tripGroups.map((g) => (
-                    <div key={g.title}>
-                      {/* 여행 이름 헤더 */}
-                      <div className="mb-2 flex items-center gap-2">
-                        <Plane className="size-3.5 text-amber-500" />
-                        <span className="text-sm font-bold text-slate-900">{g.title}</span>
-                        <span className="rounded-full bg-slate-100 px-1.5 text-[10px] font-bold tabular-nums text-slate-500">
-                          {g.items.length}
-                        </span>
-                        <span className="h-px flex-1 bg-slate-100" />
-                      </div>
-                      <ul className="flex flex-col gap-2.5 md:grid md:grid-cols-2 xl:grid-cols-3">
-                        {g.items.map((spot) => renderTripSpotCard(spot))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
+                <ul className="flex flex-col gap-2.5 md:grid md:grid-cols-2 xl:grid-cols-3">
+                  {filteredTripSpots.map((spot) => renderTripSpotCard(spot))}
+                </ul>
               )}
             </div>
           </div>
@@ -906,6 +894,30 @@ export function SavedPlacesView() {
           <DialogHeader className="mb-1 text-left">
             <DialogTitle className="text-base font-bold text-slate-900">필터 · 정렬</DialogTitle>
           </DialogHeader>
+          {subTab === "trip" && tripOptions.length > 0 ? (
+            <>
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-slate-500">
+                <Plane className="size-3.5 text-amber-500" /> 여행
+              </p>
+              <div className="mb-5 flex flex-wrap gap-2">
+                {[{ id: "all", title: "전체" }, ...tripOptions].map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTripFilter(t.id)}
+                    className={cn(
+                      "rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
+                      tripFilter === t.id
+                        ? "border-amber-400 bg-amber-400 text-slate-950 shadow-sm"
+                        : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/60"
+                    )}
+                  >
+                    {t.title}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
           <p className="mb-2 text-xs font-bold text-slate-500">카테고리</p>
           <div className="mb-5 flex flex-wrap gap-2">{filterChipsNode}</div>
           <p className="mb-2 text-xs font-bold text-slate-500">정렬</p>
