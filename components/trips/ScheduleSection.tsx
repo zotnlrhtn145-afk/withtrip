@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { DirectionsMenu } from "@/components/directions-menu"
 import { TimeSelect24 } from "@/components/ui/time-select-24"
+import { AddSectionButton } from "@/components/trips/AddSectionButton"
 import { searchGooglePlaces, type PlaceSearchResult } from "@/lib/places-search"
 import {
   Dialog,
@@ -1075,15 +1076,9 @@ export function ScheduleSection({
           <h2 className="text-lg font-bold tracking-tight text-slate-900">여행 일정</h2>
           <p className="text-sm text-slate-500">{subtitleParts.join(" · ")}</p>
         </div>
-        <button
-          type="button"
-          aria-label="일정 추가"
-          onClick={openAdd}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-400 text-zinc-900 shadow-sm transition-all hover:bg-amber-500"
-        >
-          <Plus className="size-4" />
-        </button>
       </div>
+
+      <AddSectionButton label="일정 추가" onClick={openAdd} />
 
       <div
         role="tablist"
@@ -1158,16 +1153,6 @@ export function ScheduleSection({
           ))}
         </ol>
       )}
-
-      <Button
-        type="button"
-        variant="outline"
-        onClick={openAdd}
-        className="h-11 w-full rounded-full border-dashed border-amber-200 bg-amber-50/40 text-xs font-semibold text-amber-700 hover:border-amber-400 hover:bg-amber-50 hover:text-amber-800"
-      >
-        <Plus data-icon="inline-start" />
-        사용자 정의 일정 추가
-      </Button>
 
       <ScheduleRegisterModal
         open={modalOpen}

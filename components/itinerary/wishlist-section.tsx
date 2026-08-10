@@ -1,13 +1,13 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Heart, Landmark, Loader2, Martini, Plus, BedDouble, Utensils } from "lucide-react"
+import { Heart, Landmark, Loader2, Martini, BedDouble, Utensils } from "lucide-react"
 
 import { AddSavedPlaceModal } from "@/components/itinerary/AddSavedPlaceModal"
 import { AttractionSuggestions } from "@/components/itinerary/AttractionSuggestions"
 import { SavedPlaceCard } from "@/components/itinerary/SavedPlaceCard"
-import { Button } from "@/components/ui/button"
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { AddSectionButton } from "@/components/trips/AddSectionButton"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getCurrentUserId } from "@/lib/auth-session"
 import {
   deleteSavedPlace,
@@ -145,18 +145,6 @@ export function WishlistSection({
     }
   }
 
-  const addButton = (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => setAddOpen(true)}
-      className="rounded-full border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-    >
-      <Plus data-icon="inline-start" />
-      장소 추가
-    </Button>
-  )
-
   return (
     <Card className="rounded-2xl border border-slate-100 bg-white shadow-sm ring-0 transition-all hover:shadow-md">
       <CardHeader>
@@ -169,10 +157,11 @@ export function WishlistSection({
         <CardDescription className="text-pretty text-slate-500">
           멤버들이 저장한 레스토랑, 라운지 & 바, 숙소, 관광지
         </CardDescription>
-        <CardAction>{addButton}</CardAction>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-5">
+        <AddSectionButton label="장소 추가" onClick={() => setAddOpen(true)} />
+
         <AttractionSuggestions
           tripId={trip.id}
           city={tripCity}

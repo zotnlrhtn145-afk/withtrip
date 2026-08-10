@@ -13,16 +13,15 @@ import {
   NotebookPen,
   Pencil,
   Phone,
-  Plus,
   Trash2,
   UserRound,
 } from "lucide-react"
 
 import { AccommodationRegisterModal } from "@/components/trips/AccommodationRegisterModal"
+import { AddSectionButton } from "@/components/trips/AddSectionButton"
 import { Button } from "@/components/ui/button"
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -366,22 +365,11 @@ export function AccommodationSection({
           Stay
         </CardDescription>
         <CardTitle className="text-lg font-bold tracking-tight text-slate-900">숙소 정보</CardTitle>
-        {items.length > 0 ? (
-          <CardAction>
-            <Button
-              type="button"
-              size="sm"
-              onClick={openCreate}
-              className="rounded-full bg-amber-400 px-4 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 hover:bg-amber-500"
-            >
-              <Plus data-icon="inline-start" />
-              숙소 추가
-            </Button>
-          </CardAction>
-        ) : null}
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="flex flex-col gap-4">
+        <AddSectionButton label="숙소 추가" onClick={openCreate} />
+
         {loading ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 px-6 py-10 text-center">
             <Loader2 className="size-6 animate-spin text-amber-500" />
@@ -403,15 +391,6 @@ export function AccommodationSection({
                 />
               ))}
             </ul>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={openCreate}
-              className="w-full rounded-full border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              <Plus data-icon="inline-start" />
-              숙소 추가
-            </Button>
           </div>
         ) : (
           <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 p-8 text-center">
@@ -419,16 +398,9 @@ export function AccommodationSection({
               <BedDouble className="size-5" />
             </span>
             <p className="text-sm font-bold text-slate-900">아직 등록된 숙소 정보가 없어요</p>
-            <p className="mt-1 mb-5 max-w-xs text-xs leading-relaxed text-slate-500">
+            <p className="mt-1 max-w-xs text-xs leading-relaxed text-slate-500">
               체크인·체크아웃만 입력하면 멤버 모두가 함께 확인할 수 있어요.
             </p>
-            <button
-              type="button"
-              onClick={openCreate}
-              className="rounded-full bg-amber-400 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 transition-all hover:bg-amber-500 active:scale-95"
-            >
-              숙소 등록
-            </button>
           </div>
         )}
       </CardContent>

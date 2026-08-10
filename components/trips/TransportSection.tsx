@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { User } from "@supabase/supabase-js"
-import { Car, Crown, Loader2, Pencil, Plane, PlaneTakeoff, Plus, TrainFront, Trash2, UserRound } from "lucide-react"
+import { Car, Crown, Loader2, Pencil, Plane, PlaneTakeoff, TrainFront, Trash2, UserRound } from "lucide-react"
 
 import { TransportRegisterModal } from "@/components/trips/TransportRegisterModal"
+import { AddSectionButton } from "@/components/trips/AddSectionButton"
 import { Button } from "@/components/ui/button"
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -663,22 +663,11 @@ export function TransportSection({
         <CardTitle className="text-lg font-bold tracking-tight text-slate-900">
           이동수단
         </CardTitle>
-        {transports.length > 0 ? (
-          <CardAction>
-            <Button
-              type="button"
-              size="sm"
-              onClick={openCreateModal}
-              className="rounded-full bg-amber-400 px-4 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 hover:bg-amber-500"
-            >
-              <Plus data-icon="inline-start" />
-              이동수단 추가
-            </Button>
-          </CardAction>
-        ) : null}
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="flex flex-col gap-4">
+        <AddSectionButton label="이동수단 추가" onClick={openCreateModal} />
+
         {loading ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 px-6 py-10 text-center">
             <Loader2 className="size-6 animate-spin text-amber-500" />
@@ -746,16 +735,9 @@ export function TransportSection({
               <PlaneTakeoff className="size-5" />
             </span>
             <p className="text-sm font-bold text-slate-900">아직 등록된 이동수단이 없어요</p>
-            <p className="mt-1 mb-5 max-w-xs text-xs leading-relaxed text-slate-500">
+            <p className="mt-1 max-w-xs text-xs leading-relaxed text-slate-500">
               비행기·기차·자가용을 선택하고 가는 편·오는 편·경유를 구분해 등록하면 티켓 카드로 정리됩니다.
             </p>
-            <button
-              type="button"
-              onClick={openCreateModal}
-              className="rounded-full bg-amber-400 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-sm shadow-amber-400/20 transition-all hover:bg-amber-500 active:scale-95"
-            >
-              이동수단 등록
-            </button>
           </div>
         )}
       </CardContent>
