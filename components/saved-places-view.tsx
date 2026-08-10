@@ -3,9 +3,17 @@
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Heart, Info, Loader2, MapPin, Plus, Star, X } from "lucide-react"
+import { Bookmark, Heart, Info, Loader2, MapPin, Plus, Send, Star, X } from "lucide-react"
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { PlaceDetailSheet, type PlaceDetailInput } from "@/components/place-detail-sheet"
+import { RecommendPlaceDialog, type RecommendTarget } from "@/components/recommend-place-dialog"
+import {
+  dismissRecommendation,
+  fetchIncomingRecommendations,
+  saveRecommendation,
+  type IncomingRec,
+} from "@/lib/recommendations-api"
 import { useGeolocation } from "@/hooks/use-geolocation"
 import { LoginRedirectOverlay } from "@/components/login-redirect-overlay"
 import { AddSavedPlaceModal } from "@/components/itinerary/AddSavedPlaceModal"
@@ -54,6 +62,10 @@ export function SavedPlacesView() {
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null)
   const [detailPlace, setDetailPlace] = useState<PlaceDetailInput | null>(null)
   const [detailAssign, setDetailAssign] = useState<SavedPlace | null>(null) // 상세에서 "담기" 대상
+  const [tab, setTab] = useState<"mine" | "friends">("mine")
+  const [recs, setRecs] = useState<IncomingRec[]>([])
+  const [recTarget, setRecTarget] = useState<RecommendTarget | null>(null)
+  const [savingRecId, setSavingRecId] = useState<string | null>(null)
   const [recenterKey, setRecenterKey] = useState(0)
   const didAutoCenter = useRef(false)
   const followNextFix = useRef(false)
@@ -102,7 +114,23 @@ export function SavedPlacesView() {
   useEffect(() => {
     if (authPhase !== "authed" || !userId) return
     void loadPlaces(userId)
+    void fetchIncomingRecommendations().then(setRecs)
   }, [authPhase, userId])
+
+  const handleSaveRec = async (rec: IncomingRec) => {
+    setSavingRecId(rec.id)
+    const ok = await saveRecommendation(rec)
+    setSavingRecId(null)
+    if (ok) {
+      setRecs((prev) => prev.filter((r) => r.id !== rec.id))
+      if (userId) void loadPlaces(userId)
+    }
+  }
+
+  const handleDismissRec = async (rec: IncomingRec) => {
+    setRecs((prev) => prev.filter((r) => r.id !== rec.id))
+    void dismissRecommendation(rec.id)
+  }
 
   // 마커 아바타용 — 저장한 장소는 전부 내 소유라 프로필 사진 하나만 있으면 된다.
   useEffect(() => {
@@ -383,6 +411,34 @@ export function SavedPlacesView() {
           type="button"
           onClick={(event) => {
             event.stopPropagation()
+            setRecTarget({
+              label: place.placeName,
+              sourceId: place.id,
+              place: {
+                place_name: place.placeName,
+                category: place.category,
+                sub_category: place.subCategory,
+                local_name: place.localName,
+                address: place.address,
+                phone_number: place.phoneNumber,
+                image_url: place.imageUrl,
+                rating: place.rating,
+                review_count: place.reviewCount,
+                lat: place.lat,
+                lng: place.lng,
+              },
+            })
+          }}
+          aria-label={`${place.placeName} 친구에게 추천`}
+          className="flex items-center justify-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1.5 text-[11px] font-bold text-amber-700 transition-colors hover:bg-amber-50 active:scale-95"
+        >
+          <Send className="size-3" />
+          추천
+        </button>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
             void handleRemove(place.id)
           }}
           disabled={removingId === place.id}
@@ -408,17 +464,51 @@ export function SavedPlacesView() {
             저장한 장소
           </h2>
         </div>
-        <button
-          type="button"
-          onClick={() => setAddOpen(true)}
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-400 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 active:scale-95"
-        >
-          <Plus className="size-3.5" />
-          장소 추가
-        </button>
+        {tab === "mine" ? (
+          <button
+            type="button"
+            onClick={() => setAddOpen(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-400 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 active:scale-95"
+          >
+            <Plus className="size-3.5" />
+            장소 추가
+          </button>
+        ) : null}
       </div>
 
-      {loading ? (
+      {/* 탭: 내 저장 / 친구 추천 */}
+      <div className="flex border-b border-slate-100">
+        {(
+          [
+            { k: "mine", label: "내 저장" },
+            { k: "friends", label: recs.length > 0 ? `친구 추천 ${recs.length}` : "친구 추천" },
+          ] as const
+        ).map((it) => (
+          <button
+            key={it.k}
+            type="button"
+            onClick={() => setTab(it.k)}
+            className={cn(
+              "relative flex-1 py-3 text-sm font-bold transition-colors",
+              tab === it.k ? "text-slate-900" : "text-slate-400 hover:text-slate-600"
+            )}
+          >
+            {it.label}
+            {tab === it.k ? (
+              <span className="absolute -bottom-px left-1/2 h-0.5 w-10 -translate-x-1/2 rounded bg-slate-900" />
+            ) : null}
+          </button>
+        ))}
+      </div>
+
+      {tab === "friends" ? (
+        <FriendRecsList
+          recs={recs}
+          savingId={savingRecId}
+          onSave={handleSaveRec}
+          onDismiss={handleDismissRec}
+        />
+      ) : loading ? (
         <div className="flex min-h-[40vh] items-center justify-center">
           <Loader2 className="size-7 animate-spin text-amber-500" />
         </div>
@@ -533,6 +623,100 @@ export function SavedPlacesView() {
             : undefined
         }
       />
+
+      <RecommendPlaceDialog target={recTarget} onClose={() => setRecTarget(null)} />
     </div>
+  )
+}
+
+/** 친구가 보낸 추천 목록 — 보낸 사람 프로필 + "내 저장에 담기" */
+function FriendRecsList({
+  recs,
+  savingId,
+  onSave,
+  onDismiss,
+}: {
+  recs: IncomingRec[]
+  savingId: string | null
+  onSave: (rec: IncomingRec) => void
+  onDismiss: (rec: IncomingRec) => void
+}) {
+  if (recs.length === 0) {
+    return (
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-amber-300/70 bg-amber-50/20 p-8 text-center">
+        <span className="flex size-12 items-center justify-center rounded-full bg-amber-400 text-slate-950">
+          <Send className="size-5" />
+        </span>
+        <h3 className="text-lg font-bold text-slate-900">받은 추천이 없어요</h3>
+        <p className="max-w-xs text-sm text-slate-500">
+          친구가 맛집을 추천하면 여기에 모여요. 저장한 장소의 “추천” 버튼으로 친구에게 보낼 수 있어요.
+        </p>
+      </div>
+    )
+  }
+  return (
+    <ul className="flex flex-col gap-3 md:grid md:grid-cols-2">
+      {recs.map((rec) => (
+        <li key={rec.id} className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
+          {/* 보낸 사람 */}
+          <div className="flex items-center gap-2">
+            <Avatar className="size-7 shrink-0">
+              {rec.sender.avatarUrl ? <AvatarImage src={rec.sender.avatarUrl} alt="" /> : null}
+              <AvatarFallback className="text-[10px] font-semibold">
+                {rec.sender.nickname.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <p className="text-xs text-slate-500">
+              <span className="font-bold text-slate-900">{rec.sender.nickname}</span>님의 추천
+            </p>
+          </div>
+          {/* 장소 */}
+          <div className="flex items-center gap-3">
+            <div className="relative size-16 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={rec.imageUrl ?? ""} alt="" className="size-full object-cover" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold text-slate-900">{rec.placeName}</p>
+              <p className="truncate text-xs text-slate-400">
+                {rec.subCategory || rec.category || "추천 장소"}
+                {rec.address ? ` · ${rec.address}` : ""}
+              </p>
+              {rec.rating ? (
+                <span className="mt-0.5 inline-flex items-center gap-0.5 text-xs font-medium tabular-nums text-slate-400">
+                  <Star className="size-3 fill-amber-400 text-amber-400" />
+                  {rec.rating}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          {/* 액션 */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={savingId === rec.id}
+              onClick={() => onSave(rec)}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-sm font-bold text-slate-950 transition-colors hover:bg-amber-500 disabled:opacity-60"
+            >
+              {savingId === rec.id ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <>
+                  <Bookmark className="size-4" />
+                  내 저장에 담기
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => onDismiss(rec)}
+              className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50"
+            >
+              숨기기
+            </button>
+          </div>
+        </li>
+      ))}
+    </ul>
   )
 }

@@ -9,6 +9,7 @@ export type NotificationType =
   | "clip_comment"
   | "friend_accepted"
   | "clip_post"
+  | "place_recommendation"
 
 export type NotificationRowStatus =
   | "pending"
