@@ -767,8 +767,10 @@ function TimelineItem({
       <div className="media-card min-w-0 flex-1 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:shadow-md">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-base leading-snug font-bold text-pretty text-slate-900">
+            {/* 좁은 모바일 폭에서 제목이 뱃지와 폭 경쟁하다 글자 단위로 줄바꿈되던 문제 →
+                flex-wrap 으로 좁으면 뱃지를 아래 줄로, break-keep 으로 한글은 단어 단위로만 줄바꿈 */}
+            <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+              <p className="min-w-0 text-base leading-snug font-bold break-keep text-slate-900">
                 {item.placeName}
               </p>
               <span className="flex shrink-0 items-center gap-1">
@@ -801,7 +803,7 @@ function TimelineItem({
                 {item.address ? (
                   <span className="inline-flex min-w-0 items-start gap-1">
                     <MapPin className="mt-0.5 size-3 shrink-0" />
-                    <span className="text-pretty">{item.address}</span>
+                    <span className="break-keep">{item.address}</span>
                   </span>
                 ) : null}
                 {item.address && item.phoneNumber ? (
