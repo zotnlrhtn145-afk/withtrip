@@ -246,6 +246,18 @@
     animation: withtrip-fade-in 0.45s ease-out both;
   }
 
+  /** 화면(탭/세부) 전환 — 앱처럼 짧은 크로스페이드. key 변경 시 재생.
+      transform을 쓰지 않는다(opacity만) → 내부의 fixed(하단 탭)·sticky(저장 지도)를
+      절대 깨뜨리지 않는다. transform 기반 슬라이드는 fixed 자손을 어긋나게 하므로 피함. */
+  .animate-view-in {
+    animation: withtrip-view-in 0.28s ease-out backwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-view-in {
+      animation: none;
+    }
+  }
+
   /** Hide scrollbars while keeping scroll (Instagram-style chip bars). */
   .no-scrollbar {
     -ms-overflow-style: none;
@@ -265,5 +277,14 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes withtrip-view-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }

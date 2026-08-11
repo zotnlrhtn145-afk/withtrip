@@ -420,10 +420,11 @@ function WithtripShell() {
       <div className="min-h-screen overflow-x-hidden bg-background">
         <div className="relative mx-auto flex w-full max-w-md flex-col overflow-x-hidden pb-28">
           <main
+            key={currentView}
             className={
-              currentView === "friends"
+              (currentView === "friends"
                 ? "flex min-h-0 flex-1 flex-col p-2 sm:p-3"
-                : "flex flex-col gap-4 p-4"
+                : "flex flex-col gap-4 p-4") + " animate-view-in"
             }
           >
             {mainContent}
@@ -463,10 +464,11 @@ function WithtripShell() {
         </header>
 
         <main
+          key={currentView}
           className={
-            currentView === "friends"
+            (currentView === "friends"
               ? "flex flex-1 flex-col p-3 sm:p-4"
-              : "flex flex-1 flex-col gap-5 p-6"
+              : "flex flex-1 flex-col gap-5 p-6") + " animate-view-in"
           }
         >
           {mainContent}
