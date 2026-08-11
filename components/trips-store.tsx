@@ -16,6 +16,7 @@ import {
   fetchTripsFromSupabase,
   insertTripToSupabase,
   toIsoDate,
+  updateTripInSupabase,
   type CreateTripInput,
 } from "@/lib/trips-api"
 import {
@@ -369,6 +370,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       Math.round((start.getTime() - startOfDay(new Date()).getTime()) / DAY_MS)
     )
 
+    // 낙관적 반영 — 화면은 즉시 갱신하고, 실패 시 서버 값으로 되돌린다.
     setTrips((current) =>
       current.map((trip) =>
         trip.id === tripId
@@ -387,7 +389,19 @@ export function TripsProvider({ children }: { children: ReactNode }) {
           : trip
       )
     )
-  }, [])
+
+    // DB 영속화 — 이게 없어서 새로고침 시 이름/기간이 원복되던 버그를 해결.
+    void updateTripInSupabase(tripId, {
+      title: draft.title,
+      country: draft.country,
+      region: draft.region,
+      startDate: toIsoDate(start),
+      endDate: toIsoDate(end),
+    }).catch((err) => {
+      console.error("[updateTrip] persist failed:", err)
+      void refreshTrips({ silent: true })
+    })
+  }, [refreshTrips])
 
   const markAllRead = useCallback(() => {
     setNotifications((current) => current.map((item) => ({ ...item, read: true })))

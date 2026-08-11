@@ -344,6 +344,42 @@ async function upgradeTripCoverWithAI(
   }
 }
 
+/**
+ * 여행 정보(제목·목적지·기간) 수정 → Supabase `trips` 갱신.
+ * 기존에는 updateTrip 이 로컬 상태만 바꿔 새로고침 시 원복되던 문제를 해결한다.
+ * 소유자만 수정 가능(RLS) — 커버/이월 update 와 동일 정책.
+ */
+export async function updateTripInSupabase(
+  tripId: string,
+  input: {
+    title: string
+    country?: string | null
+    region?: string | null
+    startDate: string
+    endDate: string
+  }
+): Promise<void> {
+  const id = String(tripId ?? "").trim()
+  if (!id) throw new Error("수정할 여행이 없어요.")
+  const title = String(input.title ?? "").trim()
+  if (!title) throw new Error("여행 제목은 필수입니다.")
+
+  const payload: Record<string, unknown> = {
+    title,
+    start_date: input.startDate,
+    end_date: input.endDate,
+  }
+  // location 은 "region · country" 형태로 저장(mapTripRowToTrip 의 파싱 규칙과 일치).
+  const location = buildTripLocation({ city: input.region, country: input.country })
+  if (location) payload.location = location
+
+  const { error } = await supabase.from("trips").update(payload).eq("id", id)
+  if (error) {
+    console.error("[updateTripInSupabase] error:", error.message)
+    throw error
+  }
+}
+
 export async function deleteTripFromSupabase(tripId: string): Promise<void> {
   const id = String(tripId ?? "").trim()
   if (!id) throw new Error("삭제할 여행이 없어요.")

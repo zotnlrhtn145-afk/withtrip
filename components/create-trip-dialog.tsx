@@ -260,7 +260,6 @@ export function CreateTripDialog({
                 <PopoverContent align="start" className="w-auto p-0">
                   <Calendar
                     mode="range"
-                    min={1}
                     numberOfMonths={1}
                     selected={range}
                     disabled={{ before: new Date() }}
