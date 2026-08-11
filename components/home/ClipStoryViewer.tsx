@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Loader2, MoreHorizontal, Trash2, X } from "lucide-react"
+import { Download, Loader2, MoreHorizontal, Trash2, X } from "lucide-react"
 
 import { deleteTripClip, type TripClip } from "@/lib/trip-clips-api"
 
@@ -32,13 +32,14 @@ export function ClipStoryViewer({
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [saving, setSaving] = useState(false)
   const rafRef = useRef<number | null>(null)
   const startRef = useRef(0)
 
   const story = stories[si]
   const clip = story?.clips[ci]
   const isOwner = Boolean(currentUserId && clip?.userId && currentUserId === clip.userId)
-  const paused = confirmOpen || menuOpen || deleting
+  const paused = confirmOpen || menuOpen || deleting || saving
 
   const goNext = useCallback(() => {
     setMenuOpen(false)
@@ -104,6 +105,36 @@ export function ClipStoryViewer({
     return () => window.removeEventListener("keydown", onKey)
   }, [goNext, goPrev, onClose])
 
+  // 폰 사진첩에 저장 — 모바일은 네이티브 공유 시트("사진 저장"→앨범), 데스크톱은 다운로드.
+  const handleSave = async () => {
+    if (!clip || saving) return
+    setSaving(true)
+    try {
+      const res = await fetch(clip.mediaUrl)
+      const blob = await res.blob()
+      const ext = clip.mediaType === "video" ? "mp4" : blob.type.split("/")[1] || "jpg"
+      const file = new File([blob], `withtrip-${clip.id}.${ext}`, { type: blob.type })
+      const nav = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean }
+      if (nav.canShare?.({ files: [file] })) {
+        await nav.share({ files: [file] })
+      } else {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = file.name
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+      }
+    } catch {
+      // 공유/다운로드가 막히면 원본을 새 탭으로 열어 길게 눌러 저장할 수 있게 한다.
+      window.open(clip.mediaUrl, "_blank", "noopener")
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleDelete = async () => {
     if (!clip || deleting) return
     setDeleting(true)
@@ -158,6 +189,15 @@ export function ClipStoryViewer({
             {story.tripTitle || "여행 클립"}
           </span>
           <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              aria-label="사진첩에 저장"
+              disabled={saving}
+              className="rounded-full bg-white/10 p-1.5 text-white backdrop-blur-md hover:bg-white/20 disabled:opacity-60"
+              onClick={() => void handleSave()}
+            >
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+            </button>
             {isOwner ? (
               <div className="relative">
                 <button
