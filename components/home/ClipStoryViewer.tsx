@@ -122,13 +122,24 @@ export function ClipStoryViewer({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/95 p-2"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black p-0 sm:bg-black/95 sm:p-2"
       onClick={onClose}
     >
       <div
-        className="relative aspect-[9/16] max-h-[94svh] w-full max-w-sm overflow-hidden rounded-2xl bg-black shadow-2xl"
+        className="relative h-full w-full overflow-hidden bg-black sm:aspect-[9/16] sm:h-auto sm:max-h-[94svh] sm:w-full sm:max-w-sm sm:rounded-2xl sm:shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
+        {/* 인스타 스토리 느낌 — 뒤에 같은 이미지를 흐리게 깔아 화면을 꽉 채운다 */}
+        {clip.mediaType === "image" ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            aria-hidden="true"
+            src={clip.mediaUrl}
+            alt=""
+            className="absolute inset-0 z-0 size-full scale-110 object-cover opacity-40 blur-2xl"
+          />
+        ) : null}
+
         {/* 진행 바 */}
         <div className="absolute inset-x-0 top-0 z-30 flex gap-1 p-2.5">
           {story.clips.map((_, i) => (
@@ -190,7 +201,7 @@ export function ClipStoryViewer({
           <video
             key={clip.id}
             src={clip.mediaUrl}
-            className="size-full object-contain"
+            className="relative z-10 size-full object-contain"
             autoPlay
             playsInline
             onTimeUpdate={(event) => {
@@ -201,7 +212,7 @@ export function ClipStoryViewer({
           />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
-          <img key={clip.id} src={clip.mediaUrl} alt={clip.caption || "여행 클립"} className="size-full object-contain" />
+          <img key={clip.id} src={clip.mediaUrl} alt={clip.caption || "여행 클립"} className="relative z-10 size-full object-contain" />
         )}
 
         {/* 캡션 */}
