@@ -572,7 +572,8 @@ export function SavedPlacesView() {
               </span>
             ) : null}
           </div>
-          <div className="flex w-[74px] shrink-0 flex-col gap-1.5">
+          {/* 아이콘 전용 2×2 — 상세 · 여행담기 / 추천 · 길찾기 */}
+          <div className="grid shrink-0 grid-cols-2 gap-1.5">
             <button
               type="button"
               onClick={(event) => {
@@ -580,10 +581,10 @@ export function SavedPlacesView() {
                 openDetail(place)
               }}
               aria-label="상세 보기"
-              className="flex h-7 w-full items-center justify-center gap-1 rounded-full bg-amber-400 text-[11px] font-bold text-slate-950 transition-colors hover:bg-amber-500 active:scale-95"
+              title="상세"
+              className="flex size-9 items-center justify-center rounded-full bg-amber-400 text-slate-950 transition-colors hover:bg-amber-500 active:scale-95"
             >
-              <Info className="size-3.5" />
-              상세
+              <Info className="size-4" />
             </button>
             <button
               type="button"
@@ -592,10 +593,10 @@ export function SavedPlacesView() {
                 setSendTarget(place)
               }}
               aria-label={`${place.placeName} 여행클립 찜에 담기`}
-              className="flex h-7 w-full items-center justify-center gap-1 rounded-full border border-amber-300 bg-white text-[11px] font-bold text-amber-700 transition-colors hover:bg-amber-50 active:scale-95"
+              title="여행담기"
+              className="flex size-9 items-center justify-center rounded-full border border-amber-300 bg-white text-amber-700 transition-colors hover:bg-amber-50 active:scale-95"
             >
-              <Plane className="size-3.5" />
-              여행담기
+              <Plane className="size-4" />
             </button>
             <button
               type="button"
@@ -620,19 +621,19 @@ export function SavedPlacesView() {
                 })
               }}
               aria-label={`${place.placeName} 친구에게 추천`}
-              className="flex h-7 w-full items-center justify-center gap-1 rounded-full border border-slate-200 bg-white text-[11px] font-bold text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
+              title="추천"
+              className="flex size-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
             >
-              <Send className="size-3.5" />
-              추천
+              <Send className="size-4" />
             </button>
             <div onClick={(event) => event.stopPropagation()}>
               <DirectionsMenu
                 destination={{ name: place.placeName, lat: place.lat, lng: place.lng }}
                 fallbackQuery={place.address || place.placeName}
-                variant="pill"
+                variant="icon"
                 label="길찾기"
                 icon={MapIcon}
-                className="h-7 w-full justify-center gap-1 border-slate-200 text-[11px] text-slate-700"
+                className="text-slate-600"
               />
             </div>
           </div>
@@ -688,7 +689,8 @@ export function SavedPlacesView() {
             </span>
           ) : null}
         </div>
-        <div className="flex w-[74px] shrink-0 flex-col gap-1.5">
+        {/* 아이콘 전용 — 상세 · 길찾기 */}
+        <div className="flex shrink-0 items-center gap-1.5">
           <button
             type="button"
             onClick={(event) => {
@@ -705,19 +707,20 @@ export function SavedPlacesView() {
                 reviewCount: null,
               })
             }}
-            className="flex h-7 w-full items-center justify-center gap-1 rounded-full bg-amber-400 text-[11px] font-bold text-slate-950 transition-colors hover:bg-amber-500 active:scale-95"
+            aria-label="상세 보기"
+            title="상세"
+            className="flex size-9 items-center justify-center rounded-full bg-amber-400 text-slate-950 transition-colors hover:bg-amber-500 active:scale-95"
           >
-            <Info className="size-3.5" />
-            상세
+            <Info className="size-4" />
           </button>
           <div onClick={(event) => event.stopPropagation()}>
             <DirectionsMenu
               destination={{ name: spot.name, lat: spot.lat, lng: spot.lng }}
               fallbackQuery={spot.address || spot.name}
-              variant="pill"
+              variant="icon"
               label="길찾기"
               icon={MapIcon}
-              className="h-7 w-full justify-center gap-1 border-slate-200 text-[11px] text-slate-700"
+              className="text-slate-600"
             />
           </div>
         </div>
