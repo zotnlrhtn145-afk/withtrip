@@ -43,13 +43,17 @@ export type ResolvedPlace = {
   /** 캡션에서 뽑은 짧은 메모(메뉴·영업시간 등) */
   note: string
   /**
-   * 확정 신뢰도. high = 캡션 주소 좌표 400m 이내에서 찾음(사실상 확실),
-   * medium = 1.5km 이내 또는 주소 없이 이름으로 찾음, low = 주소는 있었는데
-   * 근처에서 못 찾아 이름으로 대체함(**다른 지점일 수 있음**), none = 못 찾음.
+   * 확정 신뢰도.
+   * - high    : 캡션 주소 400m 이내 + 상호명 일치 (사실상 확실)
+   * - medium  : 1.2km 이내 + 이름 일치, 또는 주소 없이 이름으로 찾음
+   * - caption : 구글에 그 가게가 없어 **캡션 내용 그대로** 사용 (주소·좌표는 지오코딩 결과)
+   * - low     : 이름이 안 맞는 후보뿐 (다른 가게일 수 있음 — 사용자 확인 필요)
+   * - none    : 아무것도 못 찾음
    */
-  confidence: "high" | "medium" | "low" | "none"
+  confidence: "high" | "medium" | "low" | "caption" | "none"
   /** 구글에서 확정된 장소 — 못 찾으면 null */
   place: {
+    /** 캡션 폴백(confidence="caption")이면 빈 문자열 */
     googlePlaceId: string
     placeName: string
     address: string
@@ -196,6 +200,56 @@ type GoogleTextSearchItem = {
 
 type LatLng = { lat: number; lng: number }
 
+/** 지점명 — 이름 비교에서 제외한다("스탠다드브레드 익선" vs "스탠다드브레드 도산"은 같은 브랜드). */
+const BRANCH_WORDS = [
+  "익선", "성수", "도산", "연남", "강남", "여의도", "영등포", "동대문", "홍대",
+  "한남", "청담", "잠실", "판교", "本店", "본점",
+]
+
+function normalizeName(input: string): string {
+  let s = String(input ?? "").toLowerCase()
+  s = s.replace(/\(.*?\)/g, " ")
+  s = s.replace(/\b(by|x|and|the)\b/g, " ")
+  s = s.replace(/(본점|지점|점|매장|카페|cafe)\s*$/g, " ")
+  return s.replace(/[^0-9a-z가-힣]/g, "")
+}
+
+function nameCore(input: string): string {
+  let s = normalizeName(input)
+  for (const b of BRANCH_WORDS) s = s.replace(new RegExp(b, "g"), "")
+  return s
+}
+
+function bigrams(s: string): Set<string> {
+  if (s.length < 2) return new Set([s])
+  const out = new Set<string>()
+  for (let i = 0; i < s.length - 1; i += 1) out.add(s.slice(i, i + 2))
+  return out
+}
+
+/**
+ * 상호명 유사도 0~1.
+ *
+ * ⚠️ 구글은 **영역 안에서 억지로라도 뭔가를 돌려준다.** 실측: 익선동에서 "와글와글베이크샵"을
+ *    찾으라 했더니 400m 안의 전혀 다른 가게("익선베이글 by 뉴욕베이글")를 반환했다.
+ *    거리만 보고 신뢰하면 **엉뚱한 가게를 확신에 차서 저장**하게 되므로 이름도 반드시 본다.
+ */
+function nameSimilarity(a: string, b: string): number {
+  const ca = nameCore(a)
+  const cb = nameCore(b)
+  if (!ca || !cb) return 0
+  if (ca.includes(cb) || cb.includes(ca)) return 1
+  const A = bigrams(ca)
+  const B = bigrams(cb)
+  let inter = 0
+  for (const g of A) if (B.has(g)) inter += 1
+  const union = A.size + B.size - inter
+  return union > 0 ? inter / union : 0
+}
+
+/** 이 값 미만이면 다른 가게로 본다. 실측 분포: 정답 1.00 / 오답 0.00~0.10 */
+const NAME_MATCH_THRESHOLD = 0.34
+
 /** 미터 단위 대략 거리. */
 function distanceMeters(a: LatLng, b: LatLng): number {
   const dLat = (a.lat - b.lat) * 111_000
@@ -284,35 +338,42 @@ async function findPlace(
   captionAddress: string,
   fallbackHint: string,
   apiKey: string
-): Promise<{ hit: GoogleTextSearchItem; confidence: "high" | "medium" | "low" } | null> {
+): Promise<{
+  hit: GoogleTextSearchItem | null
+  confidence: ResolvedPlace["confidence"]
+  anchor: LatLng | null
+} | null> {
   const anchor = captionAddress ? await geocode(captionAddress, apiKey) : null
 
   if (anchor) {
-    // 주소 근처로 제한해서 검색 → 그 동네의 그 가게를 집는다.
-    const nearby = await textSearch(name, apiKey, anchor, 700)
-    for (const r of nearby) {
-      const loc = r.geometry?.location
-      if (typeof loc?.lat !== "number" || typeof loc?.lng !== "number") continue
-      if (distanceMeters(anchor, { lat: loc.lat, lng: loc.lng }) <= 400) {
-        return { hit: r, confidence: "high" }
+    // 캡션 주소 근처로 검색하고, **거리와 이름을 둘 다** 확인한다.
+    //  - 거리만 보면: 같은 동네 다른 가게를 집는다 (익선베이글 사례)
+    //  - 이름만 보면: 다른 동네 같은 브랜드를 집는다 (스탠다드브레드 도산 사례)
+    for (const [radius, maxDist] of [
+      [700, 400],
+      [2000, 1200],
+    ] as const) {
+      const results = await textSearch(name, apiKey, anchor, radius)
+      for (const r of results) {
+        const loc = r.geometry?.location
+        if (typeof loc?.lat !== "number" || typeof loc?.lng !== "number") continue
+        if (distanceMeters(anchor, { lat: loc.lat, lng: loc.lng }) > maxDist) continue
+        if (nameSimilarity(name, r.name ?? "") < NAME_MATCH_THRESHOLD) continue
+        return { hit: r, confidence: maxDist === 400 ? "high" : "medium", anchor }
       }
     }
-    // 근처에 없으면 반경을 넓혀 한 번 더
-    const wider = await textSearch(name, apiKey, anchor, 2000)
-    for (const r of wider) {
-      const loc = r.geometry?.location
-      if (typeof loc?.lat !== "number" || typeof loc?.lng !== "number") continue
-      if (distanceMeters(anchor, { lat: loc.lat, lng: loc.lng }) <= 1500) {
-        return { hit: r, confidence: "medium" }
-      }
-    }
+
+    // 주소는 확실한데 구글에 그 가게가 없다 → **엉뚱한 곳을 주느니 캡션 그대로 쓴다.**
+    return { hit: null, confidence: "caption", anchor }
   }
 
-  // 주소가 없거나 근처에서 못 찾음 → 이름(+힌트)으로 일반 검색
+  // 주소가 아예 없는 경우 → 이름(+위치 태그)으로 일반 검색. 이름이 맞을 때만 채택.
   const query = [name, fallbackHint].filter(Boolean).join(" ")
   const plain = await textSearch(query, apiKey)
-  if (!plain.length) return null
-  return { hit: plain[0], confidence: anchor ? "low" : "medium" }
+  const matched = plain.find((r) => nameSimilarity(name, r.name ?? "") >= NAME_MATCH_THRESHOLD)
+  if (matched) return { hit: matched, confidence: "medium", anchor: null }
+  if (plain.length) return { hit: plain[0], confidence: "low", anchor: null }
+  return null
 }
 
 export async function POST(request: Request) {
@@ -409,6 +470,29 @@ export async function POST(request: Request) {
       const lat = hit?.geometry?.location?.lat
       const lng = hit?.geometry?.location?.lng
 
+      // 구글에 그 가게가 없다 → 엉뚱한 곳을 주는 대신 캡션 내용 그대로 담는다.
+      // 주소는 캡션에 적혀 있고 좌표도 지오코딩으로 얻었으므로 지도에 정확히 찍힌다.
+      if (found?.confidence === "caption" && found.anchor) {
+        return {
+          sourceName: item.name,
+          sourceAddress: item.address ?? "",
+          note: item.note ?? "",
+          confidence: "caption",
+          place: {
+            googlePlaceId: "",
+            placeName: item.name,
+            address: item.address ?? "",
+            rating: null,
+            reviewCount: null,
+            lat: found.anchor.lat,
+            lng: found.anchor.lng,
+            kind: "restaurant",
+            subCategory: "",
+            imageUrl: resolveCoverImageUrl({ imageUrl: "", kind: "restaurant" }),
+          },
+        }
+      }
+
       if (!hit?.place_id || typeof lat !== "number" || typeof lng !== "number") {
         return {
           sourceName: item.name,
@@ -451,7 +535,7 @@ export async function POST(request: Request) {
 
   // 새로 확정된 장소는 캐시에 적재 (다음 조회부터 구글 호출 0회)
   const toCache = grounded
-    .filter((g) => g.place)
+    .filter((g) => g.place && g.place.googlePlaceId)
     .map((g) => ({
       googlePlaceId: g.place!.googlePlaceId,
       name: g.place!.placeName,
