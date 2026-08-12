@@ -4,9 +4,15 @@ export const runtime = "nodejs"
 
 type CandidateImage = { index: number; mimeType: string; data: string }
 
-async function fetchAsBase64(url: string): Promise<{ mimeType: string; data: string } | null> {
+async function fetchAsBase64(
+  url: string,
+  origin: string
+): Promise<{ mimeType: string; data: string } | null> {
   try {
-    const res = await fetch(url)
+    // 사진 URL은 이제 우리 프록시(/api/places/photo?...)라 상대경로로 온다.
+    // 서버 fetch는 절대 URL이 필요하므로 요청 origin을 붙인다.
+    const absolute = url.startsWith("/") ? new URL(url, origin).toString() : url
+    const res = await fetch(absolute)
     if (!res.ok) return null
     const mimeType = res.headers.get("content-type")?.split(";")[0]?.trim() || "image/jpeg"
     const buffer = await res.arrayBuffer()
@@ -44,7 +50,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ bestIndex: -1, imageUrl: null })
     }
 
-    const fetched = await Promise.all(photoUrls.map((url) => fetchAsBase64(url)))
+    const origin = new URL(req.url).origin
+    const fetched = await Promise.all(photoUrls.map((url) => fetchAsBase64(url, origin)))
     const candidates: CandidateImage[] = fetched
       .map((item, index) => (item ? { index, ...item } : null))
       .filter((item): item is CandidateImage => item !== null)
