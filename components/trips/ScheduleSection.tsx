@@ -40,6 +40,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { getCurrentUserId } from "@/lib/auth-session"
 import {
+  autoSaveScheduledPlace,
   fetchSavedPlacesByTripId,
   toScheduleCategory,
   type SavedPlace,
@@ -130,6 +131,8 @@ function ScheduleRegisterModal({
   const [searchResults, setSearchResults] = useState<PlaceSearchResult[]>([])
   const [searching, setSearching] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  // 구글 검색에서 고른 장소 원본 — 일정 저장 시 나의 찜 + 여행클립 찜에 자동 등록하려고 보관.
+  const [selectedPlace, setSelectedPlace] = useState<PlaceSearchResult | null>(null)
 
   const dayMeta = useMemo(
     () => getScheduleDayMeta(tripStartDate, dayNumber),
@@ -236,6 +239,7 @@ function ScheduleRegisterModal({
     if (place.kind && SCHEDULE_CATEGORY_OF_KIND[place.kind]) {
       setCategory(SCHEDULE_CATEGORY_OF_KIND[place.kind])
     }
+    setSelectedPlace(place)
     setSearchQuery("")
     setSearchResults([])
     setSearchOpen(false)
@@ -258,6 +262,7 @@ function ScheduleRegisterModal({
     setPhoneNumber(place.phoneNumber)
     setCategory(toScheduleCategory(place.category, wishlistKind))
     setMemo(place.memo)
+    setSelectedPlace(null) // 위시리스트에서 고른 건 이미 저장돼 있어 자동 등록 대상 아님
     setWishlistOpen(false)
     setError(null)
   }
@@ -289,6 +294,38 @@ function ScheduleRegisterModal({
         isEditMode && editingSchedule
           ? await updateSchedule(editingSchedule.id, payload)
           : await insertSchedule(payload)
+
+      // 신규 등록 + 구글에서 고른 장소(이름을 그대로 쓴 경우)면 나의 찜 + 여행클립 찜에 자동 등록.
+      if (
+        !isEditMode &&
+        selectedPlace &&
+        selectedPlace.placeName.trim() === payload.placeName
+      ) {
+        const kind = selectedPlace.kind ?? "attraction"
+        try {
+          await autoSaveScheduledPlace({
+            tripId,
+            userId: authUserId,
+            place: {
+              placeName: payload.placeName,
+              localName: selectedPlace.localName,
+              subCategory: selectedPlace.subCategory,
+              category: WISHLIST_CATEGORY_VALUE[kind] ?? WISHLIST_CATEGORY_VALUE.attraction,
+              address: selectedPlace.address || payload.address,
+              phoneNumber: selectedPlace.phoneNumber || payload.phoneNumber,
+              imageUrl: selectedPlace.imageUrl,
+              rating: selectedPlace.rating ?? null,
+              reviewCount: selectedPlace.reviewCount ?? null,
+              lat: selectedPlace.lat ?? null,
+              lng: selectedPlace.lng ?? null,
+              photoUrls: selectedPlace.photoUrls,
+            },
+          })
+        } catch (autoErr) {
+          console.warn("[ScheduleRegisterModal] 자동 찜 등록 실패(무시):", autoErr)
+        }
+      }
+
       onSaved(saved)
       onOpenChange(false)
     } catch (err) {

@@ -452,6 +452,93 @@ export async function insertSavedPlace(input: CreateSavedPlaceInput): Promise<Sa
   return saved
 }
 
+/** 같은 장소가 (user, trip) 조합으로 이미 저장돼 있는지 — place_name 기준. trip_id NULL = 나의 찜. */
+export async function savedPlaceExists(params: {
+  userId: string | null
+  tripId: string | null
+  placeName: string
+}): Promise<boolean> {
+  const name = String(params.placeName ?? "").trim()
+  const uid = normalizeUserIdForDb(params.userId)
+  if (!name || !uid) return false
+  let query = supabase.from("saved_places").select("id").eq("user_id", uid).eq("place_name", name).limit(1)
+  query = params.tripId ? query.eq("trip_id", params.tripId) : query.is("trip_id", null)
+  const { data, error } = await query
+  if (error) {
+    logSupabaseError("savedPlaceExists", error)
+    return false
+  }
+  return (data?.length ?? 0) > 0
+}
+
+/**
+ * 일정에 등록한 장소를 (a) 나의 찜(trip_id NULL) + (b) 여행클립 찜(trip_id) 두 곳에 자동 등록.
+ * 중복 규칙:
+ * - 나의 찜: 내가 이미 올린 같은 장소면 건너뜀(내 것끼리 중복 방지).
+ * - 여행클립 찜: 내가 이 여행에 이미 올린 같은 장소면 건너뜀. 다른 유저가 올린 건 무관하게 등록됨
+ *   (여행클립 찜은 user_id별 개별 row라, 내 것만 중복 체크한다).
+ * 자동 등록 실패는 조용히 무시(일정 저장 자체엔 영향 없음).
+ */
+export async function autoSaveScheduledPlace(input: {
+  tripId: string
+  userId: string | null
+  place: {
+    placeName: string
+    localName?: string
+    subCategory?: string
+    category?: string
+    address?: string
+    phoneNumber?: string
+    imageUrl?: string
+    rating?: number | null
+    reviewCount?: number | null
+    lat?: number | null
+    lng?: number | null
+    photoUrls?: string[]
+  }
+}): Promise<{ mine: boolean; trip: boolean }> {
+  const uid = normalizeUserIdForDb(input.userId)
+  const name = String(input.place.placeName ?? "").trim()
+  const result = { mine: false, trip: false }
+  if (!uid || !name || !input.tripId) return result
+
+  const base: CreateSavedPlaceInput = {
+    userId: uid,
+    placeName: name,
+    category: input.place.category,
+    subCategory: input.place.subCategory,
+    localName: input.place.localName,
+    address: input.place.address,
+    phoneNumber: input.place.phoneNumber,
+    imageUrl: input.place.imageUrl,
+    rating: input.place.rating ?? null,
+    reviewCount: input.place.reviewCount ?? null,
+    lat: input.place.lat ?? null,
+    lng: input.place.lng ?? null,
+    photoUrls: input.place.photoUrls,
+  }
+
+  // (a) 나의 찜 — 내 것끼리 중복이면 skip
+  if (!(await savedPlaceExists({ userId: uid, tripId: null, placeName: name }))) {
+    try {
+      await insertSavedPlace({ ...base })
+      result.mine = true
+    } catch (err) {
+      logSupabaseError("autoSaveScheduledPlace.mine", err)
+    }
+  }
+  // (b) 여행클립 찜 — 내가 이 여행에 이미 올린 같은 장소면 skip
+  if (!(await savedPlaceExists({ userId: uid, tripId: input.tripId, placeName: name }))) {
+    try {
+      await insertSavedPlace({ ...base, tripId: input.tripId })
+      result.trip = true
+    } catch (err) {
+      logSupabaseError("autoSaveScheduledPlace.trip", err)
+    }
+  }
+  return result
+}
+
 /**
  * Background upgrade — AI가 후보 사진 중 업장 내부/음식 사진을 골라 대표
  * 이미지로 교체한다. 저장은 이미 끝난 뒤 호출되므로 실패해도 기존 대표
