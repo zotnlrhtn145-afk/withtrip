@@ -102,10 +102,13 @@ export function SavedPlacesView() {
   const followNextFix = useRef(false)
   const cardRefs = useRef<Record<string, HTMLLIElement | null>>({})
   const geo = useGeolocation()
+  // 선택이 어디서 왔는지 — "map"(마커 클릭)이면 리스트 카드로 스크롤, "list"(카드 클릭)면 지도로 스크롤.
+  const selectSource = useRef<"list" | "map">("map")
 
-  // 지도 마커 클릭 등으로 선택되면 그 리스트 카드로 스크롤 이동
+  // 지도 마커 클릭으로 선택된 경우에만 그 리스트 카드로 스크롤 이동(카드 클릭 시엔 지도로 스크롤해야 하므로 제외).
   useEffect(() => {
     if (!selectedMapId) return
+    if (selectSource.current !== "map") return
     cardRefs.current[selectedMapId]?.scrollIntoView({ behavior: "smooth", block: "center" })
   }, [selectedMapId])
 
@@ -368,10 +371,18 @@ export function SavedPlacesView() {
     geo.locate()
   }
 
-  // 리스트 클릭 → 지도가 그 위치로 이동(하이라이트) + 스티키 지도 보이게 맨 위로
+  // 리스트 카드 클릭 → 지도가 그 마커로 이동(팬) + 스티키 지도가 보이게 맨 위로 스크롤.
   const showOnMap = (id: string) => {
+    selectSource.current = "list"
     setSelectedMapId(id)
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    // 스티키 지도(상단)가 리스트에 가려져 있으므로 맨 위로 올려 지도를 노출한다.
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  // 지도 마커에서 선택된 경우 — 리스트 카드로 스크롤(위 useEffect가 처리).
+  const selectFromMap = (id: string | null) => {
+    selectSource.current = "map"
+    setSelectedMapId(id)
   }
 
   // 상세 열기 (+ 담기 대상 기억)
@@ -662,7 +673,7 @@ export function SavedPlacesView() {
   const renderTripSpotCard = (spot: NearbySpot) => (
     <li key={spot.id} className="list-none">
       <div
-        onClick={() => setSelectedMapId(spot.id)}
+        onClick={() => showOnMap(spot.id)}
         className={cn(
           "flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-2.5 shadow-sm transition-colors",
           selectedMapId === spot.id ? "border-amber-300 bg-amber-50/60" : "border-slate-100 hover:bg-slate-50"
@@ -837,7 +848,7 @@ export function SavedPlacesView() {
               accuracy={geo.accuracy}
               spots={activeMapSpots}
               selectedId={selectedMapId}
-              onSelect={setSelectedMapId}
+              onSelect={selectFromMap}
               onRecenter={handleRecenter}
               recenterKey={recenterKey}
               locating={geo.status === "locating"}
