@@ -2,6 +2,12 @@ import { NextResponse } from "next/server"
 
 import { buildGooglePlacePhotoUrl, resolveCoverImageUrl } from "@/lib/place-cover-image"
 import { guessSubCategory } from "@/lib/place-subcategories"
+import {
+  readPlacesByGoogleIds,
+  writePlaces,
+  type CachedPlace,
+  type PlaceCacheInput,
+} from "@/lib/places-cache"
 
 export const runtime = "nodejs"
 
@@ -199,6 +205,61 @@ function toApiItem(
   }
 }
 
+/** 캐시 행을 구글 Details 응답 모양으로 되돌린다 (toApiItem을 그대로 재사용하기 위함). */
+function cachedToDetails(row: CachedPlace): GoogleDetailsResult {
+  return {
+    place_id: row.google_place_id,
+    name: row.name,
+    formatted_address: row.address ?? undefined,
+    international_phone_number: row.phone ?? undefined,
+    price_level: row.price_level ?? undefined,
+    rating: row.rating ?? undefined,
+    user_ratings_total: row.rating_count ?? undefined,
+    types: row.google_types ?? undefined,
+    photos: (row.photo_references ?? []).map((ref) => ({ photo_reference: ref })),
+    geometry: { location: { lat: row.lat, lng: row.lng } },
+  }
+}
+
+/** 구글 Details 응답을 캐시 저장용 형태로 변환한다. 좌표가 없으면 저장하지 않는다(null). */
+function detailsToCacheInput(
+  details: GoogleDetailsResult,
+  placeId: string,
+  kind: string
+): PlaceCacheInput | null {
+  const lat = details.geometry?.location?.lat
+  const lng = details.geometry?.location?.lng
+  const name = String(details.name ?? "").trim()
+  if (!placeId || !name || typeof lat !== "number" || typeof lng !== "number") return null
+
+  return {
+    googlePlaceId: placeId,
+    name,
+    address: String(details.formatted_address ?? "").trim() || null,
+    lat,
+    lng,
+    rating: typeof details.rating === "number" ? details.rating : null,
+    ratingCount:
+      typeof details.user_ratings_total === "number" ? details.user_ratings_total : null,
+    category: kind,
+    subCategory: guessSubCategory({
+      kind: kind as "restaurant" | "bar" | "stay",
+      name: details.name,
+      types: details.types,
+    }),
+    priceLevel: typeof details.price_level === "number" ? details.price_level : null,
+    googleTypes: details.types ?? null,
+    photoReferences: (details.photos ?? [])
+      .slice(0, 4)
+      .map((p) => p.photo_reference ?? "")
+      .filter(Boolean),
+    phone:
+      String(
+        details.formatted_phone_number ?? details.international_phone_number ?? ""
+      ).trim() || null,
+  }
+}
+
 async function fetchPlaceDetails(
   placeId: string,
   apiKey: string
@@ -300,6 +361,15 @@ export async function GET(request: Request) {
     }
 
     const top = (json.results ?? []).slice(0, 8)
+
+    // 캐시 우선: 이미 아는 place_id는 구글 Place Details를 호출하지 않는다.
+    // (검색 1회당 Details 최대 8회가 비용의 대부분이었음)
+    const cache = await readPlacesByGoogleIds(
+      top.map((item) => item.place_id ?? "").filter(Boolean)
+    )
+    const toCache: PlaceCacheInput[] = []
+    let cacheHits = 0
+
     const detailed = await Promise.all(
       top.map(async (item) => {
         const basePhotos = item.photos
@@ -319,18 +389,24 @@ export async function GET(request: Request) {
             kind
           )
         }
+        // 캐시 적중 → 구글 호출 0회
+        const cached = cache.get(item.place_id)
+        if (cached) {
+          cacheHits += 1
+          return toApiItem(cachedToDetails(cached), apiKey, kind)
+        }
+
         const details = await fetchPlaceDetails(item.place_id, apiKey)
         if (details) {
-          return toApiItem(
-            {
-              ...details,
-              place_id: item.place_id,
-              photos: details.photos?.length ? details.photos : basePhotos,
-              user_ratings_total: details.user_ratings_total ?? item.user_ratings_total,
-            },
-            apiKey,
-            kind
-          )
+          const merged = {
+            ...details,
+            place_id: item.place_id,
+            photos: details.photos?.length ? details.photos : basePhotos,
+            user_ratings_total: details.user_ratings_total ?? item.user_ratings_total,
+          }
+          const cacheInput = detailsToCacheInput(merged, item.place_id, kind)
+          if (cacheInput) toCache.push(cacheInput)
+          return toApiItem(merged, apiKey, kind)
         }
         return toApiItem(
           {
@@ -348,6 +424,14 @@ export async function GET(request: Request) {
           kind
         )
       })
+    )
+
+    // 새로 받아온 것만 캐시에 기록 (실패해도 응답에는 영향 없음)
+    if (toCache.length) await writePlaces(toCache)
+
+    const googleDetailCalls = top.filter((i) => i.place_id).length - cacheHits
+    console.log(
+      `[api/places/search] q="${q}" 캐시적중 ${cacheHits}건 / Details 호출 ${googleDetailCalls}건`
     )
 
     return NextResponse.json({

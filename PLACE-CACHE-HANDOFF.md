@@ -31,7 +31,37 @@
 - `app/api/places/search` (Text Search + Details), `app/api/places/details`, `app/api/suggest-attractions` — 모두 `GOOGLE_PLACES_API_KEY` 사용.
 - 앱(~/withtrip-app)은 웹의 `/api/places/search`를 호출(lib/places.ts). 자체 구글 키 없음.
 
-## 다음 단계 (가이드 순서) — 아직 아무것도 실행 안 함
+## ✅ 완료 (세션2)
+- **0단계 백업 완료**: `~/withtrip-backups/2026-08-12-pre-place-cache` — 25개 테이블 474행 + 스키마. 읽기 전용 SELECT로 생성, 무결성 검증 통과.
+- **places 테이블 생성 + place_ref_id 컬럼 추가** 완료 (`supabase/places-cache.sql` 실행).
+  - 검증: 기존 컬럼 유실 0개, 행 수 변동 0건, place_ref_id는 전부 NULL.
+- **검색 API 캐시 우선 전환** (`app/api/places/search/route.ts`)
+  - 실측: 같은 검색 재실행 시 **캐시적중 8건 / 구글 Details 호출 0건**, 응답 내용 1차와 완전 동일.
+  - 검색 1회당 구글 호출 **9회 → 1회** (Text Search만 남음).
+- **상세 API** (`app/api/places/details/route.ts`): 캐시로 place_id를 찾아 Text Search 1회 절약 + 결과를 캐시에 write-through.
+  - ⚠️ 상세는 **영업시간/open_now가 실시간**이라 캐시로 대체하지 않음(대체하면 "영업중"이 틀리게 뜸). 의도된 설계.
+- **주 1회 평점 갱신 크론**: `app/api/cron/refresh-places/route.ts` + `vercel.json` (`0 19 * * 6` = 일 04:00 KST). 로컬 실행 결과 `updated 16 / failed 0`.
+  - 수정 범위: places의 rating / rating_count / last_refreshed_at / is_closed **4개 컬럼만**. NOT_FOUND는 삭제 대신 is_closed=true.
+- **`lib/supabase-admin.ts`**(service_role, 서버 전용), **`lib/places-cache.ts`**(캐시 읽기/쓰기, 절대 throw 안 함 — 캐시가 죽어도 구글 직접 호출로 진행).
+- **앱은 코드 변경 불필요** — `src/lib/places.ts`가 웹 API를 호출하므로 웹 배포 시 자동 적용.
+- **최종 무결성 검증**: 백업 대비 25개 테이블 중 24개 완전 동일. `device_push_tokens`의 `updated_at` 1건만 다른데 이는 폰 앱의 푸시토큰 재등록(무관). **작업으로 인한 기존 데이터 변경 0건.**
+- 타입체크: 에러 32개로 main과 동일(전부 기존 에러). 신규/수정 파일 에러 0건.
+
+## ⛔ 사용자가 직접 해야 하는 것 (내가 못 함)
+1. **Vercel 환경변수에 `SUPABASE_SERVICE_ROLE_KEY` 추가** — Vercel CLI 로그인이 안 돼 있어 대신 못 넣음.
+   Supabase → Settings → API → service_role 키 → Vercel 프로젝트 Settings → Environment Variables.
+   **없으면 캐시가 그냥 비활성(기존 동작)** 이라 배포해도 안 깨짐. 있어야 절감 효과가 생김.
+   (로컬 `.env.local`엔 이미 넣어둠)
+2. **Vercel에 `CRON_SECRET` 추가**(권장) — 크론 엔드포인트 무단 호출 차단용.
+3. **Google Cloud Console 일일 할당량 상한 + 예산 알림** (가이드 5-1, 5-4).
+4. **`NEXT_PUBLIC_GOOGLE_PLACES_API_KEY` 정리** — 구글 키가 브라우저에 노출 중(가이드 5-3 위반). 별도 작업 필요.
+   ※ 참고: 로컬 `.env.local`의 `GOOGLE_PLACES_API_KEY`는 **빈 값**이라 로컬 검색이 원래 동작 안 했음(테스트 때 임시로 public 키를 주입해 확인).
+
+## 남은 단계
+- 프리뷰 배포에서 가이드 6장 체크리스트 점검 → 이상 없으면 main 병합 여부 사용자에게 확인.
+- (선택) 기존 156개 장소 backfill — **(A)안 채택**: 하지 않음. 기존 데이터는 그대로 두고 신규 검색부터 캐시.
+
+## 이전 계획 (참고용)
 0. **백업 먼저.** Supabase 대시보드 → Database → Backups(또는 pg_dump)로 전체 백업 파일 확보 확인. **확인 전엔 DB 쓰기 금지.**
 1. 새 브랜치 `feature/place-cache` 생성 (web repo). Vercel이 프리뷰 배포 만들어줌.
 2. `places` 테이블 신규 생성(가이드 3-1) — 순수 추가. (사용자 확인 후)

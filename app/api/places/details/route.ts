@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server"
 
 import { buildGooglePlacePhotoUrl } from "@/lib/place-cover-image"
+import {
+  findCachedPlaceIdByName,
+  inferCategoryFromTypes,
+  writePlaces,
+} from "@/lib/places-cache"
+import { guessSubCategory } from "@/lib/place-subcategories"
 
 export const runtime = "nodejs"
 
@@ -91,10 +97,21 @@ export async function GET(request: Request) {
   try {
     if (!placeId) {
       if (!q) return NextResponse.json({ error: "q 또는 placeId가 필요합니다." }, { status: 400 })
-      placeId = (await findPlaceId(apiKey, q, lat, lng)) ?? ""
+      // 1순위: 캐시에서 place_id를 찾는다 (Text Search 호출 절약)
+      placeId =
+        (await findCachedPlaceIdByName(
+          q,
+          lat ? Number(lat) : undefined,
+          lng ? Number(lng) : undefined
+        )) ?? ""
+      // 2순위: 캐시에 없으면 기존대로 구글에 물어본다
+      if (!placeId) placeId = (await findPlaceId(apiKey, q, lat, lng)) ?? ""
     }
     if (!placeId) return NextResponse.json({ detail: null })
 
+    // ⚠️ 상세는 영업시간/영업중 여부(open_now)를 보여주므로 캐시로 대체하지 않는다.
+    //    (실시간 정보를 캐시하면 "영업중"이 틀리게 표시됨 + 구글 정책상으로도 부적절)
+    //    대신 받아온 결과를 캐시에 써넣어서 검색 API가 재활용하게 한다.
     const r = await fetchDetails(apiKey, placeId)
     if (!r) return NextResponse.json({ detail: null })
 
@@ -102,6 +119,37 @@ export async function GET(request: Request) {
       .slice(0, 4)
       .map((p) => (p.photo_reference ? buildGooglePlacePhotoUrl(p.photo_reference, apiKey, 720) : ""))
       .filter(Boolean)
+
+    // 캐시에 써넣기 (검색 API가 재활용 → Details 호출 감소). 실패해도 응답엔 영향 없음.
+    const cLat = r.geometry?.location?.lat ?? (lat ? Number(lat) : undefined)
+    const cLng = r.geometry?.location?.lng ?? (lng ? Number(lng) : undefined)
+    if (r.name && typeof cLat === "number" && typeof cLng === "number") {
+      const category = inferCategoryFromTypes(r.types)
+      await writePlaces([
+        {
+          googlePlaceId: r.place_id ?? placeId,
+          name: r.name,
+          address: r.formatted_address ?? null,
+          lat: cLat,
+          lng: cLng,
+          rating: typeof r.rating === "number" ? r.rating : null,
+          ratingCount: typeof r.user_ratings_total === "number" ? r.user_ratings_total : null,
+          category,
+          subCategory: guessSubCategory({
+            kind: category as "restaurant" | "bar" | "stay",
+            name: r.name,
+            types: r.types,
+          }),
+          priceLevel: typeof r.price_level === "number" ? r.price_level : null,
+          googleTypes: r.types ?? null,
+          photoReferences: (r.photos ?? [])
+            .slice(0, 4)
+            .map((p) => p.photo_reference ?? "")
+            .filter(Boolean),
+          phone: r.formatted_phone_number ?? null,
+        },
+      ])
+    }
 
     return NextResponse.json(
       {
