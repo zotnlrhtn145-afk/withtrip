@@ -83,12 +83,31 @@
    빌드 14/1.0.0 사용자는 레거시 URL 그대로라 4번 이후 사진이 깨짐.
 4. **그 다음에** Google Cloud Console에서 유출된 키 폐기 → 새 키 발급 → Vercel 환경변수 교체
 
+## ⛔ 막힌 이유 (중요 — 값이 없어서가 아니라 계정 접근이 없어서)
+이 맥에 있는 자격 증명은 `~/.zshrc`의 **`SUPABASE_ACCESS_TOKEN` 하나뿐**이다.
+Vercel CLI·로그인 캐시·`VERCEL_TOKEN` 없음, `gcloud` 미설치, GCP 자격 증명 없음.
+→ service_role **키 값은 `.env.local`에 이미 있지만**, 그걸 Vercel에 등록하려면 Vercel 계정 인증이 필요하다.
+
+**해결 경로**: 사용자가 `npx vercel login` 한 번 실행 → 이후는 CLI로 전부 자동 처리 가능.
+```bash
+npx vercel login
+npx vercel link            # 프로젝트 연결
+printf '%s' "$SERVICE_ROLE_KEY" | npx vercel env add SUPABASE_SERVICE_ROLE_KEY production
+printf '%s' "$SERVICE_ROLE_KEY" | npx vercel env add SUPABASE_SERVICE_ROLE_KEY preview
+openssl rand -hex 32 | tee /dev/stderr | npx vercel env add CRON_SECRET production
+npx vercel --prod          # 환경변수는 재배포해야 반영됨
+```
+
+**검토했다가 버린 우회로**: `places`에 anon 쓰기 정책을 열면 Vercel 없이도 캐시가 돌지만,
+anon 키는 브라우저에 공개돼 있어 **누구나 실제 google_place_id 행에 가짜 이름·평점을 덮어쓸 수 있다.**
+캐시 오염이 그대로 사용자 화면에 노출되므로 채택하지 않음. service_role이 정답.
+
 ## ⛔ 사용자가 직접 해야 하는 것 (내가 못 함)
-1. **Vercel 환경변수에 `SUPABASE_SERVICE_ROLE_KEY` 추가** — Vercel CLI 로그인이 안 돼 있어 대신 못 넣음.
-   Supabase → Settings → API → service_role 키 → Vercel 프로젝트 Settings → Environment Variables.
-   **없으면 캐시가 그냥 비활성(기존 동작)** 이라 배포해도 안 깨짐. 있어야 절감 효과가 생김.
-   (로컬 `.env.local`엔 이미 넣어둠)
+1. **Vercel 환경변수에 `SUPABASE_SERVICE_ROLE_KEY` 추가** (위 경로 참고).
+   **없으면 캐시가 비활성(기존 동작)** 이라 배포해도 안 깨짐. 있어야 절감 효과가 생김.
+   현재 프로덕션 확인 결과: 새 검색어를 넣어도 `places` 행이 늘지 않음 = **캐시 꺼진 상태**.
 2. **Vercel에 `CRON_SECRET` 추가**(권장) — 크론 엔드포인트 무단 호출 차단용.
+   ※ 없어도 24시간 재갱신 방지 로직이 있어 반복 호출로 비용이 새지는 않음.
 3. **Google Cloud Console 일일 할당량 상한 + 예산 알림** (가이드 5-1, 5-4).
 4. **유출된 구글 키 폐기·재발급** (위 "배포 순서" 4번). 지금 키는 이미 외부에 나가 있어 코드 수정만으로는 회수 불가.
 5. **`NEXT_PUBLIC_GOOGLE_PLACES_API_KEY`는 지도(Maps JavaScript API)용이라 브라우저 노출이 불가피함.**
@@ -97,6 +116,29 @@
 6. (선택) `NEXT_PUBLIC_SITE_URL=https://www.withtrip.co.kr` — 없어도 요청 origin으로 동작하지만,
    프리뷰 배포에서 저장한 장소가 프리뷰 도메인 URL로 DB에 남는 걸 막아준다.
    ※ 참고: 로컬 `.env.local`의 `GOOGLE_PLACES_API_KEY`는 **빈 값**이라 로컬 검색이 원래 동작 안 했음(테스트 때 임시로 public 키를 주입해 확인).
+
+## 배포 완료 내역 (세션2)
+| 대상 | 커밋/버전 | 상태 |
+|---|---|---|
+| 웹 places 캐싱 + 사진 프록시 | `eb59f68` merge → main | 배포됨 |
+| 웹 크론 24시간 재갱신 방지 | `ae462c1` | 배포됨 |
+| 웹 일정 카드 주소 줄바꿈 | `932cf25` | 배포됨 |
+| 앱 사진 프록시 | `cc6f030` | OTA(production·preview) |
+| 앱 일정 카드 주소 줄 분리 | `a56c1fb` | OTA(production·preview) |
+
+- 앱 저장소는 git 리모트가 없어 커밋은 로컬에만 존재. 배포는 EAS OTA로만 나감.
+- OTA는 **빌드 15(런타임 1.0.1) 이상에만** 적용됨.
+
+## 일정 카드 주소 줄바꿈 — 원인 기록 (같은 실수 방지용)
+증상: 카드마다 주소 줄바꿈이 제각각. 아이콘 3개(길찾기·수정·삭제) 카드는 어절마다 한 줄씩 끊기고,
+아이콘 1개인 자동 일정 카드만 폭을 제대로 채움.
+
+원인: 작성자·메모·주소·전화가 **제목과 같은 flex 행** 안에 있었다. 그 행의 아이콘 묶음이 `shrink-0`이라
+폭을 먼저 가져가 좁은 폰에서 텍스트 컬럼에 100pt 남짓만 남고, `break-keep` 때문에 어절 단위로만
+줄바꿈되어 어절 하나가 한 줄을 차지했다.
+
+⚠️ **"주소·전화를 각각 자기 줄로 분리"만 하는 수정은 효과 없음** (헤드리스 크롬으로 렌더해 확인).
+제목 행 **밖**으로 빼서 카드 전체 폭을 쓰게 해야 해결된다.
 
 ## 남은 단계
 - 프리뷰 배포에서 가이드 6장 체크리스트 점검 → 이상 없으면 main 병합 여부 사용자에게 확인.
