@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Bookmark, Check, Heart, Info, Loader2, Map as MapIcon, MapPin, Plane, Plus, Send, SlidersHorizontal, Star } from "lucide-react"
+import { Bookmark, Check, Heart, Info, Loader2, Map as MapIcon, MapPin, Plane, Plus, Search, Send, SlidersHorizontal, Star, X } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -88,6 +88,7 @@ export function SavedPlacesView() {
   const [detailAssign, setDetailAssign] = useState<SavedPlace | null>(null) // 상세에서 "담기" 대상
   const [tab, setTab] = useState<"mine" | "friends">("mine")
   const [subTab, setSubTab] = useState<"wish" | "trip">("wish")
+  const [search, setSearch] = useState("") // 저장 전용 검색 — 이름·지역·주소
   const [sort, setSort] = useState<"distance" | "name" | "rating">("distance")
   const [tripFilter, setTripFilter] = useState<string>("all")
   const [filterOpen, setFilterOpen] = useState(false)
@@ -206,7 +207,15 @@ export function SavedPlacesView() {
   }, [places])
 
   const filteredPlaces = useMemo(() => {
-    const base = subFilter ? places.filter((place) => place.subCategory.trim() === subFilter) : places
+    const q = search.trim().toLowerCase()
+    const bySearch = q
+      ? places.filter((p) =>
+          [p.placeName, p.localName, p.address, p.subCategory, p.category].some((v) =>
+            String(v ?? "").toLowerCase().includes(q)
+          )
+        )
+      : places
+    const base = subFilter ? bySearch.filter((place) => place.subCategory.trim() === subFilter) : bySearch
     const arr = [...base]
     if (sort === "name") return arr.sort((a, b) => a.placeName.localeCompare(b.placeName, "ko"))
     if (sort === "rating") return arr.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
@@ -216,7 +225,7 @@ export function SavedPlacesView() {
       const db = b.lat != null && b.lng != null ? distanceMeters(geo.position, { lat: b.lat, lng: b.lng }) : Infinity
       return da - db
     })
-  }, [places, subFilter, geo.position, sort])
+  }, [places, subFilter, geo.position, sort, search])
 
   /** 리스트 카드에도 거리를 보여준다 — 좌표 없는 곳은 null. */
   const placeDistanceLabels = useMemo(() => {
@@ -275,7 +284,15 @@ export function SavedPlacesView() {
 
   const filteredTripSpots = useMemo(() => {
     const byTrip = tripFilter === "all" ? tripSpots : tripSpots.filter((s) => s.tripId === tripFilter)
-    const base = subFilter ? byTrip.filter((s) => (s.category ?? "").trim() === subFilter) : byTrip
+    const q = search.trim().toLowerCase()
+    const bySearch = q
+      ? byTrip.filter((s) =>
+          [s.name, s.nameLocal, s.address, s.category].some((v) =>
+            String(v ?? "").toLowerCase().includes(q)
+          )
+        )
+      : byTrip
+    const base = subFilter ? bySearch.filter((s) => (s.category ?? "").trim() === subFilter) : bySearch
     const arr = [...base]
     if (sort === "name") return arr.sort((a, b) => a.name.localeCompare(b.name, "ko"))
     if (sort === "rating") return arr.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
@@ -284,7 +301,7 @@ export function SavedPlacesView() {
       const db = b.lat != null && b.lng != null ? distanceMeters(geo.position, { lat: b.lat, lng: b.lng }) : Infinity
       return da - db
     })
-  }, [tripSpots, subFilter, geo.position, sort, tripFilter])
+  }, [tripSpots, subFilter, geo.position, sort, tripFilter, search])
 
   const tripDistanceLabels = useMemo(() => {
     const map = new Map<string, string>()
@@ -864,6 +881,30 @@ export function SavedPlacesView() {
               </div>
             </div>
 
+            {/* 저장 전용 검색 — 이름·지역·주소로 실시간 필터 (현재 탭에 적용) */}
+            <div className="px-4 pt-2 pb-1 md:px-6">
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 transition-colors focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-100">
+                <Search className="size-4 shrink-0 text-slate-400" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="지역·이름으로 검색"
+                  aria-label="저장 장소 검색"
+                  className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                />
+                {search ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    aria-label="검색어 지우기"
+                    className="flex size-5 shrink-0 items-center justify-center rounded-full bg-slate-200 text-white transition-colors hover:bg-slate-300"
+                  >
+                    <X className="size-3" />
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
             <div className="sticky z-10 top-[62px] flex items-center justify-between gap-2 bg-white/95 px-4 pb-2.5 backdrop-blur md:top-[40px] md:px-6">
               <p className="truncate text-xs font-bold text-slate-400">
                 {(subTab === "wish" ? "나의 찜 " : "여행클립 찜 ") +
@@ -892,7 +933,7 @@ export function SavedPlacesView() {
               {subTab === "wish" ? (
                 filteredPlaces.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
-                    이 카테고리에 저장된 장소가 없어요.
+                    {search.trim() ? `'${search.trim()}' 검색 결과가 없어요.` : "이 카테고리에 저장된 장소가 없어요."}
                   </div>
                 ) : (
                   <ul className="flex flex-col gap-2.5 md:grid md:grid-cols-2 xl:grid-cols-3">
@@ -901,7 +942,9 @@ export function SavedPlacesView() {
                 )
               ) : filteredTripSpots.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
-                  여행에 담은 장소가 없어요. 여행에서 가고 싶은 곳을 담으면 멤버들과 함께 여기에 모여요.
+                  {search.trim()
+                    ? `'${search.trim()}' 검색 결과가 없어요.`
+                    : "여행에 담은 장소가 없어요. 여행에서 가고 싶은 곳을 담으면 멤버들과 함께 여기에 모여요."}
                 </div>
               ) : (
                 <ul className="flex flex-col gap-2.5 md:grid md:grid-cols-2 xl:grid-cols-3">
