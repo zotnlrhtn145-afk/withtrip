@@ -5,6 +5,7 @@ import {
   type PayoutAccount,
 } from "@/lib/payout-account"
 import { createClient as createBrowserClient } from "@/utils/supabase/client"
+import { resolveAvatarUrl } from "@/lib/avatar"
 
 export type { PayoutAccount }
 
@@ -43,7 +44,7 @@ function profileFromUserPayload(user: NonNullable<UserApiPayload["user"]>): User
     id: String(user.id ?? "").trim(),
     email: String(user.email ?? "").trim(),
     nickname: String(user.nickname ?? "").trim(),
-    avatarUrl: String(user.avatarUrl ?? "").trim() || null,
+    avatarUrl: resolveAvatarUrl(user.avatarUrl) ?? null,
     joinedAt: user.joinedAt ?? null,
     provider: user.provider ?? null,
     deletionRequestedAt: user.deletionRequestedAt ?? null,

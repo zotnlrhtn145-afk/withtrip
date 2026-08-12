@@ -1,3 +1,4 @@
+import { resolveAvatarUrl } from "@/lib/avatar"
 import { createClient } from "@/utils/supabase/client"
 import { createNotification, resolveActorDisplayName } from "@/lib/notifications-api"
 
@@ -49,7 +50,7 @@ export function profileToUserSummary(
   const email = String(record.email ?? "").trim()
   const nickname = String(record.nickname ?? "").trim() || safeNameFromEmail(email)
   const avatarUrl =
-    String(record.avatar_url ?? record.profile_image ?? "").trim() || undefined
+    resolveAvatarUrl(record.avatar_url ?? record.profile_image)
   return { userId, email, nickname, avatarUrl }
 }
 
@@ -410,7 +411,7 @@ export async function fetchCoTravelers(currentUserId: string): Promise<CoTravele
       String(profile?.nickname ?? "").trim() ||
       (email ? email.split("@")[0] : "") ||
       "멤버"
-    const avatarUrl = String(profile?.avatar_url ?? "").trim() || undefined
+    const avatarUrl = resolveAvatarUrl(profile?.avatar_url)
     const tripTitle = tripTitleById[tripId] || "여행"
     const groupTag = `${tripTitle} 그룹`
 

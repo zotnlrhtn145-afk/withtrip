@@ -1,3 +1,4 @@
+import { resolveAvatarUrl } from "@/lib/avatar"
 import { getCurrentUserId } from "@/lib/auth-session"
 import { curatePlaceCoverImage } from "@/lib/place-cover-curation"
 import { resolveCoverImageUrl } from "@/lib/place-cover-image"
@@ -150,7 +151,7 @@ export function mapSavedPlaceRow(row: SavedPlaceRow): SavedPlace {
     recommender: row.recommender
       ? {
           nickname: row.recommender.nickname ?? null,
-          avatarUrl: row.recommender.avatar_url ?? null,
+          avatarUrl: resolveAvatarUrl(row.recommender.avatar_url) ?? null,
         }
       : null,
   }

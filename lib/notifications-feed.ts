@@ -5,6 +5,7 @@ import {
   rejectFriendRequest,
   resolveUsersByIds,
 } from "@/lib/friends-api"
+import { resolveAvatarUrl } from "@/lib/avatar"
 import {
   markNotificationsSeen,
   updateNotificationStatus,
@@ -151,7 +152,7 @@ async function fetchFriendRequestNotificationsFallback(): Promise<FeedNotificati
           (email ? email.split("@")[0] : "") ||
           "친구"
         const actorAvatarUrl =
-          String(profile?.avatar_url ?? profile?.profile_image ?? "").trim() || undefined
+          resolveAvatarUrl(profile?.avatar_url ?? profile?.profile_image)
         return {
           id: `friend:${row.id}`,
           type: "friend_request" as const,

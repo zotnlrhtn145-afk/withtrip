@@ -1,3 +1,4 @@
+import { resolveAvatarUrl } from "@/lib/avatar"
 import { createClient } from "@/utils/supabase/client"
 import { getCurrentUserId } from "@/lib/auth-session"
 import {
@@ -147,7 +148,7 @@ function mapJoinedRow(row: TripMemberJoinedRow): TripMember | null {
   const profile = unwrapProfile(row.profiles)
   const email = String(profile?.email ?? "").trim()
   const name = resolveProfileDisplayName(profile)
-  const avatarUrl = String(profile?.avatar_url ?? "").trim() || undefined
+  const avatarUrl = resolveAvatarUrl(profile?.avatar_url)
   const role = String(row.role ?? "").trim() || undefined
 
   return {
@@ -365,7 +366,7 @@ export async function fetchTripRoster(tripId: string): Promise<TripMember[]> {
       userId: ownerId,
       email: String(row?.email ?? "").trim(),
       name,
-      avatarUrl: String(row?.avatar_url ?? "").trim() || undefined,
+      avatarUrl: resolveAvatarUrl(row?.avatar_url),
       role: "owner",
       status: "accepted",
     })
@@ -396,7 +397,7 @@ export async function fetchProfilesByIds(userIds: string[]): Promise<TripMember[
       userId,
       email: String(row.email ?? "").trim(),
       name: resolveProfileDisplayName(row),
-      avatarUrl: String(row.avatar_url ?? "").trim() || undefined,
+      avatarUrl: resolveAvatarUrl(row.avatar_url),
       status: "accepted",
     }
   }
@@ -844,7 +845,7 @@ export async function fetchPendingInvitations(): Promise<TripInvitation[]> {
       String(profile?.nickname ?? "").trim() ||
       (email ? email.split("@")[0] : "") ||
       "친구"
-    const inviterAvatarUrl = String(profile?.avatar_url ?? "").trim() || undefined
+    const inviterAvatarUrl = resolveAvatarUrl(profile?.avatar_url)
     const tripTitle = String(trip?.title ?? "").trim() || "여행"
 
     result.push({

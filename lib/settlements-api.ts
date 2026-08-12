@@ -1,3 +1,4 @@
+import { resolveAvatarUrl } from "@/lib/avatar"
 import { createClient } from "@/utils/supabase/client"
 import {
   applyCarryoverCredit,
@@ -93,7 +94,7 @@ function mapProfile(profile: ProfileJoin | ProfileJoin[] | null | undefined): {
   const email = String(row?.email ?? "").trim()
   const nickname =
     String(row?.nickname ?? "").trim() || (email ? email.split("@")[0] : "") || "사용자"
-  const avatarUrl = String(row?.avatar_url ?? "").trim() || undefined
+  const avatarUrl = resolveAvatarUrl(row?.avatar_url)
   return { id: row?.id, nickname, email, avatarUrl }
 }
 
