@@ -187,27 +187,45 @@ function distanceMeters(a: LatLng, b: LatLng): number {
   return Math.hypot(dLat, dLng)
 }
 
-/** 캡션에 적힌 주소를 좌표로 바꾼다(지오코딩). 실패하면 null. */
+/**
+ * 캡션에 적힌 주소를 좌표로 바꾼다.
+ *
+ * Geocoding API를 먼저 쓰고, 실패하면 Places Text Search로 폴백한다.
+ * (서버 키에 Geocoding API가 열려 있지 않을 수 있어서 한쪽에만 의존하지 않는다.)
+ */
 async function geocode(address: string, apiKey: string): Promise<LatLng | null> {
   const q = String(address ?? "").trim()
   if (!q) return null
+
   const url = new URL("https://maps.googleapis.com/maps/api/geocode/json")
   url.searchParams.set("address", q)
   url.searchParams.set("language", "ko")
   url.searchParams.set("key", apiKey)
   try {
     const res = await fetch(url.toString(), { cache: "no-store" })
-    if (!res.ok) return null
-    const json = (await res.json()) as {
-      status?: string
-      results?: { geometry?: { location?: LatLng } }[]
+    if (res.ok) {
+      const json = (await res.json()) as {
+        status?: string
+        error_message?: string
+        results?: { geometry?: { location?: LatLng } }[]
+      }
+      const loc = json.results?.[0]?.geometry?.location
+      if (json.status === "OK" && loc) return { lat: loc.lat, lng: loc.lng }
+      if (json.status !== "ZERO_RESULTS") {
+        console.warn("[resolve-instagram] geocode 실패:", json.status, json.error_message)
+      }
     }
-    const loc = json.results?.[0]?.geometry?.location
-    if (json.status !== "OK" || !loc) return null
-    return { lat: loc.lat, lng: loc.lng }
   } catch {
-    return null
+    /* 아래 폴백 */
   }
+
+  // 폴백: 주소 문자열을 Places Text Search 로 던져 좌표만 얻는다.
+  const viaPlaces = await textSearch(q, apiKey)
+  const loc = viaPlaces[0]?.geometry?.location
+  if (typeof loc?.lat === "number" && typeof loc?.lng === "number") {
+    return { lat: loc.lat, lng: loc.lng }
+  }
+  return null
 }
 
 async function textSearch(
