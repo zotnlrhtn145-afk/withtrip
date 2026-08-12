@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server"
 
-import { buildGooglePlacePhotoUrl, resolveCoverImageUrl } from "@/lib/place-cover-image"
+import {
+  buildPlacePhotoProxyUrl,
+  resolveCoverImageUrl,
+  resolveRequestOrigin,
+  toAbsolutePhotoUrl,
+} from "@/lib/place-cover-image"
 import { guessSubCategory } from "@/lib/place-subcategories"
 import {
   readPlacesByGoogleIds,
@@ -134,12 +139,12 @@ function buildLocalName(name: string, address: string) {
 
 function buildPhotoUrls(
   photos: { photo_reference?: string }[] | undefined,
-  apiKey: string,
   limit = 4
 ): string[] {
+  // 키가 박힌 구글 URL이 아니라 우리 프록시 URL을 내보낸다 (키 노출 방지).
   return (photos ?? [])
     .slice(0, limit)
-    .map((photo) => (photo.photo_reference ? buildGooglePlacePhotoUrl(photo.photo_reference, apiKey, 1200) : ""))
+    .map((photo) => (photo.photo_reference ? buildPlacePhotoProxyUrl(photo.photo_reference, 1200) : ""))
     .filter(Boolean)
 }
 
@@ -160,7 +165,6 @@ function pickFallbackImageUrl(
 
 function toApiItem(
   details: GoogleDetailsResult,
-  apiKey: string,
   preferredKind?: string
 ): PlaceSearchApiItem {
   const kind = inferKind(details.types, preferredKind)
@@ -173,7 +177,7 @@ function toApiItem(
   const reviewCount =
     typeof details.user_ratings_total === "number" ? details.user_ratings_total : undefined
   const subCategory = guessSubCategory({ kind, name: details.name, types: details.types })
-  const photoUrls = buildPhotoUrls(details.photos, apiKey)
+  const photoUrls = buildPhotoUrls(details.photos)
   const photoReferences = (details.photos ?? [])
     .slice(0, 4)
     .map((photo) => photo.photo_reference ?? "")
@@ -385,7 +389,6 @@ export async function GET(request: Request) {
               photos: basePhotos,
               geometry: item.geometry,
             },
-            apiKey,
             kind
           )
         }
@@ -393,7 +396,7 @@ export async function GET(request: Request) {
         const cached = cache.get(item.place_id)
         if (cached) {
           cacheHits += 1
-          return toApiItem(cachedToDetails(cached), apiKey, kind)
+          return toApiItem(cachedToDetails(cached), kind)
         }
 
         const details = await fetchPlaceDetails(item.place_id, apiKey)
@@ -406,7 +409,7 @@ export async function GET(request: Request) {
           }
           const cacheInput = detailsToCacheInput(merged, item.place_id, kind)
           if (cacheInput) toCache.push(cacheInput)
-          return toApiItem(merged, apiKey, kind)
+          return toApiItem(merged, kind)
         }
         return toApiItem(
           {
@@ -420,11 +423,19 @@ export async function GET(request: Request) {
             photos: basePhotos,
             geometry: item.geometry,
           },
-          apiKey,
           kind
         )
       })
     )
+
+    // 사진 URL을 절대 URL로 (DB에 저장되고 네이티브 앱이 그대로 쓰기 때문)
+    const origin = resolveRequestOrigin(request.url)
+    const withAbsoluteUrls = detailed.map((item) => ({
+      ...item,
+      imageUrl: toAbsolutePhotoUrl(item.imageUrl, origin),
+      image: toAbsolutePhotoUrl(item.image, origin),
+      photoUrls: (item.photoUrls ?? []).map((u) => toAbsolutePhotoUrl(u, origin)),
+    }))
 
     // 새로 받아온 것만 캐시에 기록 (실패해도 응답에는 영향 없음)
     if (toCache.length) await writePlaces(toCache)
@@ -435,7 +446,7 @@ export async function GET(request: Request) {
     )
 
     return NextResponse.json({
-      results: detailed.filter((item) => Boolean(item.placeName)),
+      results: withAbsoluteUrls.filter((item) => Boolean(item.placeName)),
     })
   } catch (err) {
     console.error("[api/places/search] unexpected:", err)

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { buildGooglePlacePhotoUrl } from "@/lib/place-cover-image"
+import { buildPlacePhotoProxyUrl, resolveRequestOrigin } from "@/lib/place-cover-image"
 import {
   findCachedPlaceIdByName,
   inferCategoryFromTypes,
@@ -117,7 +117,11 @@ export async function GET(request: Request) {
 
     const photos = (r.photos ?? [])
       .slice(0, 4)
-      .map((p) => (p.photo_reference ? buildGooglePlacePhotoUrl(p.photo_reference, apiKey, 720) : ""))
+      .map((p) =>
+        p.photo_reference
+          ? buildPlacePhotoProxyUrl(p.photo_reference, 720, resolveRequestOrigin(request.url))
+          : ""
+      )
       .filter(Boolean)
 
     // 캐시에 써넣기 (검색 API가 재활용 → Details 호출 감소). 실패해도 응답엔 영향 없음.

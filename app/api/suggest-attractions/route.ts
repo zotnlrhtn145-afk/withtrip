@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server"
 
 import { distanceMeters, type LatLng } from "@/lib/geo"
-import { buildGooglePlacePhotoUrl, resolveCoverImageUrl } from "@/lib/place-cover-image"
+import {
+  buildPlacePhotoProxyUrl,
+  resolveCoverImageUrl,
+  resolveRequestOrigin,
+} from "@/lib/place-cover-image"
 
 export const runtime = "nodejs"
 
@@ -51,7 +55,8 @@ function getPlacesApiKey() {
 async function groundAttraction(
   name: string,
   city: string,
-  apiKey: string
+  apiKey: string,
+  origin: string
 ): Promise<Omit<SuggestedAttraction, "reason" | "distanceKm"> | null> {
   try {
     const url = new URL("https://maps.googleapis.com/maps/api/place/textsearch/json")
@@ -76,7 +81,7 @@ async function groundAttraction(
 
     const placeName = String(top?.name ?? name).trim()
     const photoRef = top?.photos?.[0]?.photo_reference
-    const photoUrl = photoRef ? buildGooglePlacePhotoUrl(photoRef, apiKey, 1200) : ""
+    const photoUrl = photoRef ? buildPlacePhotoProxyUrl(photoRef, 1200, origin) : ""
     const imageUrl =
       photoUrl ||
       resolveCoverImageUrl({ imageUrl: "", kind: "attraction", category: "관광지" })
@@ -217,9 +222,10 @@ export async function POST(request: Request) {
     }
 
     // 각 추천을 Google Places Text Search로 그라운딩(실제 좌표/사진/평점 확보).
+    const origin = resolveRequestOrigin(request.url)
     const grounded = await Promise.all(
       attractions.slice(0, 12).map(async (item) => {
-        const base = await groundAttraction(item.name, city, placesKey)
+        const base = await groundAttraction(item.name, city, placesKey, origin)
         if (!base) return null
         const distanceKm = accommodation
           ? Math.round(distanceMeters(accommodation, { lat: base.lat, lng: base.lng }) / 100) / 10
