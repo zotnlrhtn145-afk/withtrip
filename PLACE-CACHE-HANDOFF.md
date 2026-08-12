@@ -83,7 +83,23 @@
    빌드 14/1.0.0 사용자는 레거시 URL 그대로라 4번 이후 사진이 깨짐.
 4. **그 다음에** Google Cloud Console에서 유출된 키 폐기 → 새 키 발급 → Vercel 환경변수 교체
 
-## ⛔ 막힌 이유 (중요 — 값이 없어서가 아니라 계정 접근이 없어서)
+## ✅ 캐시 활성화 완료 (세션2 마무리)
+사용자가 Vercel 토큰을 발급해 줘서 Vercel REST API로 처리함. **토큰은 사용 후 폐기 요청함.**
+- `SUPABASE_SERVICE_ROLE_KEY` → production / preview / development 등록
+- `CRON_SECRET` → production 등록 (openssl rand -hex 32)
+- 최신 프로덕션 배포 재생성(`dpl_3o61DHxHYJXWGzpJUCkcRsDRReUA`) — 환경변수는 재배포해야 반영됨
+
+**실측 검증 (프로덕션)**
+- 새 검색어 → `places` +8행 저장 (캐시 쓰기 동작)
+- 같은 검색 재실행 → +0행 = **구글 Details 호출 0회**, 응답 3606ms → 1437ms
+- 크론: 무인증 호출 **401**, 시크릿 통과 시 정상. `scanned: 0`은 24시간 재갱신 방지가 동작한 것
+- 가이드 6장 체크리스트 **17/17 통과**
+
+**프로젝트 정보 (다음 세션용)**
+- Vercel project: `withtrip` / `prj_7opDojCWPbAM371o7dGJ21Pg74sM` / team `team_mdigJiAGhoOuf4WUNpt2Sk2C`
+- 이 맥에는 Vercel 자격 증명이 저장돼 있지 않음. 필요하면 다시 토큰을 받아야 함.
+
+## (해결됨) 막혔던 이유 — 값이 없어서가 아니라 계정 접근이 없어서
 이 맥에 있는 자격 증명은 `~/.zshrc`의 **`SUPABASE_ACCESS_TOKEN` 하나뿐**이다.
 Vercel CLI·로그인 캐시·`VERCEL_TOKEN` 없음, `gcloud` 미설치, GCP 자격 증명 없음.
 → service_role **키 값은 `.env.local`에 이미 있지만**, 그걸 Vercel에 등록하려면 Vercel 계정 인증이 필요하다.
@@ -103,11 +119,8 @@ anon 키는 브라우저에 공개돼 있어 **누구나 실제 google_place_id 
 캐시 오염이 그대로 사용자 화면에 노출되므로 채택하지 않음. service_role이 정답.
 
 ## ⛔ 사용자가 직접 해야 하는 것 (내가 못 함)
-1. **Vercel 환경변수에 `SUPABASE_SERVICE_ROLE_KEY` 추가** (위 경로 참고).
-   **없으면 캐시가 비활성(기존 동작)** 이라 배포해도 안 깨짐. 있어야 절감 효과가 생김.
-   현재 프로덕션 확인 결과: 새 검색어를 넣어도 `places` 행이 늘지 않음 = **캐시 꺼진 상태**.
-2. **Vercel에 `CRON_SECRET` 추가**(권장) — 크론 엔드포인트 무단 호출 차단용.
-   ※ 없어도 24시간 재갱신 방지 로직이 있어 반복 호출로 비용이 새지는 않음.
+~~1. Vercel `SUPABASE_SERVICE_ROLE_KEY`~~ → **완료**
+~~2. Vercel `CRON_SECRET`~~ → **완료**
 3. **Google Cloud Console 일일 할당량 상한 + 예산 알림** (가이드 5-1, 5-4).
 4. **유출된 구글 키 폐기·재발급** (위 "배포 순서" 4번). 지금 키는 이미 외부에 나가 있어 코드 수정만으로는 회수 불가.
 5. **`NEXT_PUBLIC_GOOGLE_PLACES_API_KEY`는 지도(Maps JavaScript API)용이라 브라우저 노출이 불가피함.**
