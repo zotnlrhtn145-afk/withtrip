@@ -101,9 +101,17 @@ function stripOgPrefix(caption: string): string {
   return body.trim()
 }
 
+/** 진단용 — 추출이 왜 실패했는지 응답에 실어 보낸다(비밀값은 담지 않는다). */
+type ExtractDiag = { keyPresent: boolean; attempts: string[] }
+
 /** Gemini로 캡션에서 장소 목록을 뽑는다. 실패하면 빈 배열(호출부가 폴백). */
-async function extractPlaces(caption: string, locationTag: string): Promise<ExtractedPlace[]> {
+async function extractPlaces(
+  caption: string,
+  locationTag: string,
+  diag: ExtractDiag
+): Promise<ExtractedPlace[]> {
   const key = getGeminiKey()
+  diag.keyPresent = Boolean(key)
   if (!key) return []
 
   const prompt =
@@ -139,13 +147,19 @@ async function extractPlaces(caption: string, locationTag: string): Promise<Extr
           signal: controller.signal,
         }
       )
-      if (!res.ok) continue
+      if (!res.ok) {
+        diag.attempts.push(`${model}:HTTP_${res.status}`)
+        continue
+      }
 
       const data = (await res.json()) as {
         candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
       }
       const raw = data.candidates?.[0]?.content?.parts?.[0]?.text
-      if (!raw) continue
+      if (!raw) {
+        diag.attempts.push(`${model}:EMPTY`)
+        continue
+      }
 
       const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as {
         places?: Array<{ name?: string; address?: string; note?: string }>
@@ -157,8 +171,10 @@ async function extractPlaces(caption: string, locationTag: string): Promise<Extr
           note: String(p.note ?? "").trim(),
         }))
         .filter((p) => p.name)
+      diag.attempts.push(`${model}:PARSED_${places.length}`)
       if (places.length > 0) return places.slice(0, MAX_CANDIDATES)
-    } catch {
+    } catch (err) {
+      diag.attempts.push(`${model}:ERR_${err instanceof Error ? err.name : "unknown"}`)
       continue
     } finally {
       clearTimeout(timer)
@@ -365,10 +381,17 @@ export async function POST(request: Request) {
   }
 
   const cleaned = stripOgPrefix(caption)
-  const extracted = await extractPlaces(cleaned, locationTag)
+  const diag: ExtractDiag = { keyPresent: false, attempts: [] }
+  const extracted = await extractPlaces(cleaned, locationTag, diag)
 
   if (extracted.length === 0) {
-    return NextResponse.json({ places: [], caption: cleaned, error: "장소를 찾지 못했어요." })
+    console.warn("[resolve-instagram] 추출 0건", JSON.stringify(diag))
+    return NextResponse.json({
+      places: [],
+      caption: cleaned,
+      error: "장소를 찾지 못했어요.",
+      diag,
+    })
   }
 
   const origin = resolveRequestOrigin(request.url)
