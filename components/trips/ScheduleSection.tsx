@@ -826,36 +826,6 @@ function TimelineItem({
                 </span>
               </span>
             </div>
-            {showAuthor ? (
-              <div className="mt-2">
-                <CreatorBadge name={authorName} avatarUrl={authorProfile?.avatarUrl} isHost={authorIsHost} />
-              </div>
-            ) : null}
-            {isAuto ? <MemberAvatars members={memberProfiles} ownerId={ownerId} /> : null}
-            {item.memo ? (
-              <p className="mt-1.5 text-xs leading-relaxed text-pretty text-gray-500">{item.memo}</p>
-            ) : null}
-            {item.address || item.phoneNumber ? (
-              <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-gray-500">
-                {item.address ? (
-                  <span className="inline-flex min-w-0 items-start gap-1">
-                    <MapPin className="mt-0.5 size-3 shrink-0" />
-                    <span className="break-keep">{item.address}</span>
-                  </span>
-                ) : null}
-                {item.address && item.phoneNumber ? (
-                  <span aria-hidden="true" className="text-gray-300">
-                    ·
-                  </span>
-                ) : null}
-                {item.phoneNumber ? (
-                  <span className="inline-flex items-center gap-1 tabular-nums">
-                    <Phone className="size-3 shrink-0" />
-                    <span>{item.phoneNumber}</span>
-                  </span>
-                ) : null}
-              </p>
-            ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
             {/* 길찾기 — 좌표가 없어도 이름/주소로 검색(3모드 피커). 모두에게 노출. */}
@@ -895,6 +865,37 @@ function TimelineItem({
             ) : null}
           </div>
         </div>
+
+        {/* 작성자·메모·주소·전화는 제목 행 **밖**에 둔다.
+            제목 행 안(=아이콘 버튼과 같은 flex 행)에 있으면, 아이콘 3개(길찾기·수정·삭제)가
+            shrink-0 으로 폭을 가져가 좁은 폰에서 텍스트 컬럼이 100pt 남짓만 남는다.
+            그러면 break-keep 때문에 주소가 어절마다 한 줄씩 끊겨 내려온다.
+            (아이콘이 1개뿐인 자동 일정 카드만 멀쩡해 보이던 이유) */}
+        {showAuthor ? (
+          <div className="mt-2">
+            <CreatorBadge name={authorName} avatarUrl={authorProfile?.avatarUrl} isHost={authorIsHost} />
+          </div>
+        ) : null}
+        {isAuto ? <MemberAvatars members={memberProfiles} ownerId={ownerId} /> : null}
+        {item.memo ? (
+          <p className="mt-1.5 text-xs leading-relaxed text-pretty text-gray-500">{item.memo}</p>
+        ) : null}
+        {item.address || item.phoneNumber ? (
+          <div className="mt-1.5 flex flex-col gap-y-0.5 text-xs text-gray-500">
+            {item.address ? (
+              <p className="flex items-start gap-1">
+                <MapPin className="mt-0.5 size-3 shrink-0" />
+                <span className="min-w-0 flex-1 break-keep">{item.address}</span>
+              </p>
+            ) : null}
+            {item.phoneNumber ? (
+              <p className="flex items-center gap-1 tabular-nums">
+                <Phone className="size-3 shrink-0" />
+                <span>{item.phoneNumber}</span>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </li>
   )
