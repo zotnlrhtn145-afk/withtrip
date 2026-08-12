@@ -47,6 +47,42 @@
 - **최종 무결성 검증**: 백업 대비 25개 테이블 중 24개 완전 동일. `device_push_tokens`의 `updated_at` 1건만 다른데 이는 폰 앱의 푸시토큰 재등록(무관). **작업으로 인한 기존 데이터 변경 0건.**
 - 타입체크: 에러 32개로 main과 동일(전부 기존 에러). 신규/수정 파일 에러 0건.
 
+## 🔐 구글 키 유출 수정 (세션2 추가 작업)
+
+### 발견한 것
+사진 URL을 `https://maps.googleapis.com/maps/api/place/photo?...&key=<서버키>` 형태로 만들어
+그대로 클라이언트에 내려보내고 있었음. 결과:
+- 검색 응답 **1건당 키가 박힌 URL 48개**가 브라우저로 나감
+- **saved_places 156행 중 153행**의 `image_url`에 서버 키가 저장돼 있음
+- 즉 브라우저용 키(`NEXT_PUBLIC_...`)뿐 아니라 **서버 키까지 이미 유출된 상태**
+
+### 고친 것
+- **`/api/places/photo?ref=&w=` 신설** — 키는 서버에만 두고 구글 이미지 주소로 302 리다이렉트.
+  이미지 바이트가 우리 서버를 통과하지 않아 대역폭 부담 없음. 캐시 600초(구글 서명 만료 때문).
+- `buildGooglePlacePhotoUrl`(키를 URL에 박던 함수) **삭제**. `buildPlacePhotoProxyUrl`로 전면 교체.
+  search / details / suggest-attractions 전부 전환.
+- 프록시 URL은 **절대 URL**로 내보냄. 이 값이 DB에 저장되고 네이티브 앱이 그대로 `<Image>`에 쓰기 때문.
+- `rewriteLegacyGooglePhotoUrl` — DB에 이미 저장된 키 포함 URL을 **읽을 때만** 프록시로 변환.
+  **DB는 수정하지 않음.** 검증: 레거시 153행 전부 변환 / photo_reference 동일 / Unsplash 3행은 원본 유지.
+- 앱(`~/withtrip-app`, 브랜치 `feature/place-photo-proxy`): `src/lib/place-photo.ts`의
+  `resolvePlacePhotoUri()`를 DB에서 읽은 image_url 렌더 지점 전부에 적용
+  (saved 찜/스팟/추천 카드·지도 마커, spots, friend-places, place/detail, trips/[id]).
+  ※ 앱 저장소는 git 리모트가 없어 로컬 커밋만 존재.
+
+### 검증
+- 검색 응답에 남은 `key=` 파라미터 **0개**
+- 프록시 302 → 실제 JPEG 800x848 정상 수신
+- 웹 타입체크 32건(main과 동일, 기존 에러) / 앱 타입체크 **0건**
+
+### ⚠️ 배포 순서 (반드시 이 순서로)
+앱의 프록시 URL은 `https://www.withtrip.co.kr/api/places/photo`를 가리킨다.
+**웹이 먼저 배포되지 않으면 앱에서 사진이 깨진다.**
+1. 웹 `feature/place-cache` → main 병합 (프록시 엔드포인트 배포)
+2. 프로덕션에서 `/api/places/photo` 동작 확인
+3. 앱 OTA (`--branch production` + `preview`) — **빌드 15 이상에만 적용됨.**
+   빌드 14/1.0.0 사용자는 레거시 URL 그대로라 4번 이후 사진이 깨짐.
+4. **그 다음에** Google Cloud Console에서 유출된 키 폐기 → 새 키 발급 → Vercel 환경변수 교체
+
 ## ⛔ 사용자가 직접 해야 하는 것 (내가 못 함)
 1. **Vercel 환경변수에 `SUPABASE_SERVICE_ROLE_KEY` 추가** — Vercel CLI 로그인이 안 돼 있어 대신 못 넣음.
    Supabase → Settings → API → service_role 키 → Vercel 프로젝트 Settings → Environment Variables.
@@ -54,7 +90,12 @@
    (로컬 `.env.local`엔 이미 넣어둠)
 2. **Vercel에 `CRON_SECRET` 추가**(권장) — 크론 엔드포인트 무단 호출 차단용.
 3. **Google Cloud Console 일일 할당량 상한 + 예산 알림** (가이드 5-1, 5-4).
-4. **`NEXT_PUBLIC_GOOGLE_PLACES_API_KEY` 정리** — 구글 키가 브라우저에 노출 중(가이드 5-3 위반). 별도 작업 필요.
+4. **유출된 구글 키 폐기·재발급** (위 "배포 순서" 4번). 지금 키는 이미 외부에 나가 있어 코드 수정만으로는 회수 불가.
+5. **`NEXT_PUBLIC_GOOGLE_PLACES_API_KEY`는 지도(Maps JavaScript API)용이라 브라우저 노출이 불가피함.**
+   제거하는 게 아니라 Cloud Console에서 **HTTP 리퍼러 제한(withtrip.co.kr) + Maps JavaScript API 전용**으로 잠가야 함.
+   서버용 Places 키와 **반드시 분리**할 것.
+6. (선택) `NEXT_PUBLIC_SITE_URL=https://www.withtrip.co.kr` — 없어도 요청 origin으로 동작하지만,
+   프리뷰 배포에서 저장한 장소가 프리뷰 도메인 URL로 DB에 남는 걸 막아준다.
    ※ 참고: 로컬 `.env.local`의 `GOOGLE_PLACES_API_KEY`는 **빈 값**이라 로컬 검색이 원래 동작 안 했음(테스트 때 임시로 public 키를 주입해 확인).
 
 ## 남은 단계
