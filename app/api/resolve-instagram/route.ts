@@ -42,6 +42,12 @@ export type ResolvedPlace = {
   sourceAddress: string
   /** 캡션에서 뽑은 짧은 메모(메뉴·영업시간 등) */
   note: string
+  /**
+   * 확정 신뢰도. high = 캡션 주소 좌표 400m 이내에서 찾음(사실상 확실),
+   * medium = 1.5km 이내 또는 주소 없이 이름으로 찾음, low = 주소는 있었는데
+   * 근처에서 못 찾아 이름으로 대체함(**다른 지점일 수 있음**), none = 못 찾음.
+   */
+  confidence: "high" | "medium" | "low" | "none"
   /** 구글에서 확정된 장소 — 못 찾으면 null */
   place: {
     googlePlaceId: string
@@ -172,31 +178,107 @@ type GoogleTextSearchItem = {
   geometry?: { location?: { lat?: number; lng?: number } }
 }
 
-/**
- * 구글 Text Search 로 장소를 확정한다.
- *
- * 캡션의 주소를 함께 넣어 검색한다. 지점이 여러 개인 브랜드는 구글이 인기 지점을
- * 먼저 주는 경향이 있어 100% 정확하지는 않다(실측 확인). 그래서 자동 저장하지 않고
- * 사용자가 고르게 한다.
- */
-async function findPlace(
+type LatLng = { lat: number; lng: number }
+
+/** 미터 단위 대략 거리. */
+function distanceMeters(a: LatLng, b: LatLng): number {
+  const dLat = (a.lat - b.lat) * 111_000
+  const dLng = (a.lng - b.lng) * 111_000 * Math.cos((a.lat * Math.PI) / 180)
+  return Math.hypot(dLat, dLng)
+}
+
+/** 캡션에 적힌 주소를 좌표로 바꾼다(지오코딩). 실패하면 null. */
+async function geocode(address: string, apiKey: string): Promise<LatLng | null> {
+  const q = String(address ?? "").trim()
+  if (!q) return null
+  const url = new URL("https://maps.googleapis.com/maps/api/geocode/json")
+  url.searchParams.set("address", q)
+  url.searchParams.set("language", "ko")
+  url.searchParams.set("key", apiKey)
+  try {
+    const res = await fetch(url.toString(), { cache: "no-store" })
+    if (!res.ok) return null
+    const json = (await res.json()) as {
+      status?: string
+      results?: { geometry?: { location?: LatLng } }[]
+    }
+    const loc = json.results?.[0]?.geometry?.location
+    if (json.status !== "OK" || !loc) return null
+    return { lat: loc.lat, lng: loc.lng }
+  } catch {
+    return null
+  }
+}
+
+async function textSearch(
   query: string,
-  apiKey: string
-): Promise<GoogleTextSearchItem | null> {
+  apiKey: string,
+  near?: LatLng | null,
+  radius = 700
+): Promise<GoogleTextSearchItem[]> {
   const url = new URL("https://maps.googleapis.com/maps/api/place/textsearch/json")
   url.searchParams.set("query", query)
   url.searchParams.set("language", "ko")
   url.searchParams.set("key", apiKey)
-
+  if (near) {
+    url.searchParams.set("location", `${near.lat},${near.lng}`)
+    url.searchParams.set("radius", String(radius))
+  }
   try {
     const res = await fetch(url.toString(), { cache: "no-store" })
-    if (!res.ok) return null
+    if (!res.ok) return []
     const json = (await res.json()) as { status?: string; results?: GoogleTextSearchItem[] }
-    if (json.status !== "OK" || !json.results?.length) return null
-    return json.results[0]
+    if (json.status !== "OK") return []
+    return json.results ?? []
   } catch {
-    return null
+    return []
   }
+}
+
+/**
+ * 장소를 확정한다.
+ *
+ * ⚠️ 이름만으로 검색하면 **지점이 여러 개인 브랜드에서 인기 지점이 먼저 나온다.**
+ *    실측: "와글와글베이크샵 익선"(종로구) → 동대문점, "스탠다드브레드 익선" → 성수점.
+ *    캡션에 주소를 같이 넣어도 마찬가지였다.
+ *
+ * 그래서 캡션에 주소가 있으면 **먼저 지오코딩해서 좌표를 얻고, 그 좌표 근처로
+ * 검색을 제한**한다. 그리고 결과가 그 좌표에서 너무 멀면(다른 지점) 버린다.
+ */
+async function findPlace(
+  name: string,
+  captionAddress: string,
+  fallbackHint: string,
+  apiKey: string
+): Promise<{ hit: GoogleTextSearchItem; confidence: "high" | "medium" | "low" } | null> {
+  const anchor = captionAddress ? await geocode(captionAddress, apiKey) : null
+
+  if (anchor) {
+    // 주소 근처로 제한해서 검색 → 그 동네의 그 가게를 집는다.
+    const nearby = await textSearch(name, apiKey, anchor, 700)
+    for (const r of nearby) {
+      const loc = r.geometry?.location
+      if (typeof loc?.lat !== "number" || typeof loc?.lng !== "number") continue
+      if (distanceMeters(anchor, { lat: loc.lat, lng: loc.lng }) <= 400) {
+        return { hit: r, confidence: "high" }
+      }
+    }
+    // 근처에 없으면 반경을 넓혀 한 번 더
+    const wider = await textSearch(name, apiKey, anchor, 2000)
+    for (const r of wider) {
+      const loc = r.geometry?.location
+      if (typeof loc?.lat !== "number" || typeof loc?.lng !== "number") continue
+      if (distanceMeters(anchor, { lat: loc.lat, lng: loc.lng }) <= 1500) {
+        return { hit: r, confidence: "medium" }
+      }
+    }
+  }
+
+  // 주소가 없거나 근처에서 못 찾음 → 이름(+힌트)으로 일반 검색
+  const query = [name, fallbackHint].filter(Boolean).join(" ")
+  const plain = await textSearch(query, apiKey)
+  if (!plain.length) return null
+  return { hit: plain[0], confidence: anchor ? "low" : "medium" }
 }
 
 export async function POST(request: Request) {
@@ -276,13 +358,24 @@ export async function POST(request: Request) {
   // 캐시 우선: 이미 아는 장소면 구글을 부르지 않는다.
   const grounded = await Promise.all(
     extracted.map(async (item): Promise<ResolvedPlace> => {
-      const query = [item.name, item.address || locationTag].filter(Boolean).join(" ")
-      const hit = await findPlace(query, placesKey)
+      const found = await findPlace(
+        item.name,
+        item.address ?? "",
+        locationTag,
+        placesKey
+      )
+      const hit = found?.hit
       const lat = hit?.geometry?.location?.lat
       const lng = hit?.geometry?.location?.lng
 
       if (!hit?.place_id || typeof lat !== "number" || typeof lng !== "number") {
-        return { sourceName: item.name, sourceAddress: item.address ?? "", note: item.note ?? "", place: null }
+        return {
+          sourceName: item.name,
+          sourceAddress: item.address ?? "",
+          note: item.note ?? "",
+          confidence: "none",
+          place: null,
+        }
       }
 
       const kind = inferCategoryFromTypes(hit.types)
@@ -298,6 +391,7 @@ export async function POST(request: Request) {
         sourceName: item.name,
         sourceAddress: item.address ?? "",
         note: item.note ?? "",
+        confidence: found?.confidence ?? "medium",
         place: {
           googlePlaceId: hit.place_id,
           placeName: String(hit.name ?? item.name).trim(),
