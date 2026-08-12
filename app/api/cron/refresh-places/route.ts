@@ -19,6 +19,12 @@ export const dynamic = "force-dynamic"
 /** 한 번에 갱신할 최대 개수. 비용 상한 역할도 한다. */
 const BATCH_SIZE = 200
 
+/**
+ * 이 시간 안에 이미 갱신된 장소는 건너뛴다.
+ * 주 1회 크론에는 아무 영향이 없고, 엔드포인트가 반복 호출돼도 구글 호출이 안 나가게 막는다.
+ */
+const MIN_AGE_HOURS = 24
+
 function getApiKey() {
   return (
     process.env.GOOGLE_PLACES_API_KEY ||
@@ -90,10 +96,16 @@ export async function GET(request: Request) {
     })
   }
 
-  // 가장 오래 갱신 안 된 순으로 집는다.
+  // 가장 오래 갱신 안 된 순으로 집되, **최근 MIN_AGE_HOURS 안에 갱신된 건 제외**한다.
+  //
+  // 이건 비용 안전장치다. CRON_SECRET을 설정하지 않으면 이 엔드포인트는 인증 없이 열려 있어
+  // 누구나 반복 호출해 구글 할당량을 태울 수 있다. 이 조건이 있으면 하루에 한 번을 넘겨
+  // 실제 구글 호출이 발생하지 않는다 (두 번째 호출부터는 대상이 0건).
+  const cutoff = new Date(Date.now() - MIN_AGE_HOURS * 60 * 60 * 1000).toISOString()
   const { data, error } = await db
     .from("places")
     .select("id,google_place_id")
+    .lt("last_refreshed_at", cutoff)
     .order("last_refreshed_at", { ascending: true })
     .limit(BATCH_SIZE)
 
