@@ -44,6 +44,11 @@ import {
 } from "@/lib/saved-places-api"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/utils/supabase/client"
+import { PHOTO_W } from "@/shared/photo-widths"
+import { resizePlacePhotoUrl } from "@/lib/place-cover-image"
+
+/** 처음에 그릴 개수 / 한 번에 더 그릴 개수 */
+const PAGE = 15
 
 const NearbyMap = dynamic(
   () => import("@/components/nearby-map").then((mod) => mod.NearbyMap),
@@ -208,6 +213,34 @@ export function SavedPlacesView() {
       .map(([label, count]) => ({ label, count }))
       .sort((a, b) => b.count - a.count)
   }, [places])
+
+  /**
+   * 목록을 한 번에 다 그리지 않고 조금씩 늘린다.
+   *
+   * 찜이 195곳이면 카드 195장과 사진 195장이 한꺼번에 만들어져 처음 화면이 느렸다.
+   * 쿼리 자체는 1ms 라 **서버 페이지네이션이 아니라 그리기만** 나눈다.
+   * (정렬이 '가까운 순'이라 거리 계산에 전체가 필요하고, 지도도 전체 마커를 찍는다)
+   */
+  const [visible, setVisible] = useState(PAGE)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    setVisible(PAGE)
+  }, [subTab, search, subFilter, sort, tripFilter])
+
+  // 바닥의 센티널이 화면에 들어오면 다음 묶음을 그린다
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setVisible((v) => v + PAGE)
+      },
+      { rootMargin: "600px" }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [subTab])
 
   const filteredPlaces = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -559,7 +592,7 @@ export function SavedPlacesView() {
         >
           <div className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-slate-100">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={place.imageUrl} alt="" className="size-full object-cover" />
+            <img src={resizePlacePhotoUrl(place.imageUrl, PHOTO_W.thumb)} alt="" loading="lazy" className="size-full object-cover" />
             {/* 친구 추천 흔적 — 보낸 사람 카카오 프로필 */}
             {place.recommendedBy && place.recommender ? (
               <span className="absolute -right-1 -bottom-1 z-10">
@@ -681,7 +714,7 @@ export function SavedPlacesView() {
       >
         <div className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-slate-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={spot.image} alt="" className="size-full object-cover" />
+          <img src={resizePlacePhotoUrl(spot.image, PHOTO_W.thumb)} alt="" loading="lazy" className="size-full object-cover" />
           {/* 담은 멤버 프로필 */}
           <span className="absolute -right-1 -bottom-1 z-10">
             <Avatar className="size-6 border-2 border-white">
@@ -948,7 +981,7 @@ export function SavedPlacesView() {
                   </div>
                 ) : (
                   <ul className="flex flex-col gap-2.5 md:grid md:grid-cols-2 xl:grid-cols-3">
-                    {filteredPlaces.map((place) => renderPlaceCard(place))}
+                    {filteredPlaces.slice(0, visible).map((place) => renderPlaceCard(place))}
                   </ul>
                 )
               ) : filteredTripSpots.length === 0 ? (
@@ -959,9 +992,11 @@ export function SavedPlacesView() {
                 </div>
               ) : (
                 <ul className="flex flex-col gap-2.5 md:grid md:grid-cols-2 xl:grid-cols-3">
-                  {filteredTripSpots.map((spot) => renderTripSpotCard(spot))}
+                  {filteredTripSpots.slice(0, visible).map((spot) => renderTripSpotCard(spot))}
                 </ul>
               )}
+              {/* 여기가 보이면 다음 묶음을 그린다 */}
+              <div ref={sentinelRef} aria-hidden className="h-1" />
             </div>
           </div>
         </div>
@@ -1179,7 +1214,7 @@ function FriendRecsList({
           <div className="flex items-center gap-3">
             <div className="relative size-16 shrink-0 overflow-hidden rounded-xl bg-slate-100">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={rec.imageUrl ?? ""} alt="" className="size-full object-cover" />
+              <img src={resizePlacePhotoUrl(rec.imageUrl, PHOTO_W.thumb)} alt="" loading="lazy" className="size-full object-cover" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-bold text-slate-900">{rec.placeName}</p>

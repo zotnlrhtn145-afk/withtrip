@@ -180,3 +180,27 @@ export function rewriteLegacyGooglePhotoUrl(
 // ⚠️ 예전에 있던 buildGooglePlacePhotoUrl(ref, apiKey)는 삭제했다.
 //    URL에 구글 키를 박아 넣어서, 그 URL이 클라이언트 응답과 DB(saved_places.image_url)에
 //    그대로 저장되며 서버 키가 유출됐다. 사진 URL은 반드시 buildPlacePhotoProxyUrl()을 쓴다.
+
+/**
+ * 이미 만들어진 사진 URL 의 너비만 바꾼다.
+ *
+ * 목록 썸네일에 1200px 짜리를 그대로 쓰면 한 화면에 수십 MB를 받게 된다.
+ * 화면에 그리는 크기에 맞춰 줄여서 요청한다 (PHOTO_W 참고).
+ * 구글 사진이 아니면(Unsplash 등) 원본을 그대로 둔다.
+ */
+export function resizePlacePhotoUrl(url: string | null | undefined, width: number): string {
+  const raw = String(url ?? "").trim()
+  if (!raw || !Number.isFinite(width) || width <= 0) return raw
+  const w = Math.round(width)
+
+  // 우리 프록시 주소 — w 파라미터만 갈아끼운다
+  if (raw.includes("/api/places/photo")) {
+    return /[?&]w=\d+/.test(raw) ? raw.replace(/([?&]w=)\d+/, `$1${w}`) : `${raw}&w=${w}`
+  }
+
+  // 예전 구글 URL — photo_reference 를 뽑아 프록시 주소로 새로 만든다
+  const ref = extractGooglePhotoReference(raw)
+  if (ref) return buildPlacePhotoProxyUrl(ref, w)
+
+  return raw
+}
