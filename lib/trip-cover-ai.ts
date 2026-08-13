@@ -30,11 +30,21 @@ export async function generateTripCoverImage(
     // to wait out a slow or momentarily overloaded image model.
     const controller = new AbortController()
     const timeout = window.setTimeout(() => controller.abort(), 90000)
+
+    // 토큰을 같이 보내면 **서버가 Storage 업로드까지 끝내고 URL 만 준다.**
+    // (앱도 같은 방식으로 부른다 — 한쪽만 구현되어 어긋나는 일이 없도록)
+    const supabaseForToken = createClient()
+    const { data: sessionData } = await supabaseForToken.auth.getSession()
+    const accessToken = sessionData.session?.access_token
+
     let response: Response
     try {
       response = await fetch("/api/generate-trip-cover", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
         body: JSON.stringify(input),
         signal: controller.signal,
       })
@@ -47,10 +57,16 @@ export async function generateTripCoverImage(
       return null
     }
 
-    const { imageBase64, mimeType } = (await response.json()) as {
+    const { imageUrl, imageBase64, mimeType } = (await response.json()) as {
+      imageUrl?: string
       imageBase64?: string
       mimeType?: string
     }
+
+    // 서버가 올려줬으면 그대로 쓴다
+    if (imageUrl) return imageUrl
+
+    // 못 올렸을 때만 예전 방식(브라우저가 직접 업로드)으로 돌아간다
     if (!imageBase64) return null
 
     const userId = await getCurrentUserId(null)

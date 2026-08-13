@@ -1,8 +1,60 @@
 import { NextResponse } from "next/server"
 
 import { getIconicLandmark } from "@/lib/getCityImage"
+import { getSupabaseAdmin } from "@/lib/supabase-admin"
 
 export const runtime = "nodejs"
+
+/**
+ * 만든 이미지를 Storage 에 올리고 공개 URL 을 돌려준다.
+ *
+ * 왜 서버가 올리나: 예전엔 base64 를 브라우저로 내려보내 브라우저가 올렸다.
+ * 그래서 **앱은 같은 걸 또 만들어야 했고, 결국 안 만들어서 앱에서 만든 여행만
+ * AI 커버가 안 붙었다.** 서버가 여기까지 끝내면 웹·앱이 똑같이 한 번만 부르면 된다.
+ *
+ * 올리기에 실패하면 null 을 돌려주고, 호출부는 예전처럼 base64 를 받아 직접 올린다.
+ */
+async function uploadCover(
+  req: Request,
+  base64: string,
+  mimeType: string
+): Promise<string | null> {
+  const admin = getSupabaseAdmin()
+  if (!admin) return null
+
+  // 폴더가 사용자 id 여야 한다(본인 커버 삭제 정책이 그 기준). 그래서 토큰으로 확인한다.
+  // 클라이언트가 보낸 id 를 그대로 믿으면 남의 폴더에 쓸 수 있다.
+  const header = req.headers.get("authorization") ?? ""
+  const jwt = header.startsWith("Bearer ") ? header.slice(7).trim() : ""
+  if (!jwt) return null
+
+  try {
+    const { data, error } = await admin.auth.getUser(jwt)
+    const userId = data?.user?.id
+    if (error || !userId) return null
+
+    const ext = mimeType.split("/")[1]?.replace(/[^a-z0-9]/gi, "") || "png"
+    const path = `${userId}/${Date.now()}-${Math.random().toString(16).slice(2)}.${ext}`
+
+    const { error: upErr } = await admin.storage
+      .from("trip-covers")
+      .upload(path, Buffer.from(base64, "base64"), {
+        contentType: mimeType,
+        cacheControl: "31536000",
+        upsert: false,
+      })
+    if (upErr) {
+      console.warn("[generate-trip-cover] upload failed:", upErr.message)
+      return null
+    }
+
+    const { data: pub } = admin.storage.from("trip-covers").getPublicUrl(path)
+    return String(pub?.publicUrl ?? "").trim() || null
+  } catch (e) {
+    console.warn("[generate-trip-cover] upload unexpected:", e)
+    return null
+  }
+}
 
 type GeminiModel = {
   name?: string
@@ -121,9 +173,16 @@ export async function POST(req: Request) {
             const imagePart = parts.find((part) => part.inlineData?.data)
             if (imagePart?.inlineData?.data) {
               console.info(`[generate-trip-cover] success with model: ${model}`)
+              const mime = imagePart.inlineData.mimeType || "image/png"
+
+              // 서버가 올린다. 성공하면 URL 만 주면 되므로 응답도 훨씬 가볍다.
+              const imageUrl = await uploadCover(req, imagePart.inlineData.data, mime)
+              if (imageUrl) return NextResponse.json({ imageUrl })
+
+              // 못 올렸으면 예전처럼 base64 를 준다 (호출부가 직접 올린다)
               return NextResponse.json({
                 imageBase64: imagePart.inlineData.data,
-                mimeType: imagePart.inlineData.mimeType || "image/png",
+                mimeType: mime,
               })
             }
             lastError = `[${model}] no image part in response`
