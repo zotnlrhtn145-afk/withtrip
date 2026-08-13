@@ -32,6 +32,8 @@ const MAX_CANDIDATES = 10
 type ExtractedPlace = {
   name: string
   address?: string
+  /** 캡션에서 읽어낸 도시·지역 (주소가 없을 때 검색을 좁히는 데 쓴다) */
+  region?: string
   note?: string
 }
 
@@ -128,9 +130,11 @@ async function extractPlaces(
     `- name 은 지도에서 검색 가능한 상호명으로. 수식어("낭만 가득", "서울 최초")는 빼라.\n` +
     `- 메뉴·가격·영업시간 같은 유용한 정보가 있으면 note 에 40자 이내로 요약해라.\n` +
     `- 장소가 아닌 것(계정명, 해시태그, 지역명 자체)은 넣지 마라.\n` +
+    `- **region 에는 그 장소가 있는 도시·지역을 넣어라**(예: "호치민", "오사카", "익선동").\n` +
+    `  캡션 전체 맥락이나 해시태그(#호치민맛집 등)에서 유추해도 된다. 모르면 빈 문자열.\n` +
     `- 장소를 못 찾으면 빈 배열을 반환해라.\n\n` +
     `반드시 다음 JSON 형태로만 응답해:\n` +
-    `{"places": [{"name": "상호명", "address": "캡션에 적힌 주소 또는 빈 문자열", "note": "짧은 메모"}]}\n\n` +
+    `{"places": [{"name": "상호명", "address": "캡션에 적힌 주소 또는 빈 문자열", "region": "도시·지역", "note": "짧은 메모"}]}\n\n` +
     `캡션:\n"""\n${caption.slice(0, 4000)}\n"""`
 
   const models = ["gemini-flash-latest", "gemini-2.0-flash", "gemini-1.5-flash-latest"]
@@ -166,12 +170,13 @@ async function extractPlaces(
       }
 
       const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as {
-        places?: Array<{ name?: string; address?: string; note?: string }>
+        places?: Array<{ name?: string; address?: string; region?: string; note?: string }>
       }
       const places = (parsed.places ?? [])
         .map((p) => ({
           name: String(p.name ?? "").trim(),
           address: String(p.address ?? "").trim(),
+          region: String(p.region ?? "").trim(),
           note: String(p.note ?? "").trim(),
         }))
         .filter((p) => p.name)
@@ -336,6 +341,7 @@ async function textSearch(
 async function findPlace(
   name: string,
   captionAddress: string,
+  region: string,
   fallbackHint: string,
   apiKey: string
 ): Promise<{
@@ -367,8 +373,11 @@ async function findPlace(
     return { hit: null, confidence: "caption", anchor }
   }
 
-  // 주소가 아예 없는 경우 → 이름(+위치 태그)으로 일반 검색. 이름이 맞을 때만 채택.
-  const query = [name, fallbackHint].filter(Boolean).join(" ")
+  // 주소가 없으면 **지역명을 붙여** 검색한다.
+  // 이게 없으면 "THE BRIX" 같은 흔한 상호가 전 세계에서 아무거나 잡힌다.
+  // (실측: 호치민 감성맛집 게시물은 주소 없이 지역명만 있었다)
+  const hint = region || fallbackHint
+  const query = [name, hint].filter(Boolean).join(" ")
   const plain = await textSearch(query, apiKey)
   const matched = plain.find((r) => nameSimilarity(name, r.name ?? "") >= NAME_MATCH_THRESHOLD)
   if (matched) return { hit: matched, confidence: "medium", anchor: null }
@@ -463,6 +472,7 @@ export async function POST(request: Request) {
       const found = await findPlace(
         item.name,
         item.address ?? "",
+        item.region ?? "",
         locationTag,
         placesKey
       )
