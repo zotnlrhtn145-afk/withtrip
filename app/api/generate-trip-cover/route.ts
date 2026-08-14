@@ -64,14 +64,40 @@ function cityKeyOf(input: { city?: string; country?: string; location?: string; 
  * 등록된 47개 명소 목록에 없는 도시는 **모델에게 대표 명소를 먼저 묻는다.**
  * 예전엔 목록에 없으면 그냥 포기해서 "되는 도시와 안 되는 도시"가 갈렸다.
  */
+/**
+ * 이 계정에서 실제로 쓸 수 있는 텍스트 모델을 찾는다.
+ *
+ * ⚠️ 모델 이름을 고정해 두면 안 된다. `gemini-2.0-flash` 를 박아 뒀다가
+ *    **계정에 없어서 404 가 났고, 대표 장소 추론이 한 번도 동작하지 않았다.**
+ *    (그런데도 조용히 "지원하지 않는 여행지"로만 보여서 알아채기 어려웠다)
+ */
+async function findTextModel(apiKey: string): Promise<string | null> {
+  try {
+    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models", {
+      headers: { "x-goog-api-key": apiKey },
+    })
+    if (!res.ok) return null
+    const d = (await res.json()) as { models?: GeminiModel[] }
+    const names = (d.models ?? [])
+      .filter((m) => (m.supportedGenerationMethods ?? []).includes("generateContent"))
+      .map((m) => String(m.name ?? "").replace(/^models\//, ""))
+      .filter((n) => n.includes("flash") && !/image|exp|preview|thinking|lite/i.test(n))
+    return names[0] ?? null
+  } catch {
+    return null
+  }
+}
+
 async function askLandmark(
   apiKey: string,
   city: string,
   country: string
 ): Promise<{ landmark: string | null; raw: string }> {
   try {
+    const model = await findTextModel(apiKey)
+    if (!model) return { landmark: null, raw: "no text model available" }
     const res = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
