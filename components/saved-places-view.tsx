@@ -228,7 +228,17 @@ export function SavedPlacesView() {
     setVisible(PAGE)
   }, [subTab, search, subFilter, sort, tripFilter])
 
-  // 바닥의 센티널이 화면에 들어오면 다음 묶음을 그린다
+  /**
+   * 바닥의 센티널이 화면에 들어오면 다음 묶음을 그린다.
+   *
+   * ⚠️ 두 가지를 놓치면 아예 동작하지 않는다 (실제로 둘 다 놓쳤었다):
+   *  1) 처음 그릴 때는 목록이 아직 로딩 중이라 **센티널이 없다**.
+   *     의존성이 [subTab] 뿐이면 다시 실행되지 않아 관찰자가 영원히 안 붙는다.
+   *  2) 한 번 더 그린 뒤에도 센티널이 계속 보이는 상태면
+   *     IntersectionObserver 는 **상태가 안 바뀌었으니 다시 알리지 않는다.**
+   *     그래서 visible 이 바뀔 때마다 관찰자를 다시 만든다 —
+   *     새로 만들면 현재 교차 상태를 즉시 알려주므로 이어서 불러온다.
+   */
   useEffect(() => {
     const el = sentinelRef.current
     if (!el) return
@@ -236,11 +246,11 @@ export function SavedPlacesView() {
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) setVisible((v) => v + PAGE)
       },
-      { rootMargin: "600px" }
+      { rootMargin: "400px" }
     )
     io.observe(el)
     return () => io.disconnect()
-  }, [subTab])
+  }, [subTab, visible, loading, places.length, tripSpots.length])
 
   const filteredPlaces = useMemo(() => {
     const q = search.trim().toLowerCase()
