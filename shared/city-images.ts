@@ -181,6 +181,8 @@ const COUNTRY_KO_TO_EN: Record<string, string> = {
 
 /** Common misspellings / aliases → canonical English city. */
 const CITY_ALIASES: Record<string, string> = {
+  // 고베 — 목적지 목록에 추가하면서 같이 넣었다(영문 키가 있어야 저장 경로가 깔끔하다)
+  고베: "kobe",
   체앙마이: "chiang mai",
   "chiangmai": "chiang mai",
   신가포르: "singapore",

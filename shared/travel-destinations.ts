@@ -17,7 +17,7 @@ export const travelCountries: TravelCountry[] = [
     code: "JP",
     nameKo: "일본",
     nameEn: "Japan",
-    cities: ["도쿄", "오사카", "교토", "후쿠오카", "삿포로", "나고야", "오키나와", "오사카 & 교토"],
+    cities: ["도쿄", "오사카", "교토", "고베", "후쿠오카", "삿포로", "나고야", "오키나와", "오사카 & 교토"],
   },
   {
     code: "VN",
