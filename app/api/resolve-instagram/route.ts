@@ -31,6 +31,15 @@ const MAX_CANDIDATES = 10
 
 type ExtractedPlace = {
   name: string
+  /**
+   * 현지 표기 상호명.
+   *
+   * ⚠️ 캡션은 "이치란 라멘"인데 구글은 "一蘭 道頓堀店"을 준다. 표기 체계가 아예 달라서
+   *    이름 대조가 0점이 나오고, 구글이 **정확히 맞힌 곳까지 "확인 필요"로 떨어졌다**.
+   *    (실측: 일본어 캡션 3곳이 전부 low)
+   *    AI 가 이미 아는 정보라 호출을 더 하지 않고 같이 받아 온다.
+   */
+  nameLocal?: string
   address?: string
   /** 캡션에서 읽어낸 도시·지역 (주소가 없을 때 검색을 좁히는 데 쓴다) */
   region?: string
@@ -132,9 +141,12 @@ async function extractPlaces(
     `- 장소가 아닌 것(계정명, 해시태그, 지역명 자체)은 넣지 마라.\n` +
     `- **region 에는 그 장소가 있는 도시·지역을 넣어라**(예: "호치민", "오사카", "익선동").\n` +
     `  캡션 전체 맥락이나 해시태그(#호치민맛집 등)에서 유추해도 된다. 모르면 빈 문자열.\n` +
+    `- **nameLocal 에는 그 나라 현지 표기의 상호명을 넣어라**(예: "이치란"→"一蘭",\n` +
+    `  "다이키스이산"→"大起水産", "포 틴"→"Phở Thìn"). 한국 장소면 name 과 같게 두면 된다.\n` +
+    `  모르면 빈 문자열. 아는 곳만 채워라 — 지어내지 마라.\n` +
     `- 장소를 못 찾으면 빈 배열을 반환해라.\n\n` +
     `반드시 다음 JSON 형태로만 응답해:\n` +
-    `{"places": [{"name": "상호명", "address": "캡션에 적힌 주소 또는 빈 문자열", "region": "도시·지역", "note": "짧은 메모"}]}\n\n` +
+    `{"places": [{"name": "상호명", "nameLocal": "현지 표기", "address": "캡션에 적힌 주소 또는 빈 문자열", "region": "도시·지역", "note": "짧은 메모"}]}\n\n` +
     `캡션:\n"""\n${caption.slice(0, 4000)}\n"""`
 
   const models = ["gemini-flash-latest", "gemini-2.0-flash", "gemini-1.5-flash-latest"]
@@ -175,11 +187,18 @@ async function extractPlaces(
       }
 
       const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as {
-        places?: Array<{ name?: string; address?: string; region?: string; note?: string }>
+        places?: Array<{
+          name?: string
+          nameLocal?: string
+          address?: string
+          region?: string
+          note?: string
+        }>
       }
       const places = (parsed.places ?? [])
         .map((p) => ({
           name: String(p.name ?? "").trim(),
+          nameLocal: String(p.nameLocal ?? "").trim(),
           address: String(p.address ?? "").trim(),
           region: String(p.region ?? "").trim(),
           note: String(p.note ?? "").trim(),
@@ -221,7 +240,10 @@ function normalizeName(input: string): string {
   s = s.replace(/\(.*?\)/g, " ")
   s = s.replace(/\b(by|x|and|the)\b/g, " ")
   s = s.replace(/(본점|지점|점|매장|카페|cafe)\s*$/g, " ")
-  return s.replace(/[^0-9a-z가-힣]/g, "")
+  // ⚠️ 예전엔 [^0-9a-z가-힣] 를 지웠다. 한자·히라가나·가타카나가 **통째로 날아가서**
+  //    일본 장소는 이름이 빈 문자열이 되고, 대조가 항상 0점이었다.
+  //    한중일 문자와 태국어를 남긴다.
+  return s.replace(/[^0-9a-z가-힣\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\u0e00-\u0e7f]/g, "")
 }
 
 function nameCore(input: string): string {
@@ -255,6 +277,20 @@ function nameSimilarity(a: string, b: string): number {
   for (const g of A) if (B.has(g)) inter += 1
   const union = A.size + B.size - inter
   return union > 0 ? inter / union : 0
+}
+
+/**
+ * 캡션 표기와 현지 표기 중 **더 잘 맞는 쪽**으로 본다.
+ * "이치란 라멘" vs "一蘭 道頓堀店" 은 0점이지만, 현지 표기 "一蘭" 과는 1.00 이다.
+ */
+function bestNameSimilarity(candidates: string[], target: string): number {
+  let best = 0
+  for (const c of candidates) {
+    if (!c) continue
+    const v = nameSimilarity(c, target)
+    if (v > best) best = v
+  }
+  return best
 }
 
 /** 이 값 미만이면 다른 가게로 본다. 실측 분포: 정답 1.00 / 오답 0.00~0.10 */
@@ -345,6 +381,7 @@ async function textSearch(
  */
 async function findPlace(
   name: string,
+  nameLocal: string,
   captionAddress: string,
   region: string,
   fallbackHint: string,
@@ -354,22 +391,31 @@ async function findPlace(
   confidence: ResolvedPlace["confidence"]
   anchor: LatLng | null
 } | null> {
+  // 캡션 표기와 현지 표기를 둘 다 들고 대조한다
+  const spellings = [name, nameLocal].filter(Boolean)
   const anchor = captionAddress ? await geocode(captionAddress, apiKey) : null
 
   if (anchor) {
     // 캡션 주소 근처로 검색하고, **거리와 이름을 둘 다** 확인한다.
     //  - 거리만 보면: 같은 동네 다른 가게를 집는다 (익선베이글 사례)
     //  - 이름만 보면: 다른 동네 같은 브랜드를 집는다 (스탠다드브레드 도산 사례)
-    for (const [radius, maxDist] of [
-      [700, 400],
-      [2000, 1200],
+    //
+    // ⚠️ 두 반경을 차례로 부르면 왕복이 두 번 쌓인다. 서로 독립이라 동시에 부르고
+    //    좁은 쪽을 먼저 본다 (좁은 쪽이 맞으면 그게 더 확실한 답이다).
+    const [near, wide] = await Promise.all([
+      textSearch(name, apiKey, anchor, 700),
+      textSearch(name, apiKey, anchor, 2000),
+    ])
+
+    for (const [results, maxDist] of [
+      [near, 400],
+      [wide, 1200],
     ] as const) {
-      const results = await textSearch(name, apiKey, anchor, radius)
       for (const r of results) {
         const loc = r.geometry?.location
         if (typeof loc?.lat !== "number" || typeof loc?.lng !== "number") continue
         if (distanceMeters(anchor, { lat: loc.lat, lng: loc.lng }) > maxDist) continue
-        if (nameSimilarity(name, r.name ?? "") < NAME_MATCH_THRESHOLD) continue
+        if (bestNameSimilarity(spellings, r.name ?? "") < NAME_MATCH_THRESHOLD) continue
         return { hit: r, confidence: maxDist === 400 ? "high" : "medium", anchor }
       }
     }
@@ -381,13 +427,48 @@ async function findPlace(
   // 주소가 없으면 **지역명을 붙여** 검색한다.
   // 이게 없으면 "THE BRIX" 같은 흔한 상호가 전 세계에서 아무거나 잡힌다.
   // (실측: 호치민 감성맛집 게시물은 주소 없이 지역명만 있었다)
+  //
+  // 현지 표기를 알면 그걸로도 같이 찾는다. 캡션의 한글 음차보다 현지 표기가
+  // 구글에서 훨씬 잘 잡힌다("다이키스이산" 보다 "大起水産").
   const hint = region || fallbackHint
-  const query = [name, hint].filter(Boolean).join(" ")
-  const plain = await textSearch(query, apiKey)
-  const matched = plain.find((r) => nameSimilarity(name, r.name ?? "") >= NAME_MATCH_THRESHOLD)
-  if (matched) return { hit: matched, confidence: "medium", anchor: null }
-  if (plain.length) return { hit: plain[0], confidence: "low", anchor: null }
+  const queries = Array.from(
+    new Set(spellings.map((sp) => [sp, hint].filter(Boolean).join(" ")))
+  )
+  const resultSets = await Promise.all(queries.map((q) => textSearch(q, apiKey)))
+
+  for (const results of resultSets) {
+    const matched = results.find(
+      (r) => bestNameSimilarity(spellings, r.name ?? "") >= NAME_MATCH_THRESHOLD
+    )
+    if (matched) return { hit: matched, confidence: "medium", anchor: null }
+  }
+
+  // 지역명을 붙인 질의가 통째로 비면(지역명이 틀렸을 때 생긴다) 이름만으로 한 번 더.
+  // 예전엔 여기서 바로 포기해서 "못 찾음"이 됐다.
+  const anyResults = resultSets.some((r) => r.length > 0)
+  if (!anyResults && hint) {
+    const bare = await textSearch(name, apiKey)
+    const matched = bare.find(
+      (r) => bestNameSimilarity(spellings, r.name ?? "") >= NAME_MATCH_THRESHOLD
+    )
+    if (matched) return { hit: matched, confidence: "medium", anchor: null }
+    if (bare.length) return { hit: bare[0], confidence: "low", anchor: null }
+  }
+
+  const first = resultSets.find((r) => r.length > 0)
+  if (first) return { hit: first[0], confidence: "low", anchor: null }
   return null
+}
+
+/**
+ * 예열용.
+ *
+ * 앱이 인스타 게시물을 읽는 1~2초 동안 이걸 먼저 때려서 서버를 깨워 둔다.
+ * 405 를 돌려주는 것만으로는 이 파일이 확실히 로드된다는 보장이 없어서
+ * 가벼운 GET 을 따로 둔다. (POST 와 같은 모듈이라 같이 준비된다)
+ */
+export async function GET() {
+  return NextResponse.json({ ok: true })
 }
 
 export async function POST(request: Request) {
@@ -480,6 +561,7 @@ export async function POST(request: Request) {
     extracted.map(async (item): Promise<ResolvedPlace> => {
       const found = await findPlace(
         item.name,
+        item.nameLocal ?? "",
         item.address ?? "",
         item.region ?? "",
         locationTag,
