@@ -17,7 +17,9 @@ import {
   Plus,
   Receipt,
   ReceiptText,
+  RotateCcw,
   ScanLine,
+  Share2,
   ShoppingBag,
   Utensils,
   Wallet,
@@ -1322,68 +1324,62 @@ export function SettlementView({
         <div className="fixed right-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-50 flex flex-col items-end gap-3">
           {fabOpen ? (
             <>
-              {/* 카카오 공유 */}
-              <div
-                className="flex items-center gap-2 duration-200 animate-in fade-in-0 slide-in-from-bottom-2 zoom-in-95"
+              {/*
+                아이콘과 이름을 **한 알약 안에** 담는다.
+                예전엔 검은 알약(이름) + 동그라미(아이콘)가 따로 떠 있었고
+                색도 카카오 노랑·흰색·앰버가 섞여 산만했다.
+                지금은 흰 알약으로 통일하고, 주된 동작(지출 추가)만 브랜드색으로 둔다.
+              */}
+              <button
+                type="button"
+                disabled={sharing || loading}
+                onClick={() => {
+                  setFabOpen(false)
+                  void handleShareSettlement()
+                }}
                 style={{ animationDelay: "80ms" }}
+                className="flex items-center gap-2 rounded-full bg-white py-2.5 pr-4 pl-3 text-sm font-bold text-neutral-800 shadow-lg ring-1 ring-neutral-200/70 transition-transform duration-200 animate-in fade-in-0 slide-in-from-bottom-2 active:scale-95 disabled:opacity-50"
               >
-                <span className="rounded-lg bg-neutral-900/85 px-2.5 py-1 text-xs font-semibold text-white shadow">
-                  카카오 공유
-                </span>
-                <button
-                  type="button"
-                  disabled={sharing || loading}
-                  onClick={() => {
-                    setFabOpen(false)
-                    void handleShareSettlement()
-                  }}
-                  className="flex size-12 items-center justify-center rounded-full bg-[#FEE500] text-[#191600] shadow-lg transition-transform active:scale-90 disabled:opacity-50"
-                >
-                  {sharing ? <Loader2 className="size-5 animate-spin" /> : <MessageCircle className="size-5" />}
-                </button>
-              </div>
-              {/* 정산 완료 / 재개 */}
-              <div
-                className="flex items-center gap-2 duration-200 animate-in fade-in-0 slide-in-from-bottom-2 zoom-in-95"
+                {sharing ? (
+                  <Loader2 className="size-[18px] animate-spin text-neutral-400" />
+                ) : (
+                  <Share2 className="size-[18px] text-neutral-400" />
+                )}
+                공유
+              </button>
+
+              <button
+                type="button"
+                disabled={settlingTrip || loading}
+                onClick={() => {
+                  setFabOpen(false)
+                  void handleToggleTripSettled()
+                }}
                 style={{ animationDelay: "40ms" }}
+                className="flex items-center gap-2 rounded-full bg-white py-2.5 pr-4 pl-3 text-sm font-bold text-neutral-800 shadow-lg ring-1 ring-neutral-200/70 transition-transform duration-200 animate-in fade-in-0 slide-in-from-bottom-2 active:scale-95 disabled:opacity-50"
               >
-                <span className="rounded-lg bg-neutral-900/85 px-2.5 py-1 text-xs font-semibold text-white shadow">
-                  {tripSettled ? "정산 재개" : "정산 완료"}
-                </span>
-                <button
-                  type="button"
-                  disabled={settlingTrip || loading}
-                  onClick={() => {
-                    setFabOpen(false)
-                    void handleToggleTripSettled()
-                  }}
-                  className={cn(
-                    "flex size-12 items-center justify-center rounded-full shadow-lg transition-transform active:scale-90 disabled:opacity-50",
-                    tripSettled
-                      ? "bg-emerald-500 text-white"
-                      : "bg-white text-neutral-800 ring-1 ring-neutral-200"
-                  )}
-                >
-                  {settlingTrip ? <Loader2 className="size-5 animate-spin" /> : <CheckCircle2 className="size-5" />}
-                </button>
-              </div>
-              {/* 지출 추가 */}
-              <div className="flex items-center gap-2 duration-200 animate-in fade-in-0 slide-in-from-bottom-2 zoom-in-95">
-                <span className="rounded-lg bg-neutral-900/85 px-2.5 py-1 text-xs font-semibold text-white shadow">
-                  지출 추가
-                </span>
-                <button
-                  type="button"
-                  disabled={tripSettled}
-                  onClick={() => {
-                    setFabOpen(false)
-                    setOpen(true)
-                  }}
-                  className="flex size-12 items-center justify-center rounded-full bg-amber-400 text-neutral-900 shadow-lg transition-transform active:scale-90 disabled:opacity-50"
-                >
-                  <Receipt className="size-5" />
-                </button>
-              </div>
+                {settlingTrip ? (
+                  <Loader2 className="size-[18px] animate-spin text-neutral-400" />
+                ) : tripSettled ? (
+                  <RotateCcw className="size-[18px] text-neutral-400" />
+                ) : (
+                  <Check className="size-[18px] text-neutral-400" />
+                )}
+                {tripSettled ? "정산 재개" : "정산 완료"}
+              </button>
+
+              <button
+                type="button"
+                disabled={tripSettled}
+                onClick={() => {
+                  setFabOpen(false)
+                  setOpen(true)
+                }}
+                className="flex items-center gap-2 rounded-full bg-amber-400 py-2.5 pr-4 pl-3 text-sm font-bold text-neutral-900 shadow-lg shadow-amber-400/30 transition-transform duration-200 animate-in fade-in-0 slide-in-from-bottom-2 active:scale-95 disabled:opacity-50"
+              >
+                <Plus className="size-[18px]" />
+                지출 추가
+              </button>
             </>
           ) : null}
           {/* 메인 FAB */}
