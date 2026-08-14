@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 
 export const runtime = "nodejs"
+/** 모델이 느릴 때가 있어 여유를 준다. 아래에서 호출별로 따로 상한을 건다. */
+export const maxDuration = 60
 
 /**
  * POST /api/extract-schedule
@@ -87,7 +89,11 @@ export async function POST(req: Request) {
     }
     if (models.length === 0) models = ["gemini-2.0-flash", "gemini-1.5-flash"]
 
-    for (const model of models.slice(0, 3)) {
+    // 한 번은 90초를 넘겨 응답이 끊긴 적이 있다. 호출마다 상한을 걸고
+    // 시도 횟수도 2번으로 줄여 전체 시간이 예측 가능하게 한다.
+    for (const model of models.slice(0, 2)) {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 20_000)
       try {
         const res = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -98,6 +104,7 @@ export async function POST(req: Request) {
               contents: [{ parts: [{ text: buildPrompt(days, clipped) }] }],
               generationConfig: { responseMimeType: "application/json", temperature: 0.2 },
             }),
+            signal: controller.signal,
           }
         )
         if (!res.ok) continue
@@ -123,6 +130,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ items })
       } catch {
         continue
+      } finally {
+        clearTimeout(timer)
       }
     }
 
