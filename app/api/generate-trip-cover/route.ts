@@ -73,10 +73,15 @@ async function askLandmark(apiKey: string, city: string, country: string): Promi
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
         body: JSON.stringify({
           contents: [{ parts: [{ text:
-            `What is the single most iconic, instantly recognizable landmark of ` +
-            `${city}${country ? `, ${country}` : ""}? ` +
-            `Answer with the landmark's common English name only — no explanation. ` +
-            `If you are not confident such a landmark exists, answer exactly: NONE` }] }],
+            // ⚠️ "가장 상징적인 랜드마크"만 물으면 작은 도시는 모델이 포기한다
+            //    (포항·용인이 실제로 NONE 이 나왔다). 여행자가 사진 찍을 만한
+            //    **대표적인 장소**로 넓혀 묻는다 — 해안·공원·시장·사찰도 답이 된다.
+            `Name one real, specific place in ${city}${country ? `, ${country}` : ""} ` +
+            `that a traveler would photograph to represent the city. ` +
+            `It can be a landmark, a coastline, a park, a temple, a bridge, or a famous street — ` +
+            `but it must be a real named place in that city.\n` +
+            `Answer with its common English name only, no explanation. ` +
+            `Only if you cannot identify this city at all, answer exactly: NONE` }] }],
           generationConfig: { temperature: 0 },
         }),
       }
