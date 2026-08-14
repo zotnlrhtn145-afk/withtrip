@@ -82,17 +82,46 @@ export async function POST(req: Request) {
     const body = (await req.json()) as {
       imageBase64?: string
       mimeType?: string
+      /** 이미 올라간 사진의 주소. 대화방 사진을 지출로 등록할 때 쓴다. */
+      imageUrl?: string
     }
 
-    const rawImage = String(body.imageBase64 ?? "").trim()
+    let rawImage = String(body.imageBase64 ?? "").trim()
+    let mimeHint = body.mimeType
+
+    // 주소로 온 경우 — 서버가 받아온다.
+    // (앱에서 이미 올린 사진을 다시 base64 로 만들어 보내는 건 낭비이고,
+    //  RN 에는 파일 → base64 변환이 번거롭다)
+    if (!rawImage && body.imageUrl) {
+      const url = String(body.imageUrl).trim()
+      if (!/^https?:\/\//.test(url)) {
+        return NextResponse.json({ error: "잘못된 이미지 주소입니다." }, { status: 400 })
+      }
+      try {
+        const res = await fetch(url, { cache: "no-store" })
+        if (!res.ok) {
+          return NextResponse.json({ error: "이미지를 가져오지 못했습니다." }, { status: 502 })
+        }
+        const buf = Buffer.from(await res.arrayBuffer())
+        // 영수증 사진이 과도하게 크면 Gemini 요청이 무거워진다 (보통 300KB 안팎)
+        if (buf.byteLength > 10_000_000) {
+          return NextResponse.json({ error: "이미지가 너무 큽니다." }, { status: 413 })
+        }
+        rawImage = buf.toString("base64")
+        mimeHint = res.headers.get("content-type") ?? "image/jpeg"
+      } catch {
+        return NextResponse.json({ error: "이미지를 가져오지 못했습니다." }, { status: 502 })
+      }
+    }
+
     if (!rawImage) {
-      return NextResponse.json({ error: "imageBase64 is required." }, { status: 400 })
+      return NextResponse.json(
+        { error: "imageBase64 또는 imageUrl 이 필요합니다." },
+        { status: 400 }
+      )
     }
 
-    const { mimeType, data: imageBase64 } = splitImagePayload(
-      rawImage,
-      body.mimeType
-    )
+    const { mimeType, data: imageBase64 } = splitImagePayload(rawImage, mimeHint)
 
     // 1. 현재 API 키로 사용 가능한 전체 모델 목록 조회 시도
     let candidateModels: string[] = []
