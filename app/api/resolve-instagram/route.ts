@@ -139,9 +139,14 @@ async function extractPlaces(
 
   const models = ["gemini-flash-latest", "gemini-2.0-flash", "gemini-1.5-flash-latest"]
 
+  // ⚠️ 모델마다 15초를 주면 셋이 다 실패할 때 45초가 그냥 흘러간다.
+  //    그 사이 앱은 이미 포기하고 "네트워크 오류"를 띄운다.
+  //    한 모델이 10초 안에 답을 못 주면 다음으로 넘기는 편이 전체적으로 빠르다.
+  const MODEL_TIMEOUT_MS = 10_000
+
   for (const model of models) {
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 15_000)
+    const timer = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS)
     try {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,

@@ -1388,7 +1388,7 @@ export function SettlementView({
             aria-label={fabOpen ? "정산 메뉴 닫기" : "정산 메뉴 열기"}
             aria-expanded={fabOpen}
             onClick={() => setFabOpen((prev) => !prev)}
-            className="flex size-14 items-center justify-center rounded-full bg-neutral-900 text-white shadow-xl shadow-neutral-900/30 transition-transform active:scale-90"
+            className="flex size-14 items-center justify-center rounded-full bg-amber-400 text-neutral-900 shadow-xl shadow-amber-400/40 transition-transform active:scale-90"
           >
             <Plus className={cn("size-7 transition-transform duration-300 ease-out", fabOpen && "rotate-45")} />
           </button>
