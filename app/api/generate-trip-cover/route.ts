@@ -64,7 +64,11 @@ function cityKeyOf(input: { city?: string; country?: string; location?: string; 
  * 등록된 47개 명소 목록에 없는 도시는 **모델에게 대표 명소를 먼저 묻는다.**
  * 예전엔 목록에 없으면 그냥 포기해서 "되는 도시와 안 되는 도시"가 갈렸다.
  */
-async function askLandmark(apiKey: string, city: string, country: string): Promise<string | null> {
+async function askLandmark(
+  apiKey: string,
+  city: string,
+  country: string
+): Promise<{ landmark: string | null; raw: string }> {
   try {
     const res = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
@@ -74,7 +78,7 @@ async function askLandmark(apiKey: string, city: string, country: string): Promi
         body: JSON.stringify({
           contents: [{ parts: [{ text:
             // ⚠️ "가장 상징적인 랜드마크"만 물으면 작은 도시는 모델이 포기한다
-            //    (포항·용인이 실제로 NONE 이 나왔다). 여행자가 사진 찍을 만한
+            //    (포항·용인이 실제로 그랬다). 여행자가 사진 찍을 만한
             //    **대표적인 장소**로 넓혀 묻는다 — 해안·공원·시장·사찰도 답이 된다.
             `Name one real, specific place in ${city}${country ? `, ${country}` : ""} ` +
             `that a traveler would photograph to represent the city. ` +
@@ -86,13 +90,23 @@ async function askLandmark(apiKey: string, city: string, country: string): Promi
         }),
       }
     )
-    if (!res.ok) return null
+    if (!res.ok) return { landmark: null, raw: `HTTP ${res.status}` }
     const d = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
-    const t = (d.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim().replace(/[."]+$/, "")
-    if (!t || /^none$/i.test(t) || t.length > 60) return null
-    return t
-  } catch {
-    return null
+    const raw = (d.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim()
+
+    // 모델이 설명을 덧붙이거나 목록으로 답할 때가 있다 — 첫 줄만 쓰고 장식을 걷어낸다
+    const first = raw.split("\n").map((l) => l.trim()).find(Boolean) ?? ""
+    const cleaned = first
+      .replace(/^[-*\d.)\s]+/, "")
+      .replace(/^["'`]+|["'`.]+$/g, "")
+      .trim()
+
+    if (!cleaned || /^none$/i.test(cleaned) || cleaned.length > 100) {
+      return { landmark: null, raw }
+    }
+    return { landmark: cleaned, raw }
+  } catch (e) {
+    return { landmark: null, raw: String(e) }
   }
 }
 
@@ -176,10 +190,13 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "여행지를 알 수 없어요." }, { status: 400 })
       }
       const asked = await askLandmark(apiKey, city, country)
-      if (!asked) {
-        return NextResponse.json({ error: "이 여행지는 아직 지원하지 않아요." }, { status: 400 })
+      if (!asked.landmark) {
+        return NextResponse.json(
+          { error: "이 여행지는 아직 지원하지 않아요.", detail: asked.raw.slice(0, 200) },
+          { status: 400 }
+        )
       }
-      landmark = asked
+      landmark = asked.landmark
       destination = country ? `${city}, ${country}` : city
     }
 
