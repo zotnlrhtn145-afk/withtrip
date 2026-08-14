@@ -372,11 +372,30 @@ function bigrams(s: string): Set<string> {
  *    찾으라 했더니 400m 안의 전혀 다른 가게("익선베이글 by 뉴욕베이글")를 반환했다.
  *    거리만 보고 신뢰하면 **엉뚱한 가게를 확신에 차서 저장**하게 되므로 이름도 반드시 본다.
  */
+/**
+ * 두 이름 끝에 똑같이 붙은 지점 표기를 떼어낸다.
+ *
+ * ⚠️ "쿠시카츠 다루마 **고베산노미야**점" 과 "쿠시카츠 이자카야 히로카츠 **고베산노미야**점" 은
+ *    가게가 전혀 다른데 지점 이름이 같아서 유사도가 0.42 까지 올라갔다(문턱 0.34).
+ *    지점 표기는 가게를 구분해 주지 않는다 — 떼고 나면 "다루마" vs "히로카츠", 0점이다.
+ *
+ * 한쪽이 다른 쪽에 통째로 들어가는 경우("이치란도톤보리점" ⊂ "이치란도톤보리점별관")는
+ * 이 함수에 오기 전에 이미 1.00 으로 걸러지므로 여기서 잘라도 안전하다.
+ */
+function dropSharedTail(a: string, b: string): [string, string] {
+  let n = 0;
+  while (n < a.length && n < b.length && a[a.length - 1 - n] === b[b.length - 1 - n]) n += 1;
+  // 너무 짧은 꼬리(우연한 한두 글자)나, 떼면 남는 게 없어지는 경우는 건드리지 않는다
+  if (n < 3 || a.length - n < 2 || b.length - n < 2) return [a, b];
+  return [a.slice(0, a.length - n), b.slice(0, b.length - n)];
+}
+
 function nameSimilarity(a: string, b: string): number {
-  const ca = nameCore(a);
-  const cb = nameCore(b);
-  if (!ca || !cb) return 0;
-  if (ca.includes(cb) || cb.includes(ca)) return 1;
+  const ca0 = nameCore(a);
+  const cb0 = nameCore(b);
+  if (!ca0 || !cb0) return 0;
+  if (ca0.includes(cb0) || cb0.includes(ca0)) return 1;
+  const [ca, cb] = dropSharedTail(ca0, cb0);
   const A = bigrams(ca);
   const B = bigrams(cb);
   let inter = 0;

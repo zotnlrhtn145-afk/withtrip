@@ -14,9 +14,27 @@ type GeminiModel = { name?: string; supportedGenerationMethods?: string[] };
 
 let cached: string[] | null = null;
 
-/** 안정판을 앞에, 실험·프리뷰·라이트를 뒤로. */
-function stability(name: string): number {
-  return /(exp|preview|thinking|lite)/.test(name) ? 1 : 0;
+/**
+ * 이름만 flash 일 뿐 우리 용도에 못 쓰는 것들.
+ *
+ * ⚠️ 실측: 목록에 `gemini-3.7-flash-video-understanding-eap` 가 딸려 왔고
+ *    이게 앞에 서면서 한 번에 19.9초가 걸렸다(평소 3.7초).
+ *    영상 이해·음성·임베딩 전용은 애초에 후보에서 뺀다.
+ */
+function isUsable(name: string): boolean {
+  return !/(image|video|audio|tts|embedding|vision|eap)/i.test(name);
+}
+
+/**
+ * 빠르고 안정적인 순서.
+ *
+ * `-latest` 는 구글이 밀어 주는 안정판이라 가장 먼저 본다(실측 1.5~2.3초).
+ * 실험·프리뷰·라이트는 뒤로 미룬다.
+ */
+function rank(name: string): number {
+  if (/flash-latest$/.test(name)) return 0;
+  if (/(exp|preview|thinking|lite)/.test(name)) return 2;
+  return 1;
 }
 
 export async function flashModelCandidates(apiKey: string): Promise<string[]> {
@@ -35,9 +53,9 @@ export async function flashModelCandidates(apiKey: string): Promise<string[]> {
         (m.supportedGenerationMethods ?? []).includes("generateContent"),
       )
       .map((m) => String(m.name ?? "").replace(/^models\//, ""))
-      .filter((n) => n.includes("flash") && !/image/i.test(n))
-      .sort((a, b) => stability(a) - stability(b))
-      .slice(0, 4);
+      .filter((n) => n.includes("flash") && isUsable(n))
+      .sort((a, b) => rank(a) - rank(b))
+      .slice(0, 3);
     if (names.length) cached = names;
     return names;
   } catch {
