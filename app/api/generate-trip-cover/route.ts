@@ -72,14 +72,23 @@ type GeminiImagePart = {
  */
 function buildPrompt(destination: string, landmark: string): string {
   return (
-    `A professional travel photograph, shot on location in ${destination}, of ${landmark}. ` +
-    `This must be a photorealistic depiction of this exact real landmark — not a different ` +
-    `landmark, not a different city or country, not an abstract or generic scene. ` +
-    `Cinematic golden hour or blue hour lighting, dramatic atmospheric sky, rich color ` +
-    `grading, shallow depth of field, high-end travel magazine cover composition, ` +
-    `ultra-detailed, 16:9 widescreen framing. ` +
-    `Absolutely no text, letters, words, numbers, typography, logos, watermarks, or sculptural ` +
-    `lettering of any kind anywhere in the image. No visible people in close-up.`
+    // ① 무엇을 그릴지 — 실제 명소를 못 박는다.
+    //    "그 도시의 상징적인 곳"처럼 맡기면 엉뚱한 도시나 없는 건물을 그린다(실측).
+    `A cinematic travel photograph of ${landmark} in ${destination}. ` +
+    `This must be the real, recognizable ${landmark} — not a similar-looking place, ` +
+    `not a different city or country, not an invented structure.\n` +
+    // ② 어떻게 그릴지 — 도시가 달라도 **한 세트처럼 보이게** 톤을 고정한다.
+    //    도시마다 분위기가 제각각이면 대표 이미지 모음으로서 어색하다.
+    `Style: wide establishing shot that shows the landmark clearly. ` +
+    `Golden hour light, dramatic layered sky, deep rich colors, gentle haze in the distance, ` +
+    `high-end travel magazine cover look. 16:9 widescreen.\n` +
+    // ③ 이 이미지는 **여행 카드 배경**으로 쓰이고 아래쪽에 제목 글씨가 얹힌다.
+    //    아래 1/3 이 복잡하면 글씨가 안 읽힌다.
+    `Composition: keep the lower third calm and uncluttered (sky, water, ground or shadow) ` +
+    `so white text can be overlaid there and stay readable. Main subject in the upper two thirds.\n` +
+    // ④ 금지 — 글자가 들어가면 커버로 못 쓴다. 실제로 조형물 형태의 글자가 나온 적이 있다.
+    `Absolutely no text, letters, words, numbers, signage, logos, watermarks, ` +
+    `or sculptural lettering anywhere. No close-up faces.`
   )
 }
 
