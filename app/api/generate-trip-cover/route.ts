@@ -51,7 +51,12 @@ async function uploadCityCover(
       return null
     }
     const { data: pub } = admin.storage.from("trip-covers").getPublicUrl(path)
-    return String(pub?.publicUrl ?? "").trim() || null
+    const url = String(pub?.publicUrl ?? "").trim()
+    if (!url) return null
+    // ⚠️ 같은 파일 이름에 덮어쓰기 때문에 **주소가 그대로면 앱·CDN 이 옛 이미지를 계속 쓴다.**
+    //    캐시를 1년으로 걸어 뒀으므로 다시 만들어도 화면이 안 바뀐다(실제로 그랬다).
+    //    만든 시각을 붙여 주소를 바꾼다.
+    return `${url}?v=${Date.now()}`
   } catch (e) {
     console.warn("[generate-trip-cover] upload unexpected:", e)
     return null
