@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto"
+
 import { NextResponse } from "next/server"
 
 import { getIconicLandmark, toEnglishKeywords } from "@/lib/getCityImage"
@@ -30,7 +32,13 @@ async function uploadCityCover(
   if (!admin || !cityKey) return null
   try {
     const ext = mimeType.split("/")[1]?.replace(/[^a-z0-9]/gi, "") || "png"
-    const path = `city/${cityKey}.${ext}`
+    // ⚠️ 스토리지 키는 ASCII 여야 한다. 영문명이 없는 도시(포항·용인 등)는
+    //    city_key 가 한글이라 `city/포항.png` 가 되고 **업로드가 조용히 실패했다**
+    //    (생성은 됐는데 저장이 안 돼서 매번 다시 만들었다).
+    const safe = /^[\x20-\x7E]+$/.test(cityKey)
+      ? cityKey
+      : `k${createHash("sha1").update(cityKey).digest("hex").slice(0, 12)}`
+    const path = `city/${safe}.${ext}`
     const { error } = await admin.storage
       .from("trip-covers")
       .upload(path, Buffer.from(base64, "base64"), {
@@ -322,10 +330,14 @@ export async function POST(req: Request) {
                 return NextResponse.json({ imageUrl })
               }
 
-              // 못 올렸으면 예전처럼 base64 를 준다 (호출부가 직접 올린다)
+              // 못 올렸으면 예전처럼 base64 를 준다 (호출부가 직접 올린다).
+              // 이 경로로 오면 도시 커버가 저장되지 않아 매번 다시 만들게 되므로
+              // 로그를 남긴다 — 실제로 한글 경로 때문에 조용히 이 길로 빠진 적이 있다.
+              console.warn(`[generate-trip-cover] 저장 실패 — city=${cityKey}`)
               return NextResponse.json({
                 imageBase64: imagePart.inlineData.data,
                 mimeType: mime,
+                warning: "STORAGE_UPLOAD_FAILED",
               })
             }
             lastError = `[${model}] no image part in response`
