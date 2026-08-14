@@ -20,6 +20,13 @@ export const maxDuration = 60
 
 type GeminiModel = { name?: string; supportedGenerationMethods?: string[] }
 
+/** 낮을수록 먼저 시도한다. 실험·미리보기 모델은 뒤로 민다. */
+function score(name: string): number {
+  if (/(exp|preview|thinking)/.test(name)) return 2
+  if (/lite/.test(name)) return 1
+  return 0
+}
+
 export type ScheduleCandidate = {
   /** 며칠째 (1~) — 모르면 null */
   day: number | null
@@ -83,15 +90,19 @@ export async function POST(req: Request) {
           .filter((m) => (m.supportedGenerationMethods ?? []).includes("generateContent"))
           .map((m) => String(m.name ?? "").replace(/^models\//, ""))
           .filter((n) => n.includes("flash"))
+          // ⚠️ 목록에는 실험·미리보기 모델이 섞여 있고 이름 순서도 보장되지 않는다.
+          //    앞의 2개만 시도하도록 줄였다가 **동작하던 모델이 뒤로 밀려 전부 실패**한 적이 있다.
+          //    안정판(exp/preview/thinking 이 아닌 것)을 앞으로 보낸다.
+          .sort((a, b) => score(a) - score(b))
       }
     } catch {
       /* 목록 조회 실패는 무시하고 기본값으로 */
     }
     if (models.length === 0) models = ["gemini-2.0-flash", "gemini-1.5-flash"]
 
-    // 한 번은 90초를 넘겨 응답이 끊긴 적이 있다. 호출마다 상한을 걸고
-    // 시도 횟수도 2번으로 줄여 전체 시간이 예측 가능하게 한다.
-    for (const model of models.slice(0, 2)) {
+    // 한 번은 90초를 넘겨 응답이 끊긴 적이 있다 → 호출마다 20초 상한을 건다.
+    // 시도 횟수는 줄이지 않는다. 2회로 줄였더니 동작하던 모델이 밀려나 전부 실패했다.
+    for (const model of models.slice(0, 4)) {
       const controller = new AbortController()
       const timer = setTimeout(() => controller.abort(), 20_000)
       try {
