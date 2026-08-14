@@ -1,15 +1,20 @@
-import { NextResponse } from "next/server"
+import { NextResponse } from "next/server";
 
 import {
   buildPlacePhotoProxyUrl,
   resolveCoverImageUrl,
   resolveRequestOrigin,
-} from "@/lib/place-cover-image"
-import { guessSubCategory } from "@/lib/place-subcategories"
-import { inferCategoryFromTypes, readPlacesByGoogleIds, writePlaces } from "@/lib/places-cache"
+} from "@/lib/place-cover-image";
+import { guessSubCategory } from "@/lib/place-subcategories";
+import { flashModelCandidates, isTransient, sleep } from "@/lib/gemini-models";
+import {
+  inferCategoryFromTypes,
+  readPlacesByGoogleIds,
+  writePlaces,
+} from "@/lib/places-cache";
 
-export const runtime = "nodejs"
-export const maxDuration = 60
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 /**
  * POST /api/resolve-instagram
@@ -27,10 +32,10 @@ export const maxDuration = 60
  * 후보를 **배열로** 돌려준다. 자동 저장하지 않는다 — 고르는 건 사용자 몫.
  */
 
-const MAX_CANDIDATES = 10
+const MAX_CANDIDATES = 10;
 
 type ExtractedPlace = {
-  name: string
+  name: string;
   /**
    * 현지 표기 상호명.
    *
@@ -39,20 +44,20 @@ type ExtractedPlace = {
    *    (실측: 일본어 캡션 3곳이 전부 low)
    *    AI 가 이미 아는 정보라 호출을 더 하지 않고 같이 받아 온다.
    */
-  nameLocal?: string
-  address?: string
+  nameLocal?: string;
+  address?: string;
   /** 캡션에서 읽어낸 도시·지역 (주소가 없을 때 검색을 좁히는 데 쓴다) */
-  region?: string
-  note?: string
-}
+  region?: string;
+  note?: string;
+};
 
 export type ResolvedPlace = {
   /** 캡션에서 뽑은 원래 표기 */
-  sourceName: string
+  sourceName: string;
   /** 캡션에 함께 적혀 있던 주소(있으면) */
-  sourceAddress: string
+  sourceAddress: string;
   /** 캡션에서 뽑은 짧은 메모(메뉴·영업시간 등) */
-  note: string
+  note: string;
   /**
    * 확정 신뢰도.
    * - high    : 캡션 주소 400m 이내 + 상호명 일치 (사실상 확실)
@@ -61,25 +66,29 @@ export type ResolvedPlace = {
    * - low     : 이름이 안 맞는 후보뿐 (다른 가게일 수 있음 — 사용자 확인 필요)
    * - none    : 아무것도 못 찾음
    */
-  confidence: "high" | "medium" | "low" | "caption" | "none"
+  confidence: "high" | "medium" | "low" | "caption" | "none";
   /** 구글에서 확정된 장소 — 못 찾으면 null */
   place: {
     /** 캡션 폴백(confidence="caption")이면 빈 문자열 */
-    googlePlaceId: string
-    placeName: string
-    address: string
-    rating: number | null
-    reviewCount: number | null
-    lat: number
-    lng: number
-    kind: string
-    subCategory: string
-    imageUrl: string
-  } | null
-}
+    googlePlaceId: string;
+    placeName: string;
+    address: string;
+    rating: number | null;
+    reviewCount: number | null;
+    lat: number;
+    lng: number;
+    kind: string;
+    subCategory: string;
+    imageUrl: string;
+  } | null;
+};
 
 function getGeminiKey() {
-  return (process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || "").trim()
+  return (
+    process.env.GEMINI_API_KEY ||
+    process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+    ""
+  ).trim();
 }
 
 function getPlacesKey() {
@@ -88,7 +97,7 @@ function getPlacesKey() {
     process.env.GOOGLE_MAPS_API_KEY ||
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
     ""
-  ).trim()
+  ).trim();
 }
 
 /**
@@ -99,35 +108,43 @@ function getPlacesKey() {
  *    그래서 shortcode만 뽑아 `/reel/` 형태로 다시 만든다.
  */
 export function normalizeInstagramUrl(input: string): string | null {
-  const raw = String(input ?? "").trim()
-  if (!raw) return null
-  const m = raw.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i)
-  if (!m) return null
-  return `https://www.instagram.com/reel/${m[1]}/`
+  const raw = String(input ?? "").trim();
+  if (!raw) return null;
+  const m = raw.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i);
+  if (!m) return null;
+  return `https://www.instagram.com/reel/${m[1]}/`;
 }
 
 /** 캡션에서 og:description 앞머리("62K likes, 99 comments - user - date:")를 걷어낸다. */
 function stripOgPrefix(caption: string): string {
-  const m = caption.match(/^[\d.,KMB]+\s*likes?,\s*[\d.,KMB]+\s*comments?\s*-\s*[^-]+-\s*[^:]+:\s*/i)
-  let body = m ? caption.slice(m[0].length) : caption
-  body = body.trim()
-  if (body.startsWith('"')) body = body.slice(1)
-  if (body.endsWith('".') || body.endsWith('"')) body = body.replace(/"\.?$/, "")
-  return body.trim()
+  const m = caption.match(
+    /^[\d.,KMB]+\s*likes?,\s*[\d.,KMB]+\s*comments?\s*-\s*[^-]+-\s*[^:]+:\s*/i,
+  );
+  let body = m ? caption.slice(m[0].length) : caption;
+  body = body.trim();
+  if (body.startsWith('"')) body = body.slice(1);
+  if (body.endsWith('".') || body.endsWith('"'))
+    body = body.replace(/"\.?$/, "");
+  return body.trim();
 }
 
 /** 진단용 — 추출이 왜 실패했는지 응답에 실어 보낸다(비밀값은 담지 않는다). */
-type ExtractDiag = { keyPresent: boolean; attempts: string[]; ms?: number }
+type ExtractDiag = {
+  keyPresent: boolean;
+  attempts: string[];
+  ms?: number;
+  models?: string[];
+};
 
 /** Gemini로 캡션에서 장소 목록을 뽑는다. 실패하면 빈 배열(호출부가 폴백). */
 async function extractPlaces(
   caption: string,
   locationTag: string,
-  diag: ExtractDiag
+  diag: ExtractDiag,
 ): Promise<ExtractedPlace[]> {
-  const key = getGeminiKey()
-  diag.keyPresent = Boolean(key)
-  if (!key) return []
+  const key = getGeminiKey();
+  diag.keyPresent = Boolean(key);
+  if (!key) return [];
 
   const prompt =
     `아래는 인스타그램 게시물의 캡션이다. 여기서 **실제로 방문할 수 있는 장소**(맛집, 카페, 베이커리, 바, ` +
@@ -147,103 +164,139 @@ async function extractPlaces(
     `- 장소를 못 찾으면 빈 배열을 반환해라.\n\n` +
     `반드시 다음 JSON 형태로만 응답해:\n` +
     `{"places": [{"name": "상호명", "nameLocal": "현지 표기", "address": "캡션에 적힌 주소 또는 빈 문자열", "region": "도시·지역", "note": "짧은 메모"}]}\n\n` +
-    `캡션:\n"""\n${caption.slice(0, 4000)}\n"""`
+    `캡션:\n"""\n${caption.slice(0, 4000)}\n"""`;
 
-  const models = ["gemini-flash-latest", "gemini-2.0-flash", "gemini-1.5-flash-latest"]
+  // ⚠️ 모델 이름을 박아 두지 않는다. 박아 뒀더니 폴백 둘이 전부 404 였고
+  //    (gemini-2.0-flash / gemini-1.5-flash-latest — 이 계정에 없는 모델),
+  //    첫 모델이 503 을 내면 그대로 "장소를 찾지 못했어요" 가 됐다.
+  //    사용자가 말한 "몇몇은 못 찾는다" 의 정체가 이거였다.
+  const discovered = await flashModelCandidates(key);
+  const models = discovered.length ? discovered : ["gemini-flash-latest"];
+  diag.models = models;
 
-  // ⚠️ 모델마다 15초를 주면 셋이 다 실패할 때 45초가 그냥 흘러간다.
-  //    그 사이 앱은 이미 포기하고 "네트워크 오류"를 띄운다.
-  //    한 모델이 10초 안에 답을 못 주면 다음으로 넘기는 편이 전체적으로 빠르다.
-  const MODEL_TIMEOUT_MS = 10_000
+  // 모델마다 15초를 주면 셋이 다 실패할 때 45초가 그냥 흘러간다.
+  // 그 사이 앱은 이미 포기한 뒤다.
+  const MODEL_TIMEOUT_MS = 10_000;
 
   for (const model of models) {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS)
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: "application/json" },
-          }),
-          signal: controller.signal,
+    // 과부하는 잠깐 기다렸다 같은 모델에 다시 묻는 게 낫다
+    for (let tryNo = 0; tryNo < 2; tryNo += 1) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS);
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": key,
+            },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { responseMimeType: "application/json" },
+            }),
+            signal: controller.signal,
+          },
+        );
+        if (!res.ok) {
+          diag.attempts.push(`${model}:HTTP_${res.status}`);
+          if (isTransient(res.status) && tryNo === 0) {
+            await sleep(600);
+            continue;
+          }
+          break;
         }
-      )
-      if (!res.ok) {
-        diag.attempts.push(`${model}:HTTP_${res.status}`)
-        continue
-      }
 
-      const data = (await res.json()) as {
-        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
-      }
-      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text
-      if (!raw) {
-        diag.attempts.push(`${model}:EMPTY`)
-        continue
-      }
+        const data = (await res.json()) as {
+          candidates?: Array<{
+            content?: { parts?: Array<{ text?: string }> };
+          }>;
+        };
+        const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!raw) {
+          diag.attempts.push(`${model}:EMPTY`);
+          break;
+        }
 
-      const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as {
-        places?: Array<{
-          name?: string
-          nameLocal?: string
-          address?: string
-          region?: string
-          note?: string
-        }>
+        const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as {
+          places?: Array<{
+            name?: string;
+            nameLocal?: string;
+            address?: string;
+            region?: string;
+            note?: string;
+          }>;
+        };
+        const places = (parsed.places ?? [])
+          .map((p) => ({
+            name: String(p.name ?? "").trim(),
+            nameLocal: String(p.nameLocal ?? "").trim(),
+            address: String(p.address ?? "").trim(),
+            region: String(p.region ?? "").trim(),
+            note: String(p.note ?? "").trim(),
+          }))
+          .filter((p) => p.name);
+        diag.attempts.push(`${model}:PARSED_${places.length}`);
+        if (places.length > 0) return places.slice(0, MAX_CANDIDATES);
+        break;
+      } catch (err) {
+        diag.attempts.push(
+          `${model}:ERR_${err instanceof Error ? err.name : "unknown"}`,
+        );
+        break;
+      } finally {
+        clearTimeout(timer);
       }
-      const places = (parsed.places ?? [])
-        .map((p) => ({
-          name: String(p.name ?? "").trim(),
-          nameLocal: String(p.nameLocal ?? "").trim(),
-          address: String(p.address ?? "").trim(),
-          region: String(p.region ?? "").trim(),
-          note: String(p.note ?? "").trim(),
-        }))
-        .filter((p) => p.name)
-      diag.attempts.push(`${model}:PARSED_${places.length}`)
-      if (places.length > 0) return places.slice(0, MAX_CANDIDATES)
-    } catch (err) {
-      diag.attempts.push(`${model}:ERR_${err instanceof Error ? err.name : "unknown"}`)
-      continue
-    } finally {
-      clearTimeout(timer)
     }
   }
-  return []
+  return [];
 }
 
 type GoogleTextSearchItem = {
-  place_id?: string
-  name?: string
-  formatted_address?: string
-  rating?: number
-  user_ratings_total?: number
-  types?: string[]
-  photos?: { photo_reference?: string }[]
-  geometry?: { location?: { lat?: number; lng?: number } }
-}
+  place_id?: string;
+  name?: string;
+  formatted_address?: string;
+  rating?: number;
+  user_ratings_total?: number;
+  types?: string[];
+  photos?: { photo_reference?: string }[];
+  geometry?: { location?: { lat?: number; lng?: number } };
+};
 
-type LatLng = { lat: number; lng: number }
+type LatLng = { lat: number; lng: number };
 
 /** 지점명 — 이름 비교에서 제외한다("스탠다드브레드 익선" vs "스탠다드브레드 도산"은 같은 브랜드). */
 const BRANCH_WORDS = [
-  "익선", "성수", "도산", "연남", "강남", "여의도", "영등포", "동대문", "홍대",
-  "한남", "청담", "잠실", "판교", "本店", "본점",
-]
+  "익선",
+  "성수",
+  "도산",
+  "연남",
+  "강남",
+  "여의도",
+  "영등포",
+  "동대문",
+  "홍대",
+  "한남",
+  "청담",
+  "잠실",
+  "판교",
+  "本店",
+  "본점",
+];
 
 function normalizeName(input: string): string {
-  let s = String(input ?? "").toLowerCase()
-  s = s.replace(/\(.*?\)/g, " ")
-  s = s.replace(/\b(by|x|and|the)\b/g, " ")
-  s = s.replace(/(본점|지점|점|매장|카페|cafe)\s*$/g, " ")
+  let s = String(input ?? "").toLowerCase();
+  s = s.replace(/\(.*?\)/g, " ");
+  s = s.replace(/\b(by|x|and|the)\b/g, " ");
+  s = s.replace(/(본점|지점|점|매장|카페|cafe)\s*$/g, " ");
   // ⚠️ 예전엔 [^0-9a-z가-힣] 를 지웠다. 한자·히라가나·가타카나가 **통째로 날아가서**
   //    일본 장소는 이름이 빈 문자열이 되고, 대조가 항상 0점이었다.
   //    한중일 문자와 태국어를 남긴다.
-  return s.replace(/[^0-9a-z가-힣\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\u0e00-\u0e7f]/g, "")
+  return s.replace(
+    /[^0-9a-z가-힣\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\u0e00-\u0e7f]/g,
+    "",
+  );
 }
 
 /**
@@ -255,29 +308,61 @@ function normalizeName(input: string): string {
  *    구분은 "다루마" 가 한다 — 그쪽만 남겨 놓고 봐야 한다.
  */
 const GENRE_WORDS = [
-  "쿠시카츠", "야키니쿠", "오코노미야키", "회전초밥", "스키야키", "이자카야",
-  "라멘", "우동", "소바", "스시", "초밥", "돈카츠", "규카츠", "샤브샤브",
-  "베이커리", "브런치", "다이닝", "레스토랑", "비스트로", "루프탑",
-  "串カツ", "焼肉", "お好み焼き", "回転寿司", "すき焼き", "居酒屋",
-  "ラーメン", "うどん", "そば", "寿司", "とんかつ",
-  "restaurant", "bakery", "coffee", "roasters", "bistro", "dining",
-]
+  "쿠시카츠",
+  "야키니쿠",
+  "오코노미야키",
+  "회전초밥",
+  "스키야키",
+  "이자카야",
+  "라멘",
+  "우동",
+  "소바",
+  "스시",
+  "초밥",
+  "돈카츠",
+  "규카츠",
+  "샤브샤브",
+  "베이커리",
+  "브런치",
+  "다이닝",
+  "레스토랑",
+  "비스트로",
+  "루프탑",
+  "串カツ",
+  "焼肉",
+  "お好み焼き",
+  "回転寿司",
+  "すき焼き",
+  "居酒屋",
+  "ラーメン",
+  "うどん",
+  "そば",
+  "寿司",
+  "とんかつ",
+  "restaurant",
+  "bakery",
+  "coffee",
+  "roasters",
+  "bistro",
+  "dining",
+];
 
 function nameCore(input: string): string {
-  let s = normalizeName(input)
-  for (const b of BRANCH_WORDS) s = s.replace(new RegExp(b, "g"), "")
+  let s = normalizeName(input);
+  for (const b of BRANCH_WORDS) s = s.replace(new RegExp(b, "g"), "");
   // 종류 단어를 걷어낸 결과가 통째로 비면(가게 이름이 종류 그 자체인 경우)
   // 원래 이름을 그대로 쓴다 — 비교할 게 없어지면 안 된다.
-  let stripped = s
-  for (const g of GENRE_WORDS) stripped = stripped.replace(new RegExp(g, "g"), "")
-  return stripped.length >= 2 ? stripped : s
+  let stripped = s;
+  for (const g of GENRE_WORDS)
+    stripped = stripped.replace(new RegExp(g, "g"), "");
+  return stripped.length >= 2 ? stripped : s;
 }
 
 function bigrams(s: string): Set<string> {
-  if (s.length < 2) return new Set([s])
-  const out = new Set<string>()
-  for (let i = 0; i < s.length - 1; i += 1) out.add(s.slice(i, i + 2))
-  return out
+  if (s.length < 2) return new Set([s]);
+  const out = new Set<string>();
+  for (let i = 0; i < s.length - 1; i += 1) out.add(s.slice(i, i + 2));
+  return out;
 }
 
 /**
@@ -288,16 +373,16 @@ function bigrams(s: string): Set<string> {
  *    거리만 보고 신뢰하면 **엉뚱한 가게를 확신에 차서 저장**하게 되므로 이름도 반드시 본다.
  */
 function nameSimilarity(a: string, b: string): number {
-  const ca = nameCore(a)
-  const cb = nameCore(b)
-  if (!ca || !cb) return 0
-  if (ca.includes(cb) || cb.includes(ca)) return 1
-  const A = bigrams(ca)
-  const B = bigrams(cb)
-  let inter = 0
-  for (const g of A) if (B.has(g)) inter += 1
-  const union = A.size + B.size - inter
-  return union > 0 ? inter / union : 0
+  const ca = nameCore(a);
+  const cb = nameCore(b);
+  if (!ca || !cb) return 0;
+  if (ca.includes(cb) || cb.includes(ca)) return 1;
+  const A = bigrams(ca);
+  const B = bigrams(cb);
+  let inter = 0;
+  for (const g of A) if (B.has(g)) inter += 1;
+  const union = A.size + B.size - inter;
+  return union > 0 ? inter / union : 0;
 }
 
 /**
@@ -305,23 +390,23 @@ function nameSimilarity(a: string, b: string): number {
  * "이치란 라멘" vs "一蘭 道頓堀店" 은 0점이지만, 현지 표기 "一蘭" 과는 1.00 이다.
  */
 function bestNameSimilarity(candidates: string[], target: string): number {
-  let best = 0
+  let best = 0;
   for (const c of candidates) {
-    if (!c) continue
-    const v = nameSimilarity(c, target)
-    if (v > best) best = v
+    if (!c) continue;
+    const v = nameSimilarity(c, target);
+    if (v > best) best = v;
   }
-  return best
+  return best;
 }
 
 /** 이 값 미만이면 다른 가게로 본다. 실측 분포: 정답 1.00 / 오답 0.00~0.10 */
-const NAME_MATCH_THRESHOLD = 0.34
+const NAME_MATCH_THRESHOLD = 0.34;
 
 /** 미터 단위 대략 거리. */
 function distanceMeters(a: LatLng, b: LatLng): number {
-  const dLat = (a.lat - b.lat) * 111_000
-  const dLng = (a.lng - b.lng) * 111_000 * Math.cos((a.lat * Math.PI) / 180)
-  return Math.hypot(dLat, dLng)
+  const dLat = (a.lat - b.lat) * 111_000;
+  const dLng = (a.lng - b.lng) * 111_000 * Math.cos((a.lat * Math.PI) / 180);
+  return Math.hypot(dLat, dLng);
 }
 
 /**
@@ -330,26 +415,33 @@ function distanceMeters(a: LatLng, b: LatLng): number {
  * Geocoding API를 먼저 쓰고, 실패하면 Places Text Search로 폴백한다.
  * (서버 키에 Geocoding API가 열려 있지 않을 수 있어서 한쪽에만 의존하지 않는다.)
  */
-async function geocode(address: string, apiKey: string): Promise<LatLng | null> {
-  const q = String(address ?? "").trim()
-  if (!q) return null
+async function geocode(
+  address: string,
+  apiKey: string,
+): Promise<LatLng | null> {
+  const q = String(address ?? "").trim();
+  if (!q) return null;
 
-  const url = new URL("https://maps.googleapis.com/maps/api/geocode/json")
-  url.searchParams.set("address", q)
-  url.searchParams.set("language", "ko")
-  url.searchParams.set("key", apiKey)
+  const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+  url.searchParams.set("address", q);
+  url.searchParams.set("language", "ko");
+  url.searchParams.set("key", apiKey);
   try {
-    const res = await fetch(url.toString(), { cache: "no-store" })
+    const res = await fetch(url.toString(), { cache: "no-store" });
     if (res.ok) {
       const json = (await res.json()) as {
-        status?: string
-        error_message?: string
-        results?: { geometry?: { location?: LatLng } }[]
-      }
-      const loc = json.results?.[0]?.geometry?.location
-      if (json.status === "OK" && loc) return { lat: loc.lat, lng: loc.lng }
+        status?: string;
+        error_message?: string;
+        results?: { geometry?: { location?: LatLng } }[];
+      };
+      const loc = json.results?.[0]?.geometry?.location;
+      if (json.status === "OK" && loc) return { lat: loc.lat, lng: loc.lng };
       if (json.status !== "ZERO_RESULTS") {
-        console.warn("[resolve-instagram] geocode 실패:", json.status, json.error_message)
+        console.warn(
+          "[resolve-instagram] geocode 실패:",
+          json.status,
+          json.error_message,
+        );
       }
     }
   } catch {
@@ -357,36 +449,41 @@ async function geocode(address: string, apiKey: string): Promise<LatLng | null> 
   }
 
   // 폴백: 주소 문자열을 Places Text Search 로 던져 좌표만 얻는다.
-  const viaPlaces = await textSearch(q, apiKey)
-  const loc = viaPlaces[0]?.geometry?.location
+  const viaPlaces = await textSearch(q, apiKey);
+  const loc = viaPlaces[0]?.geometry?.location;
   if (typeof loc?.lat === "number" && typeof loc?.lng === "number") {
-    return { lat: loc.lat, lng: loc.lng }
+    return { lat: loc.lat, lng: loc.lng };
   }
-  return null
+  return null;
 }
 
 async function textSearch(
   query: string,
   apiKey: string,
   near?: LatLng | null,
-  radius = 700
+  radius = 700,
 ): Promise<GoogleTextSearchItem[]> {
-  const url = new URL("https://maps.googleapis.com/maps/api/place/textsearch/json")
-  url.searchParams.set("query", query)
-  url.searchParams.set("language", "ko")
-  url.searchParams.set("key", apiKey)
+  const url = new URL(
+    "https://maps.googleapis.com/maps/api/place/textsearch/json",
+  );
+  url.searchParams.set("query", query);
+  url.searchParams.set("language", "ko");
+  url.searchParams.set("key", apiKey);
   if (near) {
-    url.searchParams.set("location", `${near.lat},${near.lng}`)
-    url.searchParams.set("radius", String(radius))
+    url.searchParams.set("location", `${near.lat},${near.lng}`);
+    url.searchParams.set("radius", String(radius));
   }
   try {
-    const res = await fetch(url.toString(), { cache: "no-store" })
-    if (!res.ok) return []
-    const json = (await res.json()) as { status?: string; results?: GoogleTextSearchItem[] }
-    if (json.status !== "OK") return []
-    return json.results ?? []
+    const res = await fetch(url.toString(), { cache: "no-store" });
+    if (!res.ok) return [];
+    const json = (await res.json()) as {
+      status?: string;
+      results?: GoogleTextSearchItem[];
+    };
+    if (json.status !== "OK") return [];
+    return json.results ?? [];
   } catch {
-    return []
+    return [];
   }
 }
 
@@ -406,15 +503,15 @@ async function findPlace(
   captionAddress: string,
   region: string,
   fallbackHint: string,
-  apiKey: string
+  apiKey: string,
 ): Promise<{
-  hit: GoogleTextSearchItem | null
-  confidence: ResolvedPlace["confidence"]
-  anchor: LatLng | null
+  hit: GoogleTextSearchItem | null;
+  confidence: ResolvedPlace["confidence"];
+  anchor: LatLng | null;
 } | null> {
   // 캡션 표기와 현지 표기를 둘 다 들고 대조한다
-  const spellings = [name, nameLocal].filter(Boolean)
-  const anchor = captionAddress ? await geocode(captionAddress, apiKey) : null
+  const spellings = [name, nameLocal].filter(Boolean);
+  const anchor = captionAddress ? await geocode(captionAddress, apiKey) : null;
 
   if (anchor) {
     // 캡션 주소 근처로 검색하고, **거리와 이름을 둘 다** 확인한다.
@@ -426,23 +523,30 @@ async function findPlace(
     const [near, wide] = await Promise.all([
       textSearch(name, apiKey, anchor, 700),
       textSearch(name, apiKey, anchor, 2000),
-    ])
+    ]);
 
     for (const [results, maxDist] of [
       [near, 400],
       [wide, 1200],
     ] as const) {
       for (const r of results) {
-        const loc = r.geometry?.location
-        if (typeof loc?.lat !== "number" || typeof loc?.lng !== "number") continue
-        if (distanceMeters(anchor, { lat: loc.lat, lng: loc.lng }) > maxDist) continue
-        if (bestNameSimilarity(spellings, r.name ?? "") < NAME_MATCH_THRESHOLD) continue
-        return { hit: r, confidence: maxDist === 400 ? "high" : "medium", anchor }
+        const loc = r.geometry?.location;
+        if (typeof loc?.lat !== "number" || typeof loc?.lng !== "number")
+          continue;
+        if (distanceMeters(anchor, { lat: loc.lat, lng: loc.lng }) > maxDist)
+          continue;
+        if (bestNameSimilarity(spellings, r.name ?? "") < NAME_MATCH_THRESHOLD)
+          continue;
+        return {
+          hit: r,
+          confidence: maxDist === 400 ? "high" : "medium",
+          anchor,
+        };
       }
     }
 
     // 주소는 확실한데 구글에 그 가게가 없다 → **엉뚱한 곳을 주느니 캡션 그대로 쓴다.**
-    return { hit: null, confidence: "caption", anchor }
+    return { hit: null, confidence: "caption", anchor };
   }
 
   // 주소가 없으면 **지역명을 붙여** 검색한다.
@@ -451,34 +555,38 @@ async function findPlace(
   //
   // 현지 표기를 알면 그걸로도 같이 찾는다. 캡션의 한글 음차보다 현지 표기가
   // 구글에서 훨씬 잘 잡힌다("다이키스이산" 보다 "大起水産").
-  const hint = region || fallbackHint
+  const hint = region || fallbackHint;
   const queries = Array.from(
-    new Set(spellings.map((sp) => [sp, hint].filter(Boolean).join(" ")))
-  )
-  const resultSets = await Promise.all(queries.map((q) => textSearch(q, apiKey)))
+    new Set(spellings.map((sp) => [sp, hint].filter(Boolean).join(" "))),
+  );
+  const resultSets = await Promise.all(
+    queries.map((q) => textSearch(q, apiKey)),
+  );
 
   for (const results of resultSets) {
     const matched = results.find(
-      (r) => bestNameSimilarity(spellings, r.name ?? "") >= NAME_MATCH_THRESHOLD
-    )
-    if (matched) return { hit: matched, confidence: "medium", anchor: null }
+      (r) =>
+        bestNameSimilarity(spellings, r.name ?? "") >= NAME_MATCH_THRESHOLD,
+    );
+    if (matched) return { hit: matched, confidence: "medium", anchor: null };
   }
 
   // 지역명을 붙인 질의가 통째로 비면(지역명이 틀렸을 때 생긴다) 이름만으로 한 번 더.
   // 예전엔 여기서 바로 포기해서 "못 찾음"이 됐다.
-  const anyResults = resultSets.some((r) => r.length > 0)
+  const anyResults = resultSets.some((r) => r.length > 0);
   if (!anyResults && hint) {
-    const bare = await textSearch(name, apiKey)
+    const bare = await textSearch(name, apiKey);
     const matched = bare.find(
-      (r) => bestNameSimilarity(spellings, r.name ?? "") >= NAME_MATCH_THRESHOLD
-    )
-    if (matched) return { hit: matched, confidence: "medium", anchor: null }
-    if (bare.length) return { hit: bare[0], confidence: "low", anchor: null }
+      (r) =>
+        bestNameSimilarity(spellings, r.name ?? "") >= NAME_MATCH_THRESHOLD,
+    );
+    if (matched) return { hit: matched, confidence: "medium", anchor: null };
+    if (bare.length) return { hit: bare[0], confidence: "low", anchor: null };
   }
 
-  const first = resultSets.find((r) => r.length > 0)
-  if (first) return { hit: first[0], confidence: "low", anchor: null }
-  return null
+  const first = resultSets.find((r) => r.length > 0);
+  if (first) return { hit: first[0], confidence: "low", anchor: null };
+  return null;
 }
 
 /**
@@ -489,38 +597,41 @@ async function findPlace(
  * 가벼운 GET 을 따로 둔다. (POST 와 같은 모듈이라 같이 준비된다)
  */
 export async function GET() {
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true });
 }
 
 export async function POST(request: Request) {
-  const tStart = Date.now()
-  const placesKey = getPlacesKey()
+  const tStart = Date.now();
+  const placesKey = getPlacesKey();
   if (!placesKey) {
     return NextResponse.json(
       { places: [], error: "GOOGLE_PLACES_API_KEY가 설정되어 있지 않아요." },
-      { status: 200 }
-    )
+      { status: 200 },
+    );
   }
 
-  let body: { caption?: string; locationTag?: string; url?: string }
+  let body: { caption?: string; locationTag?: string; url?: string };
   try {
-    body = (await request.json()) as typeof body
+    body = (await request.json()) as typeof body;
   } catch {
-    return NextResponse.json({ places: [], error: "잘못된 요청이에요." }, { status: 400 })
+    return NextResponse.json(
+      { places: [], error: "잘못된 요청이에요." },
+      { status: 400 },
+    );
   }
 
-  let caption = String(body.caption ?? "").trim()
-  const locationTag = String(body.locationTag ?? "").trim()
+  let caption = String(body.caption ?? "").trim();
+  const locationTag = String(body.locationTag ?? "").trim();
 
   // url만 온 경우: 이 서버에서 인스타를 읽어본다. 배포 환경(데이터센터 IP)에서는
   // 거의 실패하므로 어디까지나 로컬 테스트용 폴백이다.
   if (!caption && body.url) {
-    const target = normalizeInstagramUrl(String(body.url))
+    const target = normalizeInstagramUrl(String(body.url));
     if (!target) {
       return NextResponse.json(
         { places: [], error: "인스타그램 게시물 주소가 아니에요." },
-        { status: 200 }
-      )
+        { status: 200 },
+      );
     }
     try {
       const res = await fetch(target, {
@@ -530,17 +641,19 @@ export async function POST(request: Request) {
           "Accept-Language": "ko-KR,ko;q=0.9",
         },
         cache: "no-store",
-      })
-      const html = await res.text()
-      const m = html.match(/<meta property="og:description" content="([^"]*)"/)
+      });
+      const html = await res.text();
+      const m = html.match(/<meta property="og:description" content="([^"]*)"/);
       if (m) {
         caption = m[1]
-          .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+          .replace(/&#x([0-9a-fA-F]+);/g, (_, h) =>
+            String.fromCodePoint(parseInt(h, 16)),
+          )
           .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
           .replace(/&quot;/g, '"')
           .replace(/&amp;/g, "&")
           .replace(/&lt;/g, "<")
-          .replace(/&gt;/g, ">")
+          .replace(/&gt;/g, ">");
       }
     } catch {
       /* 폴백 실패 — 아래에서 캡션 없음으로 처리 */
@@ -554,28 +667,28 @@ export async function POST(request: Request) {
         error:
           "캡션을 읽지 못했어요. 앱에서 게시물 내용을 함께 보내주세요(서버에서는 인스타를 읽을 수 없습니다).",
       },
-      { status: 200 }
-    )
+      { status: 200 },
+    );
   }
 
-  const cleaned = stripOgPrefix(caption)
-  const diag: ExtractDiag = { keyPresent: false, attempts: [] }
-  const tExtract = Date.now()
-  const extracted = await extractPlaces(cleaned, locationTag, diag)
-  diag.ms = Date.now() - tExtract
+  const cleaned = stripOgPrefix(caption);
+  const diag: ExtractDiag = { keyPresent: false, attempts: [] };
+  const tExtract = Date.now();
+  const extracted = await extractPlaces(cleaned, locationTag, diag);
+  diag.ms = Date.now() - tExtract;
 
   if (extracted.length === 0) {
-    console.warn("[resolve-instagram] 추출 0건", JSON.stringify(diag))
+    console.warn("[resolve-instagram] 추출 0건", JSON.stringify(diag));
     return NextResponse.json({
       places: [],
       caption: cleaned,
       error: "장소를 찾지 못했어요.",
       diag,
-    })
+    });
   }
 
-  const origin = resolveRequestOrigin(request.url)
-  const tGround = Date.now()
+  const origin = resolveRequestOrigin(request.url);
+  const tGround = Date.now();
 
   // 캐시 우선: 이미 아는 장소면 구글을 부르지 않는다.
   const grounded = await Promise.all(
@@ -586,11 +699,11 @@ export async function POST(request: Request) {
         item.address ?? "",
         item.region ?? "",
         locationTag,
-        placesKey
-      )
-      const hit = found?.hit
-      const lat = hit?.geometry?.location?.lat
-      const lng = hit?.geometry?.location?.lng
+        placesKey,
+      );
+      const hit = found?.hit;
+      const lat = hit?.geometry?.location?.lat;
+      const lng = hit?.geometry?.location?.lng;
 
       // 구글에 그 가게가 없다 → 엉뚱한 곳을 주는 대신 캡션 내용 그대로 담는다.
       // 주소는 캡션에 적혀 있고 좌표도 지오코딩으로 얻었으므로 지도에 정확히 찍힌다.
@@ -610,29 +723,38 @@ export async function POST(request: Request) {
             lng: found.anchor.lng,
             kind: "restaurant",
             subCategory: "",
-            imageUrl: resolveCoverImageUrl({ imageUrl: "", kind: "restaurant" }),
+            imageUrl: resolveCoverImageUrl({
+              imageUrl: "",
+              kind: "restaurant",
+            }),
           },
-        }
+        };
       }
 
-      if (!hit?.place_id || typeof lat !== "number" || typeof lng !== "number") {
+      if (
+        !hit?.place_id ||
+        typeof lat !== "number" ||
+        typeof lng !== "number"
+      ) {
         return {
           sourceName: item.name,
           sourceAddress: item.address ?? "",
           note: item.note ?? "",
           confidence: "none",
           place: null,
-        }
+        };
       }
 
-      const kind = inferCategoryFromTypes(hit.types)
+      const kind = inferCategoryFromTypes(hit.types);
       const subCategory = guessSubCategory({
         kind: kind as "restaurant" | "bar" | "stay",
         name: hit.name,
         types: hit.types,
-      })
-      const photoRef = hit.photos?.[0]?.photo_reference ?? ""
-      const photoUrl = photoRef ? buildPlacePhotoProxyUrl(photoRef, 1200, origin) : ""
+      });
+      const photoRef = hit.photos?.[0]?.photo_reference ?? "";
+      const photoUrl = photoRef
+        ? buildPlacePhotoProxyUrl(photoRef, 1200, origin)
+        : "";
 
       return {
         sourceName: item.name,
@@ -644,18 +766,25 @@ export async function POST(request: Request) {
           placeName: String(hit.name ?? item.name).trim(),
           address: String(hit.formatted_address ?? "").trim(),
           rating: typeof hit.rating === "number" ? hit.rating : null,
-          reviewCount: typeof hit.user_ratings_total === "number" ? hit.user_ratings_total : null,
+          reviewCount:
+            typeof hit.user_ratings_total === "number"
+              ? hit.user_ratings_total
+              : null,
           lat,
           lng,
           kind,
           subCategory,
-          imageUrl: resolveCoverImageUrl({ imageUrl: photoUrl, kind, subCategory }),
+          imageUrl: resolveCoverImageUrl({
+            imageUrl: photoUrl,
+            kind,
+            subCategory,
+          }),
         },
-      }
-    })
-  )
+      };
+    }),
+  );
 
-  const groundMs = Date.now() - tGround
+  const groundMs = Date.now() - tGround;
 
   // 새로 확정된 장소는 캐시에 적재 (다음 조회부터 구글 호출 0회)
   const toCache = grounded
@@ -670,18 +799,27 @@ export async function POST(request: Request) {
       ratingCount: g.place!.reviewCount,
       category: g.place!.kind,
       subCategory: g.place!.subCategory,
-    }))
-  const known = await readPlacesByGoogleIds(toCache.map((p) => p.googlePlaceId))
-  const fresh = toCache.filter((p) => !known.has(p.googlePlaceId))
-  if (fresh.length) await writePlaces(fresh)
+    }));
+  const known = await readPlacesByGoogleIds(
+    toCache.map((p) => p.googlePlaceId),
+  );
+  const fresh = toCache.filter((p) => !known.has(p.googlePlaceId));
+  if (fresh.length) await writePlaces(fresh);
 
-  const found = grounded.filter((g) => g.place).length
-  console.log(`[api/resolve-instagram] 추출 ${extracted.length}곳 / 구글 확정 ${found}곳`)
+  const found = grounded.filter((g) => g.place).length;
+  console.log(
+    `[api/resolve-instagram] 추출 ${extracted.length}곳 / 구글 확정 ${found}곳`,
+  );
 
   return NextResponse.json({
     places: grounded,
     caption: cleaned,
     // 어디서 시간이 새는지 재려고 남긴다 (비밀값 없음)
-    timing: { totalMs: Date.now() - tStart, extractMs: diag.ms ?? 0, groundMs, places: extracted.length },
-  })
+    timing: {
+      totalMs: Date.now() - tStart,
+      extractMs: diag.ms ?? 0,
+      groundMs,
+      places: extracted.length,
+    },
+  });
 }
