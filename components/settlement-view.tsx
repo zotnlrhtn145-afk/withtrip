@@ -407,8 +407,12 @@ export function SettlementView({
   // 결제자 기본값 = 현재 로그인 유저(작성자). 멤버 목록에 있으면 그 사람으로, 없으면 첫 멤버.
   useEffect(() => {
     if (!payerId && members.length > 0) {
-      const mine = currentUserId && members.some((m) => m.userId === currentUserId) ? currentUserId : members[0].userId
-      setPayerId(mine)
+      // 폴백도 게스트를 피한다 — payer_id 는 profiles 를 참조해서 게스트면 저장이 죽는다
+      const mine =
+        currentUserId && members.some((m) => m.userId === currentUserId)
+          ? currentUserId
+          : (members.find((m) => !m.isGuest)?.userId ?? "")
+      if (mine) setPayerId(mine)
     }
     if (members.length > 0 && participantIds.length === 0) {
       setParticipantIds(members.map((member) => member.userId))
@@ -600,6 +604,11 @@ export function SettlementView({
     }
     if (!Number.isFinite(parsed) || parsed <= 0) {
       setFormError("올바른 결제 금액을 입력해 주세요.")
+      return
+    }
+    // DB 의 amount 는 int4 다. 넘기면 "value out of range" 라는 날것의 오류가 뜬다.
+    if (parsed > 2_000_000_000) {
+      setFormError("20억 원까지 입력할 수 있어요. 금액을 다시 확인해 주세요.")
       return
     }
     if (!payerId) {
