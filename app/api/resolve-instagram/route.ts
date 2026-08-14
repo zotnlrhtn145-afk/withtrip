@@ -108,7 +108,7 @@ function stripOgPrefix(caption: string): string {
 }
 
 /** 진단용 — 추출이 왜 실패했는지 응답에 실어 보낸다(비밀값은 담지 않는다). */
-type ExtractDiag = { keyPresent: boolean; attempts: string[] }
+type ExtractDiag = { keyPresent: boolean; attempts: string[]; ms?: number }
 
 /** Gemini로 캡션에서 장소 목록을 뽑는다. 실패하면 빈 배열(호출부가 폴백). */
 async function extractPlaces(
@@ -391,6 +391,7 @@ async function findPlace(
 }
 
 export async function POST(request: Request) {
+  const tStart = Date.now()
   const placesKey = getPlacesKey()
   if (!placesKey) {
     return NextResponse.json(
@@ -457,7 +458,9 @@ export async function POST(request: Request) {
 
   const cleaned = stripOgPrefix(caption)
   const diag: ExtractDiag = { keyPresent: false, attempts: [] }
+  const tExtract = Date.now()
   const extracted = await extractPlaces(cleaned, locationTag, diag)
+  diag.ms = Date.now() - tExtract
 
   if (extracted.length === 0) {
     console.warn("[resolve-instagram] 추출 0건", JSON.stringify(diag))
@@ -470,6 +473,7 @@ export async function POST(request: Request) {
   }
 
   const origin = resolveRequestOrigin(request.url)
+  const tGround = Date.now()
 
   // 캐시 우선: 이미 아는 장소면 구글을 부르지 않는다.
   const grounded = await Promise.all(
@@ -548,6 +552,8 @@ export async function POST(request: Request) {
     })
   )
 
+  const groundMs = Date.now() - tGround
+
   // 새로 확정된 장소는 캐시에 적재 (다음 조회부터 구글 호출 0회)
   const toCache = grounded
     .filter((g) => g.place && g.place.googlePlaceId)
@@ -569,5 +575,10 @@ export async function POST(request: Request) {
   const found = grounded.filter((g) => g.place).length
   console.log(`[api/resolve-instagram] 추출 ${extracted.length}곳 / 구글 확정 ${found}곳`)
 
-  return NextResponse.json({ places: grounded, caption: cleaned })
+  return NextResponse.json({
+    places: grounded,
+    caption: cleaned,
+    // 어디서 시간이 새는지 재려고 남긴다 (비밀값 없음)
+    timing: { totalMs: Date.now() - tStart, extractMs: diag.ms ?? 0, groundMs, places: extracted.length },
+  })
 }
