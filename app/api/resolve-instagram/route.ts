@@ -246,10 +246,31 @@ function normalizeName(input: string): string {
   return s.replace(/[^0-9a-z가-힣\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\u0e00-\u0e7f]/g, "")
 }
 
+/**
+ * 음식·업종 종류를 가리키는 말. **가게를 구분해 주지 않는다.**
+ *
+ * ⚠️ 이걸 안 걷어내면 종류만 같아도 다른 가게가 통과한다.
+ *    실측: "쿠시카츠 다루마" 를 찾다가 "쿠시카츠 이자카야 히로카츠" 를
+ *    같은 집으로 보고 medium 을 줬다. 겹친 건 "쿠시카츠" 뿐이었다.
+ *    구분은 "다루마" 가 한다 — 그쪽만 남겨 놓고 봐야 한다.
+ */
+const GENRE_WORDS = [
+  "쿠시카츠", "야키니쿠", "오코노미야키", "회전초밥", "스키야키", "이자카야",
+  "라멘", "우동", "소바", "스시", "초밥", "돈카츠", "규카츠", "샤브샤브",
+  "베이커리", "브런치", "다이닝", "레스토랑", "비스트로", "루프탑",
+  "串カツ", "焼肉", "お好み焼き", "回転寿司", "すき焼き", "居酒屋",
+  "ラーメン", "うどん", "そば", "寿司", "とんかつ",
+  "restaurant", "bakery", "coffee", "roasters", "bistro", "dining",
+]
+
 function nameCore(input: string): string {
   let s = normalizeName(input)
   for (const b of BRANCH_WORDS) s = s.replace(new RegExp(b, "g"), "")
-  return s
+  // 종류 단어를 걷어낸 결과가 통째로 비면(가게 이름이 종류 그 자체인 경우)
+  // 원래 이름을 그대로 쓴다 — 비교할 게 없어지면 안 된다.
+  let stripped = s
+  for (const g of GENRE_WORDS) stripped = stripped.replace(new RegExp(g, "g"), "")
+  return stripped.length >= 2 ? stripped : s
 }
 
 function bigrams(s: string): Set<string> {
