@@ -98,6 +98,68 @@ async function textModelCandidates(apiKey: string): Promise<string[]> {
   }
 }
 
+/**
+ * 명소마다 어울리는 시간대.
+ *
+ * ⚠️ 예전엔 전부 골든아워로 고정했다. 도시가 달라도 한 세트로 보이게 하려던 건데,
+ *    **야경이 좋은 곳까지 노랗게** 나왔다. 시간대는 명소에 맞게 고르고,
+ *    대신 '시네마틱한 질감'은 공통으로 유지해 세트 느낌을 낸다.
+ */
+const LIGHT_PRESETS: Record<string, string> = {
+  night:
+    "Deep night. The landmark lit by its own illumination against a dark indigo sky, " +
+    "city lights and reflections, long-exposure glow. Dark overall mood.",
+  bluehour:
+    "Blue hour just after sunset. Deep blue sky with the landmark's lights already on, " +
+    "cool tones balanced with warm window light.",
+  sunrise:
+    "Early sunrise. Soft low-angle light, cool mist in the valleys, calm pastel sky, " +
+    "fresh and quiet mood.",
+  day:
+    "Bright clear daytime. Strong natural light, vivid blue sky with crisp clouds, " +
+    "saturated colors, open and airy mood.",
+  sunset:
+    "Sunset. Warm low sun, layered orange and violet sky, long shadows.",
+}
+
+/**
+ * 이 명소는 언제 찍은 게 가장 그 장소다운지 묻는다.
+ * (성산일출봉은 새벽, 도톤보리는 밤, 해변은 낮 — 이게 갈려야 노란 사진만 나오지 않는다)
+ */
+async function askBestLight(apiKey: string, landmark: string, destination: string): Promise<string> {
+  const models = await textModelCandidates(apiKey)
+  const prompt =
+    `When is ${landmark} in ${destination} most famously and beautifully photographed? ` +
+    `Answer with exactly one word from this list: night, bluehour, sunrise, day, sunset. ` +
+    `Consider what the place is actually known for — a neon nightlife street is "night", ` +
+    `a sunrise peak is "sunrise", a beach or a park is "day".`
+  for (const model of models) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0 },
+          }),
+        }
+      )
+      if (!res.ok) continue
+      const d = (await res.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+      }
+      const t = (d.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim().toLowerCase()
+      const hit = Object.keys(LIGHT_PRESETS).find((k) => t.includes(k))
+      if (hit) return hit
+    } catch {
+      continue
+    }
+  }
+  return "day" // 모르면 낮 — 노란 사진이 기본값이 되지 않게
+}
+
 async function askLandmark(
   apiKey: string,
   city: string,
@@ -172,23 +234,24 @@ type GeminiImagePart = {
  * model grounded — asking it to infer what's iconic produces wrong-city or
  * bizarre hallucinated results (giant sculptural text, wrong landmarks, etc).
  */
-function buildPrompt(destination: string, landmark: string): string {
+function buildPrompt(destination: string, landmark: string, light: string): string {
   return (
     // ① 무엇을 그릴지 — 실제 명소를 못 박는다.
     //    "그 도시의 상징적인 곳"처럼 맡기면 엉뚱한 도시나 없는 건물을 그린다(실측).
     `A cinematic travel photograph of ${landmark} in ${destination}. ` +
     `This must be the real, recognizable ${landmark} — not a similar-looking place, ` +
     `not a different city or country, not an invented structure.\n` +
-    // ② 어떻게 그릴지 — 도시가 달라도 **한 세트처럼 보이게** 톤을 고정한다.
-    //    도시마다 분위기가 제각각이면 대표 이미지 모음으로서 어색하다.
+    // ② 시간대는 **명소에 맞게** 고른다. 전부 골든아워로 고정했더니
+    //    야경이 좋은 곳까지 노랗게 나왔다.
+    `Lighting: ${LIGHT_PRESETS[light] ?? LIGHT_PRESETS.day}\n` +
+    // ③ 질감은 공통 — 시간대가 달라도 한 세트로 보이게 하는 건 이쪽이다.
     `Style: wide establishing shot that shows the landmark clearly. ` +
-    `Golden hour light, dramatic layered sky, deep rich colors, gentle haze in the distance, ` +
-    `high-end travel magazine cover look. 16:9 widescreen.\n` +
-    // ③ 이 이미지는 **여행 카드 배경**으로 쓰이고 아래쪽에 제목 글씨가 얹힌다.
-    //    아래 1/3 이 복잡하면 글씨가 안 읽힌다.
+    `Rich deep colors, gentle atmospheric depth, high-end travel magazine cover look. ` +
+    `16:9 widescreen.\n` +
+    // ④ 이 이미지는 **여행 카드 배경**으로 쓰이고 아래쪽에 제목 글씨가 얹힌다.
     `Composition: keep the lower third calm and uncluttered (sky, water, ground or shadow) ` +
     `so white text can be overlaid there and stay readable. Main subject in the upper two thirds.\n` +
-    // ④ 금지 — 글자가 들어가면 커버로 못 쓴다. 실제로 조형물 형태의 글자가 나온 적이 있다.
+    // ⑤ 금지 — 글자가 들어가면 커버로 못 쓴다.
     `Absolutely no text, letters, words, numbers, signage, logos, watermarks, ` +
     `or sculptural lettering anywhere. No close-up faces.`
   )
@@ -248,7 +311,8 @@ export async function POST(req: Request) {
       destination = country ? `${city}, ${country}` : city
     }
 
-    const prompt = buildPrompt(destination, landmark)
+    const light = await askBestLight(apiKey, landmark, destination)
+    const prompt = buildPrompt(destination, landmark, light)
 
     // 1. 사용 가능한 이미지 생성 모델 목록 조회 (계정마다 실제 노출되는 모델명이 다름)
     let candidateModels: string[] = []
