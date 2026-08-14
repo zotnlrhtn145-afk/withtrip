@@ -164,7 +164,7 @@ async function extractPlaces(
     `- 장소를 못 찾으면 빈 배열을 반환해라.\n\n` +
     `반드시 다음 JSON 형태로만 응답해:\n` +
     `{"places": [{"name": "상호명", "nameLocal": "현지 표기", "address": "캡션에 적힌 주소 또는 빈 문자열", "region": "도시·지역", "note": "짧은 메모"}]}\n\n` +
-    `캡션:\n"""\n${caption.slice(0, 4000)}\n"""`;
+    `캡션:\n"""\n${caption.slice(0, 2500)}\n"""`;
 
   // ⚠️ 모델 이름을 박아 두지 않는다. 박아 뒀더니 폴백 둘이 전부 404 였고
   //    (gemini-2.0-flash / gemini-1.5-flash-latest — 이 계정에 없는 모델),
@@ -179,8 +179,10 @@ async function extractPlaces(
   const MODEL_TIMEOUT_MS = 10_000;
 
   for (const model of models) {
+    // thinkingConfig 를 모르는 모델이면 한 번은 빼고 다시 부른다
+    let noThinking = false;
     // 과부하는 잠깐 기다렸다 같은 모델에 다시 묻는 게 낫다
-    for (let tryNo = 0; tryNo < 2; tryNo += 1) {
+    for (let tryNo = 0; tryNo < 3; tryNo += 1) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS);
       try {
@@ -194,13 +196,23 @@ async function extractPlaces(
             },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { responseMimeType: "application/json" },
+              generationConfig: {
+                responseMimeType: "application/json",
+                // ⚠️ 최신 flash 는 기본으로 "생각"을 하고 답한다. 캡션에서 상호명을
+                //    긁어내는 일에는 그 시간이 순수 낭비다(실측 1.5~6.7초로 출렁였다).
+                //    지원하지 않는 모델이 400 을 내면 아래에서 빼고 다시 부른다.
+                ...(noThinking ? {} : { thinkingConfig: { thinkingBudget: 0 } }),
+              },
             }),
             signal: controller.signal,
           },
         );
         if (!res.ok) {
           diag.attempts.push(`${model}:HTTP_${res.status}`);
+          if (res.status === 400 && !noThinking) {
+            noThinking = true;
+            continue;
+          }
           if (isTransient(res.status) && tryNo === 0) {
             await sleep(600);
             continue;
