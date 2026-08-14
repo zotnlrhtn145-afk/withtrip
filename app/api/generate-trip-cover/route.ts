@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { getIconicLandmark } from "@/lib/getCityImage"
+import { getIconicLandmark, toEnglishKeywords } from "@/lib/getCityImage"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 
 export const runtime = "nodejs"
@@ -14,44 +14,79 @@ export const runtime = "nodejs"
  *
  * 올리기에 실패하면 null 을 돌려주고, 호출부는 예전처럼 base64 를 받아 직접 올린다.
  */
-async function uploadCover(
-  req: Request,
+/**
+ * 만든 이미지를 Storage 에 올리고 공개 URL 을 돌려준다.
+ *
+ * **도시 단위**로 올린다(`city/{키}.png`). 예전엔 사용자 폴더에 올렸는데,
+ * 이제 이미지가 도시당 한 장이고 모든 사용자가 공유하므로 사용자와 무관하다.
+ * 덕분에 토큰 검증도 필요 없어졌다.
+ */
+async function uploadCityCover(
+  cityKey: string,
   base64: string,
   mimeType: string
 ): Promise<string | null> {
   const admin = getSupabaseAdmin()
-  if (!admin) return null
-
-  // 폴더가 사용자 id 여야 한다(본인 커버 삭제 정책이 그 기준). 그래서 토큰으로 확인한다.
-  // 클라이언트가 보낸 id 를 그대로 믿으면 남의 폴더에 쓸 수 있다.
-  const header = req.headers.get("authorization") ?? ""
-  const jwt = header.startsWith("Bearer ") ? header.slice(7).trim() : ""
-  if (!jwt) return null
-
+  if (!admin || !cityKey) return null
   try {
-    const { data, error } = await admin.auth.getUser(jwt)
-    const userId = data?.user?.id
-    if (error || !userId) return null
-
     const ext = mimeType.split("/")[1]?.replace(/[^a-z0-9]/gi, "") || "png"
-    const path = `${userId}/${Date.now()}-${Math.random().toString(16).slice(2)}.${ext}`
-
-    const { error: upErr } = await admin.storage
+    const path = `city/${cityKey}.${ext}`
+    const { error } = await admin.storage
       .from("trip-covers")
       .upload(path, Buffer.from(base64, "base64"), {
         contentType: mimeType,
         cacheControl: "31536000",
-        upsert: false,
+        upsert: true, // 다시 만들 때 덮어쓴다
       })
-    if (upErr) {
-      console.warn("[generate-trip-cover] upload failed:", upErr.message)
+    if (error) {
+      console.warn("[generate-trip-cover] upload failed:", error.message)
       return null
     }
-
     const { data: pub } = admin.storage.from("trip-covers").getPublicUrl(path)
     return String(pub?.publicUrl ?? "").trim() || null
   } catch (e) {
     console.warn("[generate-trip-cover] upload unexpected:", e)
+    return null
+  }
+}
+
+/**
+ * 도시 키 — 같은 도시가 두 번 만들어지지 않게 하는 기준.
+ * 영문 도시명을 소문자·영숫자만 남겨 쓴다. 없으면 한글 도시명을 그대로.
+ */
+function cityKeyOf(input: { city?: string; country?: string; location?: string; title?: string }): string {
+  const { cityEn } = toEnglishKeywords(input)
+  const base = (cityEn || input.city || input.location || "").toString().trim().toLowerCase()
+  return base.replace(/[^a-z0-9가-힣]+/g, "")
+}
+
+/**
+ * 등록된 47개 명소 목록에 없는 도시는 **모델에게 대표 명소를 먼저 묻는다.**
+ * 예전엔 목록에 없으면 그냥 포기해서 "되는 도시와 안 되는 도시"가 갈렸다.
+ */
+async function askLandmark(apiKey: string, city: string, country: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text:
+            `What is the single most iconic, instantly recognizable landmark of ` +
+            `${city}${country ? `, ${country}` : ""}? ` +
+            `Answer with the landmark's common English name only — no explanation. ` +
+            `If you are not confident such a landmark exists, answer exactly: NONE` }] }],
+          generationConfig: { temperature: 0 },
+        }),
+      }
+    )
+    if (!res.ok) return null
+    const d = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
+    const t = (d.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim().replace(/[."]+$/, "")
+    if (!t || /^none$/i.test(t) || t.length > 60) return null
+    return t
+  } catch {
     return null
   }
 }
@@ -106,16 +141,44 @@ export async function POST(req: Request) {
       location?: string
     }
 
-    // Unknown destinations skip AI generation entirely rather than risk a
-    // geographically wrong image — the caller falls back to getCityImage().
-    const landmarkInfo = getIconicLandmark(body)
-    if (!landmarkInfo) {
-      return NextResponse.json(
-        { error: "이 여행지는 아직 지원하지 않아요." },
-        { status: 400 }
-      )
+    const admin = getSupabaseAdmin()
+    const cityKey = cityKeyOf(body)
+
+    // ── 이미 만들어 둔 도시면 그걸 그대로 준다.
+    //    도시당 한 장만 만들고 모두 재사용한다 — 같은 제주도는 항상 같은 이미지.
+    //    (예전엔 여행마다 새로 만들어서 대표 이미지 느낌이 안 났고 비용도 매번 들었다)
+    if (admin && cityKey) {
+      const { data: cached } = await admin
+        .from("city_covers")
+        .select("image_url")
+        .eq("city_key", cityKey)
+        .maybeSingle()
+      const url = (cached as { image_url?: string } | null)?.image_url
+      if (url) return NextResponse.json({ imageUrl: url, cached: true })
     }
-    const prompt = buildPrompt(landmarkInfo.destination, landmarkInfo.landmark)
+
+    // ── 그릴 명소를 정한다.
+    //    등록된 목록이 우선(검증된 값). 없으면 모델에게 물어본다 —
+    //    예전엔 목록에 없으면 포기해서 "되는 도시와 안 되는 도시"가 갈렸다.
+    const landmarkInfo = getIconicLandmark(body)
+    let destination = landmarkInfo?.destination ?? ""
+    let landmark = landmarkInfo?.landmark ?? ""
+
+    if (!landmark) {
+      const city = String(body.city ?? "").trim() || String(body.location ?? "").trim()
+      const country = String(body.country ?? "").trim()
+      if (!city) {
+        return NextResponse.json({ error: "여행지를 알 수 없어요." }, { status: 400 })
+      }
+      const asked = await askLandmark(apiKey, city, country)
+      if (!asked) {
+        return NextResponse.json({ error: "이 여행지는 아직 지원하지 않아요." }, { status: 400 })
+      }
+      landmark = asked
+      destination = country ? `${city}, ${country}` : city
+    }
+
+    const prompt = buildPrompt(destination, landmark)
 
     // 1. 사용 가능한 이미지 생성 모델 목록 조회 (계정마다 실제 노출되는 모델명이 다름)
     let candidateModels: string[] = []
@@ -185,8 +248,17 @@ export async function POST(req: Request) {
               const mime = imagePart.inlineData.mimeType || "image/png"
 
               // 서버가 올린다. 성공하면 URL 만 주면 되므로 응답도 훨씬 가볍다.
-              const imageUrl = await uploadCover(req, imagePart.inlineData.data, mime)
-              if (imageUrl) return NextResponse.json({ imageUrl })
+              const imageUrl = await uploadCityCover(cityKey, imagePart.inlineData.data, mime)
+              if (imageUrl) {
+                // 다음부터는 만들지 않고 이걸 쓴다
+                if (admin && cityKey) {
+                  await admin.from("city_covers").upsert(
+                    { city_key: cityKey, city_label: destination, landmark, image_url: imageUrl },
+                    { onConflict: "city_key" }
+                  )
+                }
+                return NextResponse.json({ imageUrl })
+              }
 
               // 못 올렸으면 예전처럼 base64 를 준다 (호출부가 직접 올린다)
               return NextResponse.json({
