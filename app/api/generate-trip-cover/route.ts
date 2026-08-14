@@ -65,26 +65,28 @@ function cityKeyOf(input: { city?: string; country?: string; location?: string; 
  * 예전엔 목록에 없으면 그냥 포기해서 "되는 도시와 안 되는 도시"가 갈렸다.
  */
 /**
- * 이 계정에서 실제로 쓸 수 있는 텍스트 모델을 찾는다.
+ * 이 계정에서 쓸 수 있는 텍스트 모델 후보.
  *
- * ⚠️ 모델 이름을 고정해 두면 안 된다. `gemini-2.0-flash` 를 박아 뒀다가
+ * ⚠️ 모델 이름을 고정하면 안 된다. `gemini-2.0-flash` 를 박아 뒀다가
  *    **계정에 없어서 404 가 났고, 대표 장소 추론이 한 번도 동작하지 않았다.**
- *    (그런데도 조용히 "지원하지 않는 여행지"로만 보여서 알아채기 어려웠다)
+ *    하나만 골라도 안 된다 — 목록 첫 번째가 호출되지 않는 이름일 수 있다.
+ *    일정 추출 라우트와 같이 **여러 개를 순서대로 시도**한다.
  */
-async function findTextModel(apiKey: string): Promise<string | null> {
+async function textModelCandidates(apiKey: string): Promise<string[]> {
   try {
     const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models", {
       headers: { "x-goog-api-key": apiKey },
     })
-    if (!res.ok) return null
+    if (!res.ok) return []
     const d = (await res.json()) as { models?: GeminiModel[] }
-    const names = (d.models ?? [])
+    return (d.models ?? [])
       .filter((m) => (m.supportedGenerationMethods ?? []).includes("generateContent"))
       .map((m) => String(m.name ?? "").replace(/^models\//, ""))
-      .filter((n) => n.includes("flash") && !/image|exp|preview|thinking|lite/i.test(n))
-    return names[0] ?? null
+      .filter((n) => n.includes("flash") && !/image/i.test(n))
+      .sort((a, b) => (/(exp|preview|thinking|lite)/.test(a) ? 1 : 0) - (/(exp|preview|thinking|lite)/.test(b) ? 1 : 0))
+      .slice(0, 4)
   } catch {
-    return null
+    return []
   }
 }
 
@@ -93,47 +95,59 @@ async function askLandmark(
   city: string,
   country: string
 ): Promise<{ landmark: string | null; raw: string }> {
-  try {
-    const model = await findTextModel(apiKey)
-    if (!model) return { landmark: null, raw: "no text model available" }
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text:
-            // ⚠️ "가장 상징적인 랜드마크"만 물으면 작은 도시는 모델이 포기한다
-            //    (포항·용인이 실제로 그랬다). 여행자가 사진 찍을 만한
-            //    **대표적인 장소**로 넓혀 묻는다 — 해안·공원·시장·사찰도 답이 된다.
-            `Name one real, specific place in ${city}${country ? `, ${country}` : ""} ` +
-            `that a traveler would photograph to represent the city. ` +
-            `It can be a landmark, a coastline, a park, a temple, a bridge, or a famous street — ` +
-            `but it must be a real named place in that city.\n` +
-            `Answer with its common English name only, no explanation. ` +
-            `Only if you cannot identify this city at all, answer exactly: NONE` }] }],
-          generationConfig: { temperature: 0 },
-        }),
+  const models = await textModelCandidates(apiKey)
+  if (models.length === 0) return { landmark: null, raw: "no text model" }
+
+  const prompt =
+    // ⚠️ "가장 상징적인 랜드마크"만 물으면 작은 도시는 모델이 포기한다(포항·용인).
+    //    여행자가 사진 찍을 만한 **대표적인 장소**로 넓혀 묻는다.
+    `Name one real, specific place in ${city}${country ? `, ${country}` : ""} ` +
+    `that a traveler would photograph to represent the city. ` +
+    `It can be a landmark, a coastline, a park, a temple, a bridge, or a famous street — ` +
+    `but it must be a real named place in that city.\n` +
+    `Answer with its common English name only, no explanation. ` +
+    `Only if you cannot identify this city at all, answer exactly: NONE`
+
+  let last = ""
+  for (const model of models) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0 },
+          }),
+        }
+      )
+      if (!res.ok) {
+        last = `${model}:HTTP ${res.status}`
+        continue
       }
-    )
-    if (!res.ok) return { landmark: null, raw: `HTTP ${res.status}` }
-    const d = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
-    const raw = (d.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim()
+      const d = (await res.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+      }
+      const raw = (d.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim()
 
-    // 모델이 설명을 덧붙이거나 목록으로 답할 때가 있다 — 첫 줄만 쓰고 장식을 걷어낸다
-    const first = raw.split("\n").map((l) => l.trim()).find(Boolean) ?? ""
-    const cleaned = first
-      .replace(/^[-*\d.)\s]+/, "")
-      .replace(/^["'`]+|["'`.]+$/g, "")
-      .trim()
+      // 설명을 덧붙이거나 목록으로 답할 때가 있다 — 첫 줄만 쓰고 장식을 걷어낸다
+      const first = raw.split("\n").map((l) => l.trim()).find(Boolean) ?? ""
+      const cleaned = first
+        .replace(/^[-*\d.)\s]+/, "")
+        .replace(/^["'`]+|["'`.]+$/g, "")
+        .trim()
 
-    if (!cleaned || /^none$/i.test(cleaned) || cleaned.length > 100) {
-      return { landmark: null, raw }
+      if (!cleaned || /^none$/i.test(cleaned) || cleaned.length > 100) {
+        last = `${model}:${raw.slice(0, 60)}`
+        continue
+      }
+      return { landmark: cleaned, raw }
+    } catch (e) {
+      last = `${model}:${String(e).slice(0, 40)}`
     }
-    return { landmark: cleaned, raw }
-  } catch (e) {
-    return { landmark: null, raw: String(e) }
   }
+  return { landmark: null, raw: last }
 }
 
 type GeminiModel = {
