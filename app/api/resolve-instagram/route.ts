@@ -692,10 +692,12 @@ async function extractPlacesFromVideo(
     `- 자막에 이름이 없으면 빈 배열.\n\n` +
     `{"places": [{"name": "상호명", "nameLocal": "현지 표기", "address": "", "region": "도시", "note": "메모"}]}`;
 
+  // ⚠️ 영상은 올리고 훑는 데만 30초 안팎이 걸린다. 모델을 여러 개 돌리면
+  //    첫 모델이 끝나기도 전에 전체 예산을 다 쓴다. **하나에 몰아준다.**
   const models = await flashModelCandidates(key);
-  for (const model of (models.length ? models : ["gemini-flash-latest"]).slice(0, 2)) {
+  for (const model of [models[0] ?? "gemini-flash-latest"]) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 30_000);
+    const timer = setTimeout(() => controller.abort(), 38_000);
     try {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
