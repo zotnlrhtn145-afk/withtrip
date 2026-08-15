@@ -633,6 +633,67 @@ export async function GET() {
   return NextResponse.json({ ok: true });
 }
 
+/**
+ * 장소를 하나도 못 뽑았을 때, **지역과 주제만이라도** 건진다.
+ *
+ * ⚠️ 예전엔 "장소를 찾지 못했어요" 만 주고 끝냈다. 그런데 캡션에는
+ *    "📍 Shanghai ... COFFEE GUIDE" 처럼 지역·주제가 멀쩡히 적혀 있는 경우가 많다.
+ *    (가게 이름만 영상 자막에 있고 캡션엔 없는 릴스가 이 유형이다)
+ *    그걸 버리면 사용자는 빈손으로 돌아간다.
+ */
+async function extractHint(
+  caption: string
+): Promise<{ region: string; theme: string } | null> {
+  const key = getGeminiKey();
+  if (!key) return null;
+  const models = await flashModelCandidates(key);
+  const model = models[0] ?? "gemini-flash-latest";
+
+  const prompt =
+    `아래 인스타그램 캡션에서 **어느 지역의 무엇을 다루는 글인지**만 뽑아라.\n` +
+    `가게 이름은 필요 없다. 도시·지역과 주제(카페/맛집/술집/숙소/관광 등)만.\n` +
+    `모르면 빈 문자열.\n\n` +
+    `{"region": "도시·지역", "theme": "카페 같은 한 단어"}\n\n` +
+    `캡션:\n"""\n${caption.slice(0, 1500)}\n"""`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8_000);
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            thinkingConfig: { thinkingBudget: 0 },
+          },
+        }),
+        signal: controller.signal,
+      }
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!raw) return null;
+    const j = JSON.parse(raw.replace(/```json|```/g, "").trim()) as {
+      region?: string;
+      theme?: string;
+    };
+    const region = String(j.region ?? "").trim();
+    const theme = String(j.theme ?? "").trim();
+    return region ? { region, theme } : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function POST(request: Request) {
   // 인증이 없는 라우트다 — 반복 호출로 AI 비용이 새지 않게 막는다
   const limited = await checkRateLimit(request, "cheap", "resolve-instagram");
@@ -716,10 +777,15 @@ export async function POST(request: Request) {
 
   if (extracted.length === 0) {
     console.warn("[resolve-instagram] 추출 0건", JSON.stringify(diag));
+    // 지역·주제라도 건져서 돌려준다 — 앱이 그걸로 대안을 보여준다
+    const hint = await extractHint(cleaned);
     return NextResponse.json({
       places: [],
       caption: cleaned,
-      error: "장소를 찾지 못했어요.",
+      error: hint
+        ? "이 게시물은 가게 이름이 영상 안에만 있는 것 같아요."
+        : "장소를 찾지 못했어요.",
+      hint,
       diag,
     });
   }
