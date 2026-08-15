@@ -633,6 +633,115 @@ export async function GET() {
   return NextResponse.json({ ok: true });
 }
 
+/**
+ * **캐러셀 카드 이미지들에서** 장소를 뽑는다.
+ *
+ * ⚠️ 피드 게시물(`/p/`)은 슬라이드마다 가게 하나씩 소개하고, 이름을 이미지 위에
+ *    글씨로 얹는 형식이 흔하다. 캡션에는 "호치민 카페 7곳" 정도만 적힌다.
+ *    (실측: TEA'SPACE / KAI KAI / MAKE ROOM 이 전부 이미지 위 글씨였다)
+ *
+ * 슬라이드가 영상이어도 **커버 이미지만** 읽는다 — 영상 8개를 받으면 20MB 가 넘고
+ * 느린데, 이름은 어차피 커버에 박혀 있다.
+ */
+async function extractPlacesFromImages(
+  imageUrls: string[],
+  locationTag: string,
+  diag: ExtractDiag,
+): Promise<ExtractedPlace[]> {
+  const key = getGeminiKey();
+  if (!key || imageUrls.length === 0) return [];
+
+  const parts: Array<Record<string, unknown>> = [];
+  for (const url of imageUrls.slice(0, 10)) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8_000);
+      const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
+      clearTimeout(timer);
+      if (!res.ok) continue;
+      const buf = await res.arrayBuffer();
+      if (buf.byteLength > 3 * 1024 * 1024) continue;
+      parts.push({
+        inline_data: {
+          mime_type: res.headers.get("content-type")?.split(";")[0] || "image/jpeg",
+          data: Buffer.from(buf).toString("base64"),
+        },
+      });
+    } catch {
+      /* 한 장 실패는 넘어간다 */
+    }
+  }
+  if (parts.length === 0) {
+    diag.attempts.push("images:NONE");
+    return [];
+  }
+
+  parts.push({
+    text:
+      `이 이미지들은 인스타그램 게시물의 카드들이다. 카드마다 장소를 하나씩 소개한다.\n\n` +
+      (locationTag ? `게시물 위치 태그: ${locationTag}\n\n` : "") +
+      `규칙:\n` +
+      `- 이미지 위에 **글씨로 얹힌 가게·장소 이름**만 뽑아라.\n` +
+      `- 간판이나 메뉴판에 우연히 보이는 글자는 제외. 표지 카드(제목만 있는 것)도 제외.\n` +
+      `- 같은 곳이 여러 장에 나오면 한 번만.\n` +
+      `- name 은 지도에서 검색 가능한 형태로. 현지 표기가 보이면 nameLocal 에.\n` +
+      `- region 에는 그 장소들이 있는 도시를 넣어라.\n` +
+      `- 이름이 없으면 빈 배열.\n\n` +
+      `{"places": [{"name": "상호명", "nameLocal": "현지 표기", "address": "", "region": "도시", "note": ""}]}`,
+  });
+
+  const models = await flashModelCandidates(key);
+  for (const model of [models[0] ?? "gemini-flash-latest"]) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 25_000);
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+          body: JSON.stringify({
+            contents: [{ parts }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              thinkingConfig: { thinkingBudget: 0 },
+            },
+          }),
+          signal: controller.signal,
+        },
+      );
+      if (!res.ok) {
+        diag.attempts.push(`images:${model}:HTTP_${res.status}`);
+        continue;
+      }
+      const data = (await res.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      };
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!raw) continue;
+      const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as {
+        places?: Array<Record<string, string>>;
+      };
+      const places = (parsed.places ?? [])
+        .map((x) => ({
+          name: String(x.name ?? "").trim(),
+          nameLocal: String(x.nameLocal ?? "").trim(),
+          address: String(x.address ?? "").trim(),
+          region: String(x.region ?? "").trim(),
+          note: String(x.note ?? "").trim(),
+        }))
+        .filter((x) => x.name);
+      diag.attempts.push(`images:${model}:PARSED_${places.length}`);
+      if (places.length > 0) return places.slice(0, MAX_CANDIDATES);
+    } catch (err) {
+      diag.attempts.push(`images:ERR_${err instanceof Error ? err.name : "unknown"}`);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return [];
+}
+
 /** 영상은 통째로 메모리에 올린다 — 릴스는 보통 2~5MB 다. 그 위는 받지 않는다. */
 const MAX_VIDEO_BYTES = 18 * 1024 * 1024;
 
@@ -759,68 +868,6 @@ async function extractPlacesFromVideo(
   return [];
 }
 
-/**
- * 장소를 하나도 못 뽑았을 때, **지역과 주제만이라도** 건진다.
- *
- * ⚠️ 예전엔 "장소를 찾지 못했어요" 만 주고 끝냈다. 그런데 캡션에는
- *    "📍 Shanghai ... COFFEE GUIDE" 처럼 지역·주제가 멀쩡히 적혀 있는 경우가 많다.
- *    (가게 이름만 영상 자막에 있고 캡션엔 없는 릴스가 이 유형이다)
- *    그걸 버리면 사용자는 빈손으로 돌아간다.
- */
-async function extractHint(
-  caption: string
-): Promise<{ region: string; theme: string } | null> {
-  const key = getGeminiKey();
-  if (!key) return null;
-  const models = await flashModelCandidates(key);
-  const model = models[0] ?? "gemini-flash-latest";
-
-  const prompt =
-    `아래 인스타그램 캡션에서 **어느 지역의 무엇을 다루는 글인지**만 뽑아라.\n` +
-    `가게 이름은 필요 없다. 도시·지역과 주제(카페/맛집/술집/숙소/관광 등)만.\n` +
-    `**둘 다 한국어로 답해라.** "Shanghai" 가 아니라 "상하이".\n` +
-    `모르면 빈 문자열.\n\n` +
-    `{"region": "도시·지역", "theme": "카페 같은 한 단어"}\n\n` +
-    `캡션:\n"""\n${caption.slice(0, 1500)}\n"""`;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8_000);
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: "application/json",
-            thinkingConfig: { thinkingBudget: 0 },
-          },
-        }),
-        signal: controller.signal,
-      }
-    );
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    };
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!raw) return null;
-    const j = JSON.parse(raw.replace(/```json|```/g, "").trim()) as {
-      region?: string;
-      theme?: string;
-    };
-    const region = String(j.region ?? "").trim();
-    const theme = String(j.theme ?? "").trim();
-    return region ? { region, theme } : null;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 export async function POST(request: Request) {
   // 인증이 없는 라우트다 — 반복 호출로 AI 비용이 새지 않게 막는다
   const limited = await checkRateLimit(request, "cheap", "resolve-instagram");
@@ -841,6 +888,8 @@ export async function POST(request: Request) {
     url?: string;
     /** 임베드에서 얻은 릴스 영상 주소 — 캡션에 이름이 없을 때만 쓴다 */
     videoUrl?: string;
+    /** 캐러셀 카드 커버 이미지들 — 피드 게시물(/p/)에서 쓴다 */
+    imageUrls?: string[];
   };
   try {
     body = (await request.json()) as typeof body;
@@ -907,29 +956,47 @@ export async function POST(request: Request) {
   const tExtract = Date.now();
   let extracted = await extractPlaces(cleaned, locationTag, diag);
 
-  // 캡션에 이름이 없으면 영상 자막을 읽는다 (임베드에서 주소를 받은 경우에만)
+  // 캡션에 이름이 없으면 영상 자막·카드 이미지를 읽는다
   const videoUrl = String(body.videoUrl ?? "").trim();
-  let fromVideo = false;
+  const imageUrls = (Array.isArray(body.imageUrls) ? body.imageUrls : [])
+    .map((u) => String(u ?? "").trim())
+    .filter((u) => u.startsWith("https://"));
+  let source: "caption" | "video" | "images" = "caption";
+
   if (extracted.length === 0 && videoUrl.startsWith("https://")) {
     const viaVideo = await extractPlacesFromVideo(videoUrl, locationTag, diag);
     if (viaVideo.length > 0) {
       extracted = viaVideo;
-      fromVideo = true;
+      source = "video";
+    }
+  }
+  // 캐러셀은 카드 커버만 읽는다 (영상 8개를 받는 것보다 훨씬 빠르고 가볍다)
+  if (extracted.length === 0 && imageUrls.length > 0) {
+    const viaImages = await extractPlacesFromImages(imageUrls, locationTag, diag);
+    if (viaImages.length > 0) {
+      extracted = viaImages;
+      source = "images";
     }
   }
   diag.ms = Date.now() - tExtract;
 
   if (extracted.length === 0) {
     console.warn("[resolve-instagram] 추출 0건", JSON.stringify(diag));
-    // 지역·주제라도 건져서 돌려준다 — 앱이 그걸로 대안을 보여준다
-    const hint = await extractHint(cleaned);
+    /**
+     * 왜 못 찾았는지 **정확히** 알려준다.
+     *
+     * ⚠️ 예전엔 "장소를 찾지 못했어요" 한 줄이라, 사용자는 앱이 고장난 줄 알았다.
+     *    한때 지역 기반 추천을 대신 보여주기도 했는데 — 영상에 나온 가게가 아니라서
+     *    오히려 잘못 담기게 만들었다. 지금은 **이유만 정직하게** 말한다.
+     */
+    const hadMedia = videoUrl.startsWith("https://") || imageUrls.length > 0;
     return NextResponse.json({
       places: [],
       caption: cleaned,
-      error: hint
-        ? "이 게시물은 가게 이름이 영상 안에만 있는 것 같아요."
-        : "장소를 찾지 못했어요.",
-      hint,
+      reason: hadMedia ? "no_names" : "no_media",
+      error: hadMedia
+        ? "이 게시물에서 가게 이름을 찾지 못했어요."
+        : "이 게시물은 인스타그램이 영상을 잠가둬서 읽을 수 없어요.",
       diag,
     });
   }
@@ -1062,7 +1129,7 @@ export async function POST(request: Request) {
     places: grounded,
     caption: cleaned,
     /** 영상 자막에서 읽어낸 결과인지 — 앱이 사용자에게 알려준다 */
-    source: fromVideo ? "video" : "caption",
+    source,
     // 어디서 시간이 새는지 재려고 남긴다 (비밀값 없음)
     timing: {
       totalMs: Date.now() - tStart,
