@@ -62,6 +62,10 @@ export default function PrivacyPage() {
             <li>친구·여행 멤버 간 공유 및 1:1·단체 채팅 제공</li>
             <li>초대·친구 요청·새 메시지 등 알림 발송</li>
             <li>영수증 이미지의 문자 인식을 통한 지출 자동 입력</li>
+            <li>
+              이용자가 요청한 경우에 한해, 대화 내용을 분석해 여행 일정을 자동으로 정리
+            </li>
+            <li>공유한 게시물의 글에서 장소를 찾아 &lsquo;나의 찜&rsquo;에 담기</li>
             <li>서비스 개선, 오류 대응 및 문의 처리</li>
           </ul>
         </section>
@@ -99,7 +103,10 @@ export default function PrivacyPage() {
                 </tr>
                 <tr className="border-b border-slate-100">
                   <td className="py-2 pr-4 font-semibold">Google Gemini · OpenAI</td>
-                  <td className="py-2 pr-4">영수증 이미지 문자 인식(지출 자동 입력)</td>
+                  <td className="py-2 pr-4">
+                    영수증 이미지 문자 인식(지출 자동 입력), 이용자가 요청한 경우의 대화 내용 분석(일정
+                    자동 정리), 공유한 게시물 글의 장소 추출
+                  </td>
                 </tr>
                 <tr className="border-b border-slate-100">
                   <td className="py-2 pr-4 font-semibold">Expo</td>
@@ -112,6 +119,19 @@ export default function PrivacyPage() {
             법령에 근거가 있거나 수사기관의 적법한 요청이 있는 경우를 제외하고, 이용자의 동의 없이 개인정보를 외부에
             제공하지 않습니다.
           </p>
+          <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
+            <p className="font-bold text-slate-900">AI 기능에 대해</p>
+            <p className="mt-2">
+              영수증 인식·일정 자동 정리·장소 찾기는 외부 AI 사업자(Google Gemini 등)에 내용을 보내 처리합니다.
+              <span className="font-semibold text-slate-900">
+                {" "}
+                대화 내용은 이용자가 &lsquo;일정 뽑기&rsquo;를 직접 눌렀을 때만 전송되며, 평소 주고받는 대화가
+                자동으로 전송되지는 않습니다.
+              </span>{" "}
+              전송된 내용은 위드트립 서버에 따로 보관하지 않습니다. 다만 해당 AI 사업자가 자사 정책에 따라 서비스
+              품질 개선 등의 목적으로 이용할 수 있으므로, 민감한 정보는 입력하지 않기를 권합니다.
+            </p>
+          </div>
         </section>
 
         <section className="flex flex-col gap-3">
