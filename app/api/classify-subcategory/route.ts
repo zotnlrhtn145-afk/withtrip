@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 
+import { checkRateLimit } from "@/lib/rate-limit"
+
 export const runtime = "nodejs"
 
 const SUBCATEGORIES_BY_KIND: Record<string, string[]> = {
@@ -16,6 +18,10 @@ const SUBCATEGORIES_BY_KIND: Record<string, string[]> = {
  * 예: "이치란"은 이름에 "라멘"이 없어도 라멘 전문점으로 알려져 있다.
  */
 export async function POST(req: Request) {
+  // 인증이 없는 라우트다 — 반복 호출로 AI 비용이 새지 않게 막는다
+  const limited = await checkRateLimit(req, "cheap", "classify-subcategory")
+  if (limited) return limited
+
   try {
     const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY
     if (!apiKey) {

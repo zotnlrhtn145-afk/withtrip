@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 
+import { checkRateLimit } from "@/lib/rate-limit"
+
 export const runtime = "nodejs"
 /** 모델이 느릴 때가 있어 여유를 준다. 아래에서 호출별로 따로 상한을 건다. */
 export const maxDuration = 60
@@ -72,6 +74,10 @@ function buildPrompt(days: number, transcript: string): string {
 }
 
 export async function POST(req: Request) {
+  // 인증이 없는 라우트다 — 반복 호출로 AI 비용이 새지 않게 막는다
+  const limited = await checkRateLimit(req, "cheap", "extract-schedule")
+  if (limited) return limited
+
   try {
     const apiKey = (process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || "").trim()
     if (!apiKey) {

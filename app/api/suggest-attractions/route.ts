@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 
+import { checkRateLimit } from "@/lib/rate-limit"
+
 import { distanceMeters, type LatLng } from "@/lib/geo"
 import {
   buildPlacePhotoProxyUrl,
@@ -108,6 +110,10 @@ async function groundAttraction(
  * 숙소 좌표가 있으면 가까운 순으로 정렬한다.
  */
 export async function POST(request: Request) {
+  // 인증이 없는 라우트다 — 반복 호출로 AI 비용이 새지 않게 막는다
+  const limited = await checkRateLimit(request, "cheap", "suggest-attractions")
+  if (limited) return limited
+
   try {
     const geminiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY
     if (!geminiKey) {

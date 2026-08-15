@@ -2,6 +2,8 @@ import { createHash } from "node:crypto"
 
 import { NextResponse } from "next/server"
 
+import { checkRateLimit } from "@/lib/rate-limit"
+
 import { getIconicLandmark, toEnglishKeywords } from "@/lib/getCityImage"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 
@@ -263,6 +265,10 @@ function buildPrompt(destination: string, landmark: string, light: string): stri
 }
 
 export async function POST(req: Request) {
+  // 인증이 없는 라우트다 — 반복 호출로 AI 비용이 새지 않게 막는다
+  const limited = await checkRateLimit(req, "image", "generate-trip-cover")
+  if (limited) return limited
+
   try {
     const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY
     if (!apiKey) {

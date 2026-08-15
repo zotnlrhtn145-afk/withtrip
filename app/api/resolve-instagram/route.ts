@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { checkRateLimit } from "@/lib/rate-limit";
+
 import {
   buildPlacePhotoProxyUrl,
   resolveCoverImageUrl,
@@ -632,6 +634,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  // 인증이 없는 라우트다 — 반복 호출로 AI 비용이 새지 않게 막는다
+  const limited = await checkRateLimit(request, "cheap", "resolve-instagram");
+  if (limited) return limited;
+
   const tStart = Date.now();
   const placesKey = getPlacesKey();
   if (!placesKey) {

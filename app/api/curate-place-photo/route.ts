@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 
+import { checkRateLimit } from "@/lib/rate-limit"
+
 export const runtime = "nodejs"
 
 type CandidateImage = { index: number; mimeType: string; data: string }
@@ -33,6 +35,10 @@ async function fetchAsBase64(
  * 외부 전경, 간판, 메뉴판, 로고, 사람 얼굴 클로즈업 등은 제외 대상.
  */
 export async function POST(req: Request) {
+  // 인증이 없는 라우트다 — 반복 호출로 AI 비용이 새지 않게 막는다
+  const limited = await checkRateLimit(req, "cheap", "curate-place-photo")
+  if (limited) return limited
+
   try {
     const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY
     if (!apiKey) {
