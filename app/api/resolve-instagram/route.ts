@@ -633,6 +633,130 @@ export async function GET() {
   return NextResponse.json({ ok: true });
 }
 
+/** 영상은 통째로 메모리에 올린다 — 릴스는 보통 2~5MB 다. 그 위는 받지 않는다. */
+const MAX_VIDEO_BYTES = 18 * 1024 * 1024;
+
+/**
+ * **영상 자막에서** 장소를 뽑는다.
+ *
+ * ⚠️ 여행·맛집 릴스는 가게 이름을 캡션이 아니라 **영상 자막에만** 넣는 경우가 많다.
+ *    (실측: 싱가포르 호커 가이드 릴스 — 캡션엔 이름이 하나도 없고 화면에만 있었다)
+ *    그런 게시물은 캡션 분석만으로는 영원히 0건이다.
+ *
+ * 영상 주소는 인스타 임베드의 contextJSON 에서 얻는다. 단, 라이선스 음원을 쓴
+ * 릴스는 `copyright_blocked: true` 라 주소가 아예 없다 — 그건 앱에서 걸러 보낸다.
+ */
+async function extractPlacesFromVideo(
+  videoUrl: string,
+  locationTag: string,
+  diag: ExtractDiag,
+): Promise<ExtractedPlace[]> {
+  const key = getGeminiKey();
+  if (!key) return [];
+
+  let bytes: ArrayBuffer;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15_000);
+    const res = await fetch(videoUrl, { signal: controller.signal, cache: "no-store" });
+    clearTimeout(timer);
+    if (!res.ok) {
+      diag.attempts.push(`video:HTTP_${res.status}`);
+      return [];
+    }
+    const len = Number(res.headers.get("content-length") ?? 0);
+    if (len > MAX_VIDEO_BYTES) {
+      diag.attempts.push(`video:TOO_BIG_${len}`);
+      return [];
+    }
+    bytes = await res.arrayBuffer();
+    if (bytes.byteLength > MAX_VIDEO_BYTES) {
+      diag.attempts.push(`video:TOO_BIG_${bytes.byteLength}`);
+      return [];
+    }
+  } catch (err) {
+    diag.attempts.push(`video:FETCH_${err instanceof Error ? err.name : "unknown"}`);
+    return [];
+  }
+
+  const b64 = Buffer.from(bytes).toString("base64");
+  const prompt =
+    `이 영상은 인스타그램 릴스다. 화면에 **자막으로 뜨는 가게·장소 이름**을 전부 읽어라.\n\n` +
+    (locationTag ? `게시물 위치 태그: ${locationTag}\n\n` : "") +
+    `규칙:\n` +
+    `- 화면에 글씨로 나타나는 상호명만 뽑아라. 간판·메뉴판에 우연히 보이는 건 제외.\n` +
+    `- 같은 곳이 여러 번 나오면 한 번만.\n` +
+    `- name 은 지도에서 검색 가능한 형태로. 현지 표기가 함께 보이면 nameLocal 에 넣어라.\n` +
+    `- region 에는 그 장소들이 있는 도시·지역을 넣어라(영상 맥락에서 유추해도 된다).\n` +
+    `- 짧은 설명이 함께 뜨면 note 에 40자 이내로.\n` +
+    `- 자막에 이름이 없으면 빈 배열.\n\n` +
+    `{"places": [{"name": "상호명", "nameLocal": "현지 표기", "address": "", "region": "도시", "note": "메모"}]}`;
+
+  const models = await flashModelCandidates(key);
+  for (const model of (models.length ? models : ["gemini-flash-latest"]).slice(0, 2)) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30_000);
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { inline_data: { mime_type: "video/mp4", data: b64 } },
+                  { text: prompt },
+                ],
+              },
+            ],
+            generationConfig: { responseMimeType: "application/json" },
+          }),
+          signal: controller.signal,
+        },
+      );
+      if (!res.ok) {
+        diag.attempts.push(`video:${model}:HTTP_${res.status}`);
+        continue;
+      }
+      const data = (await res.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      };
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!raw) {
+        diag.attempts.push(`video:${model}:EMPTY`);
+        continue;
+      }
+      const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as {
+        places?: Array<{
+          name?: string;
+          nameLocal?: string;
+          address?: string;
+          region?: string;
+          note?: string;
+        }>;
+      };
+      const places = (parsed.places ?? [])
+        .map((x) => ({
+          name: String(x.name ?? "").trim(),
+          nameLocal: String(x.nameLocal ?? "").trim(),
+          address: String(x.address ?? "").trim(),
+          region: String(x.region ?? "").trim(),
+          note: String(x.note ?? "").trim(),
+        }))
+        .filter((x) => x.name);
+      diag.attempts.push(`video:${model}:PARSED_${places.length}`);
+      if (places.length > 0) return places.slice(0, MAX_CANDIDATES);
+    } catch (err) {
+      diag.attempts.push(`video:${model}:ERR_${err instanceof Error ? err.name : "unknown"}`);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return [];
+}
+
 /**
  * 장소를 하나도 못 뽑았을 때, **지역과 주제만이라도** 건진다.
  *
@@ -709,7 +833,13 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { caption?: string; locationTag?: string; url?: string };
+  let body: {
+    caption?: string;
+    locationTag?: string;
+    url?: string;
+    /** 임베드에서 얻은 릴스 영상 주소 — 캡션에 이름이 없을 때만 쓴다 */
+    videoUrl?: string;
+  };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -773,7 +903,18 @@ export async function POST(request: Request) {
   const cleaned = stripOgPrefix(caption);
   const diag: ExtractDiag = { keyPresent: false, attempts: [] };
   const tExtract = Date.now();
-  const extracted = await extractPlaces(cleaned, locationTag, diag);
+  let extracted = await extractPlaces(cleaned, locationTag, diag);
+
+  // 캡션에 이름이 없으면 영상 자막을 읽는다 (임베드에서 주소를 받은 경우에만)
+  const videoUrl = String(body.videoUrl ?? "").trim();
+  let fromVideo = false;
+  if (extracted.length === 0 && videoUrl.startsWith("https://")) {
+    const viaVideo = await extractPlacesFromVideo(videoUrl, locationTag, diag);
+    if (viaVideo.length > 0) {
+      extracted = viaVideo;
+      fromVideo = true;
+    }
+  }
   diag.ms = Date.now() - tExtract;
 
   if (extracted.length === 0) {
@@ -918,6 +1059,8 @@ export async function POST(request: Request) {
   return NextResponse.json({
     places: grounded,
     caption: cleaned,
+    /** 영상 자막에서 읽어낸 결과인지 — 앱이 사용자에게 알려준다 */
+    source: fromVideo ? "video" : "caption",
     // 어디서 시간이 새는지 재려고 남긴다 (비밀값 없음)
     timing: {
       totalMs: Date.now() - tStart,
