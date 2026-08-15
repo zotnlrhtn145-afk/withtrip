@@ -2,7 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Compass, History, Loader2, Plane, Plus, SearchX, X } from "lucide-react"
+import Link from "next/link"
+import {
+  Bookmark,
+  ChevronRight,
+  Compass,
+  History,
+  Loader2,
+  Plane,
+  Plus,
+  SearchX,
+  Users,
+  X,
+} from "lucide-react"
 
 import { CreateTripDialog } from "@/components/create-trip-dialog"
 import { TripClipsTray } from "@/components/home/TripClipsTray"
@@ -212,6 +224,45 @@ export function HomeView({
             <Plus className="size-4" />
             새 여행 시작하기
           </button>
+
+          {/*
+            여행부터 만들 마음이 아닌 사람에게도 갈 곳을 준다.
+            버튼 하나뿐이면 거기서 막혀 되돌아 나간다.
+          */}
+          <div className="mt-10 w-full max-w-sm text-left">
+            <p className="mb-2 text-[11px] font-bold tracking-wider text-slate-400">
+              이런 것도 할 수 있어요
+            </p>
+            {[
+              {
+                href: "/friends",
+                Icon: Users,
+                label: "친구 추가하기",
+                desc: "친구와 여행을 함께 만들어요",
+              },
+              {
+                href: "/saved",
+                Icon: Bookmark,
+                label: "가고 싶은 곳 찜해두기",
+                desc: "인스타 게시물을 공유하면 장소를 찾아 담아줘요",
+              },
+            ].map((row) => (
+              <Link
+                key={row.href}
+                href={row.href}
+                className="flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-slate-50"
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-50">
+                  <row.Icon className="size-4 text-amber-500" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-bold text-slate-800">{row.label}</span>
+                  <span className="block text-xs text-slate-400">{row.desc}</span>
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-slate-300" />
+              </Link>
+            ))}
+          </div>
         </div>
       ) : showNoSearchResults ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-6 py-14 text-center">

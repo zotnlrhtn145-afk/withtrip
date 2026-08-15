@@ -1,9 +1,10 @@
 "use client"
 
 import { useEffect, useState, type ReactNode } from "react"
+import Link from "next/link"
 import { useParams, usePathname, useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
-import { Loader2, Plane, Search } from "lucide-react"
+import { Loader2, Plane, Plus, Search } from "lucide-react"
 
 import { AccountMenu } from "@/components/account-menu"
 import { NotificationMenu } from "@/components/notification-menu"
@@ -41,8 +42,16 @@ function SettlementTripPicker({
         </span>
         <p className="text-sm font-bold text-slate-800">참여 중인 여행이 없어요</p>
         <p className="text-sm text-slate-400">
-          홈에서 새 여행을 만들면 여기에서 정산을 시작할 수 있어요.
+          여행을 만들면 여기에서 지출과 정산을 관리할 수 있어요.
         </p>
+        {/* 문구만 두면 막다른 길이 된다 — 갈 곳을 준다 */}
+        <Link
+          href="/?new=1"
+          className="mt-2 inline-flex items-center gap-2 rounded-full bg-amber-400 px-6 py-3 text-sm font-bold text-neutral-900 shadow-lg shadow-amber-400/30 transition-transform active:scale-95"
+        >
+          <Plus className="size-4" />
+          새 여행 시작하기
+        </Link>
       </div>
     )
   }
