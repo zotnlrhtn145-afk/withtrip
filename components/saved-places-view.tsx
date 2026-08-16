@@ -606,6 +606,14 @@ export function SavedPlacesView() {
     </>
   )
 
+  /**
+   * 저장한 장소 한 줄.
+   *
+   * ⚠️ 예전엔 80px 썸네일 + 글자 + 아이콘 4개가 한 줄에 눌려 있었다.
+   *    사진이 너무 작아 어떤 가게인지 알아볼 수 없었다 —
+   *    **가게를 고르는 화면인데 정작 가게가 안 보였다.**
+   *    사진을 위로 크게 빼고 글자를 아래에 뒀다.
+   */
   const renderPlaceCard = (place: SavedPlace) => (
     <li
       key={place.id}
@@ -618,19 +626,45 @@ export function SavedPlacesView() {
         <div
           onClick={() => showOnMap(place.id)}
           className={cn(
-            "flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-2.5 shadow-sm transition-colors",
+            "cursor-pointer overflow-hidden rounded-2xl border bg-white shadow-sm transition-colors",
             selectedMapId === place.id
-              ? "border-amber-300 bg-amber-50/60"
-              : "border-slate-100 hover:bg-slate-50"
+              ? "border-amber-300 ring-2 ring-amber-200"
+              : "border-slate-100 hover:border-slate-200"
           )}
         >
-          <div className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+          {/* 사진 */}
+          <div className="relative aspect-[1.92/1] w-full bg-slate-100">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={resizePlacePhotoUrl(place.imageUrl, PHOTO_W.thumb)} alt="" loading="lazy" className="size-full object-cover" />
-            {/* 친구 추천 흔적 — 보낸 사람 카카오 프로필 */}
+            <img
+              src={resizePlacePhotoUrl(place.imageUrl, PHOTO_W.card)}
+              alt=""
+              loading="lazy"
+              className="size-full object-cover"
+            />
+
+            {/* 별표는 사진 위에 — 누르기 쉽고 목록에서 바로 눈에 띈다 */}
+            <button
+              type="button"
+              aria-label={place.starred ? "꼭 가고 싶은 곳 해제" : "꼭 가고 싶은 곳으로 표시"}
+              aria-pressed={place.starred}
+              onClick={(e) => {
+                e.stopPropagation()
+                void toggleStar(place)
+              }}
+              className="absolute left-2.5 top-2.5 flex size-8 items-center justify-center rounded-full bg-slate-900/45 backdrop-blur-sm transition-transform active:scale-90"
+            >
+              <Star
+                className={cn(
+                  "size-4",
+                  place.starred ? "fill-red-500 text-red-500" : "text-white"
+                )}
+              />
+            </button>
+
+            {/* 친구가 추천해 준 곳 */}
             {place.recommendedBy && place.recommender ? (
-              <span className="absolute -right-1 -bottom-1 z-10">
-                <Avatar className="size-6 border-2 border-white">
+              <span className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 rounded-full bg-slate-900/55 py-0.5 pl-0.5 pr-2.5 backdrop-blur-sm">
+                <Avatar className="size-5">
                   {place.recommender.avatarUrl ? (
                     <AvatarImage src={place.recommender.avatarUrl} alt="" />
                   ) : null}
@@ -638,78 +672,69 @@ export function SavedPlacesView() {
                     {(place.recommender.nickname ?? "친구").slice(0, 1)}
                   </AvatarFallback>
                 </Avatar>
+                <span className="text-[11px] font-bold text-white">
+                  {place.recommender.nickname ?? "친구"}님 추천
+                </span>
               </span>
             ) : null}
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <p className="truncate text-sm font-bold text-slate-900">{place.placeName}</p>
-              <button
-                type="button"
-                aria-label={place.starred ? "꼭 가고 싶은 곳 해제" : "꼭 가고 싶은 곳으로 표시"}
-                aria-pressed={place.starred}
-                onClick={(e) => {
-                  // 카드 전체가 지도 이동이라 별만 눌렀을 땐 그게 안 걸리게 한다
-                  e.stopPropagation()
-                  void toggleStar(place)
-                }}
-                className="ml-auto shrink-0 p-0.5 transition-transform active:scale-90"
-              >
-                <Star
-                  className={cn(
-                    "size-4",
-                    place.starred ? "fill-red-500 text-red-500" : "text-slate-300 hover:text-slate-400"
-                  )}
-                />
-              </button>
+
+          {/* 글자 */}
+          <div className="px-3.5 pb-2 pt-3">
+            <p className="line-clamp-2 text-[15px] font-bold text-slate-900">{place.placeName}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-slate-500">
               {place.rating ? (
-                <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium tabular-nums text-slate-400">
+                <span className="flex items-center gap-0.5 font-bold tabular-nums text-slate-700">
                   <Star className="size-3 fill-amber-400 text-amber-400" />
                   {place.rating}
+                  {place.reviewCount ? (
+                    <span className="font-medium text-slate-400">
+                      ({place.reviewCount.toLocaleString()})
+                    </span>
+                  ) : null}
                 </span>
               ) : null}
+              {place.subCategory || place.category ? (
+                <>
+                  <span className="text-slate-300">·</span>
+                  <span>{place.subCategory || place.category}</span>
+                </>
+              ) : null}
+              {placeDistanceLabels.has(place.id) ? (
+                <>
+                  <span className="text-slate-300">·</span>
+                  <span className="font-bold text-amber-700">
+                    {placeDistanceLabels.get(place.id)}
+                  </span>
+                </>
+              ) : null}
             </div>
-            <p className="truncate text-xs text-slate-400">
-              {place.subCategory || place.category || "관심 장소"}
-              {place.address ? ` · ${place.address}` : ""}
-            </p>
-            {placeDistanceLabels.has(place.id) ? (
-              <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-amber-700">
-                <MapPin className="size-3" />
-                {placeDistanceLabels.get(place.id)}
-              </span>
-            ) : null}
-            {place.recommendedBy && place.recommender ? (
-              <span className="mt-0.5 block truncate text-[11px] text-slate-400">
-                {place.recommender.nickname ?? "친구"}님의 추천
-              </span>
+            {place.address ? (
+              <p className="mt-0.5 truncate text-xs text-slate-400">{place.address}</p>
             ) : null}
           </div>
-          {/* 아이콘 전용 2×2 — 상세 · 여행담기 / 추천 · 길찾기 */}
-          <div className="grid shrink-0 grid-cols-2 gap-1.5">
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation()
-                openDetail(place)
-              }}
-              aria-label="상세 보기"
-              title="상세"
-              className="flex size-9 items-center justify-center rounded-full bg-amber-400 text-slate-950 transition-colors hover:bg-amber-500 active:scale-95"
-            >
-              <Info className="size-4" />
-            </button>
+
+          {/* 동작 — 아이콘만 두면 뭘 하는 건지 몰라서 글자를 같이 둔다 */}
+          <div className="flex gap-1.5 px-3 pb-3">
+            <div onClick={(event) => event.stopPropagation()} className="flex-1">
+              <DirectionsMenu
+                destination={{ name: place.placeName, lat: place.lat, lng: place.lng }}
+                fallbackQuery={place.address || place.placeName}
+                label="길찾기"
+                icon={MapIcon}
+                className="w-full justify-center rounded-full bg-slate-50 py-2 text-xs font-bold text-slate-600 hover:bg-amber-50"
+              />
+            </div>
             <button
               type="button"
               onClick={(event) => {
                 event.stopPropagation()
                 setSendTarget(place)
               }}
-              aria-label={`${place.placeName} 여행클립 찜에 담기`}
-              title="여행담기"
-              className="flex size-9 items-center justify-center rounded-full border border-amber-300 bg-white text-amber-700 transition-colors hover:bg-amber-50 active:scale-95"
+              className="flex flex-1 items-center justify-center gap-1 rounded-full bg-slate-50 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-amber-50"
             >
-              <Plane className="size-4" />
+              <Plane className="size-3.5" />
+              여행담기
             </button>
             <button
               type="button"
@@ -733,22 +758,22 @@ export function SavedPlacesView() {
                   },
                 })
               }}
-              aria-label={`${place.placeName} 친구에게 추천`}
-              title="추천"
-              className="flex size-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
+              className="flex flex-1 items-center justify-center gap-1 rounded-full bg-slate-50 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-amber-50"
             >
-              <Send className="size-4" />
+              <Send className="size-3.5" />
+              추천
             </button>
-            <div onClick={(event) => event.stopPropagation()}>
-              <DirectionsMenu
-                destination={{ name: place.placeName, lat: place.lat, lng: place.lng }}
-                fallbackQuery={place.address || place.placeName}
-                variant="icon"
-                label="길찾기"
-                icon={MapIcon}
-                className="text-slate-600"
-              />
-            </div>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                openDetail(place)
+              }}
+              className="flex flex-1 items-center justify-center gap-1 rounded-full bg-slate-50 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-amber-50"
+            >
+              <Info className="size-3.5" />
+              상세
+            </button>
           </div>
         </div>
       </SwipeToDelete>
