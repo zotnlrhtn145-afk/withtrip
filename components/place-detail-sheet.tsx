@@ -123,11 +123,17 @@ export function PlaceDetailSheet({
   const near = dist != null && dist < NEAR_THRESHOLD_M
 
   /**
-   * ⚠️ 예전엔 모바일에서 전체화면, 데스크톱에서 가운데 상자였다.
-   *    폭이 화면 따라 널뛰니 사진이 커졌다 작아졌다 하며 깨져 보였다.
-   *    **왼쪽에서 밀려 들어오는 고정 폭 패널**로 바꾼다 —
-   *    어느 화면에서든 같은 크기라 사진도 항상 같은 자리에 온다.
-   *    (필터는 오른쪽에서 온다. 방향을 달리해 둘을 구분한다)
+   * ⚠️ **폰에서는 앱과 똑같이 전체 화면**, 데스크톱에서만 왼쪽 슬라이드 패널이다.
+   *
+   *    한때 데스크톱용 패널(w-92%)을 폰에도 그대로 씌웠더니 오른쪽에 검은 띠가
+   *    남아 앱과 딴판이 됐다. 폰에는 왼쪽 네비게이션이 없으니 패널로 만들 이유도 없다.
+   *
+   *    사진이 깨져 보이던 건 폭 때문이 아니라 **사진을 제각각 크기로 받아서**였고,
+   *    그건 resizePlacePhotoUrl(PHOTO_W.card) 로 이미 잡혔다.
+   *    그러니 폰을 전체 화면으로 되돌려도 다시 깨지지 않는다.
+   *
+   *    들어오는 방향도 맞춘다 — 폰은 앱처럼 오른쪽에서(화면을 밀고 들어옴),
+   *    데스크톱은 왼쪽 네비 뒤에서. (필터는 오른쪽에서 온다)
    */
   return (
     /*
@@ -142,14 +148,17 @@ export function PlaceDetailSheet({
          느낌이 된다.
     */
     <div className="fixed inset-0 z-[80] flex overflow-hidden md:left-20">
-      {/* 배경 — 패널과 달리 잘리지 않게 컨테이너 밖(고정)으로 둔다 */}
+      {/*
+        배경 — 패널과 달리 잘리지 않게 컨테이너 밖(고정)으로 둔다.
+        폰에서는 화면을 꽉 채우니 배경이 보일 자리가 없다 — 데스크톱에서만 그린다.
+      */}
       <button
         type="button"
         aria-label="닫기"
         onClick={onClose}
-        className="fixed inset-0 bg-slate-900/45 animate-in fade-in-0 md:left-20"
+        className="fixed inset-0 hidden bg-slate-900/45 animate-in fade-in-0 md:left-20 md:block"
       />
-      <div className="relative flex h-full w-[92%] max-w-[440px] flex-col overflow-hidden bg-white shadow-2xl duration-300 animate-in slide-in-from-left">
+      <div className="relative flex h-full w-full flex-col overflow-hidden bg-white duration-300 animate-in slide-in-from-right md:w-[92%] md:max-w-[440px] md:shadow-2xl md:slide-in-from-left">
         {/* 사진 캐러셀 */}
         <div className="relative aspect-[4/3] w-full shrink-0 bg-slate-100">
           {photos.length > 0 ? (
