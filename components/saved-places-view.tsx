@@ -46,7 +46,7 @@ import {
 import { cn } from "@/lib/utils"
 import { createClient } from "@/utils/supabase/client"
 import { PHOTO_W } from "@/shared/photo-widths"
-import { resizePlacePhotoUrl } from "@/lib/place-cover-image"
+import { fetchFastPhotoUrls, photoUrlWith, resizePlacePhotoUrl } from "@/lib/place-cover-image"
 
 /** 처음에 그릴 개수 / 한 번에 더 그릴 개수 */
 const PAGE = 15
@@ -202,6 +202,24 @@ export function SavedPlacesView() {
     return () => window.removeEventListener("withtrip:saved-place-cover-ready", onCoverReady)
   }, [authPhase, userId])
 
+  /**
+   * 사진 주소를 한 번에 물어 302 왕복을 없앤다.
+   * 목록이 바뀔 때마다 물어보되, 실패해도 화면은 그대로 돈다.
+   */
+  useEffect(() => {
+    if (places.length === 0 && tripSpots.length === 0) return
+    let alive = true
+    void fetchFastPhotoUrls(
+      [...places.map((p) => p.imageUrl), ...tripSpots.map((x) => x.image)],
+      PHOTO_W.card
+    ).then((m) => {
+      if (alive && Object.keys(m).length > 0) setFastPhotos((prev) => ({ ...prev, ...m }))
+    })
+    return () => {
+      alive = false
+    }
+  }, [places, tripSpots])
+
   /** 저장된 장소에 실제로 존재하는 세부(음식) 카테고리만 칩으로 보여준다 — 일식/한식/스시/국수… */
   const subChips = useMemo(() => {
     const map = new Map<string, number>()
@@ -255,6 +273,8 @@ export function SavedPlacesView() {
 
   /** 꼭 가고 싶은 곳만 보기 — 켜면 목록도 지도도 별표만 남는다 */
   const [starredOnly, setStarredOnly] = useState(false)
+  /** 사진의 빠른(스토리지 직행) 주소 — 프록시 302 왕복을 없앤다 */
+  const [fastPhotos, setFastPhotos] = useState<Record<string, string>>({})
 
   const filteredPlaces = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -641,7 +661,7 @@ export function SavedPlacesView() {
           <div className="relative aspect-[1.92/1] w-full bg-slate-100">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={resizePlacePhotoUrl(place.imageUrl, PHOTO_W.card)}
+              src={photoUrlWith(fastPhotos, place.imageUrl, PHOTO_W.card)}
               alt=""
               loading="lazy"
               decoding="async"

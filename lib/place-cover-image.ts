@@ -204,3 +204,57 @@ export function resizePlacePhotoUrl(url: string | null | undefined, width: numbe
 
   return raw
 }
+
+/**
+ * 사진의 **빠른 주소**를 한 번에 받아 둔다.
+ *
+ * ⚠️ 프록시 주소(`/api/places/photo`)는 302 로 스토리지를 다시 가리킨다.
+ *    사진 한 장에 왕복이 두 번이라, 목록에 15장이면 30번을 돈다
+ *    (실측: 302 에만 0.13~0.44초).
+ *
+ * 목록을 불러올 때 한 번 부르면 이미 보관 중인 사진은 스토리지 주소를 바로 받아
+ * 곧장 CDN 에서 받는다. 없는 사진은 프록시 주소가 그대로 오므로 화면은 정상이다.
+ *
+ * 실패해도 조용히 빈 값을 준다 — 이건 **빠른 길 안내**일 뿐이다.
+ */
+export async function fetchFastPhotoUrls(
+  imageUrls: (string | null | undefined)[],
+  width: number
+): Promise<Record<string, string>> {
+  const refs = Array.from(
+    new Set(
+      imageUrls
+        .map((u) => String(u ?? "").match(/[?&](?:photo_reference|ref)=([^&]+)/)?.[1])
+        .filter((r): r is string => !!r)
+    )
+  )
+  if (refs.length === 0) return {}
+
+  try {
+    const res = await fetch("/api/places/photo/urls", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refs, w: Math.round(width) }),
+    })
+    if (!res.ok) return {}
+    const json = (await res.json()) as { urls?: Record<string, string> }
+    const out: Record<string, string> = {}
+    for (const [ref, url] of Object.entries(json.urls ?? {})) {
+      if (url.startsWith("http")) out[ref] = url
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+/** 빠른 주소를 알면 그걸 쓰고, 모르면 기존대로 프록시를 쓴다. */
+export function photoUrlWith(
+  fast: Record<string, string>,
+  url: string | null | undefined,
+  width: number
+): string {
+  const ref = String(url ?? "").match(/[?&](?:photo_reference|ref)=([^&]+)/)?.[1]
+  if (ref && fast[ref]) return fast[ref]
+  return resizePlacePhotoUrl(url, width)
+}
