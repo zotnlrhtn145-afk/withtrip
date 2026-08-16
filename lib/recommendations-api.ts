@@ -227,31 +227,54 @@ export async function acceptPlaceRecommendationById(recId: string): Promise<bool
   // 이미 담은 추천이면 중복 저장하지 않는다.
   if (String(rec.status ?? "") === "saved" && rec.saved_place_id) return true
 
+  /**
+   * ⚠️ **이미 담아 둔 곳을 추천받았을 수도 있다.** 그냥 insert 하면
+   *    saved_places 의 유니크(user_id, dedupe_key)에 걸려 실패로 끝나고,
+   *    추천은 영영 '대기'로 남는다. 이미 있으면 그 행을 찾아 수락 처리만 한다 —
+   *    사용자에겐 똑같이 "담았다"로 보이는 게 맞다.
+   */
   const { data: saved, error: insErr } = await supabase
     .from("saved_places")
-    .insert({
-      trip_id: null,
-      user_id: me,
-      place_name: rec.place_name,
-      category: rec.category,
-      sub_category: rec.sub_category,
-      address: rec.address,
-      image_url: rec.image_url,
-      rating: rec.rating,
-      review_count: rec.review_count ?? 0,
-      lat: rec.lat,
-      lng: rec.lng,
-      recommended_by: rec.sender_id,
-    })
+    .upsert(
+      {
+        trip_id: null,
+        user_id: me,
+        place_name: rec.place_name,
+        category: rec.category,
+        sub_category: rec.sub_category,
+        address: rec.address,
+        image_url: rec.image_url,
+        rating: rec.rating,
+        review_count: rec.review_count ?? 0,
+        lat: rec.lat,
+        lng: rec.lng,
+        recommended_by: rec.sender_id,
+      },
+      { onConflict: "user_id,dedupe_key", ignoreDuplicates: true }
+    )
     .select("id")
-    .single()
   if (insErr) {
     logErr("acceptPlaceRecommendationById insert", insErr)
     return false
   }
+
+  let savedId = (saved as { id: string }[] | null)?.[0]?.id ?? null
+  if (!savedId) {
+    const { data: existing } = await supabase
+      .from("saved_places")
+      .select("id")
+      .eq("user_id", me)
+      .is("trip_id", null)
+      .eq("place_name", String(rec.place_name ?? ""))
+      .limit(1)
+      .maybeSingle()
+    savedId = (existing as { id: string } | null)?.id ?? null
+  }
+  if (!savedId) return false
+
   await supabase
     .from("place_recommendations")
-    .update({ status: "saved", saved_place_id: (saved as { id: string }).id })
+    .update({ status: "saved", saved_place_id: savedId })
     .eq("id", id)
   return true
 }

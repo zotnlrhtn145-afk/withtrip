@@ -454,6 +454,14 @@ export async function insertSavedPlace(input: CreateSavedPlaceInput): Promise<Sa
 
   if (error) {
     logSupabaseError("insertSavedPlace", error, { payload })
+    /**
+     * ⚠️ 유니크(user_id, dedupe_key) 위반은 **고장이 아니라 "이미 있음"**이다.
+     *    `duplicate key value violates unique constraint ...` 를 그대로 띄우면
+     *    사용자는 뭘 잘못했는지 알 수 없다.
+     */
+    if (error.code === "23505" || String(error.message ?? "").includes("saved_places_no_dup")) {
+      throw new Error("이미 저장한 곳이에요.")
+    }
     throw error
   }
 
