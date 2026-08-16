@@ -1,11 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ChevronLeft, Clock, MapPin, Navigation, Phone, Plane, Star } from "lucide-react"
+import { Check, CheckCircle2, ChevronLeft, Clock, MapPin, Navigation, Phone, Plane, Star } from "lucide-react"
 
 import { DirectionsMenu } from "@/components/directions-menu"
 import { MiniMap } from "@/components/mini-map"
 import { PlaceReviews } from "@/components/place-reviews"
+import { fetchMyRating, fetchMyVisit, setVisited } from "@/lib/place-visits"
+import { supabase } from "@/lib/supabase"
 import { distanceMeters, estimateWalkMinutes, formatDistance } from "@/lib/geo"
 import { resizePlacePhotoUrl } from "@/lib/place-cover-image"
 import { cn } from "@/lib/utils"
@@ -14,6 +16,14 @@ import { PHOTO_W } from "@/shared/photo-widths"
 const NEAR_THRESHOLD_M = 40000 // 40km 이내면 내 위치도 함께
 
 export type PlaceDetailInput = {
+  /**
+   * saved_places 행 id. 있으면 상세를 열 때 가게 열쇠(google_place_id)를 **공짜로** 채운다 —
+   * 어차피 부르는 /api/places/details 응답에 place_id 가 들어 있어서 추가 호출이 없다.
+   * (저장한 곳이 아닌 주변 추천 등에는 없다)
+   */
+  savedPlaceId?: string | null
+  /** 이미 채워져 있는 열쇠. 같으면 다시 쓰지 않는다(열 때마다 쓸 이유가 없다) */
+  googlePlaceId?: string | null
   name: string
   address?: string | null
   lat?: number | null
@@ -51,16 +61,84 @@ export function PlaceDetailSheet({
   userLoc,
   onClose,
   onAddToTrip,
+  onVisitedChange,
+  onGooglePlaceId,
 }: {
   place: PlaceDetailInput | null
   userLoc?: { lat: number; lng: number } | null
   onClose: () => void
   /** 있으면 상세 안에 "여행에 담기" 버튼 노출 (저장 화면 전용). */
   onAddToTrip?: () => void
+  /** 다녀옴을 켜고 끌 때 목록에도 알린다(배지가 바로 바뀌게) */
+  onVisitedChange?: (googlePlaceId: string, visited: boolean) => void
+  /** 가게 열쇠를 방금 채웠을 때 — 목록의 그 행도 같이 맞춘다 */
+  onGooglePlaceId?: (savedPlaceId: string, googlePlaceId: string) => void
 }) {
   const [detail, setDetail] = useState<ApiDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const [showHours, setShowHours] = useState(false)
+
+  // ── 다녀옴 ────────────────────────────────────────────────
+  const [visited, setVisitedState] = useState(false)
+  const [visitedAt, setVisitedAt] = useState<string | null>(null)
+  /** 리뷰를 썼으면 다녀옴을 못 푼다 — 안 가본 곳의 리뷰가 남으면 안 된다 */
+  const [myRating, setMyRating] = useState<number | null>(null)
+  const [visitBusy, setVisitBusy] = useState(false)
+  const gpid = detail?.placeId ?? null
+
+  useEffect(() => {
+    if (!gpid) {
+      setVisitedState(false)
+      setVisitedAt(null)
+      setMyRating(null)
+      return
+    }
+    /**
+     * ⚠️ 여기서 **공짜로** 가게 열쇠를 채운다. 상세는 어차피 /api/places/details 를
+     *    부르고 거기서 place_id 가 온다. 따로 부르면 호출 수만 늘고 얻는 게 없다.
+     *    (앱도 같은 자리에서 같은 일을 한다 — 어느 쪽으로 들어와도 채워진다)
+     */
+    const savedId = place?.savedPlaceId
+    if (savedId && place?.googlePlaceId !== gpid) {
+      void supabase
+        .from("saved_places")
+        .update({ google_place_id: gpid })
+        .eq("id", savedId)
+        .then(() => onGooglePlaceId?.(savedId, gpid))
+    }
+
+    let cancelled = false
+    void Promise.all([fetchMyVisit(gpid), fetchMyRating(gpid)]).then(([v, r]) => {
+      if (cancelled) return
+      setVisitedState(v.visited)
+      setVisitedAt(v.visitedAt)
+      setMyRating(r)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [gpid])
+
+  const toggleVisited = async () => {
+    if (!gpid || visitBusy) return
+    if (visited && myRating != null) {
+      window.alert("리뷰를 먼저 지워야 다녀옴을 풀 수 있어요. (리뷰는 앱에서 지울 수 있습니다)")
+      return
+    }
+    const next = !visited
+    setVisitBusy(true)
+    setVisitedState(next)
+    setVisitedAt(next ? new Date().toISOString() : null)
+    const ok = await setVisited(gpid, next)
+    setVisitBusy(false)
+    if (!ok) {
+      setVisitedState(!next)
+      setVisitedAt(!next ? new Date().toISOString() : null)
+      window.alert("다시 시도해 주세요.")
+      return
+    }
+    onVisitedChange?.(gpid, next)
+  }
 
   useEffect(() => {
     if (!place) {
@@ -231,6 +309,42 @@ export function PlaceDetailSheet({
               <Plane className="size-4" />
               여행에 담기
             </button>
+          ) : null}
+
+          {/*
+            다녀왔어요 — 한 번 탭. 리뷰를 안 써도 된다.
+            ⚠️ **리뷰 쓰기는 여기 두지 않는다.** 별점·글·사진은 다녀온 직후 폰으로
+               쓰는 것이고, 사진 고르기·압축도 앱이 낫다. 두 곳에 폼을 두면
+               조용히 어긋난다(웹은 읽기, 앱은 쓰기).
+          */}
+          {gpid ? (
+            <button
+              type="button"
+              onClick={() => void toggleVisited()}
+              aria-pressed={visited}
+              className={cn(
+                "flex w-full items-center justify-center gap-2 rounded-full border py-3 text-sm font-bold transition-colors",
+                visited
+                  ? "border-amber-300 bg-amber-50 text-amber-800"
+                  : "border-slate-200 text-slate-500 hover:bg-slate-50"
+              )}
+            >
+              {visited ? (
+                <CheckCircle2 className="size-[18px] text-amber-500" />
+              ) : (
+                <Check className="size-[18px] text-slate-400" />
+              )}
+              다녀왔어요
+              {visited && visitedAt
+                ? ` · ${new Date(visitedAt).getMonth() + 1}월 ${new Date(visitedAt).getDate()}일`
+                : ""}
+            </button>
+          ) : null}
+
+          {visited ? (
+            <p className="-mt-2 text-center text-[11px] text-slate-400">
+              {myRating != null ? `내 평점 ★ ${myRating}` : "리뷰는 앱에서 남길 수 있어요."}
+            </p>
           ) : null}
 
           {summary ? <p className="text-sm leading-relaxed text-slate-500">{summary}</p> : null}

@@ -50,6 +50,7 @@ import { regionLabel } from "@/shared/region-names"
 import { flagNameOf } from "@/shared/country-flags"
 import { CountryFlag } from "@/components/country-flag"
 import { fetchFastPhotoUrls, photoUrlWith, resizePlacePhotoUrl } from "@/lib/place-cover-image"
+import { fetchPlaceMarks, type PlaceMark } from "@/lib/place-visits"
 
 /** 처음에 그릴 개수 / 한 번에 더 그릴 개수 */
 const PAGE = 15
@@ -224,6 +225,26 @@ export function SavedPlacesView() {
   }, [places, tripSpots])
 
   const [fastPhotos, setFastPhotos] = useState<Record<string, string>>({})
+
+  /**
+   * 다녀옴·내 평점. 열쇠(googlePlaceId)가 있는 장소만 들어온다.
+   * ⚠️ 카드마다 따로 부르면 목록 한 번에 수십 번 왕복한다 — 한 번에 모아 부른다.
+   */
+  const [marks, setMarks] = useState<Record<string, PlaceMark>>({})
+  useEffect(() => {
+    const ids = places.map((p) => p.googlePlaceId).filter((v): v is string => !!v)
+    if (ids.length === 0) return
+    let alive = true
+    void fetchPlaceMarks(ids)
+      .then((m) => {
+        if (alive) setMarks(m)
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [places])
+
   /** 나라 필터(country_code). "all" 이면 전체 */
   const [country, setCountry] = useState("all")
   /** 지역 필터(region 원문). 나라를 고른 뒤에만 쓴다 */
@@ -535,6 +556,8 @@ export function SavedPlacesView() {
   const openDetail = (place: SavedPlace) => {
     setDetailAssign(place)
     setDetailPlace({
+      savedPlaceId: place.id,
+      googlePlaceId: place.googlePlaceId,
       name: place.placeName,
       address: place.address,
       lat: place.lat,
@@ -746,6 +769,18 @@ export function SavedPlacesView() {
               />
             </button>
 
+            {/*
+              다녀온 곳 표시.
+              ⚠️ 왼쪽 위는 이미 별표가 앉아 있어서 왼쪽 아래로 내린다.
+                 (오른쪽 아래는 추천한 친구 자리 — 앱과 같은 배치)
+            */}
+            {place.googlePlaceId && marks[place.googlePlaceId]?.visited ? (
+              <span className="absolute bottom-2.5 left-2.5 flex items-center gap-1 rounded-full bg-slate-900/60 px-2.5 py-1 backdrop-blur-sm">
+                <Check className="size-3 text-white" />
+                <span className="text-[11px] font-bold text-white">다녀옴</span>
+              </span>
+            ) : null}
+
             {/* 친구가 추천해 준 곳 */}
             {place.recommendedBy && place.recommender ? (
               <span className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 rounded-full bg-slate-900/55 py-0.5 pl-0.5 pr-2.5 backdrop-blur-sm">
@@ -819,6 +854,43 @@ export function SavedPlacesView() {
                 </>
               ) : null}
             </div>
+
+            {/*
+              내 평점 — 위 줄의 별점은 **구글** 것이다. 섞으면 둘 다 뜻을 잃으므로
+              한 칸 아래에 따로 둔다. 사진이 없어 배지를 못 그린 경우엔 다녀옴도 여기서 알린다.
+            */}
+            {(() => {
+              const mark = place.googlePlaceId ? marks[place.googlePlaceId] : undefined
+              if (!mark) return null
+              if (mark.myRating != null) {
+                return (
+                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5">
+                    <span className="inline-flex">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <Star
+                          key={i}
+                          className={cn(
+                            "size-2.5",
+                            i <= (mark.myRating ?? 0) ? "fill-amber-400 text-amber-400" : "text-slate-300"
+                          )}
+                        />
+                      ))}
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-500">내 평점 {mark.myRating}</span>
+                  </span>
+                )
+              }
+              if (mark.visited && !place.imageUrl?.trim()) {
+                return (
+                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5">
+                    <Check className="size-2.5 text-slate-500" />
+                    <span className="text-[11px] font-bold text-slate-500">다녀옴</span>
+                  </span>
+                )
+              }
+              return null
+            })()}
+
             {place.address ? (
               <p className="mt-0.5 truncate text-xs text-slate-400">{place.address}</p>
             ) : null}
@@ -1318,6 +1390,21 @@ export function SavedPlacesView() {
         onClose={() => {
           setDetailPlace(null)
           setDetailAssign(null)
+        }}
+        /*
+          상세에서 다녀옴을 켜고 끄면 목록 배지도 바로 바꾼다.
+          ⚠️ 목록을 통째로 다시 부르지 않는다 — 배지 하나 때문에 수백 행을
+             다시 받을 이유가 없다.
+        */
+        onVisitedChange={(gpid, visited) => {
+          setMarks((prev) => ({
+            ...prev,
+            [gpid]: { visited, myRating: prev[gpid]?.myRating ?? null },
+          }))
+        }}
+        /* 상세가 가게 열쇠를 방금 채웠으면 목록의 그 행도 맞춘다 — 안 맞추면 배지가 안 뜬다 */
+        onGooglePlaceId={(savedId, gpid) => {
+          setPlaces((prev) => prev.map((p) => (p.id === savedId ? { ...p, googlePlaceId: gpid } : p)))
         }}
         onAddToTrip={
           detailAssign

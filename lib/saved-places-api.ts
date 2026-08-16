@@ -36,6 +36,8 @@ export type SavedPlace = {
   recommendedBy: string | null
   /** 꼭 가고 싶은 곳 — 여행에 담는 것(tripId)과는 다른 축이다 */
   starred: boolean
+  /** 가게를 가리키는 열쇠. 다녀옴·리뷰가 이걸로 묶인다 (앱 상세를 한 번 열면 채워진다) */
+  googlePlaceId: string | null
   /** 구글 address_components 에서 채운다. 한국어 검색이 걸리게 한국어로 둔다. */
   countryCode: string | null
   country: string | null
@@ -71,6 +73,7 @@ export type SavedPlaceRow = {
   created_at?: string | null
   recommended_by?: string | null
   starred?: boolean | null
+  google_place_id?: string | null
   country_code?: string | null
   country?: string | null
   region?: string | null
@@ -159,6 +162,7 @@ export function mapSavedPlaceRow(row: SavedPlaceRow): SavedPlace {
     createdAt: String(row.created_at ?? ""),
     recommendedBy: row.recommended_by ? String(row.recommended_by) : null,
     starred: row.starred === true,
+    googlePlaceId: row.google_place_id ? String(row.google_place_id) : null,
     countryCode: row.country_code ? String(row.country_code) : null,
     country: row.country ? String(row.country) : null,
     region: row.region ? String(row.region) : null,
