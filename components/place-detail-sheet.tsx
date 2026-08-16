@@ -127,7 +127,13 @@ export function PlaceDetailSheet({
    *    (필터는 오른쪽에서 온다. 방향을 달리해 둘을 구분한다)
    */
   return (
-    <div className="fixed inset-0 z-[80] flex">
+    /*
+      ⚠️ 왼쪽 네비게이션(w-20, fixed)을 **덮지 않는다.**
+         inset-0 이면 left:0 이라 패널이 네비 위에 올라앉는다.
+         데스크톱에서는 네비 폭만큼 밀어서 그 **옆에서** 나오게 한다.
+         (모바일에는 왼쪽 네비가 없으므로 md 부터만 민다)
+    */
+    <div className="fixed inset-0 z-[80] flex md:left-20">
       <button
         type="button"
         aria-label="닫기"
