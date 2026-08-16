@@ -82,6 +82,8 @@ export type ResolvedPlace = {
     kind: string;
     subCategory: string;
     imageUrl: string;
+    /** 대표 사진 후보(최대 4). 앱이 AI 선별을 맡길 때 쓴다 */
+    photoRefs: string[];
   } | null;
 };
 
@@ -1041,6 +1043,8 @@ export async function POST(request: Request) {
               imageUrl: "",
               kind: "restaurant",
             }),
+            // 구글에 없는 곳이라 후보 사진도 없다
+            photoRefs: [],
           },
         };
       }
@@ -1065,7 +1069,19 @@ export async function POST(request: Request) {
         name: hit.name,
         types: hit.types,
       });
-      const photoRef = hit.photos?.[0]?.photo_reference ?? "";
+      /**
+       * ⚠️ 예전엔 `photos[0]` 을 그냥 썼다. **구글의 사진 순서는 제멋대로다** —
+       *    36층 중식당인데 1층 오피스 빌딩 입구 사진이 대표로 걸리는 식이었다.
+       *
+       *    후보는 텍스트검색 응답에 이미 들어 있다(공짜다). 버리지 말고 다 넘겨서
+       *    AI 가 "가게 안/음식" 사진을 고르게 한다. 고르는 건 뒤에서 하고,
+       *    여기서는 우선 첫 장으로 보여준다 — 기다리게 하면 안 된다.
+       */
+      const photoRefs = (hit.photos ?? [])
+        .map((p) => p.photo_reference ?? "")
+        .filter(Boolean)
+        .slice(0, 4);
+      const photoRef = photoRefs[0] ?? "";
       const photoUrl = photoRef
         ? buildPlacePhotoProxyUrl(photoRef, 1200, origin)
         : "";
@@ -1093,6 +1109,8 @@ export async function POST(request: Request) {
             kind,
             subCategory,
           }),
+          /** 대표 사진 후보 — 앱이 이걸로 /api/places/cover 에 선별을 맡긴다 */
+          photoRefs,
         },
       };
     }),
@@ -1113,6 +1131,12 @@ export async function POST(request: Request) {
       ratingCount: g.place!.reviewCount,
       category: g.place!.kind,
       subCategory: g.place!.subCategory,
+      /**
+       * ⚠️ 예전엔 이걸 안 넣어서 캐시에 사진 후보가 **비어 있었다**(194곳).
+       *    텍스트검색 응답에 이미 들어 있는 걸 그냥 버린 셈이라,
+       *    나중에 대표 사진을 다시 고르려면 구글에 또 물어야 했다(돈).
+       */
+      photoReferences: g.place!.photoRefs,
     }));
   const known = await readPlacesByGoogleIds(
     toCache.map((p) => p.googlePlaceId),
