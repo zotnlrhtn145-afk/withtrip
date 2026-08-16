@@ -47,6 +47,8 @@ import { cn } from "@/lib/utils"
 import { createClient } from "@/utils/supabase/client"
 import { PHOTO_W } from "@/shared/photo-widths"
 import { regionLabel } from "@/shared/region-names"
+import { flagNameOf } from "@/shared/country-flags"
+import { CountryFlag } from "@/components/country-flag"
 import { fetchFastPhotoUrls, photoUrlWith, resizePlacePhotoUrl } from "@/lib/place-cover-image"
 
 /** 처음에 그릴 개수 / 한 번에 더 그릴 개수 */
@@ -1144,7 +1146,8 @@ export function SavedPlacesView() {
                 {countryChips.map((c) => (
                   <PlaceChip
                     key={c.code}
-                    label={c.name}
+                    icon={<CountryFlag code={c.code} active={country === c.code} />}
+                    label={flagNameOf(c.code, c.name)}
                     count={c.n}
                     on={country === c.code}
                     onClick={() => {
@@ -1518,12 +1521,14 @@ function PlaceChip({
   on,
   onClick,
   small,
+  icon,
 }: {
   label: string
   count?: number
   on: boolean
   onClick: () => void
   small?: boolean
+  icon?: React.ReactNode
 }) {
   return (
     <button
@@ -1538,6 +1543,7 @@ function PlaceChip({
           : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
       )}
     >
+      {icon}
       {label}
       {count != null ? (
         <span className={cn("tabular-nums", on ? "text-amber-700" : "text-slate-400")}>{count}</span>
