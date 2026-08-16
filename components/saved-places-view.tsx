@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { DirectionsMenu } from "@/components/directions-menu"
 import { PlaceDetailSheet, type PlaceDetailInput } from "@/components/place-detail-sheet"
+import { ScrollTopButton } from "@/components/scroll-top-button"
 import { RecommendPlaceDialog, type RecommendTarget } from "@/components/recommend-place-dialog"
 import { SwipeToDelete } from "@/components/swipe-to-delete"
 import { fetchNearbySpots } from "@/lib/spots-api"
@@ -1385,6 +1386,9 @@ export function SavedPlacesView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 맨 위로 — 저장한 곳이 수백 개가 되면 되짚어 올라오는 게 고통스럽다 (앱과 동일) */}
+      <ScrollTopButton />
 
       <PlaceDetailSheet
         place={detailPlace}
