@@ -34,6 +34,8 @@ export type SavedPlace = {
   lng: number | null
   createdAt: string
   recommendedBy: string | null
+  /** 꼭 가고 싶은 곳 — 여행에 담는 것(tripId)과는 다른 축이다 */
+  starred: boolean
   recommender: { nickname: string | null; avatarUrl: string | null } | null
 }
 
@@ -64,6 +66,7 @@ export type SavedPlaceRow = {
   lng?: number | null
   created_at?: string | null
   recommended_by?: string | null
+  starred?: boolean | null
   recommender?: { nickname?: string | null; avatar_url?: string | null } | null
 }
 
@@ -148,6 +151,7 @@ export function mapSavedPlaceRow(row: SavedPlaceRow): SavedPlace {
     lng: typeof row.lng === "number" ? row.lng : null,
     createdAt: String(row.created_at ?? ""),
     recommendedBy: row.recommended_by ? String(row.recommended_by) : null,
+    starred: row.starred === true,
     recommender: row.recommender
       ? {
           nickname: row.recommender.nickname ?? null,
@@ -637,3 +641,14 @@ export async function deleteSavedPlace(placeId: string): Promise<boolean> {
 }
 
 export { getErrorMessage }
+
+/**
+ * 꼭 가고 싶은 곳 표시 켜기/끄기.
+ *
+ * ⚠️ 여행에 담는 것(trip_id)과 다른 축이다. trip_id 는 "이번 여행에 갈 곳",
+ *    starred 는 "언젠가 꼭 가고 싶은 곳" — 여행과 무관한 개인 우선순위다.
+ */
+export async function setSavedPlaceStarred(id: string, starred: boolean): Promise<void> {
+  const { error } = await supabase.from("saved_places").update({ starred }).eq("id", id)
+  if (error) throw new Error(error.message)
+}

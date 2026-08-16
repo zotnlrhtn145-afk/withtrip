@@ -155,9 +155,12 @@ function SpotAvatarPin({
             "relative flex size-11 items-center justify-center overflow-hidden rounded-full border-[3px] bg-white transition-[border-color,box-shadow] duration-150",
             active
               ? "border-amber-400 shadow-[0_0_0_3px_rgba(255,193,7,0.45)]"
-              : spot.isInterest
-                ? "border-sky-400 group-hover:border-sky-300"
-                : "border-white group-hover:border-amber-200"
+              : // ⚠️ 별표가 관심보다 먼저다 — 꼭 가고 싶은 곳이 지도에서 바로 보여야 한다
+                spot.starred
+                ? "border-red-500 group-hover:border-red-400"
+                : spot.isInterest
+                  ? "border-sky-400 group-hover:border-sky-300"
+                  : "border-white group-hover:border-amber-200"
           )}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -175,9 +178,11 @@ function SpotAvatarPin({
             "-mt-0.5 h-0 w-0 border-x-[7px] border-t-[10px] border-x-transparent transition-colors duration-150",
             active
               ? "border-t-amber-400"
-              : spot.isInterest
-                ? "border-t-sky-400"
-                : "border-t-white"
+              : spot.starred
+                ? "border-t-red-500"
+                : spot.isInterest
+                  ? "border-t-sky-400"
+                  : "border-t-white"
           )}
           aria-hidden
         />

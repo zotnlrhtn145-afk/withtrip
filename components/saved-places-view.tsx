@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Bookmark, Check, Heart, Info, Loader2, Map as MapIcon, MapPin, Plane, Plus, Search, Send, SlidersHorizontal, Star, X } from "lucide-react"
 
@@ -40,6 +40,7 @@ import {
   fetchInterestPlacesByUserId,
   getErrorMessage,
   insertSavedPlace,
+  setSavedPlaceStarred,
   type SavedPlace,
 } from "@/lib/saved-places-api"
 import { cn } from "@/lib/utils"
@@ -252,6 +253,9 @@ export function SavedPlacesView() {
     return () => io.disconnect()
   }, [subTab, visible, loading, places.length, tripSpots.length])
 
+  /** 꼭 가고 싶은 곳만 보기 — 켜면 목록도 지도도 별표만 남는다 */
+  const [starredOnly, setStarredOnly] = useState(false)
+
   const filteredPlaces = useMemo(() => {
     const q = search.trim().toLowerCase()
     const bySearch = q
@@ -261,7 +265,8 @@ export function SavedPlacesView() {
           )
         )
       : places
-    const base = subFilter ? bySearch.filter((place) => place.subCategory.trim() === subFilter) : bySearch
+    const byCat = subFilter ? bySearch.filter((place) => place.subCategory.trim() === subFilter) : bySearch
+    const base = starredOnly ? byCat.filter((place) => place.starred) : byCat
     const arr = [...base]
     if (sort === "name") return arr.sort((a, b) => a.placeName.localeCompare(b.placeName, "ko"))
     if (sort === "rating") return arr.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
@@ -271,7 +276,25 @@ export function SavedPlacesView() {
       const db = b.lat != null && b.lng != null ? distanceMeters(geo.position, { lat: b.lat, lng: b.lng }) : Infinity
       return da - db
     })
-  }, [places, subFilter, geo.position, sort, search])
+  }, [places, subFilter, geo.position, sort, search, starredOnly])
+
+  /**
+   * 별표 켜기/끄기. 화면을 먼저 바꾸고 저장한다 —
+   * 누르자마자 반응해야 부담 없이 누른다.
+   */
+  const toggleStar = useCallback(
+    async (place: SavedPlace) => {
+      const next = !place.starred
+      setPlaces((prev) => prev.map((x) => (x.id === place.id ? { ...x, starred: next } : x)))
+      try {
+        await setSavedPlaceStarred(place.id, next)
+      } catch {
+        // 실패하면 화면을 되돌린다. 별표 하나 때문에 경고창을 띄우진 않는다.
+        setPlaces((prev) => prev.map((x) => (x.id === place.id ? { ...x, starred: !next } : x)))
+      }
+    },
+    []
+  )
 
   /** 리스트 카드에도 거리를 보여준다 — 좌표 없는 곳은 null. */
   const placeDistanceLabels = useMemo(() => {
@@ -308,6 +331,7 @@ export function SavedPlacesView() {
           authorNickname: null,
           authorAvatarUrl: avatarUrl,
           isInterest: true,
+          starred: place.starred,
           distanceMeters: meters,
           distanceLabel: formatDistance(meters),
         }
@@ -620,6 +644,24 @@ export function SavedPlacesView() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <p className="truncate text-sm font-bold text-slate-900">{place.placeName}</p>
+              <button
+                type="button"
+                aria-label={place.starred ? "꼭 가고 싶은 곳 해제" : "꼭 가고 싶은 곳으로 표시"}
+                aria-pressed={place.starred}
+                onClick={(e) => {
+                  // 카드 전체가 지도 이동이라 별만 눌렀을 땐 그게 안 걸리게 한다
+                  e.stopPropagation()
+                  void toggleStar(place)
+                }}
+                className="ml-auto shrink-0 p-0.5 transition-transform active:scale-90"
+              >
+                <Star
+                  className={cn(
+                    "size-4",
+                    place.starred ? "fill-red-500 text-red-500" : "text-slate-300 hover:text-slate-400"
+                  )}
+                />
+              </button>
               {place.rating ? (
                 <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium tabular-nums text-slate-400">
                   <Star className="size-3 fill-amber-400 text-amber-400" />
@@ -968,6 +1010,23 @@ export function SavedPlacesView() {
                   : ""}
                 {subFilter ? ` · ${subFilter}` : ""} · {SORT_LABELS[sort]}
               </p>
+              {/* 별표만 보기 — 나의 찜에서만 의미가 있다 */}
+              {subTab === "wish" ? (
+                <button
+                  type="button"
+                  onClick={() => setStarredOnly((v) => !v)}
+                  aria-pressed={starredOnly}
+                  className={cn(
+                    "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",
+                    starredOnly
+                      ? "border-red-500 bg-red-50 text-red-600"
+                      : "border-slate-200 text-slate-500 hover:bg-slate-50"
+                  )}
+                >
+                  <Star className={cn("size-3.5", starredOnly && "fill-red-500")} />
+                  꼭 가고 싶은 곳
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={() => setFilterOpen(true)}
