@@ -46,6 +46,7 @@ import {
 import { cn } from "@/lib/utils"
 import { createClient } from "@/utils/supabase/client"
 import { PHOTO_W } from "@/shared/photo-widths"
+import { regionLabel } from "@/shared/region-names"
 import { fetchFastPhotoUrls, photoUrlWith, resizePlacePhotoUrl } from "@/lib/place-cover-image"
 
 /** 처음에 그릴 개수 / 한 번에 더 그릴 개수 */
@@ -220,6 +221,42 @@ export function SavedPlacesView() {
     }
   }, [places, tripSpots])
 
+  const [fastPhotos, setFastPhotos] = useState<Record<string, string>>({})
+  /** 나라 필터(country_code). "all" 이면 전체 */
+  const [country, setCountry] = useState("all")
+  /** 지역 필터(region 원문). 나라를 고른 뒤에만 쓴다 */
+  const [region, setRegion] = useState("all")
+
+  /**
+   * 나라·지역 칩은 **실제로 저장된 값에서만** 만든다.
+   * 빈 나라를 미리 늘어놓으면 고를 게 없는 칩만 늘어난다.
+   */
+  const countryChips = useMemo(() => {
+    const m = new Map<string, { name: string; n: number }>()
+    for (const p of places) {
+      if (!p.countryCode) continue
+      const cur = m.get(p.countryCode) ?? { name: p.country ?? p.countryCode, n: 0 }
+      cur.n += 1
+      m.set(p.countryCode, cur)
+    }
+    return [...m.entries()]
+      .map(([code, v]) => ({ code, name: v.name, n: v.n }))
+      .sort((a, b) => b.n - a.n)
+  }, [places])
+
+  /** 지역은 고른 나라 안에서만 (나라를 안 고르면 아예 안 보여준다) */
+  const regionChips = useMemo(() => {
+    if (country === "all") return []
+    const m = new Map<string, number>()
+    for (const p of places) {
+      if (p.countryCode !== country || !p.region) continue
+      m.set(p.region, (m.get(p.region) ?? 0) + 1)
+    }
+    return [...m.entries()]
+      .map(([raw, n]) => ({ raw, label: regionLabel(raw), n }))
+      .sort((a, b) => b.n - a.n)
+  }, [places, country])
+
   /** 저장된 장소에 실제로 존재하는 세부(음식) 카테고리만 칩으로 보여준다 — 일식/한식/스시/국수… */
   const subChips = useMemo(() => {
     const map = new Map<string, number>()
@@ -274,18 +311,29 @@ export function SavedPlacesView() {
   /** 꼭 가고 싶은 곳만 보기 — 켜면 목록도 지도도 별표만 남는다 */
   const [starredOnly, setStarredOnly] = useState(false)
   /** 사진의 빠른(스토리지 직행) 주소 — 프록시 302 왕복을 없앤다 */
-  const [fastPhotos, setFastPhotos] = useState<Record<string, string>>({})
 
   const filteredPlaces = useMemo(() => {
     const q = search.trim().toLowerCase()
+    // ⚠️ 해외 주소는 현지어·영어라 "오사카"로 쳐도 안 걸렸다.
+    //    한국어로 저장해 둔 나라·지역을 검색 대상에 같이 넣는다.
     const bySearch = q
       ? places.filter((p) =>
-          [p.placeName, p.localName, p.address, p.subCategory, p.category].some((v) =>
-            String(v ?? "").toLowerCase().includes(q)
-          )
+          [
+            p.placeName,
+            p.localName,
+            p.address,
+            p.subCategory,
+            p.category,
+            p.country,
+            p.region,
+            regionLabel(p.region),
+          ].some((v) => String(v ?? "").toLowerCase().includes(q))
         )
       : places
-    const byCat = subFilter ? bySearch.filter((place) => place.subCategory.trim() === subFilter) : bySearch
+    const byCountry =
+      country === "all" ? bySearch : bySearch.filter((p) => p.countryCode === country)
+    const byRegion = region === "all" ? byCountry : byCountry.filter((p) => p.region === region)
+    const byCat = subFilter ? byRegion.filter((place) => place.subCategory.trim() === subFilter) : byRegion
     const base = starredOnly ? byCat.filter((place) => place.starred) : byCat
     const arr = [...base]
     if (sort === "name") return arr.sort((a, b) => a.placeName.localeCompare(b.placeName, "ko"))
@@ -296,7 +344,7 @@ export function SavedPlacesView() {
       const db = b.lat != null && b.lng != null ? distanceMeters(geo.position, { lat: b.lat, lng: b.lng }) : Infinity
       return da - db
     })
-  }, [places, subFilter, geo.position, sort, search, starredOnly])
+  }, [places, subFilter, geo.position, sort, search, starredOnly, country, region])
 
   /**
    * 별표 켜기/끄기. 화면을 먼저 바꾸고 저장한다 —
@@ -1077,6 +1125,53 @@ export function SavedPlacesView() {
               </div>
             </div>
 
+            {/*
+              나라 → 지역 칩.
+              ⚠️ 나라를 고르기 전엔 지역 줄을 그리지 않는다. 두 줄이 늘 떠 있으면
+                 고를 게 없는 칩만 늘어나 오히려 복잡해 보인다.
+            */}
+            {subTab === "wish" && countryChips.length > 1 ? (
+              <div className="flex gap-1.5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:px-6">
+                <PlaceChip
+                  label="전체"
+                  count={places.length}
+                  on={country === "all"}
+                  onClick={() => {
+                    setCountry("all")
+                    setRegion("all")
+                  }}
+                />
+                {countryChips.map((c) => (
+                  <PlaceChip
+                    key={c.code}
+                    label={c.name}
+                    count={c.n}
+                    on={country === c.code}
+                    onClick={() => {
+                      setCountry(c.code)
+                      setRegion("all")
+                    }}
+                  />
+                ))}
+              </div>
+            ) : null}
+
+            {regionChips.length > 1 ? (
+              <div className="flex gap-1.5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:px-6">
+                <PlaceChip label="전체" on={region === "all"} onClick={() => setRegion("all")} small />
+                {regionChips.map((r) => (
+                  <PlaceChip
+                    key={r.raw}
+                    label={r.label}
+                    count={r.n}
+                    on={region === r.raw}
+                    onClick={() => setRegion(r.raw)}
+                    small
+                  />
+                ))}
+              </div>
+            ) : null}
+
             <div className="sticky z-10 top-[62px] flex items-center justify-between gap-2 bg-white/95 px-4 pb-2.5 backdrop-blur md:top-[40px] md:px-6">
               <p className="truncate text-xs font-bold text-slate-400">
                 {(subTab === "wish" ? "나의 찜 " : "여행클립 찜 ") +
@@ -1410,5 +1505,43 @@ function FriendRecsList({
         </li>
       ))}
     </ul>
+  )
+}
+
+/**
+ * 나라·지역 칩.
+ * 나라는 진하게, 지역은 한 단계 작게 — 위아래 두 줄이 같은 무게면 뭐가 상위인지 모른다.
+ */
+function PlaceChip({
+  label,
+  count,
+  on,
+  onClick,
+  small,
+}: {
+  label: string
+  count?: number
+  on: boolean
+  onClick: () => void
+  small?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={on}
+      className={cn(
+        "flex shrink-0 items-center gap-1 rounded-full border font-bold transition-colors",
+        small ? "px-3 py-1.5 text-xs" : "px-3.5 py-2 text-[13px]",
+        on
+          ? "border-amber-400 bg-amber-50 text-amber-900"
+          : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+      )}
+    >
+      {label}
+      {count != null ? (
+        <span className={cn("tabular-nums", on ? "text-amber-700" : "text-slate-400")}>{count}</span>
+      ) : null}
+    </button>
   )
 }
