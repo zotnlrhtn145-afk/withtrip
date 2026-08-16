@@ -5,6 +5,7 @@ import { ChevronLeft, Clock, MapPin, Navigation, Phone, Plane, Star } from "luci
 
 import { DirectionsMenu } from "@/components/directions-menu"
 import { MiniMap } from "@/components/mini-map"
+import { PlaceReviews } from "@/components/place-reviews"
 import { distanceMeters, estimateWalkMinutes, formatDistance } from "@/lib/geo"
 import { resizePlacePhotoUrl } from "@/lib/place-cover-image"
 import { cn } from "@/lib/utils"
@@ -24,6 +25,8 @@ export type PlaceDetailInput = {
 }
 
 type ApiDetail = {
+  /** 가게를 가리키는 열쇠 — 리뷰가 이걸로 묶인다 */
+  placeId: string
   name: string
   address: string
   phone: string
@@ -278,6 +281,12 @@ export function PlaceDetailSheet({
               ) : null}
             </div>
           ) : null}
+
+          {/*
+            리뷰 — 맨 아래. 길어질 수 있어서 영업시간 다음이다.
+            쓰기는 앱에만 둔다(웹은 읽기, 앱은 쓰기).
+          */}
+          <PlaceReviews googlePlaceId={detail?.placeId} />
         </div>
       </div>
     </div>
