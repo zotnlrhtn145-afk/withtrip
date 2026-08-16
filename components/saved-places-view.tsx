@@ -770,12 +770,14 @@ export function SavedPlacesView() {
             </button>
 
             {/*
-              다녀온 곳 표시.
-              ⚠️ 왼쪽 위는 이미 별표가 앉아 있어서 왼쪽 아래로 내린다.
-                 (오른쪽 아래는 추천한 친구 자리 — 앱과 같은 배치)
+              다녀온 곳 표시 — **별표 바로 오른쪽**에 붙인다.
+              둘 다 "이 곳에 대한 내 표시"라서 한 줄로 모아 둬야 눈이 한 번만 간다.
+              (왼쪽 = 내 표시, 오른쪽 아래 = 추천한 친구. 앱과 같은 배치)
+              별표(size-8, left-2.5)가 x=10~42 를 쓰므로 46 부터 시작하고,
+              높이를 별표에 맞춰 세로 가운데가 어긋나지 않게 한다.
             */}
             {place.googlePlaceId && marks[place.googlePlaceId]?.visited ? (
-              <span className="absolute bottom-2.5 left-2.5 flex items-center gap-1 rounded-full bg-slate-900/60 px-2.5 py-1 backdrop-blur-sm">
+              <span className="absolute left-[46px] top-2.5 flex h-8 items-center gap-1 rounded-full bg-slate-900/60 px-2.5 backdrop-blur-sm">
                 <Check className="size-3 text-white" />
                 <span className="text-[11px] font-bold text-white">다녀옴</span>
               </span>
