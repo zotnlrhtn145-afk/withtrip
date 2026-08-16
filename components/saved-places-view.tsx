@@ -632,13 +632,19 @@ export function SavedPlacesView() {
               : "border-slate-100 hover:border-slate-200"
           )}
         >
-          {/* 사진 */}
+          {/*
+            사진.
+            ⚠️ 못 가져온 곳은 **사진칸 자체를 그리지 않는다.** 빈 회색 상자를 두면
+               목록이 구멍 뚫린 것처럼 보이고 높이만 잡아먹는다.
+          */}
+          {place.imageUrl?.trim() ? (
           <div className="relative aspect-[1.92/1] w-full bg-slate-100">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={resizePlacePhotoUrl(place.imageUrl, PHOTO_W.card)}
               alt=""
               loading="lazy"
+              decoding="async"
               className="size-full object-cover"
             />
 
@@ -678,10 +684,35 @@ export function SavedPlacesView() {
               </span>
             ) : null}
           </div>
+          ) : null}
 
           {/* 글자 */}
           <div className="px-3.5 pb-2 pt-3">
-            <p className="line-clamp-2 text-[15px] font-bold text-slate-900">{place.placeName}</p>
+            <div className="flex items-start gap-2">
+              <p className="line-clamp-2 flex-1 text-[15px] font-bold text-slate-900">
+                {place.placeName}
+              </p>
+              {/* 사진이 없으면 별표가 얹힐 곳이 없다 — 이름 옆에 둔다 */}
+              {!place.imageUrl?.trim() ? (
+                <button
+                  type="button"
+                  aria-label={place.starred ? "꼭 가고 싶은 곳 해제" : "꼭 가고 싶은 곳으로 표시"}
+                  aria-pressed={place.starred}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    void toggleStar(place)
+                  }}
+                  className="shrink-0 p-0.5 transition-transform active:scale-90"
+                >
+                  <Star
+                    className={cn(
+                      "size-4",
+                      place.starred ? "fill-red-500 text-red-500" : "text-slate-300"
+                    )}
+                  />
+                </button>
+              ) : null}
+            </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-slate-500">
               {place.rating ? (
                 <span className="flex items-center gap-0.5 font-bold tabular-nums text-slate-700">
