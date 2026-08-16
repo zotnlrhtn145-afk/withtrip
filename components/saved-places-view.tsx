@@ -1167,7 +1167,12 @@ export function SavedPlacesView() {
             </div>
 
             <div className="sticky z-10 top-[62px] flex items-center justify-between gap-2 bg-white/95 px-4 pb-2.5 backdrop-blur md:top-[40px] md:px-6">
-              <p className="truncate text-xs font-bold text-slate-400">
+              {/*
+                ⚠️ **min-w-0 flex-1 이 있어야 한다.** 없으면 justify-between 이 세 덩어리를
+                   균등하게 벌려서 별표가 가운데로 밀려난다. 별표는 필터 **바로 왼쪽**에
+                   붙어 있어야 한다(앱과 같은 배치).
+              */}
+              <p className="min-w-0 flex-1 truncate text-xs font-bold text-slate-400">
                 {(subTab === "wish" ? "나의 찜 " : "여행클립 찜 ") +
                   (subTab === "wish" ? filteredPlaces.length : filteredTripSpots.length)}
                 {subTab === "trip" && tripFilter !== "all"
