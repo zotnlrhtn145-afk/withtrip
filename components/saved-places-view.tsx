@@ -246,16 +246,23 @@ export function SavedPlacesView() {
       .sort((a, b) => b.n - a.n)
   }, [places])
 
-  /** 지역은 고른 나라 안에서만 (나라를 안 고르면 아예 안 보여준다) */
+  /**
+   * 지역은 고른 나라 안에서만 (나라를 안 고르면 아예 안 보여준다).
+   *
+   * ⚠️ **보이는 이름으로 묶는다.** 구글이 같은 곳을 "제주특별자치도" 로도,
+   *    "제주시" 로도 준다. 원문으로 묶으면 "제주" 칩이 두 개 생긴다.
+   */
   const regionChips = useMemo(() => {
     if (country === "all") return []
     const m = new Map<string, number>()
     for (const p of places) {
       if (p.countryCode !== country || !p.region) continue
-      m.set(p.region, (m.get(p.region) ?? 0) + 1)
+      const label = regionLabel(p.region)
+      if (!label) continue
+      m.set(label, (m.get(label) ?? 0) + 1)
     }
     return [...m.entries()]
-      .map(([raw, n]) => ({ raw, label: regionLabel(raw), n }))
+      .map(([label, n]) => ({ raw: label, label, n }))
       .sort((a, b) => b.n - a.n)
   }, [places, country])
 
@@ -334,7 +341,9 @@ export function SavedPlacesView() {
       : places
     const byCountry =
       country === "all" ? bySearch : bySearch.filter((p) => p.countryCode === country)
-    const byRegion = region === "all" ? byCountry : byCountry.filter((p) => p.region === region)
+    // 칩이 보이는 이름으로 묶여 있으니 거를 때도 보이는 이름으로 맞춘다
+    const byRegion =
+      region === "all" ? byCountry : byCountry.filter((p) => regionLabel(p.region) === region)
     const byCat = subFilter ? byRegion.filter((place) => place.subCategory.trim() === subFilter) : byRegion
     const base = starredOnly ? byCat.filter((place) => place.starred) : byCat
     const arr = [...base]
@@ -1167,7 +1176,7 @@ export function SavedPlacesView() {
                 {country !== "all"
                   ? ` · ${flagNameOf(country, countryChips.find((c) => c.code === country)?.name)}`
                   : ""}
-                {region !== "all" ? ` · ${regionLabel(region)}` : ""}
+                {region !== "all" ? ` · ${region}` : ""}
                 {subFilter ? ` · ${subFilter}` : ""} · {SORT_LABELS[sort]}
               </p>
               {/* 별표만 보기 — 나의 찜에서만 의미가 있다 */}
