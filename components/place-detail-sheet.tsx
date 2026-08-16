@@ -132,13 +132,19 @@ export function PlaceDetailSheet({
          inset-0 이면 left:0 이라 패널이 네비 위에 올라앉는다.
          데스크톱에서는 네비 폭만큼 밀어서 그 **옆에서** 나오게 한다.
          (모바일에는 왼쪽 네비가 없으므로 md 부터만 민다)
+
+      ⚠️ **overflow-hidden 이 핵심이다.** 패널은 제 폭만큼 왼쪽 바깥에서
+         출발하는데(translateX(-100%)), 안 잘라주면 들어오는 동안 네비 위를
+         지나가며 "덮는" 느낌이 난다. 잘라 주면 네비 뒤에서 **빠져나오는**
+         느낌이 된다.
     */
-    <div className="fixed inset-0 z-[80] flex md:left-20">
+    <div className="fixed inset-0 z-[80] flex overflow-hidden md:left-20">
+      {/* 배경 — 패널과 달리 잘리지 않게 컨테이너 밖(고정)으로 둔다 */}
       <button
         type="button"
         aria-label="닫기"
         onClick={onClose}
-        className="absolute inset-0 bg-slate-900/45 animate-in fade-in-0"
+        className="fixed inset-0 bg-slate-900/45 animate-in fade-in-0 md:left-20"
       />
       <div className="relative flex h-full w-[92%] max-w-[440px] flex-col overflow-hidden bg-white shadow-2xl duration-300 animate-in slide-in-from-left">
         {/* 사진 캐러셀 */}
