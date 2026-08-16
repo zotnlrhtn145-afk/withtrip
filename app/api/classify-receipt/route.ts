@@ -25,7 +25,12 @@ export const maxDuration = 30
  */
 
 const MAX_IMAGES = 10
-const MAX_BYTES = 2 * 1024 * 1024
+/**
+ * ⚠️ 폰으로 찍은 영수증은 2~5MB 가 흔하다. 2MB 로 잡았더니 실제 영수증이
+ *    전부 "너무 큼"으로 버려져 한 장도 못 가렸다.
+ *    앱은 썸네일을 보내지만, 원본이 와도 처리되게 넉넉히 잡는다.
+ */
+const MAX_BYTES = 8 * 1024 * 1024
 
 export async function POST(request: Request) {
   const limited = await checkRateLimit(request, "vision", "classify-receipt")
@@ -51,6 +56,7 @@ export async function POST(request: Request) {
   if (!key) return NextResponse.json({ receipt: fallback })
 
   const parts: Array<Record<string, unknown>> = []
+  const skipped: string[] = []
   for (const url of urls) {
     try {
       const controller = new AbortController()
@@ -59,11 +65,13 @@ export async function POST(request: Request) {
       clearTimeout(timer)
       if (!res.ok) {
         parts.push({ text: "(이미지를 받지 못함)" })
+        skipped.push(`http_${res.status}`)
         continue
       }
       const buf = await res.arrayBuffer()
       if (buf.byteLength > MAX_BYTES) {
         parts.push({ text: "(이미지가 너무 큼)" })
+        skipped.push(`too_big_${buf.byteLength}`)
         continue
       }
       parts.push({
@@ -74,6 +82,7 @@ export async function POST(request: Request) {
       })
     } catch {
       parts.push({ text: "(이미지를 받지 못함)" })
+      skipped.push("fetch_error")
     }
   }
 
@@ -121,6 +130,7 @@ export async function POST(request: Request) {
       // 길이가 안 맞아도 화면이 깨지지 않게 원래 장수에 맞춘다
       return NextResponse.json({
         receipt: urls.map((_, i) => arr[i] === true),
+        skipped,
       })
     } catch {
       /* 다음 모델 */
