@@ -6,7 +6,9 @@ import { ChevronLeft, Clock, MapPin, Navigation, Phone, Plane, Star } from "luci
 import { DirectionsMenu } from "@/components/directions-menu"
 import { MiniMap } from "@/components/mini-map"
 import { distanceMeters, estimateWalkMinutes, formatDistance } from "@/lib/geo"
+import { resizePlacePhotoUrl } from "@/lib/place-cover-image"
 import { cn } from "@/lib/utils"
+import { PHOTO_W } from "@/shared/photo-widths"
 
 const NEAR_THRESHOLD_M = 40000 // 40km 이내면 내 위치도 함께
 
@@ -98,7 +100,14 @@ export function PlaceDetailSheet({
 
   if (!place) return null
 
-  const photos = (detail?.photos?.length ? detail.photos : place.imageUrl ? [place.imageUrl] : []).filter(Boolean)
+  /**
+   * ⚠️ 처음엔 목록에서 받은 사진 한 장으로 그리다가, 상세가 오면 여러 장으로
+   *    갈아끼워진다. 그때 **크기가 제각각이라 화면이 튀고 깨져 보였다.**
+   *    폭을 하나로 맞춰 받는다 — 바뀌어도 같은 자리에 같은 크기로 들어온다.
+   */
+  const photos = (detail?.photos?.length ? detail.photos : place.imageUrl ? [place.imageUrl] : [])
+    .filter(Boolean)
+    .map((u) => resizePlacePhotoUrl(u, PHOTO_W.card))
   const name = place.name || detail?.name || "장소"
   const category = place.category || detail?.types?.[0] || ""
   const address = detail?.address || place.address || ""
@@ -110,11 +119,22 @@ export function PlaceDetailSheet({
   const dist = userLoc && lat != null && lng != null ? distanceMeters(userLoc, { lat, lng }) : null
   const near = dist != null && dist < NEAR_THRESHOLD_M
 
+  /**
+   * ⚠️ 예전엔 모바일에서 전체화면, 데스크톱에서 가운데 상자였다.
+   *    폭이 화면 따라 널뛰니 사진이 커졌다 작아졌다 하며 깨져 보였다.
+   *    **왼쪽에서 밀려 들어오는 고정 폭 패널**로 바꾼다 —
+   *    어느 화면에서든 같은 크기라 사진도 항상 같은 자리에 온다.
+   *    (필터는 오른쪽에서 온다. 방향을 달리해 둘을 구분한다)
+   */
   return (
-    <div className="fixed inset-0 z-[80] sm:flex sm:items-center sm:justify-center sm:bg-black/50 sm:p-4">
-      {/* 데스크톱: 바깥 클릭으로 닫기 (모바일은 전체화면이라 배경 없음) */}
-      <button type="button" aria-label="닫기" onClick={onClose} className="absolute inset-0 hidden sm:block" />
-      <div className="relative flex h-full w-full flex-col overflow-hidden bg-white duration-300 animate-in slide-in-from-right sm:h-auto sm:max-h-[88vh] sm:max-w-md sm:rounded-3xl sm:shadow-2xl sm:zoom-in-95 sm:slide-in-from-right-0">
+    <div className="fixed inset-0 z-[80] flex">
+      <button
+        type="button"
+        aria-label="닫기"
+        onClick={onClose}
+        className="absolute inset-0 bg-slate-900/45 animate-in fade-in-0"
+      />
+      <div className="relative flex h-full w-[92%] max-w-[440px] flex-col overflow-hidden bg-white shadow-2xl duration-300 animate-in slide-in-from-left">
         {/* 사진 캐러셀 */}
         <div className="relative aspect-[4/3] w-full shrink-0 bg-slate-100">
           {photos.length > 0 ? (
