@@ -1320,117 +1320,138 @@ export function SavedPlacesView() {
 
       <RecommendPlaceDialog target={recTarget} onClose={() => setRecTarget(null)} />
 
-      {/* 필터 · 정렬 */}
-      <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
-        <DialogContent className="w-full max-w-sm rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl">
-          <DialogHeader className="mb-1 text-left">
-            <DialogTitle className="text-base font-bold text-slate-900">필터 · 정렬</DialogTitle>
-          </DialogHeader>
+      {/*
+        필터 — 오른쪽에서 밀려 들어온다.
+        ⚠️ 가운데 대화상자는 항목이 늘면서 스크롤이 생기고 답답했다.
+           옆에서 들어오면 세로를 다 쓸 수 있어 더 많이 담긴다.
+        ⚠️ 맨 아래 [초기화] [N곳 보기] 는 고정이다. 항목을 만지다 보면
+           지금 몇 곳이 남았는지 안 보이는데, 그걸 계속 보여줘야 마음 놓고 고른다.
+      */}
+      {filterOpen ? (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <button
+            type="button"
+            aria-label="필터 닫기"
+            onClick={() => setFilterOpen(false)}
+            className="absolute inset-0 bg-slate-900/45 animate-in fade-in-0"
+          />
+          <aside className="relative flex h-full w-[88%] max-w-[420px] flex-col bg-white shadow-2xl animate-in slide-in-from-right duration-300">
+            <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <h2 className="text-[17px] font-bold text-slate-900">필터</h2>
+              <button
+                type="button"
+                onClick={() => setFilterOpen(false)}
+                aria-label="닫기"
+                className="p-1 text-slate-400 transition-colors hover:text-slate-600"
+              >
+                <X className="size-5" />
+              </button>
+            </header>
 
-          {/*
-            ⚠️ 나라·지역을 목록 위에 가로 스크롤 칩으로 뒀더니 카드가 나오기 전에
-               조작 줄이 네 겹이 됐다. 고르는 화면이 아니라 거르는 화면처럼 보였다.
-               여기로 들여오고, 밖에는 요약 한 줄과 버튼만 남긴다.
-          */}
-          {subTab === "wish" && countryChips.length > 1 ? (
-            <>
-              <p className="mb-2 text-xs font-bold text-slate-500">나라</p>
-              <div className="mb-5 flex flex-wrap gap-2">
-                <PlaceChip
-                  label="전체"
-                  on={country === "all"}
-                  onClick={() => {
-                    setCountry("all")
-                    setRegion("all")
-                  }}
-                />
-                {countryChips.map((c) => (
+            <div className="flex-1 overflow-y-auto px-5 pb-6 pt-4">
+              <FilterSection title="정렬">
+                {(["distance", "name", "rating"] as SortMode[]).map((o) => (
+                  <PlaceChip key={o} label={SORT_LABELS[o]} on={sort === o} onClick={() => setSort(o)} />
+                ))}
+              </FilterSection>
+
+              {subTab === "trip" && tripOptions.length > 0 ? (
+                <FilterSection title="여행">
+                  <PlaceChip label="전체" on={tripFilter === "all"} onClick={() => setTripFilter("all")} />
+                  {tripOptions.map((t) => (
+                    <PlaceChip
+                      key={t.id}
+                      label={t.title}
+                      on={tripFilter === t.id}
+                      onClick={() => setTripFilter(t.id)}
+                    />
+                  ))}
+                </FilterSection>
+              ) : null}
+
+              {/* 나라 — 저장된 나라만. 새 나라를 담으면 저절로 늘어난다. */}
+              {subTab === "wish" && countryChips.length > 1 ? (
+                <FilterSection title="나라">
                   <PlaceChip
-                    key={c.code}
-                    icon={<CountryFlag code={c.code} active={country === c.code} size={18} />}
-                    label={flagNameOf(c.code, c.name)}
-                    count={c.n}
-                    on={country === c.code}
+                    label="전체"
+                    on={country === "all"}
                     onClick={() => {
-                      setCountry(c.code)
+                      setCountry("all")
                       setRegion("all")
                     }}
                   />
-                ))}
-              </div>
-            </>
-          ) : null}
+                  {countryChips.map((c) => (
+                    <PlaceChip
+                      key={c.code}
+                      icon={<CountryFlag code={c.code} active={country === c.code} size={18} />}
+                      label={flagNameOf(c.code, c.name)}
+                      count={c.n}
+                      on={country === c.code}
+                      onClick={() => {
+                        setCountry(c.code)
+                        setRegion("all")
+                      }}
+                    />
+                  ))}
+                </FilterSection>
+              ) : null}
 
-          {regionChips.length > 1 ? (
-            <>
-              <p className="mb-2 text-xs font-bold text-slate-500">지역</p>
-              <div className="mb-5 flex flex-wrap gap-2">
-                <PlaceChip label="전체" on={region === "all"} onClick={() => setRegion("all")} />
-                {regionChips.map((r) => (
-                  <PlaceChip
-                    key={r.raw}
-                    label={r.label}
-                    count={r.n}
-                    on={region === r.raw}
-                    onClick={() => setRegion(r.raw)}
-                  />
-                ))}
-              </div>
-            </>
-          ) : null}
+              {regionChips.length > 1 ? (
+                <FilterSection title="지역">
+                  <PlaceChip label="전체" on={region === "all"} onClick={() => setRegion("all")} />
+                  {regionChips.map((r) => (
+                    <PlaceChip
+                      key={r.raw}
+                      label={r.label}
+                      count={r.n}
+                      on={region === r.raw}
+                      onClick={() => setRegion(r.raw)}
+                    />
+                  ))}
+                </FilterSection>
+              ) : null}
 
-          {subTab === "trip" && tripOptions.length > 0 ? (
-            <>
-              <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-slate-500">
-                <Plane className="size-3.5 text-amber-500" /> 여행
-              </p>
-              <div className="mb-5 flex flex-wrap gap-2">
-                {[{ id: "all", title: "전체" }, ...tripOptions].map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setTripFilter(t.id)}
-                    className={cn(
-                      "rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all",
-                      tripFilter === t.id
-                        ? "border-amber-400 bg-amber-400 text-slate-950 shadow-sm"
-                        : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/60"
-                    )}
-                  >
-                    {t.title}
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : null}
-          <p className="mb-2 text-xs font-bold text-slate-500">카테고리</p>
-          <div className="mb-5 flex flex-wrap gap-2">{filterChipsNode}</div>
-          <p className="mb-2 text-xs font-bold text-slate-500">정렬</p>
-          <div className="flex flex-col gap-1">
-            {(["distance", "name", "rating"] as SortMode[]).map((s) => (
+              {activeChips.length > 0 ? (
+                <FilterSection title="카테고리">
+                  <PlaceChip label="전체" on={!subFilter} onClick={() => setSubFilter("")} />
+                  {activeChips.map((c) => (
+                    <PlaceChip
+                      key={c.label}
+                      label={c.label}
+                      count={c.count}
+                      on={subFilter === c.label}
+                      onClick={() => setSubFilter(c.label)}
+                    />
+                  ))}
+                </FilterSection>
+              ) : null}
+            </div>
+
+            <footer className="flex gap-2 border-t border-slate-100 px-5 py-4">
               <button
-                key={s}
                 type="button"
-                onClick={() => setSort(s)}
-                className={cn(
-                  "flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors",
-                  sort === s ? "bg-amber-50 text-slate-900" : "text-slate-500 hover:bg-slate-50"
-                )}
+                onClick={() => {
+                  setCountry("all")
+                  setRegion("all")
+                  setSubFilter("")
+                  setSort("distance")
+                  setTripFilter("all")
+                }}
+                className="rounded-full border border-slate-200 px-5 py-3 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-50"
               >
-                {SORT_LABELS[s]}
-                {sort === s ? <Check className="size-4 text-amber-600" /> : null}
+                초기화
               </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => setFilterOpen(false)}
-            className="mt-5 w-full rounded-xl bg-amber-400 py-2.5 text-sm font-bold text-slate-950 transition-colors hover:bg-amber-500"
-          >
-            완료
-          </button>
-        </DialogContent>
-      </Dialog>
+              <button
+                type="button"
+                onClick={() => setFilterOpen(false)}
+                className="flex-1 rounded-full bg-amber-400 py-3 text-[15px] font-bold text-slate-950 transition-colors hover:bg-amber-500"
+              >
+                {(subTab === "wish" ? filteredPlaces.length : filteredTripSpots.length).toLocaleString()}곳 보기
+              </button>
+            </footer>
+          </aside>
+        </div>
+      ) : null}
 
       {/* 삭제 확인 */}
       <Dialog open={Boolean(deleteConfirm)} onOpenChange={(next) => { if (!next) setDeleteConfirm(null) }}>
@@ -1599,5 +1620,15 @@ function PlaceChip({
         <span className={cn("tabular-nums", on ? "text-amber-700" : "text-slate-400")}>{count}</span>
       ) : null}
     </button>
+  )
+}
+
+/** 필터 패널의 한 묶음 — 제목 + 줄바꿈 칩 */
+function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="mb-5">
+      <p className="mb-2 text-xs font-bold text-slate-400">{title}</p>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </div>
   )
 }
