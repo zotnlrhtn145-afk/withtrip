@@ -1127,54 +1127,6 @@ export function SavedPlacesView() {
               </div>
             </div>
 
-            {/*
-              나라 → 지역 칩.
-              ⚠️ 나라를 고르기 전엔 지역 줄을 그리지 않는다. 두 줄이 늘 떠 있으면
-                 고를 게 없는 칩만 늘어나 오히려 복잡해 보인다.
-            */}
-            {subTab === "wish" && countryChips.length > 1 ? (
-              <div className="flex gap-1.5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:px-6">
-                <PlaceChip
-                  label="전체"
-                  count={places.length}
-                  on={country === "all"}
-                  onClick={() => {
-                    setCountry("all")
-                    setRegion("all")
-                  }}
-                />
-                {countryChips.map((c) => (
-                  <PlaceChip
-                    key={c.code}
-                    icon={<CountryFlag code={c.code} active={country === c.code} />}
-                    label={flagNameOf(c.code, c.name)}
-                    count={c.n}
-                    on={country === c.code}
-                    onClick={() => {
-                      setCountry(c.code)
-                      setRegion("all")
-                    }}
-                  />
-                ))}
-              </div>
-            ) : null}
-
-            {regionChips.length > 1 ? (
-              <div className="flex gap-1.5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:px-6">
-                <PlaceChip label="전체" on={region === "all"} onClick={() => setRegion("all")} small />
-                {regionChips.map((r) => (
-                  <PlaceChip
-                    key={r.raw}
-                    label={r.label}
-                    count={r.n}
-                    on={region === r.raw}
-                    onClick={() => setRegion(r.raw)}
-                    small
-                  />
-                ))}
-              </div>
-            ) : null}
-
             <div className="sticky z-10 top-[62px] flex items-center justify-between gap-2 bg-white/95 px-4 pb-2.5 backdrop-blur md:top-[40px] md:px-6">
               <p className="truncate text-xs font-bold text-slate-400">
                 {(subTab === "wish" ? "나의 찜 " : "여행클립 찜 ") +
@@ -1182,6 +1134,10 @@ export function SavedPlacesView() {
                 {subTab === "trip" && tripFilter !== "all"
                   ? ` · ${tripOptions.find((t) => t.id === tripFilter)?.title ?? ""}`
                   : ""}
+                {country !== "all"
+                  ? ` · ${flagNameOf(country, countryChips.find((c) => c.code === country)?.name)}`
+                  : ""}
+                {region !== "all" ? ` · ${regionLabel(region)}` : ""}
                 {subFilter ? ` · ${subFilter}` : ""} · {SORT_LABELS[sort]}
               </p>
               {/* 별표만 보기 — 나의 찜에서만 의미가 있다 */}
@@ -1191,14 +1147,13 @@ export function SavedPlacesView() {
                   onClick={() => setStarredOnly((v) => !v)}
                   aria-pressed={starredOnly}
                   className={cn(
-                    "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",
+                    "flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors",
                     starredOnly
                       ? "border-red-500 bg-red-50 text-red-600"
                       : "border-slate-200 text-slate-500 hover:bg-slate-50"
                   )}
                 >
                   <Star className={cn("size-3.5", starredOnly && "fill-red-500")} />
-                  꼭 가고 싶은 곳
                 </button>
               ) : null}
               <button
@@ -1206,13 +1161,25 @@ export function SavedPlacesView() {
                 onClick={() => setFilterOpen(true)}
                 className={cn(
                   "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",
-                  subFilter || sort !== "distance" || (subTab === "trip" && tripFilter !== "all")
+                  subFilter ||
+                    sort !== "distance" ||
+                    country !== "all" ||
+                    region !== "all" ||
+                    (subTab === "trip" && tripFilter !== "all")
                     ? "border-amber-400 bg-amber-50 text-amber-700"
                     : "border-slate-200 text-slate-500 hover:bg-slate-50"
                 )}
               >
                 <SlidersHorizontal className="size-3.5" />
                 필터
+                {/* 뭔가 걸려 있으면 점 하나 — 시트를 안 열어도 안다 */}
+                {subFilter ||
+                sort !== "distance" ||
+                country !== "all" ||
+                region !== "all" ||
+                (subTab === "trip" && tripFilter !== "all") ? (
+                  <span className="size-1.5 rounded-full bg-amber-400" />
+                ) : null}
               </button>
             </div>
 
@@ -1329,6 +1296,59 @@ export function SavedPlacesView() {
           <DialogHeader className="mb-1 text-left">
             <DialogTitle className="text-base font-bold text-slate-900">필터 · 정렬</DialogTitle>
           </DialogHeader>
+
+          {/*
+            ⚠️ 나라·지역을 목록 위에 가로 스크롤 칩으로 뒀더니 카드가 나오기 전에
+               조작 줄이 네 겹이 됐다. 고르는 화면이 아니라 거르는 화면처럼 보였다.
+               여기로 들여오고, 밖에는 요약 한 줄과 버튼만 남긴다.
+          */}
+          {subTab === "wish" && countryChips.length > 1 ? (
+            <>
+              <p className="mb-2 text-xs font-bold text-slate-500">나라</p>
+              <div className="mb-5 flex flex-wrap gap-2">
+                <PlaceChip
+                  label="전체"
+                  on={country === "all"}
+                  onClick={() => {
+                    setCountry("all")
+                    setRegion("all")
+                  }}
+                />
+                {countryChips.map((c) => (
+                  <PlaceChip
+                    key={c.code}
+                    icon={<CountryFlag code={c.code} active={country === c.code} size={18} />}
+                    label={flagNameOf(c.code, c.name)}
+                    count={c.n}
+                    on={country === c.code}
+                    onClick={() => {
+                      setCountry(c.code)
+                      setRegion("all")
+                    }}
+                  />
+                ))}
+              </div>
+            </>
+          ) : null}
+
+          {regionChips.length > 1 ? (
+            <>
+              <p className="mb-2 text-xs font-bold text-slate-500">지역</p>
+              <div className="mb-5 flex flex-wrap gap-2">
+                <PlaceChip label="전체" on={region === "all"} onClick={() => setRegion("all")} />
+                {regionChips.map((r) => (
+                  <PlaceChip
+                    key={r.raw}
+                    label={r.label}
+                    count={r.n}
+                    on={region === r.raw}
+                    onClick={() => setRegion(r.raw)}
+                  />
+                ))}
+              </div>
+            </>
+          ) : null}
+
           {subTab === "trip" && tripOptions.length > 0 ? (
             <>
               <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-slate-500">
