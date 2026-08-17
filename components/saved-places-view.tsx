@@ -70,8 +70,17 @@ const NearbyMap = dynamic(
 )
 
 type AuthPhase = "checking" | "guest" | "authed"
-type SortMode = "distance" | "name" | "rating"
+/**
+ * ⚠️ **"최근 담은 순"이 기본이다.**
+ *
+ * 예전 기본은 "가까운 순"이었다. 찜이 수백 곳인데 인스타에서 담는 곳은 대개 해외라,
+ * 방금 담은 가게가 거리순으로 목록 맨 뒤로 밀려 **사실상 안 보였다** —
+ * 저장은 됐는데 "목록에 추가가 안 된다"는 말이 나온 이유다.
+ * 담자마자 확인하는 게 가장 흔한 일이므로 그걸 기본으로 둔다. (앱도 같다)
+ */
+type SortMode = "recent" | "distance" | "name" | "rating"
 const SORT_LABELS: Record<SortMode, string> = {
+  recent: "최근 담은 순",
   distance: "가까운 순",
   name: "이름순",
   rating: "평점 높은순",
@@ -101,7 +110,7 @@ export function SavedPlacesView() {
   const [tab, setTab] = useState<"mine" | "friends">("mine")
   const [subTab, setSubTab] = useState<"wish" | "trip">("wish")
   const [search, setSearch] = useState("") // 저장 전용 검색 — 이름·지역·주소
-  const [sort, setSort] = useState<"distance" | "name" | "rating">("distance")
+  const [sort, setSort] = useState<SortMode>("recent")
   const [tripFilter, setTripFilter] = useState<string>("all")
   const [filterOpen, setFilterOpen] = useState(false)
   const [tripSpots, setTripSpots] = useState<NearbySpot[]>([])
@@ -370,6 +379,7 @@ export function SavedPlacesView() {
     const byCat = subFilter ? byRegion.filter((place) => place.subCategory.trim() === subFilter) : byRegion
     const base = starredOnly ? byCat.filter((place) => place.starred) : byCat
     const arr = [...base]
+    if (sort === "recent") return arr.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
     if (sort === "name") return arr.sort((a, b) => a.placeName.localeCompare(b.placeName, "ko"))
     if (sort === "rating") return arr.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
     // 내 위치에서 가까운 순 (좌표 없는 곳은 뒤로)
@@ -1476,7 +1486,7 @@ export function SavedPlacesView() {
 
             <div className="flex-1 overflow-y-auto px-5 pb-6 pt-4">
               <FilterSection title="정렬">
-                {(["distance", "name", "rating"] as SortMode[]).map((o) => (
+                {(["recent", "distance", "name", "rating"] as SortMode[]).map((o) => (
                   <PlaceChip key={o} label={SORT_LABELS[o]} on={sort === o} onClick={() => setSort(o)} />
                 ))}
               </FilterSection>
@@ -1560,7 +1570,7 @@ export function SavedPlacesView() {
                   setCountry("all")
                   setRegion("all")
                   setSubFilter("")
-                  setSort("distance")
+                  setSort("recent")
                   setTripFilter("all")
                 }}
                 className="rounded-full border border-slate-200 px-5 py-3 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-50"
