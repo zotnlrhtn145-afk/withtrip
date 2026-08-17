@@ -196,10 +196,16 @@ export async function fetchTripsFromSupabase(): Promise<Trip[]> {
   }
 
   const client = createClient()
+  /**
+   * ⚠️ 단톡방(kind='chat')은 아직 여행이 아니다 — 여행 목록에 끼면 안 된다.
+   *    앱에서 친구들과 먼저 모여 이야기하는 방으로, 여행이 정해지면 그때
+   *    kind='trip' 이 되어 여기 나타난다. (대화 화면은 앱에만 있다)
+   */
   const owned = await client
     .from("trips")
     .select("*")
     .eq("user_id", userId)
+    .eq("kind", "trip")
     .order("created_at", { ascending: false })
 
   if (owned.error) {
@@ -217,7 +223,7 @@ export async function fetchTripsFromSupabase(): Promise<Trip[]> {
 
   let memberRows: TripRow[] = []
   if (missingIds.length > 0) {
-    const memberTrips = await client.from("trips").select("*").in("id", missingIds)
+    const memberTrips = await client.from("trips").select("*").eq("kind", "trip").in("id", missingIds)
     if (memberTrips.error) {
       console.error("[fetchTripsFromSupabase] member trips:", memberTrips.error.message)
     } else {
