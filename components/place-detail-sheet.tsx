@@ -1,9 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Check, CheckCircle2, ChevronLeft, Clock, MapPin, Navigation, Phone, Plane, Star } from "lucide-react"
+import { Check, CheckCircle2, ChevronLeft, Clock, ExternalLink, MapPin, Navigation, Phone, Plane, Star } from "lucide-react"
 
 import { DirectionsMenu } from "@/components/directions-menu"
+import { InstagramIcon } from "@/components/icon-instagram"
 import { MiniMap } from "@/components/mini-map"
 import { PlaceReviews } from "@/components/place-reviews"
 import { curatePlaceCover } from "@/lib/place-cover-curate"
@@ -23,6 +24,8 @@ export type PlaceDetailInput = {
    * (저장한 곳이 아닌 주변 추천 등에는 없다)
    */
   savedPlaceId?: string | null
+  /** 어디서 보고 담았는지 — 인스타 공유로 들어온 곳만 있다 */
+  sourceUrl?: string | null
   /** 이미 채워져 있는 열쇠. 같으면 다시 쓰지 않는다(열 때마다 쓸 이유가 없다) */
   googlePlaceId?: string | null
   name: string
@@ -373,6 +376,26 @@ export function PlaceDetailSheet({
             <p className="-mt-2 text-center text-[11px] text-slate-400">
               {myRating != null ? `내 평점 ★ ${myRating}` : "리뷰는 앱에서 남길 수 있어요."}
             </p>
+          ) : null}
+
+          {/*
+            어디서 보고 담았는지.
+            ⚠️ 담아 놓고 "이거 어디서 봤더라" 하는 일이 잦다 — 원본으로 바로 갈 수 있게 한다.
+          */}
+          {place.sourceUrl ? (
+            <a
+              href={place.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-3 text-left"
+            >
+              <InstagramIcon className="size-5 shrink-0 text-amber-500" />
+              <span className="min-w-0 flex-1 text-sm text-slate-800">인스타그램에서 담은 곳</span>
+              <span className="inline-flex shrink-0 items-center gap-1 text-[13px] font-bold text-slate-500">
+                게시물 보기
+                <ExternalLink className="size-3.5" />
+              </span>
+            </a>
           ) : null}
 
           {summary ? <p className="text-sm leading-relaxed text-slate-500">{summary}</p> : null}

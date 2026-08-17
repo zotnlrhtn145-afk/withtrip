@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { DirectionsMenu } from "@/components/directions-menu"
+import { InstagramIcon } from "@/components/icon-instagram"
 import { PlaceDetailSheet, type PlaceDetailInput } from "@/components/place-detail-sheet"
 import { ScrollTopButton } from "@/components/scroll-top-button"
 import { RecommendPlaceDialog, type RecommendTarget } from "@/components/recommend-place-dialog"
@@ -559,6 +560,7 @@ export function SavedPlacesView() {
     setDetailPlace({
       savedPlaceId: place.id,
       googlePlaceId: place.googlePlaceId,
+      sourceUrl: place.sourceUrl,
       name: place.placeName,
       address: place.address,
       lat: place.lat,
@@ -782,6 +784,23 @@ export function SavedPlacesView() {
                 <Check className="size-3 text-white" />
                 <span className="text-[11px] font-bold text-white">다녀옴</span>
               </span>
+            ) : null}
+
+            {/*
+              어디서 보고 담았는지 — 눌러서 원본 게시물로 간다.
+              ⚠️ 왼쪽 위는 별표+다녀옴, 오른쪽 아래는 추천한 친구 자리라 오른쪽 위에 둔다.
+            */}
+            {place.sourceUrl ? (
+              <a
+                href={place.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                aria-label="가져온 인스타그램 게시물 보기"
+                className="absolute right-2.5 top-2.5 flex size-7 items-center justify-center rounded-full bg-slate-900/55 text-white backdrop-blur-sm transition-transform active:scale-90"
+              >
+                <InstagramIcon className="size-4" />
+              </a>
             ) : null}
 
             {/* 친구가 추천해 준 곳 */}
