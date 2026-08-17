@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Bookmark, Check, Heart, Info, Loader2, Map as MapIcon, MapPin, Plane, Plus, Search, Send, SlidersHorizontal, Star, X } from "lucide-react"
+import { Bookmark, Check, Heart, Info, Loader2, Map as MapIcon, MapPin, Plane, Plus, Search, Send, SlidersHorizontal, Star, Users, X } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -26,6 +26,7 @@ import { type NearbySpot } from "@/lib/spots-data"
 import {
   dismissRecommendation,
   fetchIncomingRecommendations,
+  acceptRecommendation,
   saveRecommendation,
   type IncomingRec,
 } from "@/lib/recommendations-api"
@@ -172,6 +173,17 @@ export function SavedPlacesView() {
     void fetchIncomingRecommendations().then(setRecs)
     void fetchNearbySpots().then((s) => setTripSpots(s.filter((x) => x.tripId)))
   }, [authPhase, userId])
+
+  /**
+   * 친구 추천찜에 **등록**한다 — 나의 찜에는 넣지 않는다.
+   * ⚠️ 받는 것과 내 찜으로 옮기는 것은 다른 일이다(앱과 같은 흐름).
+   */
+  const handleRegisterRec = async (rec: IncomingRec) => {
+    setSavingRecId(rec.id)
+    const ok = await acceptRecommendation(rec.id)
+    setSavingRecId(null)
+    if (ok) setRecs((prev) => prev.map((r) => (r.id === rec.id ? { ...r, status: "accepted" } : r)))
+  }
 
   const handleSaveRec = async (rec: IncomingRec) => {
     setSavingRecId(rec.id)
@@ -1160,6 +1172,7 @@ export function SavedPlacesView() {
         <FriendRecsList
           recs={recs}
           savingId={savingRecId}
+          onRegister={handleRegisterRec}
           onSave={handleSaveRec}
           onDismiss={handleDismissRec}
         />
@@ -1629,11 +1642,14 @@ export function SavedPlacesView() {
 function FriendRecsList({
   recs,
   savingId,
+  onRegister,
   onSave,
   onDismiss,
 }: {
   recs: IncomingRec[]
   savingId: string | null
+  /** 친구 추천찜에 정식 등록 (나의 찜에는 넣지 않는다) */
+  onRegister: (rec: IncomingRec) => void
   onSave: (rec: IncomingRec) => void
   onDismiss: (rec: IncomingRec) => void
 }) {
@@ -1666,11 +1682,24 @@ function FriendRecsList({
               <span className="font-bold text-slate-900">{rec.sender.nickname}</span>님의 추천
             </p>
           </div>
-          {/* 장소 */}
-          <div className="flex items-center gap-3">
-            <div className="relative size-16 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+          {/*
+            장소 — ⚠️ 사진을 **크게** 뺀다. 예전엔 64px 썸네일이라 어떤 가게인지
+            알아볼 수 없었다. 나의 찜에서 이미 겪고 고친 문제를 여기서 반복하고 있었다.
+          */}
+          <div className="flex flex-col gap-2">
+            <div className="relative aspect-[2/1] w-full overflow-hidden rounded-xl bg-slate-100">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={resizePlacePhotoUrl(rec.imageUrl, PHOTO_W.thumb)} alt="" loading="lazy" className="size-full object-cover" />
+              <img src={resizePlacePhotoUrl(rec.imageUrl, PHOTO_W.card)} alt="" loading="lazy" className="size-full object-cover" />
+              {/* 누가 추천했는지 — 등록한 뒤에도 계속 보인다 */}
+              <span className="absolute bottom-2 right-2 flex items-center gap-1.5 rounded-full bg-slate-900/60 py-1 pl-1 pr-2.5 text-xs font-semibold text-white">
+                <Avatar className="size-5 shrink-0">
+                  {rec.sender.avatarUrl ? <AvatarImage src={rec.sender.avatarUrl} alt="" /> : null}
+                  <AvatarFallback className="text-[9px] font-semibold">
+                    {rec.sender.nickname.slice(0, 1)}
+                  </AvatarFallback>
+                </Avatar>
+                {rec.sender.nickname}님 추천
+              </span>
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-bold text-slate-900">{rec.placeName}</p>
@@ -1688,10 +1717,24 @@ function FriendRecsList({
           </div>
           {/* 액션 */}
           <div className="flex gap-2">
-            {rec.status === "saved" ? (
+            {rec.status === "pending" ? (
+              /*
+                ⚠️ **"나의 찜 등록"이 아니라 "친구 추천찜 등록"이다.**
+                   받는 것과 내 찜으로 옮기는 것은 다른 일이라 버튼도 아이콘도 갈라 둔다.
+              */
+              <button
+                type="button"
+                disabled={savingId === rec.id}
+                onClick={() => onRegister(rec)}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-sm font-bold text-slate-950 transition-colors hover:bg-amber-500 disabled:opacity-60"
+              >
+                <Users className="size-4" />
+                추천찜 등록
+              </button>
+            ) : rec.status === "saved" ? (
               <span className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 py-2.5 text-sm font-bold text-slate-500">
                 <Check className="size-4 text-emerald-600" />
-                나의 찜에 담김
+                나의 찜에 있음
               </span>
             ) : (
               <button
