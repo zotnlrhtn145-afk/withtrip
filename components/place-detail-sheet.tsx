@@ -6,6 +6,7 @@ import { Check, CheckCircle2, ChevronLeft, Clock, MapPin, Navigation, Phone, Pla
 import { DirectionsMenu } from "@/components/directions-menu"
 import { MiniMap } from "@/components/mini-map"
 import { PlaceReviews } from "@/components/place-reviews"
+import { curatePlaceCover } from "@/lib/place-cover-curate"
 import { fetchMyRating, fetchMyVisit, setVisited } from "@/lib/place-visits"
 import { supabase } from "@/lib/supabase"
 import { distanceMeters, estimateWalkMinutes, formatDistance } from "@/lib/geo"
@@ -107,6 +108,32 @@ export function PlaceDetailSheet({
         .then(() => onGooglePlaceId?.(savedId, gpid))
     }
 
+    /**
+     * 대표 사진 손보기 — **여기가 공짜로 되는 유일한 자리다.**
+     *
+     * ⚠️ 구글이 주는 사진 순서는 제멋대로다(36층 중식당에 1층 빌딩 입구 사진).
+     *    이 화면은 어차피 사진 후보를 캐시에 채우고, 캐러셀로 그 사진들을
+     *    내려받아 저장소에 쌓는다. 서버는 **이미 받아 둔 사진만** 보고 고르므로
+     *    새로 드는 비용이 없다.
+     *
+     * ⚠️ 캐러셀이 다 받기 전에 부르면 볼 게 모자라 서버가 그냥 물러난다
+     *    (표시를 안 남기므로 다음에 열면 다시 한다). 그래서 조금 기다린다.
+     */
+    const timer =
+      (detail?.photos?.length ?? 0) >= 2
+        ? setTimeout(() => {
+            void curatePlaceCover({
+              googlePlaceId: gpid,
+              name: place?.name ?? detail?.name ?? "",
+              kind: place?.category === "숙소" ? "stay" : "restaurant",
+              subCategory: place?.category ?? "",
+            }).then((url) => {
+              if (!url || !savedId) return
+              void supabase.from("saved_places").update({ image_url: url }).eq("id", savedId)
+            })
+          }, 3000)
+        : null
+
     let cancelled = false
     void Promise.all([fetchMyVisit(gpid), fetchMyRating(gpid)]).then(([v, r]) => {
       if (cancelled) return
@@ -116,6 +143,7 @@ export function PlaceDetailSheet({
     })
     return () => {
       cancelled = true
+      if (timer) clearTimeout(timer)
     }
   }, [gpid])
 

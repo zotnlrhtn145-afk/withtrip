@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto"
+
 import { NextResponse } from "next/server"
 
 import { flashModelCandidates } from "@/lib/gemini-models"
@@ -21,9 +23,14 @@ export const maxDuration = 60
  * ⚠️ **결과는 places 에 적어 둔다.** places 는 가게 단위 캐시라 모든 사용자가
  *    나눠 쓴다. 사람마다 다시 고르면 AI 비용이 사람 수만큼 붙는다.
  *
- * ⚠️ **구글에 새로 묻지 않는다.** 후보는 이미 손에 있는 것(요청으로 넘어온 것 또는
- *    캐시에 적힌 photo_references)만 쓴다. 후보가 없으면 그냥 포기한다 —
- *    사진 한 장 고치자고 Details 를 부르면 돈이 샌다. (일괄 정리는 별도 스크립트로)
+ * ⚠️ **돈이 드는 일은 하나도 하지 않는다.**
+ *    - 구글 Details 를 부르지 않는다. 후보는 캐시에 적힌 photo_references 만 쓴다.
+ *    - 사진도 **이미 우리 저장소에 받아 둔 것만** 본다(place_photos).
+ *      사진 프록시는 (ref, 폭) 별로 캐시하므로 없는 폭을 달라고 하면
+ *      그 순간 구글 Place Photo 호출이 된다 — 그래서 저장소를 직접 읽는다.
+ *
+ * ⚠️ 볼 게 모자라면 **"골랐음" 표시를 남기지 않는다.** 나중에 상세 화면을 한 번만
+ *    열어도 사진이 캐시에 쌓이므로, 그때 공짜로 다시 시도할 수 있어야 한다.
  */
 
 type Item = {
@@ -39,23 +46,55 @@ const MAX_ITEMS = 8
 /** 가게당 살펴볼 후보 장수. 넷을 넘겨 봐야 판단이 좋아지지 않고 토큰만 먹는다 */
 const MAX_CANDIDATES = 4
 
-async function fetchAsInline(url: string): Promise<{ mime_type: string; data: string } | null> {
-  try {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 8_000)
-    const res = await fetch(url, { signal: controller.signal })
-    clearTimeout(timer)
-    if (!res.ok) return null
-    const buf = await res.arrayBuffer()
-    // 5MB 넘는 건 대표 사진 후보로 볼 이유가 없다
-    if (buf.byteLength > 5 * 1024 * 1024) return null
-    return {
-      mime_type: res.headers.get("content-type")?.split(";")[0] || "image/jpeg",
-      data: Buffer.from(buf).toString("base64"),
-    }
-  } catch {
-    return null
-  }
+/** 사진 프록시가 쓰는 것과 같은 방식 — place_photos 를 직접 뒤지려면 맞춰야 한다 */
+function refHash(ref: string) {
+  return createHash("sha256").update(ref).digest("hex")
+}
+
+/**
+ * **이미 저장소에 받아 둔 사진만** 골라 온다. 구글 호출 0회.
+ *
+ * ⚠️ 폭(width)은 아무거나 좋다 — 판단만 하면 되므로 작을수록 낫다.
+ *    프록시에 `w=800` 같은 걸 요청하면 그 폭이 캐시에 없을 때 구글을 부른다.
+ *    그래서 프록시를 거치지 않고 저장소 주소를 직접 읽는다.
+ */
+async function cachedImages(
+  db: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  refs: string[]
+): Promise<{ ref: string; inline: { mime_type: string; data: string } }[]> {
+  const byHash = new Map(refs.map((r) => [refHash(r), r]))
+  const { data } = await db
+    .from("place_photos")
+    .select("photo_ref_hash, width, storage_path")
+    .in("photo_ref_hash", [...byHash.keys()])
+    .order("width", { ascending: true })
+  const rows = (data as { photo_ref_hash: string; width: number; storage_path: string }[] | null) ?? []
+
+  // ref 하나당 가장 작은 폭 하나만 — 판단에 큰 그림은 필요 없다
+  const smallest = new Map<string, string>()
+  for (const r of rows) if (!smallest.has(r.photo_ref_hash)) smallest.set(r.photo_ref_hash, r.storage_path)
+
+  const out: { ref: string; inline: { mime_type: string; data: string } }[] = []
+  await Promise.all(
+    [...smallest.entries()].map(async ([hash, path]) => {
+      const ref = byHash.get(hash)
+      if (!ref) return
+      try {
+        const { data: blob, error } = await db.storage.from("place-photos").download(path)
+        if (error || !blob) return
+        const buf = await blob.arrayBuffer()
+        if (buf.byteLength > 5 * 1024 * 1024) return
+        out.push({
+          ref,
+          inline: { mime_type: blob.type || "image/jpeg", data: Buffer.from(buf).toString("base64") },
+        })
+      } catch {
+        /* 한 장 못 받아도 나머지로 고른다 */
+      }
+    })
+  )
+  // 원래 순서를 지킨다 — 후보 순서가 흔들리면 같은 가게에 다른 답이 나온다
+  return out.sort((a, b) => refs.indexOf(a.ref) - refs.indexOf(b.ref))
 }
 
 function promptFor(name: string, kind: string, subCategory: string, count: number): string {
@@ -200,17 +239,17 @@ export async function POST(request: Request) {
       if (hit?.done) return
 
       /**
-       * ⚠️ 후보는 **손에 있는 것만** 쓴다. 없으면 포기한다.
-       *    사진 한 장 고치자고 구글 Details 를 부르면 가게마다 돈이 나간다.
+       * ⚠️ 후보는 **캐시에 적힌 것만** 쓴다. 구글 Details 를 부르지 않는다 —
+       *    사진 한 장 고치자고 부르면 가게마다 돈이 나간다.
        */
       const refs = (item.photoRefs?.length ? item.photoRefs : (hit?.refs ?? []))
         .filter(Boolean)
         .slice(0, MAX_CANDIDATES)
-      if (refs.length < 2 || !model) return
+      if (refs.length < 2 || !model || !db) return
 
-      const images = (
-        await Promise.all(refs.map((r) => fetchAsInline(buildPlacePhotoProxyUrl(r, 800, origin))))
-      ).filter((x): x is { mime_type: string; data: string } => !!x)
+      // 이미 받아 둔 사진만 본다. 모자라면 **표시를 남기지 않고** 물러난다 —
+      // 상세 화면을 한 번 열면 사진이 쌓이므로 그때 공짜로 다시 하면 된다.
+      const images = await cachedImages(db, refs)
       if (images.length < 2) return
 
       const best = await pickBest(
@@ -219,18 +258,16 @@ export async function POST(request: Request) {
         String(item.name ?? "이 장소"),
         String(item.kind ?? "restaurant"),
         String(item.subCategory ?? ""),
-        images
+        images.map((i) => i.inline)
       )
-      const chosen = best >= 0 ? refs[best] : null
+      const chosen = best >= 0 ? images[best].ref : null
       if (chosen) covers[gid] = buildPlacePhotoProxyUrl(chosen, 1200, origin)
 
-      // 골랐든 못 골랐든 적어 둔다 — 못 고른 곳을 매번 다시 부르면 돈만 샌다
-      if (db) {
-        await db
-          .from("places")
-          .update({ cover_photo_reference: chosen, cover_curated_at: new Date().toISOString() })
-          .eq("google_place_id", gid)
-      }
+      // 골랐든 못 골랐든 적어 둔다 — 못 고른 곳을 매번 다시 부르면 AI 비용만 샌다
+      await db
+        .from("places")
+        .update({ cover_photo_reference: chosen, cover_curated_at: new Date().toISOString() })
+        .eq("google_place_id", gid)
     })
   )
 
