@@ -124,7 +124,8 @@ export async function fetchIncomingRecommendations(): Promise<IncomingRec[]> {
       "id, sender_id, place_name, category, sub_category, address, image_url, rating, review_count, lat, lng, created_at, status, sender:profiles!place_recommendations_sender_id_fkey(id, nickname, email, avatar_url)"
     )
     .eq("recipient_id", me)
-    .in("status", ["pending", "saved"])
+    // accepted = 친구 추천찜에만 있고 나의 찜에는 아직 없는 상태
+    .in("status", ["pending", "accepted", "saved"])
     .order("created_at", { ascending: false })
   if (error) {
     logErr("fetchIncomingRecommendations", error)
@@ -156,6 +157,33 @@ export async function fetchIncomingRecommendations(): Promise<IncomingRec[]> {
   return out
 }
 
+/**
+ * 추천을 받아 둔다 — **친구 추천찜에만** 남기고 나의 찜에는 넣지 않는다.
+ *
+ * ⚠️ 예전엔 수락 = 나의 찜에 바로 복사였다. 남이 보낸 것이 내 찜 목록에 그냥
+ *    섞여 들어가서, 내가 담은 곳과 구분이 안 됐다. 옮길지는 내가 고른다.
+ *    (앱에도 같은 함수가 있다 — 둘이 어긋나면 안 된다)
+ */
+export async function acceptRecommendation(recId: string): Promise<boolean> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from("place_recommendations")
+    .update({ status: "accepted" })
+    .eq("id", recId)
+  if (error) {
+    logErr("acceptRecommendation", error)
+    return false
+  }
+  return true
+}
+
+/**
+ * 추천을 **나의 찜으로 옮긴다** (saved_places, trip_id NULL).
+ *
+ * ⚠️ **이미 담아 둔 곳을 추천받는 일이 잦다.** 그냥 insert 하면 중복 방지
+ *    트리거가 그 행을 조용히 버리고(`RETURN NULL`), `.single()` 이 "행이 없다"로
+ *    실패해 사용자에겐 "담기 실패"만 뜬다. 이미 있으면 **그 행을 찾아 이어 붙인다.**
+ */
 export async function saveRecommendation(rec: IncomingRec): Promise<boolean> {
   const supabase = createClient()
   const { data: auth } = await supabase.auth.getUser()
@@ -163,29 +191,57 @@ export async function saveRecommendation(rec: IncomingRec): Promise<boolean> {
   if (!me) return false
   const { data: saved, error } = await supabase
     .from("saved_places")
-    .insert({
-      trip_id: null,
-      user_id: me,
-      place_name: rec.placeName,
-      category: rec.category,
-      sub_category: rec.subCategory,
-      address: rec.address,
-      image_url: rec.imageUrl,
-      rating: rec.rating,
-      review_count: rec.reviewCount ?? 0,
-      lat: rec.lat,
-      lng: rec.lng,
-      recommended_by: rec.sender.userId, // 추천인 흔적
-    })
+    .upsert(
+      {
+        trip_id: null,
+        user_id: me,
+        place_name: rec.placeName,
+        category: rec.category,
+        sub_category: rec.subCategory,
+        address: rec.address,
+        image_url: rec.imageUrl,
+        rating: rec.rating,
+        review_count: rec.reviewCount ?? 0,
+        lat: rec.lat,
+        lng: rec.lng,
+        recommended_by: rec.sender.userId, // 추천인 흔적
+      },
+      { onConflict: "user_id,dedupe_key", ignoreDuplicates: true }
+    )
     .select("id")
-    .single()
   if (error) {
     logErr("saveRecommendation", error)
     return false
   }
+
+  let savedId = (saved as { id: string }[] | null)?.[0]?.id ?? null
+  if (!savedId) {
+    const q = supabase
+      .from("saved_places")
+      .select("id")
+      .eq("user_id", me)
+      .is("trip_id", null)
+      .eq("place_name", rec.placeName)
+    const { data: existing } = await (rec.address ? q.eq("address", rec.address) : q)
+      .limit(1)
+      .maybeSingle()
+    savedId = (existing as { id: string } | null)?.id ?? null
+    if (savedId) {
+      await supabase
+        .from("saved_places")
+        .update({ recommended_by: rec.sender.userId })
+        .eq("id", savedId)
+        .is("recommended_by", null)
+    }
+  }
+  if (!savedId) {
+    logErr("saveRecommendation", new Error("담을 행을 찾지 못했어요"))
+    return false
+  }
+
   await supabase
     .from("place_recommendations")
-    .update({ status: "saved", saved_place_id: (saved as { id: string }).id })
+    .update({ status: "saved", saved_place_id: savedId })
     .eq("id", rec.id)
   return true
 }
@@ -203,78 +259,29 @@ export async function dismissRecommendation(recId: string): Promise<boolean> {
   return true
 }
 
-/** 알림의 추천(place_recommendations.id)을 바로 saved_places(가고싶은곳)에 담는다. */
+/**
+ * 알림에서 추천을 **받는다** — 친구 추천찜에만 올려 둔다.
+ *
+ * ⚠️ 예전엔 이 함수가 곧바로 saved_places(나의 찜)에 복사했다. 그러면 남이 보낸
+ *    곳이 내가 담은 곳들 사이에 섞여 들어간다. 나의 찜으로 옮기는 건
+ *    저장 > 친구 추천찜에서 따로 고른다(`saveRecommendation`).
+ */
 export async function acceptPlaceRecommendationById(recId: string): Promise<boolean> {
   const id = String(recId ?? "").trim()
   if (!id) return false
   const supabase = createClient()
-  const { data: auth } = await supabase.auth.getUser()
-  const me = auth.user?.id
-  if (!me) return false
 
   const { data: r, error } = await supabase
     .from("place_recommendations")
-    .select(
-      "id, sender_id, place_name, category, sub_category, address, image_url, rating, review_count, lat, lng, status, saved_place_id"
-    )
+    .select("id, status")
     .eq("id", id)
     .maybeSingle()
   if (error || !r) {
     if (error) logErr("acceptPlaceRecommendationById lookup", error)
     return false
   }
-  const rec = r as Record<string, unknown>
-  // 이미 담은 추천이면 중복 저장하지 않는다.
-  if (String(rec.status ?? "") === "saved" && rec.saved_place_id) return true
-
-  /**
-   * ⚠️ **이미 담아 둔 곳을 추천받았을 수도 있다.** 그냥 insert 하면
-   *    saved_places 의 유니크(user_id, dedupe_key)에 걸려 실패로 끝나고,
-   *    추천은 영영 '대기'로 남는다. 이미 있으면 그 행을 찾아 수락 처리만 한다 —
-   *    사용자에겐 똑같이 "담았다"로 보이는 게 맞다.
-   */
-  const { data: saved, error: insErr } = await supabase
-    .from("saved_places")
-    .upsert(
-      {
-        trip_id: null,
-        user_id: me,
-        place_name: rec.place_name,
-        category: rec.category,
-        sub_category: rec.sub_category,
-        address: rec.address,
-        image_url: rec.image_url,
-        rating: rec.rating,
-        review_count: rec.review_count ?? 0,
-        lat: rec.lat,
-        lng: rec.lng,
-        recommended_by: rec.sender_id,
-      },
-      { onConflict: "user_id,dedupe_key", ignoreDuplicates: true }
-    )
-    .select("id")
-  if (insErr) {
-    logErr("acceptPlaceRecommendationById insert", insErr)
-    return false
-  }
-
-  let savedId = (saved as { id: string }[] | null)?.[0]?.id ?? null
-  if (!savedId) {
-    const { data: existing } = await supabase
-      .from("saved_places")
-      .select("id")
-      .eq("user_id", me)
-      .is("trip_id", null)
-      .eq("place_name", String(rec.place_name ?? ""))
-      .limit(1)
-      .maybeSingle()
-    savedId = (existing as { id: string } | null)?.id ?? null
-  }
-  if (!savedId) return false
-
-  await supabase
-    .from("place_recommendations")
-    .update({ status: "saved", saved_place_id: savedId })
-    .eq("id", id)
-  return true
+  const status = String((r as { status?: string }).status ?? "")
+  // 이미 나의 찜으로 옮긴 것은 되돌리지 않는다
+  if (status === "saved" || status === "accepted") return true
+  return acceptRecommendation(id)
 }

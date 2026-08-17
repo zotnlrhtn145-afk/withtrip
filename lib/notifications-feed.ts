@@ -355,14 +355,18 @@ export async function acceptFeedNotification(
     return { toast: `${item.actorName}님과 친구가 되었어요.` }
   }
 
-  // 추천 맛집/장소 — '추가' 시 가고싶은곳(saved_places)에 담는다.
+  /*
+    추천 맛집/장소 — 받으면 **친구 추천찜에만** 올라간다.
+    ⚠️ 예전엔 여기서 바로 나의 찜에 복사했다. 남이 보낸 곳이 내가 담은 곳들 사이에
+       섞여 들어가서, 나의 찜으로 옮길지는 저장 > 친구 추천찜에서 고르게 바꿨다.
+  */
   if (item.type === "place_recommendation") {
     const ok = item.actionId ? await acceptPlaceRecommendationById(item.actionId) : false
     if (!ok) throw new Error("장소를 추가하지 못했어요.")
     if (item.notificationId) {
       await updateNotificationStatus(item.notificationId, "accepted")
     }
-    return { toast: "가고싶은곳에 추가했어요." }
+    return { toast: "친구 추천찜에 담았어요. 저장 > 친구 추천찜에서 볼 수 있어요." }
   }
 
   // clip_like / clip_comment — mark accepted/read, keep row

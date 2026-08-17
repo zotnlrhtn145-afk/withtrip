@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Check, CheckCircle2, ChevronLeft, Clock, ExternalLink, MapPin, Navigation, Phone, Plane, Star } from "lucide-react"
 
 import { DirectionsMenu } from "@/components/directions-menu"
@@ -8,7 +8,7 @@ import { InstagramIcon } from "@/components/icon-instagram"
 import { MiniMap } from "@/components/mini-map"
 import { PlaceReviews } from "@/components/place-reviews"
 import { curatePlaceCover } from "@/lib/place-cover-curate"
-import { fetchMyRating, fetchMyVisit, setVisited } from "@/lib/place-visits"
+import { fetchMyRating, fetchMyVisit, linkSavedPlaceKey, setVisited } from "@/lib/place-visits"
 import { supabase } from "@/lib/supabase"
 import { distanceMeters, estimateWalkMinutes, formatDistance } from "@/lib/geo"
 import { resizePlacePhotoUrl } from "@/lib/place-cover-image"
@@ -89,6 +89,12 @@ export function PlaceDetailSheet({
   const [myRating, setMyRating] = useState<number | null>(null)
   const [visitBusy, setVisitBusy] = useState(false)
   const gpid = detail?.placeId ?? null
+  /**
+   * 가게 열쇠를 `saved_places` 에 적어 뒀는가.
+   * ⚠️ 화면을 열 때 한 번 적는데 그때 실패하면 다녀옴이 저장 목록과 안 이어진다.
+   *    그래서 **다녀옴을 누르는 순간 한 번 더** 확인한다 — 그때가 실제로 필요해지는 시점이다.
+   */
+  const keyLinked = useRef(false)
 
   useEffect(() => {
     if (!gpid) {
@@ -104,11 +110,14 @@ export function PlaceDetailSheet({
      */
     const savedId = place?.savedPlaceId
     if (savedId && place?.googlePlaceId !== gpid) {
-      void supabase
-        .from("saved_places")
-        .update({ google_place_id: gpid })
-        .eq("id", savedId)
-        .then(() => onGooglePlaceId?.(savedId, gpid))
+      // ⚠️ 결과를 보고 넘어간다. 예전엔 흘려보내서, 실패하면 다녀옴·리뷰가
+      //    저장 목록과 영영 이어지지 않았다(그런 행이 실제로 DB 에 남아 있었다).
+      void linkSavedPlaceKey(savedId, gpid).then((ok) => {
+        keyLinked.current = ok
+        if (ok) onGooglePlaceId?.(savedId, gpid)
+      })
+    } else if (savedId) {
+      keyLinked.current = true
     }
 
     /**
@@ -160,6 +169,11 @@ export function PlaceDetailSheet({
     setVisitBusy(true)
     setVisitedState(next)
     setVisitedAt(next ? new Date().toISOString() : null)
+    // 다녀옴만 남고 열쇠가 없으면 저장 목록에서 이 가게를 못 알아본다 — 여기서 마지막으로 잡는다
+    const savedId = place?.savedPlaceId
+    if (next && !keyLinked.current && savedId) {
+      keyLinked.current = await linkSavedPlaceKey(savedId, gpid)
+    }
     const ok = await setVisited(gpid, next)
     setVisitBusy(false)
     if (!ok) {

@@ -26,6 +26,30 @@ async function myId(): Promise<string | null> {
   return data.user?.id ?? null
 }
 
+/**
+ * 저장한 장소에 **가게 열쇠(google_place_id)를 적어 둔다.**
+ *
+ * ⚠️ 이게 없으면 다녀옴·리뷰가 저장 목록과 이어지지 않는다.
+ *    다녀옴은 `place_visits(google_place_id)` 로만 남고, 목록은 `saved_places`
+ *    쪽 열쇠로 찾기 때문이다. **한쪽만 적히면 조용히 어긋난다.**
+ *
+ * ⚠️ 실제로 그렇게 어긋난 적이 있다 — 다녀옴은 남았는데 saved_places 는 비어 있어
+ *    목록에 체크가 영영 안 떴다. 원인은 이 쓰기를 **결과를 안 보고 흘려보낸 것**이었다.
+ *    그래서 여기서는 기다리고, 실패를 돌려준다. (앱도 같은 함수를 가지고 있다)
+ */
+export async function linkSavedPlaceKey(savedPlaceId: string, googlePlaceId: string): Promise<boolean> {
+  if (!savedPlaceId || !googlePlaceId) return false
+  const { error } = await supabase
+    .from("saved_places")
+    .update({ google_place_id: googlePlaceId })
+    .eq("id", savedPlaceId)
+  if (error) {
+    console.warn("[place-visits] 가게 열쇠 저장 실패:", error.message)
+    return false
+  }
+  return true
+}
+
 /** 내가 이 가게에 다녀왔는지 — 다녀왔다면 언제인지 */
 export async function fetchMyVisit(
   googlePlaceId: string

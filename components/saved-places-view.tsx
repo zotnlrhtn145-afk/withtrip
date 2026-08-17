@@ -1609,7 +1609,13 @@ export function SavedPlacesView() {
   )
 }
 
-/** 친구가 보낸 추천 목록 — 보낸 사람 프로필 + "내 저장에 담기" */
+/**
+ * 친구가 보낸 추천 목록 — 보낸 사람 프로필 + "나의 찜으로 담기".
+ *
+ * ⚠️ **받는 것과 나의 찜으로 옮기는 것은 다른 일이다.** 알림에서 받으면 여기(친구
+ *    추천찜)에만 남고, 나의 찜에는 이 버튼을 눌러야 간다. 예전엔 받는 즉시
+ *    나의 찜에 복사돼서 남이 보낸 곳이 내가 담은 곳들 사이에 섞여 들어갔다.
+ */
 function FriendRecsList({
   recs,
   savingId,
@@ -1675,7 +1681,7 @@ function FriendRecsList({
             {rec.status === "saved" ? (
               <span className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 py-2.5 text-sm font-bold text-slate-500">
                 <Check className="size-4 text-emerald-600" />
-                내 저장에 담김
+                나의 찜에 담김
               </span>
             ) : (
               <button
@@ -1689,7 +1695,7 @@ function FriendRecsList({
                 ) : (
                   <>
                     <Bookmark className="size-4" />
-                    내 저장에 담기
+                    나의 찜으로 담기
                   </>
                 )}
               </button>
