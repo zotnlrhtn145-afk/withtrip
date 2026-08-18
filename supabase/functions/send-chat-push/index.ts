@@ -125,8 +125,19 @@ Deno.serve(async (req) => {
       })
     )
 
-    const title = trip?.title ? String(trip.title) : "새 메시지"
+    /**
+     * 알림 제목.
+     *
+     * ⚠️ 예전엔 여행 제목이 비면 그냥 **"새 메시지"** 였다. 제목 없는 단톡방이
+     *    적지 않아서, 알림만 보고는 **누가 어디서 보냈는지 알 수 없었다.**
+     *    여행 제목 → 없으면 보낸 사람 이름 → 그것도 없을 때만 "새 메시지".
+     */
     const senderName = String((senderRes.data as { nickname?: string } | null)?.nickname ?? "").trim()
+    const title = trip?.title
+      ? String(trip.title)
+      : senderName
+        ? senderName
+        : "새 메시지"
     const preview = previewOf(record.kind, record.content)
 
     const messages = rows.map((t) => {

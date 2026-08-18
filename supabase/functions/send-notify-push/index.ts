@@ -30,6 +30,14 @@ const TITLE_BY_TYPE: Record<string, string> = {
   clip_like: "새 좋아요",
   clip_comment: "새 댓글",
   clip_post: "새 클립",
+  // ⚠️ 여기 없는 종류는 "새 알림"으로만 떴다. 실제로 쓰이는 것들을 채운다.
+  place_recommendation: "맛집 추천",
+  location_share: "위치 공유",
+  schedule_added: "일정 등록",
+  transport_added: "이동수단 등록",
+  accommodation_added: "숙소 등록",
+  expense_added: "지출 등록",
+  settlement_done: "정산 완료",
 }
 
 Deno.serve(async (req) => {
@@ -71,9 +79,28 @@ Deno.serve(async (req) => {
       actorName = String(actor?.nickname ?? "").trim()
     }
 
+    /**
+     * 알림 제목·내용.
+     *
+     * ⚠️ 제목은 **여행 이름**이 있으면 그걸 쓴다. "일정 등록 · 오수환" 보다
+     *    "제주도 여행" / "오수환님이 일정을 등록했어요" 가 훨씬 빨리 읽힌다.
+     * ⚠️ 내용은 알림을 만들 때 넣어 둔 message 를 쓰되, 비어 있으면
+     *    **누가 무엇을 했는지**로 채운다 — "새 알림"만 뜨면 열어 봐야 안다.
+     */
     const label = TITLE_BY_TYPE[record.type] ?? "새 알림"
-    const title = actorName ? `${label} · ${actorName}` : label
-    const body = (record.message ?? "").slice(0, 140) || label
+    /**
+     * ⚠️ `notifications` 에는 trip_id 칸이 **없다**(payload 에 들어오기도 한다).
+     *    여행 이름은 대개 message 안에 이미 들어 있다 —
+     *    "오정환님이 '고향투어'에 초대했습니다" 처럼.
+     *    그래서 제목은 종류로 두고 **내용을 그대로 보여주는 데** 집중한다.
+     */
+    const payloadTitle = String(
+      (record as { payload?: { tripTitle?: string } }).payload?.tripTitle ?? ""
+    ).trim()
+    const title = payloadTitle || (actorName ? `${label} · ${actorName}` : label)
+    // 내용이 비면 "새 알림"만 뜨고 열어 봐야 안다 — 누가 무엇을 했는지로 채운다
+    const fallback = actorName ? `${actorName}님의 ${label}` : label
+    const body = (record.message ?? "").slice(0, 140) || fallback
 
     const messages = tokens.map((to) => ({
       to,
