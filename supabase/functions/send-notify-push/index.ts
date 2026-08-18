@@ -107,7 +107,17 @@ Deno.serve(async (req) => {
       sound: "default",
       title,
       body,
-      data: { kind: "notification", type: record.type, referenceId: record.reference_id },
+      /*
+        ⚠️ **tripId 를 실어 보낸다.** 앱은 이걸 보고 "일정이 등록됐어요" 같은 알림을
+           누르면 알림함이 아니라 **그 여행으로 바로** 연다.
+      */
+      data: {
+        kind: "notification",
+        type: record.type,
+        referenceId: record.reference_id,
+        tripId:
+          (record as { payload?: { tripId?: string } }).payload?.tripId ?? undefined,
+      },
     }))
 
     // Expo Push API는 요청당 100개까지 → 100개씩 배치
