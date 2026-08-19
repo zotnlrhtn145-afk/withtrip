@@ -6,6 +6,7 @@ import {
   fetchDailyApiCost,
   fetchMonthCosts,
   fetchRecurring,
+  fetchSearchSavings,
   fetchSupabaseAddons,
   usdKrw,
 } from "@/lib/admin-billing"
@@ -40,6 +41,7 @@ export default async function CostsPage({
     fetchSupabaseAddons().catch(() => null),
     usdKrw().catch(() => 1380),
   ])
+  const savings = await fetchSearchSavings(month, monthEnd).catch(() => ({ hits: 0, entries: 0, usd: 0 }))
 
   const toKrw = (amount: number, currency: string) => (currency === "USD" ? amount * rate : amount)
   const totalKrw = costs.reduce((s, c) => s + toKrw(c.amount, c.currency), 0)
@@ -101,6 +103,20 @@ export default async function CostsPage({
           <div className="k">API 호출</div>
           <div className="v">{apiCost.reduce((s, r) => s + r.calls, 0).toLocaleString("ko-KR")}</div>
           <div className="d">이번 달 바깥으로 나간 유료 호출 수</div>
+        </div>
+        {/*
+          캐시는 잘 돌면 아무 일도 안 일어난 것처럼 보인다 —
+          얼마를 아꼈는지 보여야 수명을 늘릴지 줄일지 판단할 수 있다.
+        */}
+        <div className="wt-tile">
+          <div className="k">검색 캐시로 아낀 돈</div>
+          <div className="v" style={{ color: "var(--good)" }}>
+            {krw(savings.usd * rate)}
+            <small>원</small>
+          </div>
+          <div className="d">
+            같은 검색 {savings.hits.toLocaleString("ko-KR")}번을 구글에 안 물었습니다
+          </div>
         </div>
       </section>
 

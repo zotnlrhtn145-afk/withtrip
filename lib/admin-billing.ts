@@ -185,3 +185,32 @@ export function connectionStatus() {
     },
   ]
 }
+
+/**
+ * 검색 캐시가 막아 준 구글 호출 — 곧 아낀 돈.
+ *
+ * 이 숫자를 보여 주는 이유: 캐시는 **잘 돌면 아무 일도 안 일어난 것처럼 보인다.**
+ * 얼마를 아꼈는지 눈에 보여야 수명을 늘릴지 줄일지 판단할 수 있다.
+ */
+export async function fetchSearchSavings(
+  from: string,
+  to: string
+): Promise<{ hits: number; entries: number; usd: number }> {
+  const c = db()
+  const { data } = await c.rpc("admin_search_cache_savings", { p_from: from, p_to: to })
+  const row = (data ?? [])[0] as { hits?: number; entries?: number } | undefined
+  const hits = Number(row?.hits ?? 0)
+
+  // 막아 준 호출 수 × Text Search 단가
+  const { data: price } = await c
+    .from("api_prices")
+    .select("usd_per_1k")
+    .eq("vendor", "google_places")
+    .eq("endpoint", "textsearch")
+    .order("from_date", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const per1k = Number(price?.usd_per_1k ?? 32)
+  return { hits, entries: Number(row?.entries ?? 0), usd: (hits / 1000) * per1k }
+}

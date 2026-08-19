@@ -219,3 +219,85 @@ export async function writePlaces(inputs: PlaceCacheInput[]): Promise<void> {
     console.warn("[places-cache] write 예외(무시):", err)
   }
 }
+
+/* ────────────────────────────────────────────────────────────
+   검색어 캐시 (Text Search 아끼기)
+
+   Places 요금에서 Text Search 가 가장 비싸다(1000회당 $32).
+   Details 는 위에서 이미 캐시하고 있었지만 **Text Search 는 매번 그대로
+   나가고 있었다.** 사람들이 찾는 곳은 크게 겹치므로, 한 번 받아 두면
+   두 번째부터는 공짜다.
+   ──────────────────────────────────────────────────────────── */
+
+/**
+ * 검색어 캐시 수명.
+ *
+ * ⚠️ 길수록 돈은 아끼지만 **새로 생긴 가게가 늦게 보인다.** 품질을 지키는 쪽으로
+ *    보름을 잡았다 — 같은 검색이 몰리는 건 대개 며칠 안이라 이 정도면 대부분
+ *    잡히고, 새 가게도 반달 안에는 들어온다.
+ */
+export const SEARCH_STALE_DAYS = 14
+
+/**
+ * 검색어를 캐시 열쇠로 바꾼다.
+ *
+ * ⚠️ "강남 라멘" · "강남라멘" · "  강남   라멘 " 은 **같은 검색이다.**
+ *    그대로 열쇠로 쓰면 띄어쓰기만 다른 검색이 저마다 구글을 부른다.
+ */
+export function searchCacheKey(query: string, kind?: string | null): string {
+  const q = String(query ?? "")
+    .toLowerCase()
+    .normalize("NFKC")
+    // 한글·영문·숫자만 남긴다 (띄어쓰기·기호 차이를 없앤다)
+    .replace(/[^0-9a-z가-힣ㄱ-ㅎㅏ-ㅣ]+/g, "")
+  return `${kind || "any"}:${q}`
+}
+
+/** 캐시된 place_id 목록. 없거나 오래됐으면 null */
+export async function getCachedSearch(key: string): Promise<string[] | null> {
+  try {
+    const admin = getSupabaseAdmin()
+    if (!admin) return null
+    const { data, error } = await admin
+      .from("place_search_cache")
+      .select("place_ids,at")
+      .eq("q_key", key)
+      .maybeSingle()
+    if (error || !data) return null
+
+    const ts = Date.parse(data.at as string)
+    if (!Number.isFinite(ts) || Date.now() - ts > SEARCH_STALE_DAYS * 86_400_000) return null
+
+    const ids = (data.place_ids as string[]) ?? []
+    if (ids.length === 0) return null
+
+    /*
+      ⚠️ **`void admin.rpc(...)` 로 두면 안 된다.** supabase-js 의 질의 객체는
+         `await` 하거나 `.then()` 을 붙이기 전까지 **아예 실행되지 않는다.**
+         그래서 적중 횟수가 영영 0으로 남고, 아낀 돈이 항상 0원으로 보였다.
+         (실제로 그렇게 만들었다가 확인 중에 잡았다)
+         구글 호출 하나를 아낀 참이라 이 작은 UPDATE 를 기다릴 값은 충분하다.
+    */
+    await admin.rpc("bump_search_cache_hit", { p_key: key })
+    return ids
+  } catch {
+    // ⚠️ 캐시가 죽어도 검색은 되어야 한다 — 조용히 미스로 취급한다
+    return null
+  }
+}
+
+/** 구글에서 받은 결과를 캐시에 넣는다 */
+export async function putCachedSearch(key: string, placeIds: string[]): Promise<void> {
+  try {
+    const admin = getSupabaseAdmin()
+    if (!admin || placeIds.length === 0) return
+    await admin
+      .from("place_search_cache")
+      .upsert(
+        { q_key: key, place_ids: placeIds, at: new Date().toISOString() },
+        { onConflict: "q_key" }
+      )
+  } catch {
+    /* 못 넣어도 다음에 다시 받으면 된다 */
+  }
+}

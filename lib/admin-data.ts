@@ -181,25 +181,60 @@ export async function fetchHiddenKeys(): Promise<Set<string>> {
  *
  * 종류를 한 줄기로 합쳐서 준다 — 관리자가 "대화 / 클립 / 맛집"을 따로 오가지 않고
  * **한 화면에서 최근 순으로 훑다가 이상한 것만 가리게** 하려는 것이다.
+ *
+ * ⚠️ **한 번에 조금씩만 가져온다.** 예전엔 표 4개에서 150건씩 긁어 와서 첫 화면이
+ *    느렸다. 검열은 위에서부터 훑는 일이라 아래쪽 100건은 대개 안 본다 —
+ *    보이는 만큼만 가져오고 스크롤하면 이어서 준다.
+ *
+ * ⚠️ 기본은 **최근 한 달**이다. 오래된 글까지 매번 훑으면 표가 커질수록
+ *    느려지는데, 검열에서 중요한 건 갓 올라온 글이다.
  */
-export async function fetchContent(kind: ContentKind | "all", limit = 100): Promise<ContentItem[]> {
+export async function fetchContent(
+  kind: ContentKind | "all",
+  opts: {
+    /** 한 번에 몇 건 */
+    limit?: number
+    /** 이 시각보다 **이전** 것만 (스크롤해서 더 볼 때 쓴다) */
+    before?: string
+    /** 며칠 치까지 볼 것인가 */
+    days?: number
+  } = {}
+): Promise<ContentItem[]> {
+  const limit = opts.limit ?? 15
+  const days = opts.days ?? 30
   const c = db()
   const hidden = await fetchHiddenKeys()
   const want = (k: ContentKind) => kind === "all" || kind === k
 
+  const since = new Date(Date.now() - days * 86_400_000).toISOString()
+
+  /*
+    ⚠️ 표마다 `limit` 건씩 가져와서 합친 뒤 다시 자른다.
+       표마다 limit/4 씩 가져오면 안 된다 — 한 종류만 몰려 있는 구간에서
+       가져올 게 남았는데도 빈손으로 돌아와 목록이 끝난 것처럼 보인다.
+  */
+  const one = async (table: string, cols: string, extra?: (q: never) => never) => {
+    let q = c.from(table).select(cols).gte("created_at", since)
+    if (opts.before) q = q.lt("created_at", opts.before)
+    if (table === "trip_messages") q = q.is("deleted_at", null)
+    const { data } = await q.order("created_at", { ascending: false }).limit(limit)
+    void extra
+    return { data: (data ?? []) as unknown as Record<string, unknown>[] }
+  }
+
   const [clips, reviews, messages, places] = await Promise.all([
     want("clip")
-      ? c.from("trip_clips").select("id,caption,media_url,media_type,created_at,user_id,trip_id").order("created_at", { ascending: false }).limit(limit)
-      : Promise.resolve({ data: [] }),
+      ? one("trip_clips", "id,caption,media_url,media_type,created_at,user_id,trip_id")
+      : Promise.resolve({ data: [] as Record<string, unknown>[] }),
     want("review")
-      ? c.from("place_reviews").select("id,body,photos,rating,created_at,user_id,google_place_id").order("created_at", { ascending: false }).limit(limit)
-      : Promise.resolve({ data: [] }),
+      ? one("place_reviews", "id,body,photos,rating,created_at,user_id,google_place_id")
+      : Promise.resolve({ data: [] as Record<string, unknown>[] }),
     want("message")
-      ? c.from("trip_messages").select("id,content,kind,created_at,user_id,trip_id,deleted_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(limit)
-      : Promise.resolve({ data: [] }),
+      ? one("trip_messages", "id,content,kind,created_at,user_id,trip_id,deleted_at")
+      : Promise.resolve({ data: [] as Record<string, unknown>[] }),
     want("place")
-      ? c.from("saved_places").select("id,place_name,memo,image_url,category,created_at,user_id,address").order("created_at", { ascending: false }).limit(limit)
-      : Promise.resolve({ data: [] }),
+      ? one("saved_places", "id,place_name,memo,image_url,category,created_at,user_id,address")
+      : Promise.resolve({ data: [] as Record<string, unknown>[] }),
   ])
 
   type Row = Record<string, unknown>
@@ -209,8 +244,12 @@ export async function fetchContent(kind: ContentKind | "all", limit = 100): Prom
     ...((messages.data ?? []) as Row[]).map((r) => ({ kind: "message" as const, r })),
     ...((places.data ?? []) as Row[]).map((r) => ({ kind: "place" as const, r })),
   ]
+    .sort((a, b) => String(b.r.created_at ?? "").localeCompare(String(a.r.created_at ?? "")))
+    .slice(0, limit)
 
-  // 글쓴이 이름과 여행 제목은 한 번에 몰아서 가져온다 (줄마다 조회하면 100번 왕복한다)
+  if (rows.length === 0) return []
+
+  // 글쓴이 이름과 여행 제목은 한 번에 몰아서 가져온다 (줄마다 조회하면 그만큼 왕복한다)
   const userIds = [...new Set(rows.map(({ r }) => r.user_id as string).filter(Boolean))]
   const tripIds = [...new Set(rows.map(({ r }) => r.trip_id as string).filter(Boolean))]
   const [{ data: profs }, { data: trips }] = await Promise.all([
@@ -220,7 +259,7 @@ export async function fetchContent(kind: ContentKind | "all", limit = 100): Prom
   const nameOf = new Map((profs ?? []).map((p) => [p.id as string, (p.nickname as string) || (p.email as string) || "이름 없음"]))
   const tripOf = new Map((trips ?? []).map((t) => [t.id as string, t.title as string]))
 
-  const items: ContentItem[] = rows.map(({ kind: k, r }) => {
+  return rows.map(({ kind: k, r }) => {
     const base = {
       kind: k,
       id: r.id as string,
@@ -236,12 +275,7 @@ export async function fetchContent(kind: ContentKind | "all", limit = 100): Prom
       return { ...base, text: (r.body as string) ?? "", media: photos[0] ?? null, where: `별점 ${r.rating ?? "-"}` }
     }
     if (k === "message")
-      return {
-        ...base,
-        text: messageText(r),
-        media: null,
-        where: tripOf.get(r.trip_id as string) ?? null,
-      }
+      return { ...base, text: messageText(r), media: null, where: tripOf.get(r.trip_id as string) ?? null }
     return {
       ...base,
       text: [r.place_name, r.memo].filter(Boolean).join(" — "),
@@ -249,8 +283,6 @@ export async function fetchContent(kind: ContentKind | "all", limit = 100): Prom
       where: (r.address as string) ?? null,
     }
   })
-
-  return items.sort((a, b) => (b.at ?? "").localeCompare(a.at ?? "")).slice(0, limit)
 }
 
 export type Report = {

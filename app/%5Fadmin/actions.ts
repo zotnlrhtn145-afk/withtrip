@@ -12,6 +12,7 @@ import {
   verifyLogin,
   verifySession,
 } from "@/lib/admin-auth"
+import { fetchContent, type ContentItem, type ContentKind } from "@/lib/admin-data"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 
 /**
@@ -304,4 +305,22 @@ export async function sendAnnouncementAction(
 
   revalidatePath("/_admin/announce")
   return { sent: rows.length }
+}
+
+/**
+ * 글 목록 다음 쪽.
+ *
+ * 스크롤이 바닥에 닿으면 화면에서 부른다 — 처음부터 다 불러오면 첫 화면이
+ * 느려지는데, 검열은 위에서부터 훑는 일이라 아래쪽은 대개 안 본다.
+ */
+export async function loadMoreContentAction(
+  kind: string,
+  before: string,
+  days: number
+): Promise<ContentItem[]> {
+  await assertAdmin()
+  const k = (["clip", "review", "message", "place"].includes(kind) ? kind : "all") as
+    | ContentKind
+    | "all"
+  return fetchContent(k, { before, days, limit: 15 })
 }

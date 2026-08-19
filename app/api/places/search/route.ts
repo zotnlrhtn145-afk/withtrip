@@ -8,7 +8,10 @@ import {
 } from "@/lib/place-cover-image"
 import { guessSubCategory } from "@/lib/place-subcategories"
 import {
+  getCachedSearch,
+  putCachedSearch,
   readPlacesByGoogleIds,
+  searchCacheKey,
   writePlaces,
   type CachedPlace,
   type PlaceCacheInput,
@@ -329,42 +332,66 @@ export async function GET(request: Request) {
   }
 
   try {
-    const url = new URL("https://maps.googleapis.com/maps/api/place/textsearch/json")
-    // Bias lodging search when user selected 숙소; keep query free-form otherwise.
-    const searchQuery =
-      kind === "stay" && !/\b(hotel|숙소|리조트|료칸|resort)\b/i.test(q)
-        ? `${q} hotel`
-        : q
-    url.searchParams.set("query", searchQuery)
-    url.searchParams.set("key", apiKey)
-    url.searchParams.set("language", "ko")
-    if (kind === "stay") {
-      url.searchParams.set("type", "lodging")
-    }
+    /*
+      ⚠️ Text Search 는 Places 요금 중 **제일 비싸다**(1000회당 $32).
+         같은 검색어는 사람마다 계속 되풀이되므로, 한 번 받아 두면
+         두 번째부터는 구글을 아예 안 부른다.
+         캐시에 담는 건 place_id 목록뿐이고, 이름·평점은 `places` 표가
+         자기 수명(30일)을 따로 지킨다 — 그래서 오래된 정보가 나가지 않는다.
+    */
+    const cacheKey = searchCacheKey(q, kind)
+    const cachedIds = await getCachedSearch(cacheKey)
 
-    const res = await fetch(url.toString(), { cache: "no-store" })
-    if (!res.ok) {
-      console.error("[api/places/search] upstream status:", res.status)
-      return NextResponse.json(
-        { results: [], error: "UPSTREAM_HTTP", warning: `Google HTTP ${res.status}` },
-        { status: 200 }
-      )
-    }
+    let top: GoogleTextSearchItem[]
 
-    const json = (await res.json()) as GoogleTextSearchResponse
-    if (json.status && json.status !== "OK" && json.status !== "ZERO_RESULTS") {
-      console.error("[api/places/search] google status:", json.status, json.error_message)
-      return NextResponse.json(
-        {
-          results: [],
-          error: json.status,
-          warning: json.error_message || `Google Places status: ${json.status}`,
-        },
-        { status: 200 }
-      )
-    }
+    if (cachedIds) {
+      // place_id 만 아는 상태로 넘어간다. 아래 Details 캐시가 나머지를 채운다.
+      top = cachedIds.slice(0, 8).map((id) => ({ place_id: id }) as GoogleTextSearchItem)
+    } else {
+      const url = new URL("https://maps.googleapis.com/maps/api/place/textsearch/json")
+      // Bias lodging search when user selected 숙소; keep query free-form otherwise.
+      const searchQuery =
+        kind === "stay" && !/\b(hotel|숙소|리조트|료칸|resort)\b/i.test(q)
+          ? `${q} hotel`
+          : q
+      url.searchParams.set("query", searchQuery)
+      url.searchParams.set("key", apiKey)
+      url.searchParams.set("language", "ko")
+      if (kind === "stay") {
+        url.searchParams.set("type", "lodging")
+      }
 
-    const top = (json.results ?? []).slice(0, 8)
+      const res = await fetch(url.toString(), { cache: "no-store" })
+      if (!res.ok) {
+        console.error("[api/places/search] upstream status:", res.status)
+        return NextResponse.json(
+          { results: [], error: "UPSTREAM_HTTP", warning: `Google HTTP ${res.status}` },
+          { status: 200 }
+        )
+      }
+
+      const json = (await res.json()) as GoogleTextSearchResponse
+      if (json.status && json.status !== "OK" && json.status !== "ZERO_RESULTS") {
+        console.error("[api/places/search] google status:", json.status, json.error_message)
+        return NextResponse.json(
+          {
+            results: [],
+            error: json.status,
+            warning: json.error_message || `Google Places status: ${json.status}`,
+          },
+          { status: 200 }
+        )
+      }
+
+      top = (json.results ?? []).slice(0, 8)
+
+      /*
+        ⚠️ 결과가 없을 때는 캐시하지 않는다. 오타로 한 번 빈손이 나온 검색어가
+           보름 동안 계속 빈손으로 굳어 버린다.
+      */
+      const ids = top.map((t) => t.place_id ?? "").filter(Boolean)
+      if (ids.length > 0) void putCachedSearch(cacheKey, ids)
+    }
 
     // 캐시 우선: 이미 아는 place_id는 구글 Place Details를 호출하지 않는다.
     // (검색 1회당 Details 최대 8회가 비용의 대부분이었음)
@@ -442,7 +469,7 @@ export async function GET(request: Request) {
 
     const googleDetailCalls = top.filter((i) => i.place_id).length - cacheHits
     console.log(
-      `[api/places/search] q="${q}" 캐시적중 ${cacheHits}건 / Details 호출 ${googleDetailCalls}건`
+      `[api/places/search] q="${q}" 검색캐시=${cachedIds ? "적중" : "미스"} / Details 캐시적중 ${cacheHits}건 / Details 호출 ${googleDetailCalls}건`
     )
 
     return NextResponse.json({
