@@ -145,13 +145,21 @@ export function installFetchMeter(): void {
 
     let inTok: number | null = null
     let outTok: number | null = null
-    if (kind.vendor === "gemini" && res.ok) {
+    /*
+      ⚠️ **스트리밍 응답은 손대지 않는다.** 복사본을 `.json()` 으로 읽으면
+         스트림이 다 끝날 때까지 기다리게 되는데, 그동안 부른 쪽은 아무것도
+         못 받는다 — 한 글자씩 나오던 답이 통째로 멈췄다가 한 번에 나온다.
+         (지금은 스트리밍을 안 쓰지만, 나중에 쓰기 시작할 때 원인을 찾기
+          아주 어려운 종류의 고장이라 미리 막아 둔다. 토큰 수는 포기한다.)
+    */
+    const streaming = url.includes(":streamGenerateContent")
+    if (kind.vendor === "gemini" && res.ok && !streaming) {
       try {
         const copy = res.clone()
         const json = (await copy.json()) as unknown
         ;({ inTok, outTok } = tokensOf(json))
       } catch {
-        /* 스트리밍이거나 JSON 이 아니면 토큰은 모르는 채로 둔다 */
+        /* JSON 이 아니면 토큰은 모르는 채로 둔다 */
       }
     }
 
