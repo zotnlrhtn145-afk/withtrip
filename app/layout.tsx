@@ -2,7 +2,9 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Plus_Jakarta_Sans, Noto_Sans_KR } from 'next/font/google'
 import Script from 'next/script'
+import { Suspense } from 'react'
 import { AppShell } from '@/components/app-shell'
+import { PageViewTracker } from '@/components/page-view-tracker'
 import './globals.css'
 
 /**
@@ -80,6 +82,9 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: KAKAO_INAPP_ESCAPE_SCRIPT }}
         />
         <AppShell>{children}</AppShell>
+        <Suspense fallback={null}>
+          <PageViewTracker />
+        </Suspense>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

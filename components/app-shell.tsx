@@ -71,6 +71,16 @@ function AppShellInner({ children }: { children: ReactNode }) {
 
 /** Global shell: slim icon sidebar + main content. */
 export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname()
+
+  /*
+    관리자 화면은 이 껍데기를 쓰지 않는다.
+    ⚠️ 단순히 "사이드바가 안 어울려서"가 아니다 — TripsProvider·
+       NotificationsProvider 가 **일반 사용자 세션으로 데이터를 불러온다.**
+       관리자는 그 세션이 없으니 매번 실패하는 요청이 깔린다.
+  */
+  if (pathname?.startsWith("/_admin")) return <>{children}</>
+
   return (
     <TripsProvider>
       <NotificationsProvider>

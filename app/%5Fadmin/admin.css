@@ -1,0 +1,558 @@
+/*
+  관리자 화면 전용 옷.
+
+  ⚠️ **일반 화면과 눈에 띄게 달라야 한다.** 여기서는 남의 글을 지우고 남의
+     계정을 본다 — 실수로 "지금 어디에 있는지" 헷갈리면 안 된다. 그래서
+     서비스의 흰 바탕·노란 강조 대신 **짙은 남색 사이드바 + 회색 바탕**을 쓴다.
+     색은 서비스의 것을 그대로 가져오되(호박색 강조), 배치를 달리해서
+     한눈에 다른 곳임을 알게 한다.
+*/
+
+.wt-admin {
+  --ink: #151d2b;
+  --ink-2: #1d2839;
+  --ink-line: #2a3648;
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --line: #e3e6ea;
+  --tx: #18212f;
+  --tx-2: #5a6575;
+  --tx-3: #8b949f;
+  --amber: #e59500;
+  --amber-soft: #fdf3e0;
+  --good: #15795c;
+  --warn: #a86400;
+  --crit: #b23a32;
+  --bar: #3f6b8f;
+  --bar-soft: #dde6ee;
+  --r: 10px;
+
+  background: var(--bg);
+  color: var(--tx);
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", Pretendard, "Malgun Gothic", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  /* 숫자를 세로로 세울 때 자릿수가 흔들리지 않게 */
+  font-variant-numeric: tabular-nums;
+  min-height: 100vh;
+}
+
+@media (prefers-color-scheme: dark) {
+  .wt-admin {
+    --ink: #0f1622;
+    --ink-2: #16202e;
+    --ink-line: #26313f;
+    --bg: #0c1219;
+    --card: #141c26;
+    --line: #242e3a;
+    --tx: #e6ebf1;
+    --tx-2: #9aa5b3;
+    --tx-3: #6b7684;
+    --amber: #f0aa2c;
+    --amber-soft: #2a2113;
+    --good: #3fb894;
+    --warn: #d99a2b;
+    --crit: #e2726a;
+    --bar: #6ea3cd;
+    --bar-soft: #1e2b38;
+  }
+}
+
+.wt-admin * {
+  box-sizing: border-box;
+}
+
+.wt-wrap {
+  display: grid;
+  grid-template-columns: 216px 1fr;
+  min-height: 100vh;
+}
+
+/* ── 사이드바 ─────────────────────────── */
+.wt-side {
+  background: var(--ink);
+  color: #c9d3e0;
+  padding: 18px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wt-brand {
+  padding: 0 18px 16px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-bottom: 1px solid var(--ink-line);
+  margin-bottom: 12px;
+}
+.wt-brand img {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  flex: none;
+}
+.wt-brand b {
+  color: #fff;
+  font-size: 14.5px;
+  letter-spacing: -0.2px;
+}
+.wt-brand span {
+  display: block;
+  font-size: 10.5px;
+  color: #7d8ba0;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+.wt-navlabel {
+  font-size: 10.5px;
+  color: #6b7994;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 14px 18px 6px;
+}
+.wt-nav {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 18px;
+  color: #c9d3e0;
+  text-decoration: none;
+  font-size: 13.5px;
+  border-left: 2px solid transparent;
+}
+.wt-nav:hover {
+  background: var(--ink-2);
+  color: #fff;
+}
+.wt-nav.on {
+  background: var(--ink-2);
+  color: #fff;
+  border-left-color: var(--amber);
+  font-weight: 600;
+}
+.wt-nav .ic {
+  width: 15px;
+  text-align: center;
+  opacity: 0.85;
+  font-size: 13px;
+}
+.wt-nav .cnt {
+  margin-left: auto;
+  font-size: 11px;
+  background: #3a4759;
+  color: #dbe3ec;
+  border-radius: 99px;
+  padding: 1px 6px;
+}
+.wt-nav .cnt.hot {
+  background: var(--crit);
+  color: #fff;
+}
+.wt-side .foot {
+  margin-top: auto;
+  padding: 14px 18px 0;
+  border-top: 1px solid var(--ink-line);
+  font-size: 11.5px;
+  color: #6b7994;
+}
+.wt-side .foot form {
+  margin-top: 6px;
+}
+.wt-side .foot button {
+  font: inherit;
+  font-size: 11.5px;
+  background: transparent;
+  border: 1px solid var(--ink-line);
+  color: #9fadc2;
+  border-radius: 6px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+.wt-side .foot button:hover {
+  color: #fff;
+  border-color: #4a566d;
+}
+
+/* ── 본문 ─────────────────────────────── */
+.wt-main {
+  padding: 20px 24px 40px;
+  min-width: 0;
+}
+.wt-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.wt-admin h1 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: -0.3px;
+}
+.wt-sub {
+  color: var(--tx-2);
+  font-size: 12.5px;
+  margin-top: 3px;
+}
+.wt-seg {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--card);
+}
+.wt-seg a {
+  padding: 6px 12px;
+  font-size: 12.5px;
+  color: var(--tx-2);
+  border-right: 1px solid var(--line);
+  text-decoration: none;
+}
+.wt-seg a:last-child {
+  border-right: 0;
+}
+.wt-seg a.on {
+  background: var(--ink);
+  color: #fff;
+  font-weight: 600;
+}
+
+.wt-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.wt-tile {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 14px 15px;
+}
+.wt-tile .k {
+  font-size: 11.5px;
+  color: var(--tx-2);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.wt-tile .v {
+  font-size: 25px;
+  font-weight: 750;
+  letter-spacing: -0.6px;
+  margin-top: 5px;
+}
+.wt-tile .v small {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tx-2);
+  margin-left: 2px;
+}
+.wt-tile .d {
+  font-size: 11.5px;
+  margin-top: 3px;
+  color: var(--tx-2);
+}
+.wt-up {
+  color: var(--good);
+  font-weight: 650;
+}
+.wt-dn {
+  color: var(--crit);
+  font-weight: 650;
+}
+.wt-tile.accent {
+  border-color: var(--amber);
+  background: linear-gradient(0deg, var(--amber-soft), var(--card) 62%);
+}
+
+.wt-grid {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+  /* 옆 카드가 길다고 따라 늘어나면 아래가 텅 빈 채로 남는다 */
+  align-items: start;
+}
+.wt-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .wt-grid {
+    grid-template-columns: 1fr;
+  }
+  .wt-wrap {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 700px) {
+  .wt-split {
+    grid-template-columns: 1fr;
+  }
+}
+.wt-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 14px 15px;
+}
+.wt-card h2 {
+  margin: 0 0 2px;
+  font-size: 13.5px;
+  letter-spacing: -0.1px;
+}
+.wt-card .cap {
+  font-size: 11.5px;
+  color: var(--tx-2);
+  margin-bottom: 12px;
+}
+
+.wt-admin table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.wt-admin th {
+  text-align: left;
+  font-size: 11px;
+  color: var(--tx-2);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0 0 7px;
+  border-bottom: 1px solid var(--line);
+}
+.wt-admin td {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.wt-admin tr:last-child td {
+  border-bottom: 0;
+}
+.wt-num {
+  text-align: right;
+}
+.wt-muted {
+  color: var(--tx-2);
+}
+.wt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 650;
+  padding: 2px 7px;
+  border-radius: 99px;
+  border: 1px solid;
+}
+.wt-chip.ok {
+  color: var(--good);
+  border-color: color-mix(in srgb, var(--good) 35%, transparent);
+  background: color-mix(in srgb, var(--good) 8%, transparent);
+}
+.wt-chip.wr {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 35%, transparent);
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+}
+.wt-chip.cr {
+  color: var(--crit);
+  border-color: color-mix(in srgb, var(--crit) 35%, transparent);
+  background: color-mix(in srgb, var(--crit) 8%, transparent);
+}
+.wt-chip.nt {
+  color: var(--tx-2);
+  border-color: var(--line);
+}
+.wt-btn {
+  font: inherit;
+  font-size: 11.5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--tx-2);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+.wt-btn:hover {
+  border-color: var(--tx-3);
+  color: var(--tx);
+}
+.wt-btn.dg {
+  color: var(--crit);
+  border-color: color-mix(in srgb, var(--crit) 35%, transparent);
+}
+.wt-btn.pr {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+.wt-scroll {
+  overflow-x: auto;
+}
+.wt-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.wt-barrow {
+  display: grid;
+  grid-template-columns: minmax(96px, 30%) 1fr 66px;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+}
+.wt-track {
+  height: 9px;
+  background: var(--bar-soft);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.wt-fill {
+  height: 100%;
+  background: var(--bar);
+  border-radius: 5px;
+}
+.wt-note {
+  font-size: 11px;
+  color: var(--tx-3);
+  margin-top: 10px;
+}
+
+/* ── 입력 ─────────────────────────────── */
+.wt-admin input[type="text"],
+.wt-admin input[type="password"],
+.wt-admin input[type="number"],
+.wt-admin input[type="date"],
+.wt-admin select,
+.wt-admin textarea {
+  font: inherit;
+  font-size: 12.5px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--tx);
+  width: 100%;
+}
+.wt-admin input:focus-visible,
+.wt-admin select:focus-visible,
+.wt-admin textarea:focus-visible,
+.wt-btn:focus-visible,
+.wt-nav:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 1px;
+}
+
+/* ── 로그인 ───────────────────────────── */
+.wt-login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.wt-login form {
+  width: 100%;
+  max-width: 320px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 26px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.wt-login .head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 6px;
+}
+.wt-login .head img {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+}
+.wt-login label {
+  font-size: 11.5px;
+  color: var(--tx-2);
+  display: block;
+  margin-bottom: 4px;
+}
+.wt-login .err {
+  font-size: 12px;
+  color: var(--crit);
+  background: color-mix(in srgb, var(--crit) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--crit) 30%, transparent);
+  border-radius: 7px;
+  padding: 7px 9px;
+}
+.wt-login .go {
+  font: inherit;
+  font-weight: 650;
+  font-size: 13px;
+  background: var(--ink);
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  padding: 9px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+/* ── 차트 ─────────────────────────────── */
+.wt-chart {
+  width: 100%;
+  display: block;
+  overflow: visible;
+}
+.wt-chart .axis {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.wt-chart .lbl {
+  font-size: 10px;
+  fill: var(--tx-3);
+}
+.wt-chart .bar {
+  fill: var(--bar);
+}
+.wt-chart .bar.hi {
+  fill: var(--amber);
+}
+.wt-chart .line {
+  fill: none;
+  stroke: var(--bar);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.wt-chart .area {
+  fill: var(--bar);
+  opacity: 0.1;
+}
+.wt-chart .dot {
+  fill: var(--bar);
+  stroke: var(--card);
+  stroke-width: 2;
+}
+.wt-chart .hit:hover ~ .bar,
+.wt-chart g:hover > .bar {
+  fill: var(--amber);
+}
+
+.wt-empty {
+  font-size: 12.5px;
+  color: var(--tx-3);
+  padding: 18px 0;
+  text-align: center;
+}
