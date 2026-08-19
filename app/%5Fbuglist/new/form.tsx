@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react"
 
 import { createClient } from "@/utils/supabase/client"
 
-import { createBugAction } from "../actions"
+
 
 type Picked = { file: File; url: string; kind: "image" | "video"; path?: string; done: boolean }
 
@@ -100,24 +100,63 @@ export function NewBugForm() {
 
   const uploading = picked.some((p) => !p.done)
 
+  /**
+   * 보내기.
+   *
+   * ⚠️ 서버 액션이 아니라 **평범한 API 주소**로 보낸다. 서버 액션은 새 배포가
+   *    올라가면 이전 화면의 주소가 무효가 되어, 쓰던 사람이 "Load failed" 만
+   *    보고 글을 못 보냈다(아이폰 사파리에서 실제로 겪음).
+   *
+   * ⚠️ 한 번은 **다시 시도한다.** 폰에서는 잠깐 끊기는 일이 흔한데, 길게 쓴 글을
+   *    한 번 실패했다고 날려 버리면 다시 쓸 마음이 안 든다.
+   */
   const submit = async (fd: FormData) => {
+    const bodyText = String(fd.get("body") ?? "").trim()
+    if (!bodyText) {
+      setErr("무슨 일이 있었는지 적어 주세요")
+      return
+    }
+
     setBusy(true)
     setErr(null)
-    fd.set("severity", severity)
-    fd.set("platform", env.platform)
-    fd.set("device", env.device)
-    fd.set("os_version", env.os)
-    fd.set(
-      "media",
-      picked.filter((p) => p.path).map((p) => `${p.kind}|${p.path}|${p.file.size}`).join("\n")
-    )
+
+    const payload = {
+      body: bodyText,
+      severity,
+      platform: env.platform,
+      device: env.device,
+      os_version: env.os,
+      media: picked
+        .filter((p) => p.path)
+        .map((p) => ({ kind: p.kind, path: p.path as string, bytes: p.file.size })),
+    }
+
+    const send = async () => {
+      const res = await fetch("/api/buglist/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string }
+      if (!res.ok || !json.ok) throw new Error(json.error || `보내지 못했습니다 (${res.status})`)
+    }
+
     try {
-      await createBugAction(fd)
+      try {
+        await send()
+      } catch {
+        // 한 번 더 — 잠깐 끊긴 것뿐일 수 있다
+        await new Promise((r) => setTimeout(r, 1200))
+        await send()
+      }
+      router.replace("/_buglist?s=mine")
     } catch (e) {
-      // redirect() 도 예외로 올라온다 — 진짜 오류만 보여 준다
       const msg = e instanceof Error ? e.message : ""
-      if (msg.includes("NEXT_REDIRECT")) return
-      setErr(msg || "보내지 못했습니다")
+      setErr(
+        /load failed|failed to fetch|networkerror/i.test(msg)
+          ? "연결이 잠깐 끊겼어요. 쓰신 내용은 그대로 있으니 다시 눌러 주세요."
+          : msg || "보내지 못했습니다"
+      )
       setBusy(false)
     }
   }
