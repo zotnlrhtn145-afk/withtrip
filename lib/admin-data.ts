@@ -203,10 +203,16 @@ export async function fetchContent(
   const limit = opts.limit ?? 15
   const days = opts.days ?? 30
   const c = db()
-  const hidden = await fetchHiddenKeys()
   const want = (k: ContentKind) => kind === "all" || kind === k
 
   const since = new Date(Date.now() - days * 86_400_000).toISOString()
+
+  /*
+    ⚠️ 가려진 목록을 **먼저 기다리지 않는다.** 글 목록과 아무 상관이 없는
+       조회라, 순서대로 두면 왕복이 한 겹 더 생긴다. 운영에서는 왕복 하나가
+       수백 ms 다 — 로컬에서는 티가 안 나서 놓치기 쉽다.
+  */
+  const hiddenPromise = fetchHiddenKeys()
 
   /*
     ⚠️ 표마다 `limit` 건씩 가져와서 합친 뒤 다시 자른다.
@@ -252,9 +258,10 @@ export async function fetchContent(
   // 글쓴이 이름과 여행 제목은 한 번에 몰아서 가져온다 (줄마다 조회하면 그만큼 왕복한다)
   const userIds = [...new Set(rows.map(({ r }) => r.user_id as string).filter(Boolean))]
   const tripIds = [...new Set(rows.map(({ r }) => r.trip_id as string).filter(Boolean))]
-  const [{ data: profs }, { data: trips }] = await Promise.all([
+  const [{ data: profs }, { data: trips }, hidden] = await Promise.all([
     userIds.length ? c.from("profiles").select("id,nickname,email").in("id", userIds) : Promise.resolve({ data: [] }),
     tripIds.length ? c.from("trips").select("id,title").in("id", tripIds) : Promise.resolve({ data: [] }),
+    hiddenPromise,
   ])
   const nameOf = new Map((profs ?? []).map((p) => [p.id as string, (p.nickname as string) || (p.email as string) || "이름 없음"]))
   const tripOf = new Map((trips ?? []).map((t) => [t.id as string, t.title as string]))

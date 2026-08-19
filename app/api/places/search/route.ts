@@ -388,9 +388,14 @@ export async function GET(request: Request) {
       /*
         ⚠️ 결과가 없을 때는 캐시하지 않는다. 오타로 한 번 빈손이 나온 검색어가
            보름 동안 계속 빈손으로 굳어 버린다.
+
+        ⚠️ **`void` 로 던져 두면 안 된다.** 서버리스는 응답을 돌려주는 순간
+           인스턴스를 멈춘다 — 아직 안 끝난 쓰기는 그대로 죽는다.
+           실제로 그렇게 뒀다가 운영에서 캐시가 한 줄도 안 쌓였다.
+           (로컬에서는 프로세스가 살아 있어서 멀쩡히 통과했다)
       */
       const ids = top.map((t) => t.place_id ?? "").filter(Boolean)
-      if (ids.length > 0) void putCachedSearch(cacheKey, ids)
+      if (ids.length > 0) await putCachedSearch(cacheKey, ids)
     }
 
     // 캐시 우선: 이미 아는 place_id는 구글 Place Details를 호출하지 않는다.
