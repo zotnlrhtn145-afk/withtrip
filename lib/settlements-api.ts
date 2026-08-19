@@ -625,3 +625,77 @@ export async function syncSettlementsForTrip(
 
   return nextRows
 }
+
+/**
+ * 지출 고치기.
+ *
+ * ⚠️ 정산 대상자는 **지우고 다시 넣는다.** 누가 빠지고 누가 들어왔는지 하나씩
+ *    맞춰 넣으려다 한쪽만 반영되면, 나눈 금액이 조용히 틀어진다.
+ */
+export async function updateExpense(input: {
+  expenseId: string
+  title: string
+  amount: number
+  category: ExpenseCategory
+  payerId: string
+  expenseDate: string
+  receiptUrl?: string | null
+  participantIds?: string[]
+  guestIds?: string[]
+}) {
+  const supabase = createClient()
+  const payload: Record<string, unknown> = {
+    title: input.title.trim(),
+    amount: Math.round(input.amount),
+    category: input.category,
+    payer_id: input.payerId,
+    expense_date: input.expenseDate,
+  }
+  // 영수증은 새로 올린 게 있을 때만 건드린다 — 안 그러면 기존 영수증이 지워진다
+  if (input.receiptUrl !== undefined) {
+    payload.receipt_url = String(input.receiptUrl ?? "").trim() || null
+  }
+
+  const { error } = await supabase.from("expenses").update(payload).eq("id", input.expenseId)
+  if (error) {
+    logError("updateExpense", error)
+    throw error
+  }
+
+  await supabase.from("expense_participants").delete().eq("expense_id", input.expenseId)
+
+  let participantIds = [
+    ...new Set((input.participantIds ?? []).map((id) => String(id ?? "").trim()).filter(Boolean)),
+  ]
+  if (participantIds.length === 0 && input.payerId) participantIds = [input.payerId]
+
+  if (participantIds.length > 0) {
+    const guestSet = new Set((input.guestIds ?? []).map((id) => String(id ?? "").trim()))
+    const rows = participantIds.map((id) =>
+      guestSet.has(id)
+        ? { expense_id: input.expenseId, guest_id: id }
+        : { expense_id: input.expenseId, user_id: id }
+    )
+    const { error: pErr } = await supabase.from("expense_participants").insert(rows)
+    if (pErr) {
+      logError("updateExpense.participants", pErr)
+      throw pErr
+    }
+  }
+}
+
+/**
+ * 지출 지우기.
+ *
+ * ⚠️ 대상자 줄을 먼저 지운다. 남겨 두면 없어진 지출을 가리키는 유령이 남아
+ *    정산 계산이 이상해진다.
+ */
+export async function deleteExpense(expenseId: string) {
+  const supabase = createClient()
+  await supabase.from("expense_participants").delete().eq("expense_id", expenseId)
+  const { error } = await supabase.from("expenses").delete().eq("id", expenseId)
+  if (error) {
+    logError("deleteExpense", error)
+    throw error
+  }
+}

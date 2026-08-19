@@ -62,6 +62,8 @@ import {
   formatWon,
   initialsFromNickname,
   insertExpense,
+  updateExpense,
+  deleteExpense,
   setTripCarryover,
   syncSettlementsForTrip,
   toggleSettlementStatus,
@@ -213,6 +215,8 @@ export function SettlementView({
   const [scanningReceipt, setScanningReceipt] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [receiptViewerUrl, setReceiptViewerUrl] = useState<string | null>(null)
+  /** 고치는 중인 지출. 비어 있으면 새로 추가하는 것이다 */
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null)
   // 한 영수증(카드/은행 앱 거래내역 캡처 등)에 여러 건이 있을 때의 일괄 등록 검토 목록.
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
   const receiptInputRef = useRef<HTMLInputElement>(null)
@@ -590,6 +594,42 @@ export function SettlementView({
     [selectedReviewItems]
   )
 
+  /**
+   * 지출 줄을 눌렀을 때 — 지금 값을 폼에 채우고 고치기 모드로 연다.
+   *
+   * ⚠️ 영수증 파일은 채우지 않는다. 새로 고르지 않으면 기존 영수증을 그대로 둔다
+   *    (updateExpense 가 receiptUrl 이 없으면 건드리지 않는다).
+   */
+  const startEditExpense = (expense: ExpenseRecord) => {
+    setEditingExpenseId(expense.id)
+    setTitle(expense.title ?? "")
+    setAmount(String(expense.amount ?? ""))
+    setCategory(expense.category as typeof category)
+    setPayerId(expense.payerId ?? null)
+    setExpenseDate(expense.expenseDate ?? "")
+    setParticipantIds(
+      expense.participantIds.length > 0
+        ? [...expense.participantIds]
+        : members.map((m) => m.userId)
+    )
+    setFormError(null)
+    setOpen(true)
+  }
+
+  /** 지출 지우기 — 정산 금액이 바로 바뀌므로 무엇을 지우는지 보여 주고 묻는다 */
+  const removeExpense = async (expense: ExpenseRecord) => {
+    const label = `${expense.title || "지출"} · ${formatWon(expense.amount)}`
+    if (!window.confirm(`"${label}" 을(를) 지울까요?\n정산 금액이 바로 바뀝니다.`)) return
+    try {
+      await deleteExpense(expense.id)
+      await refreshSettlementData()
+      showToast("지출을 지웠어요.")
+    } catch (err) {
+      const typed = err as { message?: string }
+      showToast(typed?.message ?? "지출을 지우지 못했어요.")
+    }
+  }
+
   const handleAddExpense = async (event: React.FormEvent) => {
     event.preventDefault()
     if (scanningReceipt) return
@@ -631,8 +671,7 @@ export function SettlementView({
       if (receiptFile) {
         receiptUrl = await uploadReceiptImage(receiptFile, activeTripId)
       }
-      await insertExpense({
-        tripId: activeTripId,
+      const common = {
         title: title.trim(),
         amount: parsed,
         category,
@@ -641,11 +680,18 @@ export function SettlementView({
         receiptUrl,
         participantIds,
         guestIds,
-      })
+      }
+      if (editingExpenseId) {
+        await updateExpense({ expenseId: editingExpenseId, ...common })
+      } else {
+        await insertExpense({ tripId: activeTripId, ...common })
+      }
+      const wasEditing = Boolean(editingExpenseId)
+      setEditingExpenseId(null)
       resetForm()
       setOpen(false)
       await refreshSettlementData()
-      showToast("지출이 등록되었어요.")
+      showToast(wasEditing ? "지출을 고쳤어요." : "지출이 등록되었어요.")
     } catch (err) {
       const typed = err as { message?: string }
       console.error("[SettlementView] insert expense failed:", typed?.message)
@@ -1305,9 +1351,33 @@ export function SettlementView({
                                 </p>
                               </div>
                             </div>
-                            <span className="shrink-0 pt-0.5 text-sm font-bold tabular-nums text-neutral-900">
-                              {formatWon(expense.amount)}
-                            </span>
+                            <div className="flex shrink-0 items-center gap-1 pt-0.5">
+                              <span className="text-sm font-bold tabular-nums text-neutral-900">
+                                {formatWon(expense.amount)}
+                              </span>
+                              {/*
+                                ⚠️ 잘못 넣은 지출을 고칠 방법이 아예 없어서 틀린 금액이
+                                   정산에 그대로 남았다. 줄마다 손댈 자리를 만든다.
+                              */}
+                              <button
+                                type="button"
+                                onClick={() => startEditExpense(expense)}
+                                aria-label="지출 고치기"
+                                title="고치기"
+                                className="ml-1 rounded-md px-2 py-1 text-xs font-semibold text-neutral-500 transition-colors hover:bg-amber-50 hover:text-amber-900"
+                              >
+                                고치기
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void removeExpense(expense)}
+                                aria-label="지출 지우기"
+                                title="지우기"
+                                className="rounded-md px-2 py-1 text-xs font-semibold text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-700"
+                              >
+                                지우기
+                              </button>
+                            </div>
                           </li>
                         ))}
                       </ul>
@@ -1409,6 +1479,7 @@ export function SettlementView({
         open={open}
         onOpenChange={(next) => {
           setOpen(next)
+          if (!next) setEditingExpenseId(null)
           if (next) {
             setParticipantIds(members.map((member) => member.userId))
           } else {
@@ -1422,10 +1493,12 @@ export function SettlementView({
         >
           <DialogHeader className="relative shrink-0 space-y-0.5 border-b border-gray-100 px-5 py-3.5 pr-12 text-left">
             <DialogTitle className="text-lg font-extrabold text-gray-900">
-              지출 추가
+              {editingExpenseId ? "지출 고치기" : "지출 추가"}
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
-              함께 낸 지출을 기록하면 정산이 자동으로 계산돼요.
+              {editingExpenseId
+                ? "고치면 정산 금액이 바로 다시 계산돼요."
+                : "함께 낸 지출을 기록하면 정산이 자동으로 계산돼요."}
             </DialogDescription>
             <button
               type="button"
