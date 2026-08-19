@@ -1,3 +1,74 @@
+
+/**
+ * 이모티콘 코드 → 이름표.
+ *
+ * ⚠️ 푸시에는 그림을 넣을 수 없다. 그렇다고 코드를 그대로 두면
+ *    `[emoticon:bv1_abs]` 같은 **파일명이 알림에 뜬다**(신고받음).
+ *    무엇을 보냈는지 알 수 있게 이름표를 보여 준다.
+ *
+ * ⚠️ 이 표는 앱의 `src/lib/emoticons.ts` 에서 뽑아 온 것이다.
+ *    이모티콘을 새로 넣으면 여기도 같이 채워야 한다 —
+ *    빠지면 그 이모티콘만 "이모티콘" 으로 밋밋하게 뜬다(깨지지는 않는다).
+ */
+const EMOTICON_LABEL: Record<string, string> = {
+  "mg1_hello": "안녕",
+  "mg1_happy": "행복",
+  "mg1_sad": "슬퍼",
+  "mg1_gasp": "헉!",
+  "mg1_shiver": "ㄷㄷㄷ",
+  "mg1_sick": "아파",
+  "mg1_shh": "쉿!",
+  "mg1_dunno": "모르겠어",
+  "mg1_sleepy": "졸려",
+  "mg2_congrats": "축하",
+  "mg2_fluster": "당황",
+  "mg2_shy": "부끄",
+  "mg2_bored": "심심",
+  "mg2_walk": "뚜벅뚜벅",
+  "mg2_wow": "대박",
+  "mg2_unfair": "억울",
+  "mg2_secret": "비밀",
+  "mg2_thumbsup": "따봉",
+  "mg3_anxious": "불안",
+  "mg3_angry": "화남",
+  "mg3_excited": "신남",
+  "mg3_flutter": "설렘",
+  "mg3_what": "뭐라고?!",
+  "mg3_bored": "심심",
+  "mg3_annoyed": "짜증",
+  "mg3_shock": "충격",
+  "mg3_expect": "기대",
+  "sb1_go": "가자!",
+  "sb1_angry": "개빡쳐!",
+  "sb1_hello": "안녕~",
+  "sb1_lonely": "외로워요",
+  "sb1_love": "사랑해",
+  "sb1_omg": "헐...?",
+  "sb1_excited": "완전 기대!",
+  "sb1_sleep": "쿨쿨...",
+  "sb1_sleepy": "졸려요",
+  "bv1_abs": "복근!",
+  "bv1_press": "밀리터리 프레스!",
+  "bv1_deadlift": "데드리프트!",
+  "bv1_pushup": "푸쉬업!",
+  "bv1_running": "런닝!",
+  "bv1_pullup": "턱걸이!",
+  "bv1_squat": "스쿼트!",
+  "bv1_stretch": "스트레칭!",
+  "bv1_dumbbell": "덤벨 킬!",
+  "bv1_legraise": "레그 레이즈!",
+  "think2": "고민",
+  "stand1": "기본",
+  "coding": "코딩",
+}
+
+/** `[emoticon:xxx]` 를 사람이 읽을 수 있는 말로 */
+function emoticonText(content: string): string {
+  const code = content.match(/^\[emoticon:([a-z0-9_]+)\]/i)?.[1] ?? ""
+  const label = EMOTICON_LABEL[code]
+  return label ? `(이모티콘) ${label}` : "(이모티콘)"
+}
+
 // WITHTRIP: 새 DM(dm_messages)이 생기면 상대방에게 Expo 푸시 발송.
 // Supabase Database Webhook(dm_messages INSERT)에서 이 함수를 호출한다.
 //
@@ -84,7 +155,12 @@ Deno.serve(async (req) => {
       .maybeSingle()
     const senderName = String(sender?.nickname ?? "").trim() || "새 메시지"
 
-    const body = (record.content ?? "").slice(0, 140)
+    /*
+      ⚠️ 예전엔 내용을 그대로 썼다. 그래서 이모티콘을 보내면 알림에
+         `[emoticon:bv1_abs]` 라는 **파일명이 그대로 떴다**(신고받음).
+    */
+    const raw = record.content ?? ""
+    const body = (/^\[emoticon:/.test(raw) ? emoticonText(raw) : raw).slice(0, 140)
 
     const messages = tokens.map((to) => ({
       to,
