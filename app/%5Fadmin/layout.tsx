@@ -41,6 +41,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 { href: "/_admin", icon: "▤", label: "대시보드" },
                 { href: "/_admin/costs", icon: "₩", label: "비용·과금" },
                 { href: "/_admin/traffic", icon: "↗", label: "트래픽" },
+                { href: "/_admin/announce", icon: "◈", label: "공지 보내기" },
               ],
             },
             {

@@ -38,6 +38,7 @@ const TITLE_BY_TYPE: Record<string, string> = {
   accommodation_added: "숙소 등록",
   expense_added: "지출 등록",
   settlement_done: "정산 완료",
+  announcement: "위드트립 공지",
 }
 
 Deno.serve(async (req) => {

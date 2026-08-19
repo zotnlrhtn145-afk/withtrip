@@ -253,3 +253,55 @@ export async function changePasswordAction(
   jar.delete(ADMIN_COOKIE)
   redirect("/_admin/login")
 }
+
+/**
+ * 전체 공지 보내기.
+ *
+ * ⚠️ **되돌릴 수 없다.** 한 번 나간 푸시는 회수가 안 된다. 그래서 화면에서
+ *    받는 사람 수를 먼저 보여 주고, 한 번 더 확인한 뒤에 부른다.
+ *
+ * ⚠️ 알림함에도 한 줄 남긴다. 푸시는 잠금화면에서 쓸어 넘기면 사라져서,
+ *    푸시만 보내면 **못 본 사람은 영영 못 본다.**
+ */
+export async function sendAnnouncementAction(
+  _prev: unknown,
+  form: FormData
+): Promise<{ error?: string; sent?: number }> {
+  await assertAdmin()
+  const message = String(form.get("message") ?? "").trim()
+  const confirm = String(form.get("confirm") ?? "")
+  if (!message) return { error: "보낼 내용을 적어 주세요." }
+  if (message.length > 300) return { error: "300자 안쪽으로 줄여 주세요. 푸시는 길면 잘립니다." }
+  if (confirm !== "보내기") return { error: "확인란에 '보내기'라고 그대로 적어 주세요." }
+
+  const c = db()
+  const { data: list, error } = await c.auth.admin.listUsers({ page: 1, perPage: 1000 })
+  if (error) return { error: `받는 사람을 읽지 못했습니다: ${error.message}` }
+
+  const now = Date.now()
+  const targets = list.users.filter((u) => {
+    // 정지된 사람에게는 보내지 않는다
+    const until = (u as unknown as { banned_until?: string }).banned_until
+    return !(until && new Date(until).getTime() > now)
+  })
+  if (targets.length === 0) return { error: "받을 사람이 없습니다." }
+
+  /*
+    ⚠️ 한 줄씩 넣지 않는다. 사람이 늘수록 왕복이 그만큼 늘어나서, 중간에
+       끊기면 **일부만 받은 상태**로 남는다. 한 번에 넣는다.
+  */
+  const rows = targets.map((u) => ({
+    user_id: u.id,
+    type: "announcement",
+    message,
+    status: "dismissed" as const,
+    is_read: false,
+    payload: { title: "위드트립 공지" },
+  }))
+
+  const { error: insErr } = await c.from("notifications").insert(rows)
+  if (insErr) return { error: `보내지 못했습니다: ${insErr.message}` }
+
+  revalidatePath("/_admin/announce")
+  return { sent: rows.length }
+}
