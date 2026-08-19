@@ -19,5 +19,3 @@ node_modules
 # supabase CLI 로컬 상태 (커밋 대상 아님)
 supabase/.temp/
 
-# 관리자 환경변수 메모 — 절대 커밋하지 않는다
-VERCEL-ADMIN-ENV.txt

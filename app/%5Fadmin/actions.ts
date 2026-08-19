@@ -4,7 +4,14 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 
-import { ADMIN_COOKIE, SESSION_MAX_AGE, issueSession, verifyLogin, verifySession } from "@/lib/admin-auth"
+import {
+  ADMIN_COOKIE,
+  SESSION_MAX_AGE,
+  changePassword,
+  issueSession,
+  verifyLogin,
+  verifySession,
+} from "@/lib/admin-auth"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 
 /**
@@ -50,8 +57,11 @@ export async function loginAction(_prev: unknown, form: FormData): Promise<{ err
   }
 
   attempts.delete(key)
+  const session = await issueSession()
+  if (!session) return { error: "로그인 정보를 읽지 못했습니다. 잠시 뒤 다시 시도하세요." }
+
   const jar = await cookies()
-  jar.set(ADMIN_COOKIE, await issueSession(), {
+  jar.set(ADMIN_COOKIE, session, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
@@ -215,4 +225,31 @@ export async function banUserAction(form: FormData) {
   })
   revalidatePath("/_admin/reports")
   revalidatePath("/_admin/users")
+}
+
+/**
+ * 비밀번호 바꾸기.
+ *
+ * ⚠️ 지금 비밀번호를 **다시 한 번 확인한다.** 자리를 비운 사이 누가 열린 화면을
+ *    만지면, 확인이 없을 경우 비밀번호를 바꿔 나를 잠가 버릴 수 있다.
+ */
+export async function changePasswordAction(
+  _prev: unknown,
+  form: FormData
+): Promise<{ error?: string; ok?: boolean }> {
+  await assertAdmin()
+  const current = String(form.get("current") ?? "")
+  const next = String(form.get("next") ?? "")
+  const again = String(form.get("again") ?? "")
+
+  if (next.length < 10) return { error: "새 비밀번호는 10자 이상으로 해주세요." }
+  if (next !== again) return { error: "새 비밀번호 두 칸이 서로 다릅니다." }
+  if (!(await verifyLogin("admin", current))) return { error: "지금 비밀번호가 맞지 않습니다." }
+
+  if (!(await changePassword(next))) return { error: "저장하지 못했습니다. 잠시 뒤 다시 시도하세요." }
+
+  // 서명 열쇠가 바뀌었으니 지금 내 쿠키도 더는 안 통한다 — 다시 로그인시킨다
+  const jar = await cookies()
+  jar.delete(ADMIN_COOKIE)
+  redirect("/_admin/login")
 }

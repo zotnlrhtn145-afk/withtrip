@@ -44,6 +44,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               ],
             },
             {
+              label: "계정",
+              items: [{ href: "/_admin/settings", icon: "⚙", label: "설정" }],
+            },
+            {
               label: "사람",
               items: [
                 { href: "/_admin/users", icon: "◍", label: "가입자", count: counts.users },
