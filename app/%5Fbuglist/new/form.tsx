@@ -125,14 +125,6 @@ export function NewBugForm() {
   return (
     <form action={submit}>
       <div className="bl-fld">
-        <label className="bl-lbl" htmlFor="title">
-          무슨 일이 있었나요
-        </label>
-        <input id="title" name="title" type="text" required maxLength={200}
-          placeholder="한 줄로 짧게 — 예) 사진이 안 올라가요" />
-      </div>
-
-      <div className="bl-fld">
         <span className="bl-lbl">얼마나 불편한가요</span>
         <div className="bl-segs">
           {([["low", "낮음"], ["mid", "보통"], ["high", "심각"]] as const).map(([k, label]) => (
@@ -151,10 +143,15 @@ export function NewBugForm() {
 
       <div className="bl-fld">
         <label className="bl-lbl" htmlFor="body">
-          자세히 — 어떻게 하면 그렇게 되나요
+          무슨 일이 있었나요
         </label>
-        <textarea id="body" name="body" maxLength={4000}
-          placeholder={"눌렀던 순서대로 적어 주시면 가장 빨리 고칩니다.\n예) 맛집 상세 → 리뷰 쓰기 → 사진 고르기"} />
+        {/*
+          ⚠️ 예전엔 제목 칸을 따로 뒀는데, 같은 말을 두 번 쓰게 만드는 꼴이라
+             다들 제목만 쓰고 내용을 비웠다. 한 칸으로 합치고 목록 제목은
+             첫 줄에서 뽑는다.
+        */}
+        <textarea id="body" name="body" required maxLength={4000} rows={6}
+          placeholder={"눌렀던 순서대로 적어 주시면 가장 빨리 고칩니다.\n예) 맛집 상세 → 리뷰 쓰기 → 사진 고르기에서 아무 일도 안 일어나요"} />
       </div>
 
       <div className="bl-fld">

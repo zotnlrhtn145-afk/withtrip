@@ -29,8 +29,15 @@ async function assertAdmin() {
 export async function createBugAction(form: FormData): Promise<void> {
   const { c, uid } = await client()
 
-  const title = String(form.get("title") ?? "").trim()
-  if (!title) throw new Error("무슨 일이 있었는지 한 줄로 적어 주세요")
+  const body = String(form.get("body") ?? "").trim()
+  if (!body) throw new Error("무슨 일이 있었는지 적어 주세요")
+
+  /*
+    제목은 본문 **첫 줄**에서 뽑는다. 쓰는 사람에게 같은 말을 두 번 시키지 않으려는 것.
+    첫 줄이 너무 길면 잘라서 목록이 읽히게 한다.
+  */
+  const firstLine = body.split("\n").find((l) => l.trim()) ?? body
+  const title = firstLine.trim().slice(0, 80) + (firstLine.trim().length > 80 ? "…" : "")
 
   const severity = String(form.get("severity") ?? "mid")
   const platform = String(form.get("platform") ?? "android")
@@ -39,8 +46,8 @@ export async function createBugAction(form: FormData): Promise<void> {
     .from("bug_reports")
     .insert({
       reporter_id: uid,
-      title: title.slice(0, 200),
-      body: String(form.get("body") ?? "").trim().slice(0, 4000) || null,
+      title,
+      body: body.slice(0, 4000),
       severity: ["low", "mid", "high"].includes(severity) ? severity : "mid",
       platform: ["ios", "android", "web", "both"].includes(platform) ? platform : "android",
       device: String(form.get("device") ?? "").trim().slice(0, 120) || null,
@@ -76,7 +83,8 @@ export async function createBugAction(form: FormData): Promise<void> {
   }
 
   revalidatePath("/_buglist")
-  redirect(`/_buglist/${made.id}`)
+  // 보낸 뒤에는 상세가 아니라 **내가 쓴 글 목록**으로 — 방금 올린 게 목록에 있는 걸 본다
+  redirect("/_buglist?s=mine")
 }
 
 /**
@@ -99,16 +107,6 @@ export async function addNoteAction(form: FormData): Promise<void> {
     .eq("id", reportId).eq("status", "new")
 
   revalidatePath(`/_buglist/${reportId}`)
-  revalidatePath("/_buglist")
-}
-
-/** 확인함으로만 표시 */
-export async function markSeenAction(form: FormData): Promise<void> {
-  const { c } = await assertAdmin()
-  const id = String(form.get("id") ?? "")
-  if (!id) return
-  await c.from("bug_reports").update({ status: "seen", updated_at: new Date().toISOString() }).eq("id", id)
-  revalidatePath(`/_buglist/${id}`)
   revalidatePath("/_buglist")
 }
 
@@ -168,4 +166,35 @@ export async function deleteBugAction(form: FormData): Promise<void> {
   await c.from("bug_reports").delete().eq("id", id)
   revalidatePath("/_buglist")
   redirect("/_buglist")
+}
+
+/** 내 신고 글 고치기 (관리자는 아무 글이나) */
+export async function editBugAction(form: FormData): Promise<void> {
+  const { c } = await client()
+  const id = String(form.get("id") ?? "")
+  const body = String(form.get("body") ?? "").trim()
+  if (!id || !body) return
+
+  const firstLine = body.split("\n").find((l) => l.trim()) ?? body
+  const title = firstLine.trim().slice(0, 80) + (firstLine.trim().length > 80 ? "…" : "")
+
+  /*
+    ⚠️ 여기서 "내 글인지" 를 코드로 따지지 않는다. DB 정책이 이미 남의 글을
+       못 고치게 막는다. 두 곳에서 따지면 언젠가 한쪽만 고치고 어긋난다.
+       상태·처리내용은 트리거가 되돌리므로 신고자가 건드릴 수 없다.
+  */
+  await c.from("bug_reports").update({ title, body: body.slice(0, 4000), updated_at: new Date().toISOString() }).eq("id", id)
+  revalidatePath(`/_buglist/${id}`)
+  revalidatePath("/_buglist")
+  redirect(`/_buglist/${id}`)
+}
+
+/** 내 신고 글 지우기 (관리자는 아무 글이나) */
+export async function deleteOwnBugAction(form: FormData): Promise<void> {
+  const { c } = await client()
+  const id = String(form.get("id") ?? "")
+  if (!id) return
+  await c.from("bug_reports").delete().eq("id", id)
+  revalidatePath("/_buglist")
+  redirect("/_buglist?s=mine")
 }

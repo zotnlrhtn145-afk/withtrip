@@ -51,6 +51,29 @@ export async function whoAmI(): Promise<Me> {
   }
 }
 
+export type BugPage = { me: NonNullable<Me>; counts: Record<string, number>; rows: BugRow[] }
+
+/**
+ * 목록 화면이 쓰는 것 **전부를 한 번에**.
+ *
+ * ⚠️ 예전엔 로그인한 사람 · 관리자 여부 · 개수 · 목록을 따로 물었다. 운영에서는
+ *    왕복 하나가 수백 ms 라 그게 그대로 느린 체감이 됐다. 한 번으로 줄인다.
+ */
+export async function loadBugPage(status: string | null): Promise<BugPage | null> {
+  const c = await createClient()
+  const { data: auth } = await c.auth.getUser()
+  if (!auth.user) return null
+
+  const { data, error } = await c.rpc("bug_page", { p_status: status, p_limit: 60 })
+  if (error) throw new Error(error.message)
+  const d = data as { me: { id: string; isAdmin: boolean; name: string }; counts: Record<string, number>; rows: BugRow[] }
+  return {
+    me: { id: d.me.id, email: auth.user.email ?? null, name: d.me.name, isAdmin: Boolean(d.me.isAdmin) },
+    counts: d.counts ?? {},
+    rows: d.rows ?? [],
+  }
+}
+
 export async function listBugs(status: string | null): Promise<BugRow[]> {
   const c = await createClient()
   const { data, error } = await c.rpc("bug_list", { p_status: status, p_limit: 60 })

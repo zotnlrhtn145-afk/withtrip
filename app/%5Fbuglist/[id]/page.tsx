@@ -3,7 +3,8 @@ import { notFound, redirect } from "next/navigation"
 
 import { getBug, whoAmI } from "@/lib/buglist"
 
-import { addNoteAction, markSeenAction, unqueueAction, wontfixAction } from "../actions"
+import { addNoteAction, deleteOwnBugAction, editBugAction, unqueueAction, wontfixAction } from "../actions"
+import { OwnerTools } from "./owner-tools"
 
 export const dynamic = "force-dynamic"
 
@@ -163,6 +164,15 @@ export default async function BugDetailPage({ params }: { params: Promise<{ id: 
           <div className="bl-err">자동 처리가 막혔습니다: {bug.queue.error}</div>
         )}
 
+        {/*
+          ⚠️ 내 글이면 고치고 지울 수 있다. 남의 글에는 이 단추가 아예 없다 —
+             숨기는 게 아니라 DB 정책이 막으므로 주소를 두드려도 안 된다.
+             이미 고쳐진 글은 손대지 못하게 한다(처리 내용과 어긋난다).
+        */}
+        {bug.reporter_id === me.id && !done && (
+          <OwnerTools id={bug.id} body={bug.body ?? ""} editAction={editBugAction} deleteAction={deleteOwnBugAction} />
+        )}
+
         {/* ── 관리자 전용 ── */}
         {me.isAdmin && (
           <>
@@ -195,14 +205,6 @@ export default async function BugDetailPage({ params }: { params: Promise<{ id: 
                   </button>
                 </form>
               )}
-              {bug.status === "new" && (
-                <form action={markSeenAction} style={{ flex: "1 1 46%" }}>
-                  <input type="hidden" name="id" value={bug.id} />
-                  <button className="bl-btn line" type="submit" style={{ marginTop: 0 }}>
-                    확인함으로 표시
-                  </button>
-                </form>
-              )}
               {!done && (
                 <form action={wontfixAction} style={{ flex: "1 1 46%" }}>
                   <input type="hidden" name="id" value={bug.id} />
@@ -215,6 +217,11 @@ export default async function BugDetailPage({ params }: { params: Promise<{ id: 
           </>
         )}
       </div>
+
+      {/* 어느 화면에서든 바로 새 신고를 쓸 수 있게 */}
+      <Link className="bl-fab" href="/_buglist/new">
+        ＋ 신고하기
+      </Link>
     </div>
   )
 }

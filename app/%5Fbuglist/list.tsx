@@ -139,6 +139,13 @@ export function BugList({ rows, isAdmin }: { rows: BugRow[]; isAdmin: boolean })
         })}
       </div>
 
+      {/*
+        고른 게 있으면 아래 막대가 뜬다 — 그때 '신고하기' 단추를 위로 올려서
+        서로 겹치지 않게 한다.
+      */}
+      {isAdmin && picked.size > 0 && (
+        <style>{`.bl-fab{bottom:calc(74px + env(safe-area-inset-bottom))}`}</style>
+      )}
       {isAdmin && picked.size > 0 && (
         <div className="bl-bar">
           <div className="bl-barin">

@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
-import { bugCounts, listBugs, whoAmI } from "@/lib/buglist"
+import { loadBugPage } from "@/lib/buglist"
 
 import { BugList } from "./list"
 
@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic"
 
 const TABS = [
   { key: "open", label: "안 끝난 것" },
+  { key: "mine", label: "내가 쓴 글" },
   { key: "new", label: "새 신고" },
   { key: "queued", label: "수정 대기" },
   { key: "resolved", label: "해결됨" },
@@ -20,23 +21,22 @@ export default async function BugListPage({
 }: {
   searchParams: Promise<{ s?: string }>
 }) {
-  const me = await whoAmI()
-  if (!me) redirect("/_buglist/login")
-
   const sp = await searchParams
   const tab = TABS.find((t) => t.key === sp.s)?.key ?? "open"
 
-  let rows: Awaited<ReturnType<typeof listBugs>> = []
-  let counts: Record<string, number> = {}
+  // 목록·개수·로그인한 사람을 **한 번에** 받는다 (왕복 하나가 곧 체감 속도다)
+  let page: Awaited<ReturnType<typeof loadBugPage>> = null
   let error: string | null = null
   try {
-    ;[rows, counts] = await Promise.all([
-      listBugs(tab === "all" ? null : tab),
-      bugCounts().catch(() => ({})),
-    ])
+    page = await loadBugPage(tab === "all" ? null : tab)
   } catch (e) {
     error = e instanceof Error ? e.message : "목록을 읽지 못했습니다"
   }
+  if (!page && !error) redirect("/_buglist/login")
+
+  const me = page?.me ?? { id: "", email: null, name: "", isAdmin: false }
+  const rows = page?.rows ?? []
+  const counts = page?.counts ?? {}
 
   return (
     <div className="bl-wrap">
