@@ -668,6 +668,7 @@
   position: fixed;
   inset: 0;
   z-index: 50;
+  /* 탭을 옮길 때 아래 내용이 비쳐야 "어디로 가는 중" 인지가 남는다 */
   display: grid;
   place-items: center;
   background: color-mix(in srgb, var(--bg) 78%, transparent);
