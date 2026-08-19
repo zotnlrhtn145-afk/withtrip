@@ -252,3 +252,131 @@ export async function fetchContent(kind: ContentKind | "all", limit = 100): Prom
 
   return items.sort((a, b) => (b.at ?? "").localeCompare(a.at ?? "")).slice(0, limit)
 }
+
+export type Report = {
+  id: string
+  at: string
+  reason: string
+  detail: string | null
+  /** "user" | "profile" | "dm_message" | "trip_message" | "saved_place" | "spot" */
+  contentType: string
+  contentId: string | null
+  /** 신고 당시 글 내용 — 원본이 지워져도 무엇을 보고 신고했는지 남는다 */
+  excerpt: string | null
+  reporter: string
+  target: string
+  targetId: string | null
+  status: string
+  /** 이 글이 지금 가려져 있는가 */
+  hidden: boolean
+  /** 신고당한 사람이 여태 몇 번 신고됐나 — 한 번인지 상습인지 */
+  targetReportCount: number
+}
+
+const REASON_LABEL: Record<string, string> = {
+  spam: "스팸·광고",
+  harassment: "욕설·괴롭힘",
+  inappropriate: "부적절한 내용",
+  hate: "혐오 발언",
+  violence: "폭력·위협",
+  illegal: "불법 정보",
+  other: "기타",
+}
+
+export const CONTENT_TYPE_LABEL: Record<string, string> = {
+  user: "사용자",
+  profile: "프로필",
+  dm_message: "1:1 대화",
+  trip_message: "대화",
+  saved_place: "맛집",
+  spot: "스팟",
+}
+
+/**
+ * 신고 내용은 **`content_hides` 의 종류 이름과 다르다.**
+ * (신고는 `trip_message`, 가리기는 `message` 로 부른다)
+ * 여기 한 곳에서만 옮겨 준다 — 화면마다 따로 바꾸면 언젠가 어긋난다.
+ */
+export function hideKindOf(contentType: string): string | null {
+  switch (contentType) {
+    case "trip_message":
+      return "message"
+    case "dm_message":
+      return "dm"
+    case "saved_place":
+      return "place"
+    case "spot":
+      return "spot"
+    default:
+      // 사용자·프로필 신고는 가릴 글이 없다 — 사람에게 조치한다
+      return null
+  }
+}
+
+export function reasonLabel(reason: string): string {
+  return REASON_LABEL[reason] ?? reason
+}
+
+export async function fetchReports(status: string | "all" = "open"): Promise<Report[]> {
+  const c = db()
+  let q = c.from("reports").select("*").order("created_at", { ascending: false }).limit(200)
+  if (status !== "all") q = q.eq("status", status)
+  const { data, error } = await q
+  if (error) throw new Error(error.message)
+
+  const rows = (data ?? []) as Record<string, unknown>[]
+  if (rows.length === 0) return []
+
+  const ids = [
+    ...new Set(rows.flatMap((r) => [r.reporter_id as string, r.target_user_id as string]).filter(Boolean)),
+  ]
+  const [{ data: profs }, { data: hides }, { data: allTargets }] = await Promise.all([
+    c.from("profiles").select("id,nickname,email").in("id", ids),
+    c.from("content_hides").select("kind,target_id"),
+    // 상습인지 보려면 처리한 것까지 포함해 전부 세어야 한다
+    c.from("reports").select("target_user_id"),
+  ])
+
+  const nameOf = new Map(
+    (profs ?? []).map((p) => [p.id as string, (p.nickname as string) || (p.email as string) || "이름 없음"])
+  )
+  const hidden = new Set((hides ?? []).map((h) => `${h.kind}:${h.target_id}`))
+  const perTarget = new Map<string, number>()
+  for (const r of (allTargets ?? []) as { target_user_id: string }[]) {
+    if (r.target_user_id) perTarget.set(r.target_user_id, (perTarget.get(r.target_user_id) ?? 0) + 1)
+  }
+
+  return rows.map((r) => {
+    const contentType = r.content_type as string
+    const kind = hideKindOf(contentType)
+    const contentId = (r.content_id as string) ?? null
+    return {
+      id: r.id as string,
+      at: r.created_at as string,
+      reason: reasonLabel(r.reason as string),
+      detail: (r.detail as string) ?? null,
+      contentType,
+      contentId,
+      excerpt: (r.content_excerpt as string) ?? null,
+      reporter: nameOf.get(r.reporter_id as string) ?? "알 수 없음",
+      target: nameOf.get(r.target_user_id as string) ?? "알 수 없음",
+      targetId: (r.target_user_id as string) ?? null,
+      status: (r.status as string) ?? "open",
+      hidden: Boolean(kind && contentId && hidden.has(`${kind}:${contentId}`)),
+      targetReportCount: perTarget.get(r.target_user_id as string) ?? 0,
+    }
+  })
+}
+
+/** 지금 정지된 사람들 */
+export async function fetchBannedIds(): Promise<Set<string>> {
+  const { data } = await db().auth.admin.listUsers({ page: 1, perPage: 1000 })
+  const now = Date.now()
+  const out = new Set<string>()
+  for (const u of data?.users ?? []) {
+    // banned_until 이 미래면 정지 중
+    const until = (u as unknown as { banned_until?: string }).banned_until
+    if (until && new Date(until).getTime() > now) out.add(u.id)
+  }
+  return out
+}

@@ -1,4 +1,7 @@
-import { fetchSubscribers } from "@/lib/admin-data"
+import { fetchBannedIds, fetchSubscribers } from "@/lib/admin-data"
+
+import { banUserAction } from "../actions"
+import { ConfirmSubmit } from "../confirm-button"
 
 import { ago, when } from "../format"
 
@@ -9,9 +12,10 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const q = (sp.q ?? "").trim().toLowerCase()
 
   let users: Awaited<ReturnType<typeof fetchSubscribers>> = []
+  let banned = new Set<string>()
   let error: string | null = null
   try {
-    users = await fetchSubscribers()
+    ;[users, banned] = await Promise.all([fetchSubscribers(), fetchBannedIds()])
   } catch (e) {
     error = e instanceof Error ? e.message : "가입자를 읽지 못했습니다"
   }
@@ -87,12 +91,13 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                 <th className="wt-num">장소</th>
                 <th className="wt-num">리뷰</th>
                 <th>상태</th>
+                <th style={{ width: 84 }} />
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="wt-empty">
+                  <td colSpan={9} className="wt-empty">
                     {q ? "찾는 사람이 없습니다" : "가입자가 없습니다"}
                   </td>
                 </tr>
@@ -140,13 +145,32 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                   <td className="wt-num">{u.places || "-"}</td>
                   <td className="wt-num">{u.reviews || "-"}</td>
                   <td>
-                    {u.deletion_requested_at ? (
+                    {banned.has(u.id) ? (
+                      <span className="wt-chip cr">이용 정지</span>
+                    ) : u.deletion_requested_at ? (
                       <span className="wt-chip cr">탈퇴 요청</span>
                     ) : u.last_sign_in_at && Date.now() - new Date(u.last_sign_in_at).getTime() < 7 * 86_400_000 ? (
                       <span className="wt-chip ok">활동 중</span>
                     ) : (
                       <span className="wt-chip nt">조용함</span>
                     )}
+                  </td>
+                  <td className="wt-num">
+                    <form action={banUserAction}>
+                      <input type="hidden" name="userId" value={u.id} />
+                      <input type="hidden" name="unban" value={banned.has(u.id) ? "1" : "0"} />
+                      {banned.has(u.id) ? (
+                        <button className="wt-btn" type="submit">
+                          정지 해제
+                        </button>
+                      ) : (
+                        <ConfirmSubmit
+                          message={`${u.nickname ?? u.email ?? "이 사람"} 님의 이용을 정지할까요?\n\n로그인이 막힙니다. 쓴 글과 여행 자료는 그대로 남고, 언제든 해제할 수 있습니다.`}
+                        >
+                          이용 정지
+                        </ConfirmSubmit>
+                      )}
+                    </form>
                   </td>
                 </tr>
               ))}

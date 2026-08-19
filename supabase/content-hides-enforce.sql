@@ -49,3 +49,23 @@ create policy trip_messages_not_hidden on public.trip_messages
 --    들여다보기 때문이다. 막아 두면 정책이 늘 "가려진 게 없다"로 읽혀서
 --    아무것도 안 가려진다 — 조용히 실패하는 종류다.
 --    (여기에는 무엇을 가렸는지만 있고, 글 내용은 없다)
+
+-- ── 신고에서 이어지는 것들 ─────────────────────────────────
+-- 신고는 1:1 대화와 스팟에도 들어온다(`reports.content_type` 참고).
+-- 가릴 수 있는 종류를 거기에 맞춰 넓힌다.
+
+-- 1:1 대화
+drop policy if exists dm_messages_not_hidden on public.dm_messages;
+create policy dm_messages_not_hidden on public.dm_messages
+  as restrictive for select to anon, authenticated
+  using (not exists (
+    select 1 from public.content_hides h
+     where h.kind = 'dm' and h.target_id = dm_messages.id));
+
+-- 스팟
+drop policy if exists spots_not_hidden on public.spots;
+create policy spots_not_hidden on public.spots
+  as restrictive for select to anon, authenticated
+  using (not exists (
+    select 1 from public.content_hides h
+     where h.kind = 'spot' and h.target_id = spots.id));

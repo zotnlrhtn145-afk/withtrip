@@ -162,3 +162,57 @@ export async function setActualCostAction(form: FormData) {
     )
   revalidatePath("/_admin/costs")
 }
+
+/** 신고 처리 상태 바꾸기 */
+export async function resolveReportAction(form: FormData) {
+  await assertAdmin()
+  const id = String(form.get("id") ?? "")
+  const status = String(form.get("status") ?? "")
+  if (!id || !["open", "reviewing", "actioned", "dismissed"].includes(status)) return
+
+  await db().from("reports").update({ status }).eq("id", id)
+  revalidatePath("/_admin/reports")
+}
+
+/**
+ * 신고된 글을 가리고 신고도 함께 처리완료로 넘긴다.
+ *
+ * ⚠️ 둘을 따로 누르게 하면 **가려 놓고 신고는 열린 채로 남는다.** 다음에 열어
+ *    보면 이미 처리한 건이 또 쌓여 있어서, 무엇이 남은 일인지 알 수 없게 된다.
+ */
+export async function hideAndResolveAction(form: FormData) {
+  await assertAdmin()
+  const id = String(form.get("id") ?? "")
+  const kind = String(form.get("kind") ?? "")
+  const targetId = String(form.get("targetId") ?? "")
+  const reason = String(form.get("reason") ?? "") || null
+
+  if (kind && targetId) {
+    await db()
+      .from("content_hides")
+      .upsert({ kind, target_id: targetId, reason, hidden_by: "admin" }, { onConflict: "kind,target_id" })
+  }
+  if (id) await db().from("reports").update({ status: "actioned" }).eq("id", id)
+  revalidatePath("/_admin/reports")
+}
+
+/**
+ * 사용자 이용 정지 / 해제.
+ *
+ * ⚠️ **지우지 않고 정지한다.** 계정을 지우면 그 사람이 쓴 여행·정산이 같이
+ *    무너져서, 같은 방에 있던 다른 사람들까지 피해를 본다.
+ *    정지는 로그인만 막고 자료는 그대로 둔다 — 잘못 눌러도 되돌릴 수 있다.
+ */
+export async function banUserAction(form: FormData) {
+  await assertAdmin()
+  const userId = String(form.get("userId") ?? "")
+  const unban = String(form.get("unban") ?? "") === "1"
+  if (!userId) return
+
+  await db().auth.admin.updateUserById(userId, {
+    // "none" 이 해제. 100년이면 사실상 영구지만 언제든 되돌릴 수 있다
+    ban_duration: unban ? "none" : "876000h",
+  })
+  revalidatePath("/_admin/reports")
+  revalidatePath("/_admin/users")
+}

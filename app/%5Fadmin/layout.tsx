@@ -45,7 +45,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             },
             {
               label: "사람",
-              items: [{ href: "/_admin/users", icon: "◍", label: "가입자", count: counts.users }],
+              items: [
+                { href: "/_admin/users", icon: "◍", label: "가입자", count: counts.users },
+                /*
+                  신고는 **빨갛게** 띄운다. 남이 불편을 겪고 직접 눌러 보낸 것이라
+                  다른 숫자와 같은 무게로 보이면 안 된다.
+                */
+                {
+                  href: "/_admin/reports",
+                  icon: "⚑",
+                  label: "신고",
+                  count: counts.reports_open,
+                  hot: counts.reports_open > 0,
+                },
+              ],
             },
             {
               label: "콘텐츠",
@@ -63,7 +76,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                   icon: "⚑",
                   label: "가린 글",
                   count: counts.hidden,
-                  hot: counts.hidden > 0,
                 },
               ],
             },
