@@ -161,8 +161,24 @@ export function NewBugForm() {
     }
   }
 
+  /* 첨부를 올리는 중인지, 보내는 중인지 — 무엇을 기다리는지 말해 준다 */
+  const busyWhat = uploading ? "첨부를 올리는 중" : busy ? "신고를 보내는 중" : null
+
   return (
     <form action={submit}>
+      {busyWhat ? (
+        <div className="bl-busy" role="status" aria-live="polite">
+          <div className="bl-busy-in">
+            <span className="face" aria-hidden>
+              🤔
+            </span>
+            <span className="what">{busyWhat}이에요</span>
+            <span className="sub">
+              {uploading ? "영상은 조금 걸릴 수 있어요" : "잠시만요"}
+            </span>
+          </div>
+        </div>
+      ) : null}
       <div className="bl-fld">
         <span className="bl-lbl">얼마나 불편한가요</span>
         <div className="bl-segs">
