@@ -79,7 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
        NotificationsProvider 가 **일반 사용자 세션으로 데이터를 불러온다.**
        관리자는 그 세션이 없으니 매번 실패하는 요청이 깔린다.
   */
-  if (pathname?.startsWith("/_admin")) return <>{children}</>
+  if (pathname?.startsWith("/_admin") || pathname?.startsWith("/_buglist")) return <>{children}</>
 
   return (
     <TripsProvider>

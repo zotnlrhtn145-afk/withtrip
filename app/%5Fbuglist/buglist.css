@@ -1,0 +1,659 @@
+/*
+  버그 신고 게시판 옷.
+
+  ⚠️ **휴대폰이 기본이다.** 신고는 거의 전부 폰에서 올라온다 — 넓은 화면은
+     같은 내용을 가운데로 넓게 펼칠 뿐이다.
+
+  ⚠️ 관리자 화면(/_admin)과 달리 **위드트립 본래의 따뜻한 색**을 쓴다.
+     여기는 테스터가 들어오는 곳이라 서비스와 같은 얼굴이어야 낯설지 않다.
+*/
+
+.bl {
+  --bg: #fbf9f5;
+  --card: #ffffff;
+  --line: #eee7db;
+  --line-2: #f5efe4;
+  --tx: #241f18;
+  --tx-2: #6f675c;
+  --tx-3: #9c948a;
+  --amber: #ffc107;
+  --amber-ink: #8a6100;
+  --amber-soft: #fff8e3;
+  --crit: #c0392b;
+  --crit-soft: #fdeeec;
+  --warn: #b5730c;
+  --warn-soft: #fdf3e3;
+  --ok: #1a7a5e;
+  --ok-soft: #e9f6f1;
+  --info: #3f6b8f;
+
+  background: var(--bg);
+  color: var(--tx);
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", Pretendard, "Malgun Gothic", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  .bl {
+    --bg: #16130f;
+    --card: #1f1b16;
+    --line: #332c23;
+    --line-2: #2a241d;
+    --tx: #f2ece3;
+    --tx-2: #a99f92;
+    --tx-3: #7d7568;
+    --amber-ink: #ffce3d;
+    --amber-soft: #2e2410;
+    --crit: #e8776a;
+    --crit-soft: #33201d;
+    --warn: #d99a2b;
+    --warn-soft: #2e2413;
+    --ok: #4fbf98;
+    --ok-soft: #122b23;
+    --info: #7aa9ce;
+    color-scheme: dark;
+  }
+}
+
+.bl * {
+  box-sizing: border-box;
+}
+
+.bl-wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 15px 120px;
+}
+
+/* ── 머리 ─────────────────────────── */
+.bl-head {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg);
+  padding: 14px 0 11px;
+  border-bottom: 1px solid var(--line);
+}
+.bl-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.bl-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  flex: none;
+  display: block;
+}
+.bl-brand h1 {
+  margin: 0;
+  font-size: 17px;
+  letter-spacing: -0.3px;
+  font-weight: 800;
+}
+.bl-who {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--tx-2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bl-back {
+  font-size: 20px;
+  color: var(--tx-2);
+  text-decoration: none;
+  line-height: 1;
+  padding: 2px 4px 2px 0;
+}
+
+/* ── 거르개 ───────────────────────── */
+.bl-tabs {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  padding: 10px 0 3px;
+  scrollbar-width: none;
+}
+.bl-tabs::-webkit-scrollbar {
+  display: none;
+}
+.bl-tab {
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--tx-2);
+  border-radius: 99px;
+  padding: 5px 12px;
+  font-size: 12.5px;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.bl-tab.on {
+  background: var(--tx);
+  color: var(--card);
+  border-color: var(--tx);
+  font-weight: 700;
+}
+
+/* ── 신고 카드 ────────────────────── */
+.bl-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 12px;
+}
+.bl-bug {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  position: relative;
+  overflow: hidden;
+}
+/* 심각도를 왼쪽 띠로 — 색을 못 가려도 자리로 읽힌다 */
+.bl-bug::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--tx-3);
+}
+.bl-bug.sev-high::before {
+  background: var(--crit);
+}
+.bl-bug.sev-mid::before {
+  background: var(--amber);
+}
+.bl-bug.is-done::before {
+  background: var(--ok);
+}
+.bl-bug.is-done {
+  background: var(--ok-soft);
+  border-color: color-mix(in srgb, var(--ok) 26%, transparent);
+}
+.bl-in {
+  display: flex;
+  gap: 10px;
+  padding: 11px 12px 11px 14px;
+}
+.bl-link {
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+  flex: 1;
+  display: block;
+}
+.bl-title {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  line-height: 1.4;
+}
+.bl-bug.is-done .bl-title {
+  color: var(--ok);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--ok) 45%, transparent);
+}
+.bl-meta {
+  font-size: 11px;
+  color: var(--tx-2);
+  margin-top: 3px;
+}
+.bl-tags {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+/* ── 고르기 ───────────────────────── */
+.bl-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid var(--line);
+  flex: none;
+  margin-top: 2px;
+  background: var(--card);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  color: transparent;
+  font-size: 12px;
+}
+.bl-check[aria-pressed="true"] {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: #3a2a00;
+}
+.bl-check:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* ── 딱지 ─────────────────────────── */
+.bl-chip {
+  font-size: 10px;
+  font-weight: 750;
+  padding: 2px 7px;
+  border-radius: 99px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.bl-chip.crit {
+  color: var(--crit);
+  border-color: color-mix(in srgb, var(--crit) 34%, transparent);
+  background: var(--crit-soft);
+}
+.bl-chip.warn {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 34%, transparent);
+  background: var(--warn-soft);
+}
+.bl-chip.ok {
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 34%, transparent);
+  background: var(--ok-soft);
+}
+.bl-chip.nt {
+  color: var(--tx-2);
+  border-color: var(--line);
+  background: transparent;
+}
+.bl-chip.plat {
+  color: var(--info);
+  border-color: color-mix(in srgb, var(--info) 30%, transparent);
+  background: transparent;
+}
+
+/* ── 첨부 ─────────────────────────── */
+.bl-thumbs {
+  display: flex;
+  gap: 5px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.bl-th {
+  width: 46px;
+  height: 58px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: var(--line-2);
+  position: relative;
+  flex: none;
+  overflow: hidden;
+}
+.bl-th img,
+.bl-th video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.bl-th .pl {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 13px;
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+.bl-th.gone {
+  display: grid;
+  place-items: center;
+  color: var(--tx-3);
+  font-size: 8.5px;
+  text-align: center;
+  line-height: 1.25;
+  padding: 3px;
+}
+
+/* ── 메모·처리 ────────────────────── */
+/*
+  ⚠️ 이름을 `fixed` · `dark` 로 지으면 안 된다. 이 앱은 Tailwind 를 함께 쓰는데
+     `.fixed` 는 **position:fixed**, `.dark` 는 **다크모드 변형 선택자**다.
+     실제로 `.bl-note.fixed` 때문에 처리 내용 상자가 화면에 붙어 버려서
+     글이 서로 겹쳐 보였다(측정해서 잡았다). 그래서 여기 이름은 다 겹치지 않게 짓는다.
+*/
+.bl-note {
+  border-radius: 10px;
+  padding: 8px 11px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  margin-top: 8px;
+}
+.bl-note .l {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  display: block;
+  margin-bottom: 2px;
+}
+.bl-note p {
+  margin: 0;
+  color: var(--tx-2);
+  white-space: pre-wrap;
+}
+.bl-note.memo {
+  background: var(--amber-soft);
+  border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent);
+}
+.bl-note.memo .l {
+  color: var(--amber-ink);
+}
+.bl-note.solved {
+  border: 1px dashed color-mix(in srgb, var(--ok) 42%, transparent);
+}
+.bl-note.solved .l {
+  color: var(--ok);
+}
+.bl-note code {
+  font-size: 11px;
+  background: var(--line-2);
+  border-radius: 4px;
+  padding: 1px 4px;
+  color: var(--tx);
+}
+
+/* ── 입력 ─────────────────────────── */
+.bl-fld {
+  margin-top: 13px;
+}
+.bl-lbl {
+  font-size: 11.5px;
+  font-weight: 750;
+  color: var(--tx-2);
+  display: block;
+  margin-bottom: 5px;
+}
+.bl input[type="text"],
+.bl textarea,
+.bl select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  padding: 10px 12px;
+  font: inherit;
+  /* ⚠️ 16px 미만이면 iOS 사파리가 입력할 때 화면을 확대해 버린다 */
+  font-size: 16px;
+  color: var(--tx);
+}
+.bl textarea {
+  min-height: 92px;
+  resize: vertical;
+  line-height: 1.6;
+}
+.bl input::placeholder,
+.bl textarea::placeholder {
+  color: var(--tx-3);
+}
+.bl input:focus-visible,
+.bl textarea:focus-visible,
+.bl button:focus-visible,
+.bl a:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 1px;
+}
+
+.bl-segs {
+  display: flex;
+  gap: 6px;
+}
+.bl-seg {
+  flex: 1;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--tx-2);
+  background: var(--card);
+  cursor: pointer;
+}
+.bl-seg[aria-pressed="true"] {
+  background: var(--tx);
+  color: var(--card);
+  border-color: var(--tx);
+  font-weight: 750;
+}
+.bl-seg.danger[aria-pressed="true"] {
+  background: var(--crit);
+  border-color: var(--crit);
+  color: #fff;
+}
+
+.bl-drop {
+  border: 1.5px dashed var(--line);
+  border-radius: 12px;
+  padding: 18px 12px;
+  text-align: center;
+  color: var(--tx-3);
+  font-size: 12.5px;
+  background: var(--card);
+  cursor: pointer;
+  display: block;
+  line-height: 1.6;
+}
+.bl-picked {
+  display: flex;
+  gap: 7px;
+  margin-top: 9px;
+  flex-wrap: wrap;
+}
+.bl-pk {
+  width: 54px;
+  height: 68px;
+  border-radius: 8px;
+  position: relative;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  background: var(--line-2);
+}
+.bl-pk img,
+.bl-pk video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bl-pk .x {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
+  font-size: 11px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+
+.bl-auto {
+  background: var(--line-2);
+  border-radius: 10px;
+  padding: 9px 11px;
+  font-size: 11.5px;
+  color: var(--tx-2);
+  margin-top: 13px;
+  line-height: 1.6;
+}
+.bl-auto b {
+  color: var(--tx);
+}
+
+/* ── 단추 ─────────────────────────── */
+.bl-btn {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 13px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  background: var(--amber);
+  color: #3a2a00;
+  margin-top: 14px;
+  cursor: pointer;
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+.bl-btn.ink {
+  background: var(--tx);
+  color: var(--card);
+}
+.bl-btn.line {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--tx-2);
+  font-weight: 700;
+}
+.bl-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── 아래 고정 막대 (관리자) ──────── */
+.bl-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  background: color-mix(in srgb, var(--card) 93%, transparent);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
+  padding: 10px 15px calc(10px + env(safe-area-inset-bottom));
+}
+.bl-barin {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.bl-barin .cnt {
+  font-size: 13px;
+  font-weight: 750;
+}
+.bl-barin .cnt em {
+  font-style: normal;
+  color: var(--amber-ink);
+}
+.bl-barin .go {
+  margin-left: auto;
+  border: 0;
+  background: var(--amber);
+  color: #3a2a00;
+  border-radius: 11px;
+  padding: 10px 16px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.bl-barin .go:disabled {
+  opacity: 0.5;
+}
+
+.bl-fab {
+  position: fixed;
+  right: 15px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 29;
+  background: var(--tx);
+  color: var(--card);
+  border-radius: 99px;
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+/* 관리자는 아래 막대가 있으니 그만큼 띄운다 */
+.bl-fab.raised {
+  bottom: calc(74px + env(safe-area-inset-bottom));
+}
+
+.bl-empty {
+  text-align: center;
+  color: var(--tx-3);
+  font-size: 13px;
+  padding: 44px 10px;
+  line-height: 1.7;
+}
+.bl-foot {
+  font-size: 11.5px;
+  color: var(--tx-3);
+  text-align: center;
+  margin-top: 16px;
+  line-height: 1.6;
+}
+.bl-err {
+  font-size: 12.5px;
+  color: var(--crit);
+  background: var(--crit-soft);
+  border: 1px solid color-mix(in srgb, var(--crit) 30%, transparent);
+  border-radius: 10px;
+  padding: 9px 11px;
+  margin-top: 12px;
+}
+.bl-okmsg {
+  font-size: 12.5px;
+  color: var(--ok);
+  background: var(--ok-soft);
+  border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent);
+  border-radius: 10px;
+  padding: 9px 11px;
+  margin-top: 12px;
+}
+
+/* ── 로그인 ───────────────────────── */
+.bl-login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+}
+.bl-login-in {
+  width: 100%;
+  max-width: 340px;
+}
+.bl-login .mark {
+  text-align: center;
+  margin-bottom: 22px;
+}
+.bl-login .mark img {
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  margin-bottom: 12px;
+}
+.bl-login .mark h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  letter-spacing: -0.3px;
+}
+.bl-login .mark p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--tx-2);
+  line-height: 1.6;
+}

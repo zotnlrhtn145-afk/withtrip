@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 
 import { SocialLoginButtons } from "@/components/auth/social-login-buttons"
@@ -22,6 +22,7 @@ export function LoginView({
   onForgotPassword: () => void
 }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -43,7 +44,14 @@ export function LoginView({
     try {
       await signInWithEmailPassword(trimmedEmail, password)
       onLogin()
-      router.push("/")
+      /*
+        ⚠️ 늘 홈으로 보내면 안 된다. 버그 신고처럼 **다른 곳에서 넘어온 사람**이
+           로그인하고 나서 홈에 떨어지면, 원래 하려던 일을 처음부터 다시 찾아야 한다.
+           `?next=` 로 온 곳만 허용한다 — 바깥 주소를 그대로 받으면 남의 사이트로
+           튕겨 보내는 발판이 된다.
+      */
+      const next = searchParams?.get("next")
+      router.push(next && next.startsWith("/") && !next.startsWith("//") ? next : "/")
     } catch (err) {
       console.error("[LoginView] signIn failed:", err)
       setErrorMessage(mapAuthError(err as Error))
