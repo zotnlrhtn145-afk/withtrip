@@ -44,10 +44,23 @@ export function NewBugForm() {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [env, setEnv] = useState({ platform: "android", device: "", os: "" })
+  /*
+    올리는 중인 첨부들. 보내기를 누르면 이걸 기다린다.
+    ⚠️ 예전엔 하나라도 안 끝나면 **보내기 단추를 아예 막았다.** 업로드가 실패하거나
+       멈추면 단추가 영영 회색으로 죽어서, 새로고침 말고는 방법이 없었다(신고받음).
+       이제는 막지 않고, 누르면 기다렸다가 보낸다.
+  */
+  const inflight = useRef<Promise<void>[]>([])
+  /* 기다린 뒤에는 상태가 바뀌어 있다 — 최신 값을 봐야 방금 끝난 첨부가 붙는다 */
+  const pickedRef = useRef<Picked[]>([])
 
   useEffect(() => {
     setEnv(guessDevice())
   }, [])
+
+  useEffect(() => {
+    pickedRef.current = picked
+  }, [picked])
 
   // ⚠️ 미리보기로 만든 주소는 놓아 주지 않으면 계속 메모리를 잡고 있는다
   useEffect(() => () => picked.forEach((p) => URL.revokeObjectURL(p.url)), [picked])
@@ -77,19 +90,32 @@ export function NewBugForm() {
          큰 날에는 한참 멈춰 있게 되고, 그동안 다시 누르게 된다.
     */
     for (const item of next) {
-      try {
-        const ext = item.file.name.split(".").pop()?.toLowerCase() || (item.kind === "video" ? "mp4" : "jpg")
-        const path = `${crypto.randomUUID()}.${ext}`
-        const { error } = await supabase.storage.from("bug-media").upload(path, item.file, {
-          contentType: item.file.type || undefined,
-          upsert: false,
-        })
-        if (error) throw error
-        setPicked((p) => p.map((x) => (x.url === item.url ? { ...x, path, done: true } : x)))
-      } catch (e) {
-        setErr(`첨부를 올리지 못했습니다: ${e instanceof Error ? e.message : ""}`)
-        setPicked((p) => p.filter((x) => x.url !== item.url))
-      }
+      const job = (async () => {
+        try {
+          const ext = item.file.name.split(".").pop()?.toLowerCase() || (item.kind === "video" ? "mp4" : "jpg")
+          const path = `${crypto.randomUUID()}.${ext}`
+          /*
+            ⚠️ 시간 제한을 둔다. 전파가 나쁠 때 업로드가 끝나지도 실패하지도 않고
+               매달려 있는 일이 있는데, 그러면 화면이 통째로 멈춘 것처럼 된다.
+          */
+          const upload = supabase.storage.from("bug-media").upload(path, item.file, {
+            contentType: item.file.type || undefined,
+            upsert: false,
+          })
+          const timeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("시간 초과")), 90_000)
+          )
+          const { error } = (await Promise.race([upload, timeout])) as { error: unknown }
+          if (error) throw error
+          setPicked((p) => p.map((x) => (x.url === item.url ? { ...x, path, done: true } : x)))
+        } catch {
+          // 실패한 첨부는 빼고, 글은 그대로 보낼 수 있게 둔다
+          setPicked((p) => p.filter((x) => x.url !== item.url))
+          setErr("사진 하나를 올리지 못했어요. 그 사진만 빼고 보낼 수 있어요.")
+        }
+      })()
+      inflight.current.push(job)
+      void job
     }
   }
 
@@ -120,13 +146,19 @@ export function NewBugForm() {
     setBusy(true)
     setErr(null)
 
+    // 아직 올라가는 중인 첨부가 있으면 여기서 기다린다 (단추를 막는 대신)
+    if (inflight.current.length > 0) {
+      await Promise.allSettled(inflight.current)
+      inflight.current = []
+    }
+
     const payload = {
       body: bodyText,
       severity,
       platform: env.platform,
       device: env.device,
       os_version: env.os,
-      media: picked
+      media: pickedRef.current
         .filter((p) => p.path)
         .map((p) => ({ kind: p.kind, path: p.path as string, bytes: p.file.size })),
     }
@@ -162,7 +194,7 @@ export function NewBugForm() {
   }
 
   /* 첨부를 올리는 중인지, 보내는 중인지 — 무엇을 기다리는지 말해 준다 */
-  const busyWhat = uploading ? "첨부를 올리는 중" : busy ? "신고를 보내는 중" : null
+  const busyWhat = busy ? (uploading ? "첨부를 올리는 중" : "신고를 보내는 중") : null
 
   return (
     <form action={submit}>
@@ -257,8 +289,12 @@ export function NewBugForm() {
 
       {err && <div className="bl-err">{err}</div>}
 
-      <button className="bl-btn" type="submit" disabled={busy || uploading}>
-        {uploading ? "첨부 올리는 중…" : busy ? "보내는 중…" : "신고 보내기"}
+      {/*
+        ⚠️ 업로드 중이라고 단추를 막지 않는다. 막아 두면 업로드가 한 번 꼬였을 때
+           손 쓸 방법이 없어진다 — 눌러 두면 기다렸다가 알아서 보낸다.
+      */}
+      <button className="bl-btn" type="submit" disabled={busy}>
+        {busy ? "보내는 중…" : uploading ? "신고 보내기 (첨부 올리는 중)" : "신고 보내기"}
       </button>
       <button type="button" className="bl-btn line" onClick={() => router.back()}>
         취소
