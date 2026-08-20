@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
 import { BellOff, Loader2, Navigation, Plus, UserRoundPlus } from "lucide-react"
 
@@ -194,6 +195,7 @@ export function NotificationList({
   onSelectTrip?: (trip: { id: string }) => void
   compact?: boolean
 }) {
+  const router = useRouter()
   const { items, loading, setItems, refresh } = useNotifications()
   const { refreshTrips } = useTrips()
   const [filter, setFilter] = useState<NotificationFilter>("all")
@@ -350,13 +352,21 @@ export function NotificationList({
                                     lat: item.payload?.lat,
                                     lng: item.payload?.lng,
                                   })
-                              : undefined
+                              : item.type === "place_recommendation"
+                                ? /*
+                                     ⚠️ 추천 알림은 누를 데가 없었다. "추가" 를
+                                        눌러도 그게 어디로 갔는지 보려면 직접
+                                        찾아가야 했다(앱에서 같은 신고를 받았다).
+                                        친구 추천찜 목록으로 바로 보낸다.
+                                  */
+                                  () => router.push("/saved?tab=friends")
+                                : undefined
                           }
                           className={cn(
                             "flex items-center gap-3 rounded-2xl px-2 py-2.5 transition-colors duration-300 hover:bg-slate-100/80",
                             item.isRead ? "bg-slate-50" : "bg-white",
                             item.actionState !== "pending" && "opacity-80",
-                            isLoc && "cursor-pointer"
+                            (isLoc || item.type === "place_recommendation") && "cursor-pointer"
                           )}
                         >
                           <NotificationAvatars item={item} />

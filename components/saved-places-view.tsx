@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useRef, useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Bookmark, Check, Heart, Info, Loader2, Map as MapIcon, MapPin, Plane, Plus, Search, Send, SlidersHorizontal, Star, Users, X } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -109,6 +109,15 @@ export function SavedPlacesView() {
   const [detailPlace, setDetailPlace] = useState<PlaceDetailInput | null>(null)
   const [detailAssign, setDetailAssign] = useState<SavedPlace | null>(null) // 상세에서 "담기" 대상
   const [tab, setTab] = useState<"mine" | "friends">("mine")
+  /*
+    ⚠️ 주소로 탭을 정할 수 있어야 한다. 알림에서 "누가 맛집을 추천했어요" 를
+       눌렀을 때 곧장 친구 추천찜으로 보내려면 여기로 링크를 걸어야 하는데,
+       앱은 `?tab=friends` 를 이미 받고 있었고 웹만 못 받고 있었다.
+  */
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    if (searchParams.get("tab") === "friends") setTab("friends")
+  }, [searchParams])
   const [subTab, setSubTab] = useState<"wish" | "trip">("wish")
   const [search, setSearch] = useState("") // 저장 전용 검색 — 이름·지역·주소
   const [sort, setSort] = useState<SortMode>("recent")
