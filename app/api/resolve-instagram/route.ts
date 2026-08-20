@@ -84,8 +84,87 @@ export type ResolvedPlace = {
     imageUrl: string;
     /** 대표 사진 후보(최대 4). 앱이 AI 선별을 맡길 때 쓴다 */
     photoRefs: string[];
+    /**
+     * 가게 전화번호.
+     *
+     * ⚠️ Text Search 응답에는 **전화번호가 아예 없다.** 그래서 예전엔 담아도
+     *    번호가 비어 있었고, 상세를 한 번 연 곳만 채워져서 "어떤 건 긁어오고
+     *    어떤 건 안 긁어온다"로 보였다(신고받음).
+     *    아래에서 캐시를 먼저 보고, 없을 때만 구글에 한 번 물어 채운다.
+     */
+    phoneNumber: string | null;
   } | null;
 };
+
+
+/**
+ * 확정된 장소들의 전화번호를 채운다.
+ *
+ * 순서: 캐시(`places`) → 없으면 구글 Place Details 한 번.
+ * ⚠️ 번호를 못 구해도 그냥 둔다. 저장을 막을 만한 값이 아니다.
+ */
+async function fillPhoneNumbers(
+  grounded: { place: { googlePlaceId: string; phoneNumber: string | null } | null }[],
+): Promise<void> {
+  const ids = [
+    ...new Set(
+      grounded
+        .map((g) => g.place?.googlePlaceId ?? "")
+        .filter((x) => x.length > 0),
+    ),
+  ];
+  if (ids.length === 0) return;
+
+  const phoneOf = new Map<string, string>();
+
+  try {
+    const cached = await readPlacesByGoogleIds(ids);
+    for (const [gid, row] of cached) {
+      if (row.phone) phoneOf.set(gid, row.phone);
+    }
+  } catch {
+    /* 캐시가 죽어도 아래에서 직접 물어본다 */
+  }
+
+  const missing = ids.filter((id) => !phoneOf.has(id));
+  const apiKey = (
+    process.env.GOOGLE_PLACES_API_KEY ||
+    process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY ||
+    ""
+  ).trim();
+
+  if (missing.length > 0 && apiKey) {
+    await Promise.all(
+      missing.map(async (id) => {
+        try {
+          const url = new URL(
+            "https://maps.googleapis.com/maps/api/place/details/json",
+          );
+          url.searchParams.set("place_id", id);
+          // 번호만 있으면 된다 — 필요 없는 항목을 부르면 그만큼 더 비싸다
+          url.searchParams.set("fields", "formatted_phone_number");
+          url.searchParams.set("language", "ko");
+          url.searchParams.set("key", apiKey);
+          const res = await fetch(url.toString(), { cache: "no-store" });
+          if (!res.ok) return;
+          const json = (await res.json()) as {
+            status?: string;
+            result?: { formatted_phone_number?: string };
+          };
+          const phone = String(json.result?.formatted_phone_number ?? "").trim();
+          if (phone) phoneOf.set(id, phone);
+        } catch {
+          /* 이 한 곳만 번호 없이 간다 */
+        }
+      }),
+    );
+  }
+
+  for (const g of grounded) {
+    if (!g.place) continue;
+    g.place.phoneNumber = phoneOf.get(g.place.googlePlaceId) ?? null;
+  }
+}
 
 function getGeminiKey() {
   return (
@@ -1035,6 +1114,8 @@ export async function POST(request: Request) {
             address: item.address ?? "",
             rating: null,
             reviewCount: null,
+            // 캡션만 보고 담은 곳은 구글에 없으니 번호도 없다
+            phoneNumber: null,
             lat: found.anchor.lat,
             lng: found.anchor.lng,
             kind: "restaurant",
@@ -1111,10 +1192,20 @@ export async function POST(request: Request) {
           }),
           /** 대표 사진 후보 — 앱이 이걸로 /api/places/cover 에 선별을 맡긴다 */
           photoRefs,
+          phoneNumber: null as string | null,
         },
       };
     }),
   );
+
+  /*
+    전화번호 채우기.
+
+    ⚠️ 캐시(`places`)에 있으면 공짜다. 없는 것만 구글에 물어본다 —
+       Place Details 는 1000회당 $17 라, 담을 때마다 전부 부르면 돈이 샌다.
+    ⚠️ 실패해도 그냥 비워 둔다. 번호 하나 때문에 저장 자체가 막히면 안 된다.
+  */
+  await fillPhoneNumbers(grounded);
 
   const groundMs = Date.now() - tGround;
 
@@ -1131,6 +1222,8 @@ export async function POST(request: Request) {
       ratingCount: g.place!.reviewCount,
       category: g.place!.kind,
       subCategory: g.place!.subCategory,
+      // 방금 구한 번호를 캐시에 남긴다 — 다음 사람은 구글을 안 불러도 된다
+      phone: g.place!.phoneNumber,
       /**
        * ⚠️ 예전엔 이걸 안 넣어서 캐시에 사진 후보가 **비어 있었다**(194곳).
        *    텍스트검색 응답에 이미 들어 있는 걸 그냥 버린 셈이라,
