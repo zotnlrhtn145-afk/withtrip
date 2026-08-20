@@ -5,6 +5,7 @@ import {
   fetchCostByCaller,
   fetchDailyApiCost,
   fetchMonthCosts,
+  fetchRealtimeUsage,
   fetchRecurring,
   fetchSearchSavings,
   fetchSupabaseAddons,
@@ -42,6 +43,16 @@ export default async function CostsPage({
     usdKrw().catch(() => 1380),
   ])
   const savings = await fetchSearchSavings(month, monthEnd).catch(() => ({ hits: 0, entries: 0, usd: 0 }))
+  const realtime = await fetchRealtimeUsage().catch(() => ({
+    thisMonth: 0,
+    last24h: 0,
+    limit: 2_000_000,
+    daily: [] as { day: string; n: number }[],
+  }))
+  /* 이번 달이 아직 안 끝났으면, 이 속도로 가면 월말에 얼마일지로 본다 */
+  const rtDay = Number(today.slice(8, 10))
+  const rtProjected = isThisMonth && rtDay > 0 ? Math.round((realtime.thisMonth / rtDay) * 30) : realtime.thisMonth
+  const rtPct = Math.min(100, (rtProjected / realtime.limit) * 100)
 
   const toKrw = (amount: number, currency: string) => (currency === "USD" ? amount * rate : amount)
   const totalKrw = costs.reduce((s, c) => s + toKrw(c.amount, c.currency), 0)
@@ -116,6 +127,27 @@ export default async function CostsPage({
           </div>
           <div className="d">
             같은 검색 {savings.hits.toLocaleString("ko-KR")}번을 구글에 안 물었습니다
+          </div>
+        </div>
+        {/*
+          ⚠️ 실시간은 **넘기기 전까지 아무 신호가 없다.** 넘긴 다음 달 청구서로
+             알게 되는 종류라, 지금 속도로 가면 월말에 얼마일지를 같이 보여 준다.
+        */}
+        <div className="wt-tile">
+          <div className="k">실시간 신호</div>
+          <div
+            className="v"
+            style={{ color: rtPct >= 80 ? "var(--crit)" : rtPct >= 50 ? "var(--warn)" : "var(--good)" }}
+          >
+            {rtPct < 1 ? "<1" : Math.round(rtPct)}
+            <small>%</small>
+          </div>
+          <div className="d">
+            이번 달 {realtime.thisMonth.toLocaleString("ko-KR")}건
+            {isThisMonth && ` · 이 속도면 월말 ${rtProjected.toLocaleString("ko-KR")}건`}
+            <br />
+            무료는 월 {(realtime.limit / 10000).toLocaleString("ko-KR")}만 건까지 · 대화방을 열어 둔 동안
+            오가는 건 여기 안 잡힙니다
           </div>
         </div>
       </section>

@@ -214,3 +214,34 @@ export async function fetchSearchSavings(
   const per1k = Number(price?.usd_per_1k ?? 32)
   return { hits, entries: Number(row?.entries ?? 0), usd: (hits / 1000) * per1k }
 }
+
+
+/**
+ * 실시간(Realtime) 사용량.
+ *
+ * 무료 한도는 **월 200만 건**인데, 넘기기 전까지는 아무 신호가 없다.
+ * 청구서를 보고 아는 대신 미리 보이게 한다.
+ *
+ * ⚠️ 여기 세는 건 **DB 가 직접 쏜 신호**다. 대화방을 열어 둔 동안 오가는
+ *    변경 알림(postgres_changes)은 안 잡힌다 — 화면에도 그렇게 적어 둔다.
+ */
+export async function fetchRealtimeUsage(): Promise<{
+  thisMonth: number
+  last24h: number
+  limit: number
+  daily: { day: string; n: number }[]
+}> {
+  const { data } = await db().rpc("admin_realtime_usage")
+  const o = (data ?? {}) as {
+    this_month?: number
+    last_24h?: number
+    free_limit?: number
+    daily?: { day: string; n: number }[]
+  }
+  return {
+    thisMonth: Number(o.this_month ?? 0),
+    last24h: Number(o.last_24h ?? 0),
+    limit: Number(o.free_limit ?? 2_000_000),
+    daily: Array.isArray(o.daily) ? o.daily : [],
+  }
+}
