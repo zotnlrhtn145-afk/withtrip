@@ -503,6 +503,36 @@ function nameSimilarity(a: string, b: string): number {
  * 캡션 표기와 현지 표기 중 **더 잘 맞는 쪽**으로 본다.
  * "이치란 라멘" vs "一蘭 道頓堀店" 은 0점이지만, 현지 표기 "一蘭" 과는 1.00 이다.
  */
+/**
+ * **엄격한** 이름 비교.
+ *
+ * ⚠️ 보통 비교는 "한쪽이 다른 쪽에 들어 있으면 1점"이다. 그런데 짧은 이름에서는
+ *    이게 위험하다 — "YASAKA" 는 "Yasaka Shrine"(야사카 신사) 안에 들어 있어서
+ *    **레스토랑을 찾다가 신사를 집었다**(실제로 그랬다).
+ *    캡션 주소가 빗나가 다시 찾는 상황에서는 이 지름길을 끄고 글자 겹침만 본다.
+ */
+function strictNameSimilarity(candidates: string[], target: string): number {
+  let best = 0;
+  for (const c of candidates) {
+    if (!c) continue;
+    const ca = nameCore(c);
+    const cb = nameCore(target);
+    if (!ca || !cb) continue;
+    const [x, y] = dropSharedTail(ca, cb);
+    const A = bigrams(x);
+    const B = bigrams(y);
+    let inter = 0;
+    for (const g of A) if (B.has(g)) inter += 1;
+    const union = A.size + B.size - inter;
+    const v = union > 0 ? inter / union : 0;
+    if (v > best) best = v;
+  }
+  return best;
+}
+
+/** 다시 찾을 때 요구하는 값. 통상(0.34)보다 훨씬 높다 — 애매하면 안 담는 게 낫다 */
+const STRICT_MATCH_THRESHOLD = 0.62;
+
 function bestNameSimilarity(candidates: string[], target: string): number {
   let best = 0;
   for (const c of candidates) {
@@ -689,9 +719,11 @@ async function findPlace(
   );
 
   for (const results of resultSets) {
-    const matched = results.find(
-      (r) =>
-        bestNameSimilarity(spellings, r.name ?? "") >= NAME_MATCH_THRESHOLD,
+    const matched = results.find((r) =>
+      captionAnchor
+        // 주소가 빗나가 다시 찾는 중 — 애매한 건 담지 않는다
+        ? strictNameSimilarity(spellings, r.name ?? "") >= STRICT_MATCH_THRESHOLD
+        : bestNameSimilarity(spellings, r.name ?? "") >= NAME_MATCH_THRESHOLD,
     );
     if (matched) return { hit: matched, confidence: "medium", anchor: null };
   }
@@ -709,8 +741,15 @@ async function findPlace(
     if (bare.length) return { hit: bare[0], confidence: "low", anchor: null };
   }
 
-  const first = resultSets.find((r) => r.length > 0);
-  if (first) return { hit: first[0], confidence: "low", anchor: null };
+  /*
+    ⚠️ "아무거나 첫 번째"는 **캡션 주소가 없었을 때만** 쓴다.
+       주소가 있었는데 빗나간 상황에서 이걸 쓰면, 엉뚱한 가게를 확신에 차서
+       담게 된다. 그럴 바엔 캡션 내용만 담는 게 낫다.
+  */
+  if (!captionAnchor) {
+    const first = resultSets.find((r) => r.length > 0);
+    if (first) return { hit: first[0], confidence: "low", anchor: null };
+  }
 
   /*
     끝까지 못 찾았다. 캡션에 주소 비슷한 게 있었다면 그 좌표라도 들고
