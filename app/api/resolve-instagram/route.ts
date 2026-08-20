@@ -625,6 +625,8 @@ async function findPlace(
 } | null> {
   // 캡션 표기와 현지 표기를 둘 다 들고 대조한다
   const spellings = [name, nameLocal].filter(Boolean);
+  /** 주소로 좌표를 얻었지만 그 근처에서 못 찾은 경우 — 마지막에 캡션으로 돌아갈 때 쓴다 */
+  let captionAnchor: LatLng | null = null;
   const anchor = captionAddress ? await geocode(captionAddress, apiKey) : null;
 
   if (anchor) {
@@ -659,11 +661,20 @@ async function findPlace(
       }
     }
 
-    // 주소는 확실한데 구글에 그 가게가 없다 → **엉뚱한 곳을 주느니 캡션 그대로 쓴다.**
-    return { hit: null, confidence: "caption", anchor };
+    /*
+      여기까지 왔다는 건 주소 근처에서 못 찾았다는 뜻이다.
+      ⚠️ 예전엔 **여기서 바로 포기**하고 캡션 내용만 담았다. 그런데 캡션의
+         "주소"가 실제 주소가 아니라 "파크 하얏트 호텔 안" 같은 **설명**인 경우가
+         흔하다. 그걸 좌표로 바꾸면 엉뚱한 데를 가리키고, 그 근처에 없으니
+         평점·사진·전화번호가 전부 빈 채로 담겼다(신고받음 — YASAKA 사례).
+
+         그래서 포기하지 않고 **아래 지역 검색까지 가 본다.** 거기서도 못 찾으면
+         그때 캡션으로 돌아온다.
+    */
+    captionAnchor = anchor;
   }
 
-  // 주소가 없으면 **지역명을 붙여** 검색한다.
+  // 주소가 없거나, 주소 근처에서 못 찾았으면 **지역명을 붙여** 검색한다.
   // 이게 없으면 "THE BRIX" 같은 흔한 상호가 전 세계에서 아무거나 잡힌다.
   // (실측: 호치민 감성맛집 게시물은 주소 없이 지역명만 있었다)
   //
@@ -700,6 +711,12 @@ async function findPlace(
 
   const first = resultSets.find((r) => r.length > 0);
   if (first) return { hit: first[0], confidence: "low", anchor: null };
+
+  /*
+    끝까지 못 찾았다. 캡션에 주소 비슷한 게 있었다면 그 좌표라도 들고
+    캡션 내용 그대로 담는다 — 지도에는 대략 찍히고, 이름·메모는 남는다.
+  */
+  if (captionAnchor) return { hit: null, confidence: "caption", anchor: captionAnchor };
   return null;
 }
 
