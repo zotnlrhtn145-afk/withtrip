@@ -1,4 +1,5 @@
 import { getCurrentUserId } from "@/lib/auth-session"
+import { dayDate } from "@/shared/trip-days"
 import { supabase } from "@/lib/supabase"
 import { getErrorMessage } from "@/lib/trips-api"
 
@@ -155,7 +156,14 @@ export function getScheduleDayMeta(tripStartDate: string, dayNumber: number) {
   if (!start) {
     return { dayNumber: day, dateLabel: "", weekday: "", visitDate: "", subtitle: `Day ${day}` }
   }
-  const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + (day - 1))
+  /*
+    ⚠️ 날짜 계산은 **공통 파일 하나**에서만 한다(`shared/trip-days.ts`).
+       앱에도 같은 계산이 필요한데, 각자 하면 한쪽이 하루씩 밀려도
+       한참 모른다(날짜만 있는 문자열을 그대로 Date 에 넣으면 UTC 자정으로
+       읽혀 한국에서 하루 밀린다 — 실제로 밟기 쉬운 함정이다).
+       **보여 주는 모양은 각자** 정한다 — 웹은 `08.27 목`, 앱은 `8/27 (목)`.
+  */
+  const date = dayDate(tripStartDate, day) ?? new Date(start.getFullYear(), start.getMonth(), start.getDate() + (day - 1))
   const dateLabel = `${`${date.getMonth() + 1}`.padStart(2, "0")}.${`${date.getDate()}`.padStart(2, "0")}`
   const weekday = WEEKDAYS[date.getDay()] ?? ""
   return {
