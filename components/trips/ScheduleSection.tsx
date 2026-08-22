@@ -289,6 +289,22 @@ function ScheduleRegisterModal({
         phoneNumber: phoneNumber.trim(),
         memo: memo.trim(),
         createdBy: authUserId,
+        /*
+          ⚠️ 좌표를 같이 저장한다. 구글에서 고른 장소면 lat/lng 가 이미 손에
+             있는데, 예전에는 찜에만 넣고 **일정에는 안 넣었다.** 그래서 일정이
+             어디쯤인지 알 수 없어 거리·동선 계산이 불가능했다.
+          ⚠️ **이름을 손으로 바꿨으면 좌표를 안 붙인다.** 다른 곳인데 예전
+             좌표가 남으면 엉뚱한 거리를 그럴듯하게 보여 주게 된다.
+             (아래 자동 찜 등록이 쓰는 것과 같은 판단이다)
+        */
+        lat:
+          selectedPlace && selectedPlace.placeName.trim() === placeName.trim()
+            ? (selectedPlace.lat ?? null)
+            : null,
+        lng:
+          selectedPlace && selectedPlace.placeName.trim() === placeName.trim()
+            ? (selectedPlace.lng ?? null)
+            : null,
       }
       const saved =
         isEditMode && editingSchedule

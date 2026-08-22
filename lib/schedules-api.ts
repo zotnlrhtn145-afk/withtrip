@@ -52,7 +52,7 @@ export function isAutoSchedule(schedule: Pick<TripSchedule, "sourceType">): bool
 
 /** trip_schedules 조회/저장 시 사용하는 컬럼 목록. */
 const SCHEDULE_SELECT =
-  "id, trip_id, created_by, day_number, category, place_name, visit_time, address, phone_number, memo, source_type, source_id, member_ids, created_at"
+  "id, trip_id, created_by, day_number, category, place_name, visit_time, address, phone_number, memo, source_type, source_id, member_ids, created_at, lat, lng"
 
 export type CreateTripScheduleInput = {
   tripId: string
@@ -65,6 +65,13 @@ export type CreateTripScheduleInput = {
   memo?: string
   createdBy?: string | null
   userId?: string | null
+  /*
+    좌표. 장소 검색·찜에서 고른 경우 이미 손에 있는 값이라 그대로 넘긴다.
+    ⚠️ 없으면 넣지 않는다 — 주소로 추측해서 채우면 엉뚱한 곳까지의 거리를
+       그럴듯하게 보여 주게 된다.
+  */
+  lat?: number | null
+  lng?: number | null
 }
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
@@ -223,6 +230,12 @@ function buildPayload(input: CreateTripScheduleInput, authorUserId: string | nul
     address: String(input.address ?? "").trim() || null,
     phone_number: String(input.phoneNumber ?? "").trim() || null,
     memo: String(input.memo ?? "").trim() || null,
+    /*
+      ⚠️ 일정에 좌표를 같이 남긴다. 앱과 웹이 **같은 칸**을 채워야 한다 —
+         한쪽만 채우면 그쪽에서 만든 일정만 거리가 나오고 다른 쪽은 빈다.
+    */
+    lat: Number.isFinite(Number(input.lat)) ? Number(input.lat) : null,
+    lng: Number.isFinite(Number(input.lng)) ? Number(input.lng) : null,
     // Always send created_by (trip_schedules schema)
     created_by: authorUserId,
   }
