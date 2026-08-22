@@ -25,6 +25,9 @@ export type TripSchedule = {
   sourceId: string
   /** 이 일정에 함께하는 멤버(탑승자/투숙객) user id 목록. */
   memberIds: string[]
+  /** 좌표. 없으면 null — 거리를 안 보여 준다(지어내지 않는다) */
+  lat: number | null
+  lng: number | null
 }
 
 export type TripScheduleRow = {
@@ -43,6 +46,8 @@ export type TripScheduleRow = {
   source_type?: string | null
   source_id?: string | null
   member_ids?: string[] | null
+  lat?: number | null
+  lng?: number | null
 }
 
 /** 자동 동기화(이동수단/숙소) 일정인지 — 수동 편집/삭제 잠금 판단에 사용. */
@@ -204,6 +209,8 @@ export function mapScheduleRow(row: TripScheduleRow): TripSchedule {
     memberIds: Array.isArray(row.member_ids)
       ? row.member_ids.map((id) => String(id ?? "").trim()).filter(Boolean)
       : [],
+    lat: Number.isFinite(Number(row.lat)) ? Number(row.lat) : null,
+    lng: Number.isFinite(Number(row.lng)) ? Number(row.lng) : null,
   }
 }
 

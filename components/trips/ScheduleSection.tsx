@@ -5,9 +5,11 @@ import {
   BedDouble,
   Calendar,
   Camera,
+  AlertCircle,
   Check,
   ChevronDown,
   Coffee,
+  Footprints,
   Crown,
   Loader2,
   MapPin,
@@ -59,6 +61,7 @@ import {
   type ScheduleCategory,
   type TripSchedule,
 } from "@/lib/schedules-api"
+import { legLabel, legTone, straightKm } from "@/shared/trip-distance"
 import { fetchProfilesByIds, fetchTripOwnerId, type TripMember } from "@/lib/trip-members-api"
 import {
   toWishlistKind,
@@ -768,6 +771,7 @@ function MemberAvatars({ members, ownerId = "" }: { members: TripMember[]; owner
 
 function TimelineItem({
   item,
+  nextItem,
   isLast,
   isAuthor,
   authorProfile,
@@ -778,6 +782,8 @@ function TimelineItem({
   onDelete,
 }: {
   item: TripSchedule
+  /** 바로 다음 일정 — 사이 거리를 재는 데 쓴다. 마지막이면 null */
+  nextItem?: TripSchedule | null
   isLast: boolean
   isAuthor: boolean
   authorProfile?: TripMember | null
@@ -789,6 +795,24 @@ function TimelineItem({
 }) {
   const Icon = CATEGORY_ICON[item.category] ?? MapPin
   const timeLabel = item.visitTime || "--:--"
+
+  /*
+    다음 일정까지의 구간. 좌표가 둘 다 있을 때만 그린다.
+    ⚠️ 이동수단은 지금은 도보 기준이다. 앱에는 렌터카를 등록한 날을 차 기준으로
+       바꿔 주는 로직이 있는데, 웹 화면은 그 정보를 아직 안 받는다 —
+       숫자가 어긋나지 않게 **둘 다 도보로 통일**해 두고, 차 기준은 앱·웹을
+       같이 바꿀 때 붙인다.
+  */
+  const leg =
+    !isLast && item.lat != null && item.lng != null && nextItem?.lat != null && nextItem?.lng != null
+      ? (() => {
+          const km = straightKm(
+            { lat: item.lat, lng: item.lng },
+            { lat: nextItem.lat as number, lng: nextItem.lng as number }
+          )
+          return { km, text: legLabel(km, "walk"), far: legTone(km) === "far" }
+        })()
+      : null
   const authorName = authorProfile?.name || "멤버"
   const authorIsHost = Boolean(ownerId) && (authorProfile?.userId === ownerId || item.createdBy === ownerId)
   const isAuto = isAutoSchedule(item)
@@ -913,6 +937,24 @@ function TimelineItem({
           </div>
         ) : null}
       </div>
+
+      {/*
+        일정과 일정 사이 — 얼마나 떨어져 있는지.
+        ⚠️ `li` 아래쪽 여백(pb-6) 자리에 얹는다. 카드 안에 넣으면 카드가 복잡해지고,
+           새 줄을 만들면 연결선이 끊긴다.
+        ⚠️ 왼쪽 여백은 시간칸(3.25rem)+간격+축(2.5rem)+간격 을 더한 값이다.
+      */}
+      {leg ? (
+        <span
+          className={cn(
+            "absolute bottom-0.5 left-[7.25rem] flex items-center gap-1 text-xs font-semibold sm:left-[8rem]",
+            leg.far ? "text-amber-700" : "text-slate-400"
+          )}
+        >
+          {leg.far ? <AlertCircle className="size-3.5" /> : <Footprints className="size-3.5" />}
+          {leg.text}
+        </span>
+      ) : null}
     </li>
   )
 }
@@ -1194,6 +1236,14 @@ export function ScheduleSection({
               key={item.id}
               item={item}
               isLast={index === visibleItems.length - 1}
+              /*
+                다음 일정까지 얼마나 먼가.
+                ⚠️ **좌표가 둘 다 있을 때만** 넘긴다. 주소만 있는 일정은 어디인지
+                   모르는데, 없는 값을 지어내면 그걸 믿고 계획을 짠다.
+                ⚠️ 계산은 앱과 같은 공통 파일(shared/trip-distance)을 쓴다 —
+                   웹과 앱이 다른 숫자를 보여 주면 안 된다.
+              */
+              nextItem={visibleItems[index + 1] ?? null}
               isAuthor={authReady && (isHost || isScheduleAuthor(item, currentUserId))}
               authorProfile={
                 profileById.get(String(item.createdBy || item.userId || "").trim()) ?? null
