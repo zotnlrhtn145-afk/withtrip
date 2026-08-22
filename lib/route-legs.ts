@@ -34,12 +34,19 @@ const GOOGLE_MODE: Record<LegMode, string> = {
   transit: "transit",
 }
 
+/*
+  ⚠️ 키 이름을 **장소 검색과 똑같은 순서**로 찾는다. 배포 환경마다 어떤 이름으로
+     넣어 뒀는지가 달라서, 한 곳만 보면 "키가 없다" 며 조용히 빈 값을 돌려준다
+     (실제로 그렇게 새 API 가 아무것도 못 받아 왔다).
+*/
 function apiKey(): string {
   return (
     process.env.GOOGLE_PLACES_API_KEY ||
+    process.env.GOOGLE_MAPS_API_KEY ||
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
     process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY ||
     ""
-  )
+  ).trim()
 }
 
 async function fromCache(a: LegPoint, b: LegPoint, mode: LegMode): Promise<LegResult | null> {
