@@ -63,7 +63,14 @@ import {
   type TripSchedule,
 } from "@/lib/schedules-api"
 import { legLabel, legTone, straightKm } from "@/shared/trip-distance"
-import { computePresence, presenceEvents, type PresenceEvent } from "@/shared/trip-presence"
+import {
+  computePresence,
+  isPresent,
+  momentBefore,
+  presenceEvents,
+  type Presence,
+  type PresenceEvent,
+} from "@/shared/trip-presence"
 import { dayDate } from "@/shared/trip-days"
 import { fetchProfilesByIds, fetchTripOwnerId, type TripMember } from "@/lib/trip-members-api"
 import { supabase } from "@/lib/supabase"
@@ -709,7 +716,16 @@ function CreatorBadge({
   )
 }
 
-function MemberAvatars({ members, ownerId = "" }: { members: TripMember[]; ownerId?: string }) {
+function MemberAvatars({
+  members,
+  ownerId = "",
+  suffix,
+}: {
+  members: TripMember[]
+  ownerId?: string
+  /** "3명 중 2명" 처럼 이름 뒤에 덧붙일 말 */
+  suffix?: string
+}) {
   const [failed, setFailed] = useState<Record<string, boolean>>({})
   if (members.length === 0) return null
   const shown = members.slice(0, 4)
@@ -767,7 +783,7 @@ function MemberAvatars({ members, ownerId = "" }: { members: TripMember[]; owner
         ) : null}
       </div>
       <span className="min-w-0 truncate text-xs text-zinc-500">
-        {names ? `함께 · ${names}` : `함께 · ${members.length}명`}
+        {(names ? `함께 · ${names}` : `함께 · ${members.length}명`) + (suffix ? ` · ${suffix}` : "")}
       </span>
     </div>
   )
@@ -781,6 +797,10 @@ function TimelineItem({
   isAuthor,
   authorProfile,
   memberProfiles,
+  partialMembers,
+  totalPeople,
+  notMine,
+  notMineReason,
   ownerId,
   deleting,
   onEdit,
@@ -795,6 +815,13 @@ function TimelineItem({
   isAuthor: boolean
   authorProfile?: TripMember | null
   memberProfiles: TripMember[]
+  /** 손으로 넣은 일정에 **일부만** 있을 때의 참여자. 전원이면 빈 배열 */
+  partialMembers: TripMember[]
+  totalPeople: number
+  /** 내가 아직 안 왔거나 이미 떠난(또는 이름이 안 적힌) 일정인가 */
+  notMine: boolean
+  /** 흐리게 그린 이유. 이름이 적혀 있어 빠진 경우는 빈 문자열(문구를 안 붙인다) */
+  notMineReason: string
   ownerId: string
   deleting: boolean
   onEdit: (item: TripSchedule) => void
@@ -852,7 +879,16 @@ function TimelineItem({
       </div>
 
       {/* Right: content card */}
-      <div className="media-card min-w-0 flex-1 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:shadow-md">
+      {/*
+        ⚠️ 지우지 않고 **흐리게** 둔다. 늦게 합류하는 사람 화면에서 앞 일정을
+           아예 없애면 무엇을 놓쳤는지 모르고, 그냥 두면 자기가 가는 줄 안다.
+      */}
+      <div
+        className={cn(
+          "media-card min-w-0 flex-1 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:shadow-md",
+          notMine && "opacity-45"
+        )}
+      >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             {/* 좁은 모바일 폭에서 제목이 뱃지와 폭 경쟁하다 글자 단위로 줄바꿈되던 문제 →
@@ -927,7 +963,18 @@ function TimelineItem({
             <CreatorBadge name={authorName} avatarUrl={authorProfile?.avatarUrl} isHost={authorIsHost} />
           </div>
         ) : null}
-        {isAuto ? <MemberAvatars members={memberProfiles} ownerId={ownerId} /> : null}
+        {isAuto ? (
+          <MemberAvatars members={memberProfiles} ownerId={ownerId} />
+        ) : partialMembers.length > 0 ? (
+          <MemberAvatars
+            members={partialMembers}
+            ownerId={ownerId}
+            suffix={`${totalPeople}명 중 ${partialMembers.length}명`}
+          />
+        ) : null}
+        {notMine && notMineReason ? (
+          <p className="mt-1.5 text-[11px] font-bold text-slate-400">{notMineReason}</p>
+        ) : null}
         {item.memo ? (
           <p className="mt-1.5 text-xs leading-relaxed text-pretty text-gray-500">{item.memo}</p>
         ) : null}
@@ -1204,8 +1251,9 @@ export function ScheduleSection({
     }
   }, [tripId, refreshKey])
 
-  const joinBands = useMemo(() => {
-    if (!tripStartDate) return []
+  const who = useMemo(() => {
+    const empty = { presence: new Map<string, Presence>(), personIds: [] as string[] }
+    if (!tripStartDate) return empty
     const personIds = [
       ...new Set(
         [
@@ -1216,7 +1264,7 @@ export function ScheduleSection({
           .filter(Boolean)
       ),
     ]
-    if (personIds.length < 2) return []
+    if (personIds.length < 2) return empty
     const end = dayDate(tripStartDate, Math.max(1, tripDays))
     const presence = computePresence({
       startDate: tripStartDate,
@@ -1232,13 +1280,26 @@ export function ScheduleSection({
         arriveTime: t.arrive_time,
       })),
     })
+    return { presence, personIds }
+  }, [transportRows, items, tripStartDate, tripDays])
+
+  const joinBands = useMemo(() => {
+    if (!tripStartDate || who.personIds.length < 2) return []
     const s0 = new Date(tripStartDate + "T00:00:00")
-    return presenceEvents(presence).map((e) => ({
+    return presenceEvents(who.presence).map((e) => ({
       ...e,
       day:
         Math.floor((new Date(e.at.date + "T00:00:00").getTime() - s0.getTime()) / 86400000) + 1,
     }))
-  }, [transportRows, items, tripStartDate, tripDays])
+  }, [who, tripStartDate])
+
+  /** 그 일차의 날짜(YYYY-MM-DD) — 일정 시각을 사람 있고 없고와 맞춰 보는 데 쓴다 */
+  const selectedDate = useMemo(() => {
+    const d = dayDate(tripStartDate, selectedDay)
+    return d
+      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+      : null
+  }, [tripStartDate, selectedDay])
 
   /*
     실제 이동 시간. 추정치를 먼저 그리고, 조회가 돌아오면 바꿔 끼운다.
@@ -1451,6 +1512,64 @@ export function ScheduleSection({
               memberProfiles={item.memberIds
                 .map((memberId) => profileById.get(String(memberId ?? "").trim()))
                 .filter((member): member is TripMember => Boolean(member))}
+              {...(() => {
+                /*
+                  이 일정에 **누가 있나.**
+
+                  ⚠️ 손으로 정한 게 있으면(`memberIds`) 그게 우선이다. 없으면
+                     교통편에서 나온 합류·이탈 시각으로 계산한다. 일정마다 사람을
+                     찍게 하면 20건짜리 여행에 20번이라 아무도 안 쓴다.
+                  ⚠️ **전원이면 아무것도 안 붙인다.** 전원인 게 대부분이라, 매 줄에
+                     얼굴을 붙이면 정작 "일부만" 인 줄이 안 보인다.
+                */
+                const at = selectedDate
+                  ? { date: selectedDate, time: (item.visitTime ?? "12:00").slice(0, 5) }
+                  : null
+                const explicit = (item.memberIds ?? []).map((x) => String(x ?? "").trim()).filter(Boolean)
+                const joining =
+                  explicit.length > 0
+                    ? explicit
+                    : at
+                      ? who.personIds.filter((pid) => isPresent(who.presence.get(pid), at))
+                      : who.personIds
+                const partial =
+                  who.personIds.length >= 2 &&
+                  joining.length > 0 &&
+                  joining.length < who.personIds.length
+                const me = String(currentUserId ?? "").trim()
+                /*
+                  ⚠️ **이름이 적혀 있으면 그게 답이다.** 계산으로 덮지 않는다.
+                     내가 탄 비행기는 도착 전이라 "합류 전" 으로 잡혀 흐려졌었다.
+                */
+                const mine = who.personIds.includes(me)
+                const notMine = mine
+                  ? explicit.length > 0
+                    ? !explicit.includes(me)
+                    : Boolean(at) && !isPresent(who.presence.get(me), at!)
+                  : false
+                const p = me ? who.presence.get(me) : undefined
+                /*
+                  ⚠️ 이름이 적힌 일정에는 문구를 안 붙인다. 남의 비행기는 얼굴이
+                     이미 누구 것인지 말해 주는데, 거기에 "먼저 출발한 뒤" 를
+                     붙였더니 내가 떠난 것처럼 읽혔다. 흐리게만 두면 충분하다.
+                */
+                const reason =
+                  !notMine || explicit.length > 0
+                    ? ""
+                    : p?.joinsAt && at && momentBefore(at, p.joinsAt)
+                      ? "합류 전 일정이에요"
+                      : "먼저 출발한 뒤의 일정이에요"
+                return {
+                  partialMembers: partial
+                    ? (joining
+                        .map((pid) => profileById.get(pid))
+                        .filter((m): m is TripMember => Boolean(m)) as TripMember[])
+                    : [],
+                  totalPeople: who.personIds.length,
+                  notMine,
+                  notMineReason: reason,
+                }
+              })()}
               ownerId={ownerId}
               deleting={deletingId === item.id}
               onEdit={openEdit}
