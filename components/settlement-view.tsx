@@ -75,6 +75,8 @@ import {
 } from "@/lib/settlements-api"
 import { useTrips } from "@/components/trips-store"
 import { setTripSettledFlag } from "@/lib/trip-settled"
+import { computePresence, type Presence } from "@/shared/trip-presence"
+import { supabase } from "@/lib/supabase"
 import {
   EMPTY_PAYOUT_ACCOUNT,
   hasAnyPayout,
@@ -418,10 +420,97 @@ export function SettlementView({
           : (members.find((m) => !m.isGuest)?.userId ?? "")
       if (mine) setPayerId(mine)
     }
-    if (members.length > 0 && participantIds.length === 0) {
-      setParticipantIds(members.map((member) => member.userId))
+  }, [members, payerId, currentUserId])
+
+  /**
+   * 그 날 여행에 있던 사람만 미리 체크한다.
+   *
+   * ⚠️ **돈이 갈리는 계산이라 앱이 마음대로 정하지 않는다.** 기본 체크만 맞춰
+   *    두고, 손으로 얼마든지 고칠 수 있다. 근거로 쓰는 교통편 데이터가
+   *    성기기 때문이다(여행 6개 중 절반만 도착 날짜가 온전했다).
+   *    잘못 빼면 누군가 돈을 덜 내게 된다 — 그건 조용히 일어나면 안 된다.
+   *
+   * ⚠️ 판단은 **날짜 단위**다. 지출에는 시각이 없다. 진짜로 쓸모 있는 건
+   *    **날짜가 아예 다른 경우** — 3일차에 합류한 친구는 1·2일차 지출에서
+   *    저절로 빠진다.
+   */
+  const [presence, setPresence] = useState<Map<string, Presence>>(new Map())
+  const [tripRange, setTripRange] = useState<{ start: string | null; end: string | null }>({
+    start: null,
+    end: null,
+  })
+  /** 손으로 한 번이라도 고쳤나 — 그 뒤로는 날짜가 바뀌어도 건드리지 않는다 */
+  const participantsTouched = useRef(false)
+
+  useEffect(() => {
+    if (!activeTripId || members.length === 0) return
+    let alive = true
+    void (async () => {
+      const [t, tr] = await Promise.all([
+        supabase.from("trips").select("start_date, end_date").eq("id", activeTripId).maybeSingle(),
+        supabase
+          .from("trip_transports")
+          .select("passenger_ids, depart_date, depart_time, arrive_date, arrive_time")
+          .eq("trip_id", activeTripId),
+      ])
+      if (!alive) return
+      const trip = t.data as { start_date: string | null; end_date: string | null } | null
+      setTripRange({ start: trip?.start_date ?? null, end: trip?.end_date ?? null })
+      const rows =
+        (tr.data as {
+          passenger_ids: string[] | null
+          depart_date: string | null
+          depart_time: string | null
+          arrive_date: string | null
+          arrive_time: string | null
+        }[] | null) ?? []
+      setPresence(
+        computePresence({
+          startDate: trip?.start_date ?? null,
+          endDate: trip?.end_date ?? null,
+          personIds: members.map((m) => m.userId),
+          transports: rows.map((r) => ({
+            passengerIds: (r.passenger_ids ?? []).map(String),
+            departDate: r.depart_date,
+            departTime: r.depart_time,
+            arriveDate: r.arrive_date,
+            arriveTime: r.arrive_time,
+          })),
+        })
+      )
+    })()
+    return () => {
+      alive = false
     }
-  }, [members, payerId, participantIds.length, currentUserId])
+  }, [activeTripId, members])
+
+  const presentOn = useCallback(
+    (userId: string, day: string): boolean => {
+      /*
+        ⚠️ **여행 기간 밖의 날짜에는 아무도 안 뺀다.** 지출 날짜는 오늘로
+           시작하는데, 다음 달 여행이면 모두가 "합류 전" 이 되어 한 명도 안
+           남는다 — 저장도 못 하고 고장 난 것처럼 보인다(앱에서 그렇게 나왔다).
+      */
+      const { start, end } = tripRange
+      if (!start || !end || !day || day < start || day > end) return true
+      const p = presence.get(userId)
+      if (!p) return true // 모르면 있는 것으로 본다
+      if (p.joinsAt && day < p.joinsAt.date) return false
+      if (p.leavesAt && day > p.leavesAt.date) return false
+      return true
+    },
+    [presence, tripRange]
+  )
+
+  useEffect(() => {
+    if (editingExpenseId || participantsTouched.current || members.length === 0) return
+    const here = members.filter((m) => presentOn(m.userId, expenseDate)).map((m) => m.userId)
+    /*
+      ⚠️ **한 명도 안 남으면 전원으로 되돌린다.** 빈 목록은 저장이 막히고
+         사용자 눈에는 그냥 고장이다.
+    */
+    setParticipantIds(here.length > 0 ? here : members.map((m) => m.userId))
+  }, [members, presence, expenseDate, editingExpenseId, presentOn])
 
   const total = useMemo(
     () => expenses.reduce((sum, item) => sum + item.amount, 0),
@@ -472,6 +561,7 @@ export function SettlementView({
     members.length > 0 && participantIds.length === members.length
 
   const toggleParticipant = (userId: string) => {
+    participantsTouched.current = true
     setParticipantIds((current) =>
       current.includes(userId)
         ? current.filter((id) => id !== userId)
@@ -488,6 +578,9 @@ export function SettlementView({
   }
 
   const resetForm = () => {
+    // ⚠️ 새 지출을 시작하면 "손으로 고쳤다" 표시도 지운다 — 안 그러면 그날 이후
+    //    모든 지출이 기본 체크를 못 받는다
+    participantsTouched.current = false
     setTitle("")
     setAmount("")
     setCategory("식사")
@@ -1481,6 +1574,7 @@ export function SettlementView({
           setOpen(next)
           if (!next) setEditingExpenseId(null)
           if (next) {
+            participantsTouched.current = false
             setParticipantIds(members.map((member) => member.userId))
           } else {
             resetForm()
@@ -1876,6 +1970,19 @@ export function SettlementView({
                           </AvatarFallback>
                         </Avatar>
                         {member.nickname}
+                        {/*
+                          ⚠️ **왜 빠졌는지 말해 준다.** 그냥 체크가 없으면 실수로
+                             안 누른 건지 앱이 뺀 건지 알 수 없다. 돈 이야기라
+                             더 그렇다. 눌러서 도로 넣을 수 있다.
+                        */}
+                        {!checked && !presentOn(member.userId, expenseDate) ? (
+                          <span className="text-[10px] font-bold text-gray-400">
+                            {(() => {
+                              const p = presence.get(member.userId)
+                              return p?.joinsAt && expenseDate < p.joinsAt.date ? "합류 전" : "출발 후"
+                            })()}
+                          </span>
+                        ) : null}
                         {checked ? (
                           <span className="absolute -top-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-yellow-400 text-gray-900">
                             <Check className="size-2 stroke-[3]" />
