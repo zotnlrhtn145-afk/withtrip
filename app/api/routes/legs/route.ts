@@ -71,5 +71,7 @@ export async function POST(req: NextRequest) {
     // 캐시가 얼마나 먹히는지 — 요금을 지켜보는 데 쓴다
     fromCache: results.filter((r) => r.source === "cache").length,
     fromGoogle: results.filter((r) => r.source === "google").length,
+    // 진단용 — 왜 값을 못 받았는지. 키 내용은 담지 않는다
+    reasons: Array.from(new Set(results.map((r) => r.reason).filter(Boolean))),
   })
 }

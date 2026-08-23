@@ -26,6 +26,8 @@ export type LegResult = {
   noRoute: boolean
   /** 어디서 온 값인지 — 캐시 적중률을 보려고 남긴다 */
   source: "cache" | "google" | "error"
+  /** 왜 실패했는지 (진단용). 키 내용은 절대 담지 않는다 */
+  reason?: string
 }
 
 const GOOGLE_MODE: Record<LegMode, string> = {
@@ -108,7 +110,7 @@ async function toCache(
  */
 async function askGoogle(a: LegPoint, b: LegPoint, mode: LegMode): Promise<LegResult> {
   const key = apiKey()
-  if (!key) return { distanceM: null, durationS: null, noRoute: false, source: "error" }
+  if (!key) return { distanceM: null, durationS: null, noRoute: false, source: "error", reason: "키 없음" }
 
   const params = new URLSearchParams({
     origins: `${a.lat},${a.lng}`,
@@ -131,7 +133,10 @@ async function askGoogle(a: LegPoint, b: LegPoint, mode: LegMode): Promise<LegRe
     }
     const el = json?.rows?.[0]?.elements?.[0]
     if (json.status !== "OK" || !el) {
-      return { distanceM: null, durationS: null, noRoute: false, source: "error" }
+      return {
+        distanceM: null, durationS: null, noRoute: false, source: "error",
+        reason: `구글: ${json.status ?? "응답없음"}`,
+      }
     }
     if (el.status !== "OK") {
       /*
@@ -147,8 +152,11 @@ async function askGoogle(a: LegPoint, b: LegPoint, mode: LegMode): Promise<LegRe
       noRoute: false,
       source: "google",
     }
-  } catch {
-    return { distanceM: null, durationS: null, noRoute: false, source: "error" }
+  } catch (e) {
+    return {
+      distanceM: null, durationS: null, noRoute: false, source: "error",
+      reason: `연결 실패: ${e instanceof Error ? e.message.slice(0, 60) : ""}`,
+    }
   }
 }
 
