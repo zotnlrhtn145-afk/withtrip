@@ -1,4 +1,5 @@
 import { resolveAvatarUrl } from "@/lib/avatar"
+import { applyProxyPayments } from "@/shared/settlement-proxy"
 import { createClient } from "@/utils/supabase/client"
 import {
   applyCarryoverCredit,
@@ -523,7 +524,9 @@ export async function syncSettlementsForTrip(
   expenses: ExpenseRecord[],
   existing: SettlementRecord[],
   carryover = 0,
-  carryoverMembers: string[] = []
+  carryoverMembers: string[] = [],
+  /** 대납 — 실제로 오간 돈이라 잔액에 그대로 반영한다 */
+  proxies: ProxyRecord[] = []
 ): Promise<SettlementRecord[]> {
   const id = String(tripId ?? "").trim()
   if (!id || memberIds.length === 0) return []
@@ -538,7 +541,10 @@ export async function syncSettlementsForTrip(
     }))
   )
   // 공동 자금(이월)을 반영해 실제 송금 대상/금액을 줄인다.
-  const balances = applyCarryoverCredit(rawBalances, carryover, carryoverMembers)
+  const balances = applyProxyPayments(
+    applyCarryoverCredit(rawBalances, carryover, carryoverMembers),
+    proxies
+  )
   const computed = computeMinTransfers(balances)
 
   const existingByPair = new Map<string, SettlementRecord>(
@@ -696,6 +702,80 @@ export async function deleteExpense(expenseId: string) {
   const { error } = await supabase.from("expenses").delete().eq("id", expenseId)
   if (error) {
     logError("deleteExpense", error)
+    throw error
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   대납 — 남의 몫을 대신 내준 기록.
+
+   ⚠️ `settlements` 에 넣지 않는다. 그 표는 (여행, 보내는 이, 받는 이) 하나당
+      한 줄인데, 대납 뒤에 다시 계산한 송금이 **같은 짝으로 나오는 경우**가
+      있어서 새로 생긴 빚이 옛 줄의 '완료' 를 물려받아 이미 갚은 것으로
+      표시됐다(실기기에서 그대로 나왔다). 자세한 사연은
+      `supabase/settlement-proxy-pay.sql` 과 `shared/settlement-proxy.ts` 에.
+   ───────────────────────────────────────────────────────────── */
+
+export type ProxyRecord = {
+  id: string
+  debtorId: string
+  toUserId: string
+  payerId: string
+  amount: number
+}
+
+export async function fetchTripProxies(tripId: string): Promise<ProxyRecord[]> {
+  const id = String(tripId ?? "").trim()
+  if (!id) return []
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from("settlement_proxies")
+    .select("id, debtor_id, to_user_id, payer_id, amount")
+    .eq("trip_id", id)
+    .order("created_at", { ascending: true })
+  if (error) {
+    logError("fetchTripProxies", error)
+    return []
+  }
+  return ((data as { id: string; debtor_id: string; to_user_id: string; payer_id: string; amount: number }[]) ?? []).map(
+    (row) => ({
+      id: row.id,
+      debtorId: row.debtor_id,
+      toUserId: row.to_user_id,
+      payerId: row.payer_id,
+      amount: Number(row.amount) || 0,
+    })
+  )
+}
+
+export async function insertProxy(input: {
+  tripId: string
+  debtorId: string
+  toUserId: string
+  payerId: string
+  amount: number
+  createdBy?: string | null
+}): Promise<void> {
+  const supabase = createClient()
+  const { error } = await supabase.from("settlement_proxies").insert({
+    trip_id: input.tripId,
+    debtor_id: input.debtorId,
+    to_user_id: input.toUserId,
+    payer_id: input.payerId,
+    amount: Math.round(input.amount),
+    created_by: input.createdBy ?? null,
+  })
+  if (error) {
+    logError("insertProxy", error)
+    throw error
+  }
+}
+
+export async function deleteProxy(proxyId: string): Promise<void> {
+  const supabase = createClient()
+  const { error } = await supabase.from("settlement_proxies").delete().eq("id", proxyId)
+  if (error) {
+    logError("deleteProxy", error)
     throw error
   }
 }

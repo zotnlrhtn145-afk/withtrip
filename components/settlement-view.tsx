@@ -66,6 +66,10 @@ import {
   deleteExpense,
   setTripCarryover,
   syncSettlementsForTrip,
+  fetchTripProxies,
+  insertProxy,
+  deleteProxy,
+  type ProxyRecord,
   toggleSettlementStatus,
   uploadReceiptImage,
   type ExpenseCategory,
@@ -76,6 +80,7 @@ import {
 import { useTrips } from "@/components/trips-store"
 import { setTripSettledFlag } from "@/lib/trip-settled"
 import { computePresence, type Presence } from "@/shared/trip-presence"
+import { applyProxyPayments } from "@/shared/settlement-proxy"
 import { supabase } from "@/lib/supabase"
 import {
   EMPTY_PAYOUT_ACCOUNT,
@@ -180,6 +185,8 @@ export function SettlementView({
   const [members, setMembers] = useState<SettlementMember[]>([])
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([])
   const [settlements, setSettlements] = useState<SettlementRecord[]>([])
+  /** 대납 — 남의 몫을 대신 내준 기록 */
+  const [proxies, setProxies] = useState<ProxyRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
@@ -268,11 +275,12 @@ export function SettlementView({
     setLoading(true)
     setError(null)
     try {
-      const [loadedMembers, loadedExpenses, loadedSettlements, carryConfig] = await Promise.all([
+      const [loadedMembers, loadedExpenses, loadedSettlements, carryConfig, loadedProxies] = await Promise.all([
         fetchSettlementMembers(activeTripId),
         fetchTripExpenses(activeTripId),
         fetchTripSettlements(activeTripId),
         fetchTripCarryoverConfig(activeTripId),
+        fetchTripProxies(activeTripId),
       ])
 
       setMembers(loadedMembers)
@@ -280,6 +288,7 @@ export function SettlementView({
       setCarryover(carryConfig.carryover)
       setCarryMembers(carryConfig.members)
       setCarryOwnerId(carryConfig.ownerId)
+      setProxies(loadedProxies)
 
       const memberIds = loadedMembers.map((member) => member.userId)
       const synced = await syncSettlementsForTrip(
@@ -288,7 +297,8 @@ export function SettlementView({
         loadedExpenses,
         loadedSettlements,
         carryConfig.carryover,
-        carryConfig.members
+        carryConfig.members,
+        loadedProxies
       )
       setSettlements(synced)
     } catch (err) {
@@ -527,7 +537,8 @@ export function SettlementView({
   const memberBalances = useMemo(() => {
     if (members.length === 0 || expenses.length === 0) return []
     const memberIds = members.map((member) => member.userId)
-    const balances = applyCarryoverCredit(
+    const balances = applyProxyPayments(
+      applyCarryoverCredit(
       calcVariableMemberBalances(
         memberIds,
         expenses.map((expense) => ({
@@ -539,12 +550,19 @@ export function SettlementView({
       ),
       carryover,
       carryMembers
+      ),
+      /*
+        ⚠️ 멤버별 잔액에도 **똑같이** 대납을 반영한다. 송금 목록만 고치면
+           "오정환 -30,000 내기" 가 그대로 남는데 그 사람 앞으로 나갈 송금은
+           없다 — 화면이 서로 어긋나 아무도 안 믿게 된다.
+      */
+      proxies
     )
     return balances
       .map((entry) => ({ ...entry, member: membersById.get(entry.userId) }))
       .filter((entry) => entry.member)
       .sort((a, b) => b.balance - a.balance)
-  }, [members, expenses, membersById, carryover, carryMembers])
+  }, [members, expenses, membersById, carryover, carryMembers, proxies])
 
   const parsedAmount = useMemo(() => {
     const value = Number(String(amount).replace(/,/g, ""))
@@ -894,6 +912,43 @@ export function SettlementView({
       showToast("송금 상태 변경에 실패했어요.")
     } finally {
       setTogglingId(null)
+    }
+  }
+
+  /** 이 송금을 대신 내줄 수 있는 사람 — 보내는 이·받는 이 본인은 뺀다 */
+  const proxyCandidates = (transfer: SettlementRecord) =>
+    members.filter((m) => m.userId !== transfer.fromUserId && m.userId !== transfer.toUserId)
+
+  /**
+   * 대납 — 남의 몫을 대신 내줬다.
+   *
+   * ⚠️ **`settlements` 에 완료 표시를 하지 않는다.** 이건 그 송금이 끝난 게
+   *    아니라 **갚을 상대가 바뀐 것**이다. 완료로 찍으면 원채무자의 빚이
+   *    사라져 대신 내준 사람만 손해를 본다.
+   */
+  const handleProxyPay = async (transfer: SettlementRecord, payerId: string) => {
+    if (!activeTripId) return
+    try {
+      await insertProxy({
+        tripId: activeTripId,
+        debtorId: transfer.fromUserId,
+        toUserId: transfer.toUserId,
+        payerId,
+        amount: transfer.amount,
+        createdBy: currentUserId,
+      })
+      await refreshSettlementData()
+    } catch {
+      showToast("대납을 저장하지 못했어요.")
+    }
+  }
+
+  const handleRemoveProxy = async (proxyId: string) => {
+    try {
+      await deleteProxy(proxyId)
+      await refreshSettlementData()
+    } catch {
+      showToast("대납 기록을 지우지 못했어요.")
     }
   }
 
@@ -1345,25 +1400,99 @@ export function SettlementView({
                                 </div>
                               </div>
 
-                              <button
-                                type="button"
-                                disabled={isToggling}
-                                onClick={() => void handleToggleSettlement(transfer)}
-                                className={cn(
-                                  "inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium transition-all duration-200 active:scale-95",
-                                  isCompleted
-                                    ? "bg-amber-400 text-neutral-900 hover:bg-amber-500"
-                                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-                                )}
-                              >
-                                {isToggling ? <Loader2 className="size-3 animate-spin" /> : null}
-                                {isCompleted ? "완료" : "대기"}
-                              </button>
+                              <div className="flex shrink-0 items-center gap-1.5">
+                                {/*
+                                  대납 — 남의 몫을 대신 내주는 경우. 정산을 마칠 때 흔하다.
+                                  ⚠️ "완료" 로 처리하면 **원래 낼 사람의 빚이 사라져** 대신
+                                     내준 사람만 손해를 본다. 그래서 버튼을 따로 둔다.
+                                */}
+                                {!isCompleted && proxyCandidates(transfer).length > 0 ? (
+                                  <select
+                                    aria-label="대신 낸 사람"
+                                    value=""
+                                    onChange={(event) => {
+                                      const payerId = event.target.value
+                                      event.target.value = ""
+                                      if (payerId) void handleProxyPay(transfer, payerId)
+                                    }}
+                                    className="rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-200"
+                                  >
+                                    <option value="">대신 냄</option>
+                                    {proxyCandidates(transfer).map((m) => (
+                                      <option key={m.userId} value={m.userId}>
+                                        {m.nickname}이(가) 냈어요
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  disabled={isToggling}
+                                  onClick={() => void handleToggleSettlement(transfer)}
+                                  className={cn(
+                                    "inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium transition-all duration-200 active:scale-95",
+                                    isCompleted
+                                      ? "bg-amber-400 text-neutral-900 hover:bg-amber-500"
+                                      : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                                  )}
+                                >
+                                  {isToggling ? <Loader2 className="size-3 animate-spin" /> : null}
+                                  {isCompleted ? "완료" : "대기"}
+                                </button>
+                              </div>
                             </li>
                           )
                         })}
                       </ul>
                     )}
+                  </div>
+                ) : null}
+
+                {/*
+                  ⚠️ 대납이 반영되면 원래 송금 줄은 목록에서 사라진다(빚이 옮겨 갔으니까).
+                     그래서 **무슨 일이 있었는지 남길 자리**가 따로 필요하다. 없으면
+                     "분명히 처리했는데 왜 다른 사람한테 보내라고 하지?" 가 된다.
+                */}
+                {showTransfers && proxies.length > 0 ? (
+                  <div className="flex flex-col gap-3">
+                    <h3 className="text-[15px] font-semibold text-neutral-900">대신 내준 것</h3>
+                    <ul className="flex flex-col">
+                      {proxies.map((p, index) => (
+                        <li
+                          key={p.id}
+                          className={cn(
+                            "flex items-center justify-between gap-3 py-3",
+                            index < proxies.length - 1 && "border-b border-neutral-100"
+                          )}
+                        >
+                          <div className="flex min-w-0 items-center gap-2">
+                            <ArrowLeftRight className="size-4 shrink-0 text-amber-500" />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-neutral-900">
+                                {membersById.get(p.payerId)?.nickname ?? "멤버"}이(가){" "}
+                                {membersById.get(p.debtorId)?.nickname ?? "멤버"} 몫을 대신 냈어요
+                              </p>
+                              <p className="mt-0.5 text-xs text-neutral-500">
+                                받은 사람 · {membersById.get(p.toUserId)?.nickname ?? "멤버"} ·{" "}
+                                <span className="font-bold tabular-nums text-neutral-700">
+                                  {formatWon(p.amount)}
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => void handleRemoveProxy(p.id)}
+                            className="shrink-0 rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-200"
+                          >
+                            취소
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-xs text-neutral-500">
+                      갚을 상대가 바뀌었어요 — 위 송금 현황에 새로 나옵니다.
+                    </p>
                   </div>
                 ) : null}
 
