@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import type { User } from "@supabase/supabase-js"
 import { Car, Crown, Loader2, Pencil, Plane, PlaneTakeoff, TrainFront, Trash2, UserRound } from "lucide-react"
 
+import { dayShift, formatDuration, hasTimeGap, travelMinutes } from "@/shared/flight-time"
+import { loadAirportTz, tzOf } from "@/lib/airport-tz"
 import { TransportRegisterModal } from "@/components/trips/TransportRegisterModal"
 import { AddSectionButton } from "@/components/trips/AddSectionButton"
 import { Button } from "@/components/ui/button"
@@ -198,6 +200,29 @@ function RoleBadge({ role, segmentOrder }: { role: TransportRole; segmentOrder: 
 }
 
 function TicketRoute({ transport }: { transport: TripTransport }) {
+  /*
+    공항 시간대 표. 36줄짜리라 한 번 받아 두고 계속 쓴다.
+    ⚠️ 못 받아도 표는 그대로 뜬다 — 소요시간과 배지만 빠진다.
+  */
+  const [tzMap, setTzMap] = useState<Map<string, string>>(new Map())
+  useEffect(() => {
+    void loadAirportTz().then(setTzMap)
+  }, [])
+
+  /*
+    ⚠️ 시각은 **각 공항의 현지 시각**이다(항공권에 적힌 그대로). 벽시계 숫자를
+       그냥 빼면 소요시간이 틀린다 — 실제로 틀려 있었다(ICN→SGN 을 "3시간 30분",
+       돌아오는 같은 노선을 "7시간 30분" 으로 적고 있었다. 둘 다 약 5시간 30분이다).
+       그래서 `transport.duration` 에 저장된 값 대신 **시간대를 넣어 다시 센다.**
+  */
+  const from = { date: transport.departDate, time: transport.departTime, tz: tzOf(tzMap, transport.fromLabel) }
+  const to = { date: transport.arriveDate, time: transport.arriveTime, tz: tzOf(tzMap, transport.toLabel) }
+  const recomputed = formatDuration(travelMinutes(from, to))
+  // 시간대를 모르는 구간(역·자유입력)은 예전처럼 저장된 값을 쓴다
+  const duration = recomputed || (from.tz && to.tz ? "" : transport.duration)
+  const gap = hasTimeGap(from, to)
+  const shift = dayShift(from, to)
+
   return (
     <div className="relative flex items-center gap-4">
       <div className="flex min-w-0 flex-col gap-1">
@@ -211,9 +236,9 @@ function TicketRoute({ transport }: { transport: TripTransport }) {
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-        {transport.duration ? (
+        {duration ? (
           <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
-            {transport.duration}
+            {duration}
           </span>
         ) : null}
         <div className="flex w-full items-center gap-1">
@@ -241,7 +266,19 @@ function TicketRoute({ transport }: { transport: TripTransport }) {
         <span className="truncate font-mono text-xl leading-none font-extrabold sm:text-2xl">
           {transport.toLabel}
         </span>
-        <span className="text-base leading-none font-bold tabular-nums">{transport.arriveTime}</span>
+        <span className="flex items-center gap-1">
+          {gap ? (
+            <span className="rounded-full bg-muted px-1.5 py-px text-[10px] font-extrabold text-muted-foreground">
+              현지
+            </span>
+          ) : null}
+          {shift ? (
+            <span className="rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-extrabold text-primary">
+              {shift > 0 ? `+${shift}일` : `${shift}일`}
+            </span>
+          ) : null}
+          <span className="text-base leading-none font-bold tabular-nums">{transport.arriveTime}</span>
+        </span>
         {transport.arriveDate ? (
           <span className="text-xs text-muted-foreground tabular-nums">{transport.arriveDate}</span>
         ) : null}
