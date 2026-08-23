@@ -8,7 +8,13 @@ import {
   resolveRequestOrigin,
 } from "@/lib/place-cover-image";
 import { guessSubCategory } from "@/lib/place-subcategories";
-import { flashModelCandidates, isTransient, sleep } from "@/lib/gemini-models";
+import {
+  flashModelCandidates,
+  isTransient,
+  rememberModel,
+  sleep,
+  TEXT_PURPOSE,
+} from "@/lib/gemini-models";
 import {
   inferCategoryFromTypes,
   readPlacesByGoogleIds,
@@ -333,7 +339,11 @@ async function extractPlaces(
           }))
           .filter((p) => p.name);
         diag.attempts.push(`${model}:PARSED_${places.length}`);
-        if (places.length > 0) return places.slice(0, MAX_CANDIDATES);
+        if (places.length > 0) {
+          // 다음 요청은 이 모델부터 — 목록 앞의 모델이 503 을 낼 때 헛호출이 준다
+          void rememberModel(TEXT_PURPOSE, model);
+          return places.slice(0, MAX_CANDIDATES);
+        }
         break;
       } catch (err) {
         diag.attempts.push(

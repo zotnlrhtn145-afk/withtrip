@@ -37,8 +37,16 @@ function rank(name: string): number {
   return 1;
 }
 
+/**
+ * 글자용 flash 모델 후보.
+ *
+ * ⚠️ 지난번에 통했던 모델을 맨 앞에 세운다. 서버는 요청마다 새로 떠서
+ *    아래 `cached`(메모리)는 금방 사라지는데, 표에 남긴 기억은 살아남는다.
+ */
+export const TEXT_PURPOSE = "text";
+
 export async function flashModelCandidates(apiKey: string): Promise<string[]> {
-  if (cached) return cached;
+  if (cached) return withPreferredFirst(cached, await preferredModel(TEXT_PURPOSE));
   try {
     const res = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models",
@@ -57,7 +65,7 @@ export async function flashModelCandidates(apiKey: string): Promise<string[]> {
       .sort((a, b) => rank(a) - rank(b))
       .slice(0, 3);
     if (names.length) cached = names;
-    return names;
+    return withPreferredFirst(names, await preferredModel(TEXT_PURPOSE));
   } catch {
     return [];
   }
@@ -73,4 +81,57 @@ export function isTransient(status: number): boolean {
 
 export function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+/* ── 통했던 모델 기억하기 ─────────────────────────────
+ *
+ * ⚠️ 서버는 요청마다 새로 뜬다. 그래서 메모리에만 담아 두면 금방 사라지고,
+ *    매번 목록 조회 → 앞에서부터 시도 → 503이면 재시도를 되풀이한다.
+ *    도시 커버 150장을 만들던 날 이 낭비가 150번 곱해졌다.
+ *
+ * ⚠️ 어디까지나 **먼저 시도할 후보**일 뿐이다. 실패하면 예전처럼 목록을 훑는다 —
+ *    모델 이름을 박아 두는 것과는 다르다(그건 조용히 죽는다).
+ */
+
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+
+export async function preferredModel(purpose: string): Promise<string | null> {
+  try {
+    const db = getSupabaseAdmin();
+    if (!db) return null;
+    const { data } = await db
+      .from("ai_model_pref")
+      .select("model")
+      .eq("purpose", purpose)
+      .maybeSingle();
+    return (data as { model?: string } | null)?.model ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function rememberModel(purpose: string, model: string): Promise<void> {
+  try {
+    const db = getSupabaseAdmin();
+    if (!db) return;
+    await db.rpc("remember_ai_model", { p_purpose: purpose, p_model: model });
+  } catch {
+    /* 기억에 실패해도 기능은 그대로 돈다 */
+  }
+}
+
+export async function modelFailed(purpose: string): Promise<void> {
+  try {
+    const db = getSupabaseAdmin();
+    if (!db) return;
+    await db.rpc("ai_model_failed", { p_purpose: purpose });
+  } catch {
+    /* 무시 */
+  }
+}
+
+/** 기억해 둔 모델을 맨 앞으로 보낸다 (중복 제거) */
+export function withPreferredFirst(models: string[], preferred: string | null): string[] {
+  if (!preferred) return models;
+  return Array.from(new Set([preferred, ...models]));
 }

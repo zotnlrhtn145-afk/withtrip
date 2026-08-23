@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import { preferredModel, rememberModel, withPreferredFirst } from "@/lib/gemini-models"
 
 import { NextResponse } from "next/server"
 
@@ -6,6 +7,9 @@ import { checkRateLimit } from "@/lib/rate-limit"
 
 import { getIconicLandmark, toEnglishKeywords } from "@/lib/getCityImage"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
+
+/** 모델 기억의 열쇠. 용도가 다르면 다른 모델이 통한다 */
+const COVER_PURPOSE = "cover-image"
 
 export const runtime = "nodejs"
 
@@ -356,14 +360,30 @@ export async function POST(req: Request) {
     ]
     // gemini-2.5-flash-image is a stable, well-tested fallback name in case
     // the live model list is unavailable.
-    const allModelsToTry = Array.from(new Set([...sortedCandidates, "gemini-2.5-flash-image"]))
+    /*
+      ⚠️ **지난번에 통했던 모델을 맨 앞에 세운다.**
+         서버는 요청마다 새로 떠서 메모리 기억이 사라진다. 그래서 매번 목록을
+         받아 앞에서부터 훑고, 503 이면 재시도까지 했다 — 도시 커버 150장을
+         만들던 날 이 낭비가 150번 곱해졌다.
+         (기억이 틀리면 예전처럼 나머지를 훑으므로 기능은 그대로다)
+    */
+    const remembered = await preferredModel(COVER_PURPOSE)
+    const allModelsToTry = withPreferredFirst(
+      Array.from(new Set([...sortedCandidates, "gemini-2.5-flash-image"])),
+      remembered
+    )
 
     let lastError = ""
 
     for (const model of allModelsToTry) {
-      // "High demand" 503s are usually momentary — retry once before moving on,
-      // since falling straight to a weaker model produces geographically wrong images.
-      for (let attempt = 0; attempt < 2; attempt += 1) {
+      /*
+        과부하(503)는 대개 잠깐이라 같은 모델에 한 번 더 물어본다 — 바로 다음
+        모델로 넘어가면 더 나쁜 모델이 걸려 엉뚱한 지역 그림이 나온다.
+        ⚠️ 다만 **기억해 둔 모델에만** 두 번 준다. 나머지까지 두 번씩 주면
+           한 번 실패에 호출이 배로 늘어난다.
+      */
+      const tries = model === remembered ? 2 : 1
+      for (let attempt = 0; attempt < tries; attempt += 1) {
         try {
           const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -390,6 +410,8 @@ export async function POST(req: Request) {
             const imagePart = parts.find((part) => part.inlineData?.data)
             if (imagePart?.inlineData?.data) {
               console.info(`[generate-trip-cover] success with model: ${model}`)
+              // 다음 요청은 이 모델부터 시도한다
+              void rememberModel(COVER_PURPOSE, model)
               const mime = imagePart.inlineData.mimeType || "image/png"
 
               // 서버가 올린다. 성공하면 URL 만 주면 되므로 응답도 훨씬 가볍다.
