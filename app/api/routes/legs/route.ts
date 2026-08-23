@@ -67,6 +67,8 @@ export async function POST(req: NextRequest) {
       distanceM: r.distanceM,
       durationS: r.durationS,
       noRoute: r.noRoute,
+      /* 길을 따라가는 선 — 없으면 화면이 직선으로 그린다 */
+      polyline: r.polyline ?? null,
     })),
     // 캐시가 얼마나 먹히는지 — 요금을 지켜보는 데 쓴다
     fromCache: results.filter((r) => r.source === "cache").length,

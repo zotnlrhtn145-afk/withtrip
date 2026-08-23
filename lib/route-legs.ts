@@ -28,6 +28,12 @@ export type LegResult = {
   source: "cache" | "google" | "error"
   /** 왜 실패했는지 (진단용). 키 내용은 절대 담지 않는다 */
   reason?: string
+  /**
+   * 길을 따라가는 선 (구글 encoded polyline).
+   * ⚠️ 좌표 배열이 아니라 **문자열 그대로** 옮긴다. 풀어서 보내면 한 구간에
+   *    수백 개 점이라 응답이 몇 배로 커진다. 푸는 건 화면 쪽에서 한다.
+   */
+  polyline?: string | null
 }
 
 const GOOGLE_MODE: Record<LegMode, string> = {
@@ -66,10 +72,17 @@ async function fromCache(a: LegPoint, b: LegPoint, mode: LegMode): Promise<LegRe
     if (error) return null
     const row = Array.isArray(data) ? data[0] : null
     if (!row) return null
+    /*
+      ⚠️ **선이 없는 옛 캐시는 한 번만 다시 묻는다.** 이 기능이 생기기 전에
+         담긴 값들에는 선이 없어서, 그대로 쓰면 그 구간만 영영 직선으로 남는다.
+         길이 없다고 확인된 구간(`no_route`)은 다시 물어도 소용없으니 그대로 쓴다.
+    */
+    if (!row.polyline && !row.no_route) return null
     return {
       distanceM: row.distance_m ?? null,
       durationS: row.duration_s ?? null,
       noRoute: !!row.no_route,
+      polyline: row.polyline ?? null,
       source: "cache",
     }
   } catch {
@@ -81,7 +94,7 @@ async function toCache(
   a: LegPoint,
   b: LegPoint,
   mode: LegMode,
-  r: { distanceM: number | null; durationS: number | null; noRoute: boolean }
+  r: { distanceM: number | null; durationS: number | null; noRoute: boolean; polyline?: string | null }
 ): Promise<void> {
   try {
     const db = getSupabaseAdmin()
@@ -95,9 +108,52 @@ async function toCache(
       p_distance_m: r.distanceM,
       p_duration_s: r.durationS,
       p_no_route: r.noRoute,
+      p_polyline: r.polyline ?? null,
     })
   } catch {
     /* 캐시에 못 넣어도 화면은 그대로 나와야 한다 */
+  }
+}
+
+/**
+ * 예전 방식(Distance Matrix)으로 거리·시간만 받아 온다.
+ *
+ * Directions 가 막혀 있을 때의 **구명줄**이다. 선은 못 주지만 거리·시간은
+ * 그대로 나오므로, 화면에서 사라지는 게 없다.
+ */
+async function askDistanceMatrix(a: LegPoint, b: LegPoint, mode: LegMode): Promise<LegResult | null> {
+  const key = apiKey()
+  if (!key) return null
+  const params = new URLSearchParams({
+    origins: `${a.lat},${a.lng}`,
+    destinations: `${b.lat},${b.lng}`,
+    mode: GOOGLE_MODE[mode],
+    language: "ko",
+    key,
+  })
+  if (mode === "transit") {
+    params.set("departure_time", String(Math.floor(Date.now() / 1000) + 86400))
+  }
+  try {
+    const res = await fetch(`https://maps.googleapis.com/maps/api/distancematrix/json?${params.toString()}`)
+    const json = (await res.json()) as {
+      status?: string
+      rows?: { elements?: { status?: string; distance?: { value?: number }; duration?: { value?: number } }[] }[]
+    }
+    const el = json?.rows?.[0]?.elements?.[0]
+    if (json.status !== "OK" || !el) return null
+    if (el.status !== "OK") {
+      return { distanceM: null, durationS: null, noRoute: true, polyline: null, source: "google" }
+    }
+    return {
+      distanceM: el.distance?.value ?? null,
+      durationS: el.duration?.value ?? null,
+      noRoute: false,
+      polyline: null,
+      source: "google",
+    }
+  } catch {
+    return null
   }
 }
 
@@ -112,9 +168,15 @@ async function askGoogle(a: LegPoint, b: LegPoint, mode: LegMode): Promise<LegRe
   const key = apiKey()
   if (!key) return { distanceM: null, durationS: null, noRoute: false, source: "error", reason: "키 없음" }
 
+  /*
+    ⚠️ Distance Matrix 가 아니라 **Directions** 를 쓴다. 거리·시간에 더해
+       **길을 따라가는 선**까지 한 번에 준다. 예전엔 직선으로 그려서 강 위를
+       가로지르고 건물을 뚫고 지나갔다. 따로 물으면 같은 구간을 두 번 부르는
+       셈이라 요금이 두 배가 된다.
+  */
   const params = new URLSearchParams({
-    origins: `${a.lat},${a.lng}`,
-    destinations: `${b.lat},${b.lng}`,
+    origin: `${a.lat},${a.lng}`,
+    destination: `${b.lat},${b.lng}`,
     mode: GOOGLE_MODE[mode],
     language: "ko",
     key,
@@ -125,31 +187,47 @@ async function askGoogle(a: LegPoint, b: LegPoint, mode: LegMode): Promise<LegRe
 
   try {
     const res = await fetch(
-      `https://maps.googleapis.com/maps/api/distancematrix/json?${params.toString()}`
+      `https://maps.googleapis.com/maps/api/directions/json?${params.toString()}`
     )
     const json = (await res.json()) as {
       status?: string
-      rows?: { elements?: { status?: string; distance?: { value?: number }; duration?: { value?: number } }[] }[]
+      routes?: {
+        overview_polyline?: { points?: string }
+        legs?: { distance?: { value?: number }; duration?: { value?: number } }[]
+      }[]
     }
-    const el = json?.rows?.[0]?.elements?.[0]
-    if (json.status !== "OK" || !el) {
+    if (json.status === "ZERO_RESULTS") {
+      /*
+        이 구간은 이 수단으로 갈 길이 없다.
+        ⚠️ 이것도 **캐시에 남긴다.** 일본 대중교통이 여기 해당하는데,
+           안 남기면 화면을 열 때마다 다시 물어보게 된다.
+      */
+      return { distanceM: null, durationS: null, noRoute: true, polyline: null, source: "google" }
+    }
+    const route = json?.routes?.[0]
+    const leg = route?.legs?.[0]
+    if (json.status !== "OK" || !leg) {
+      /*
+        ⚠️ **Directions 가 막혀 있어도 거리·시간은 나와야 한다.**
+           선(polyline)은 Directions 에만 있는데, 이 API 는 프로젝트에서 따로
+           켜 줘야 한다. 안 켜져 있으면 `REQUEST_DENIED` 가 온다.
+           여기서 그냥 실패로 두면 **선이 없는 정도가 아니라 거리·시간이 통째로
+           사라진다** — 이미 잘 돌던 기능이 죽는다.
+           그래서 예전에 쓰던 Distance Matrix 로 한 번 더 물어본다.
+           (Directions 를 켜는 순간 저절로 선까지 나온다)
+      */
+      const fb = await askDistanceMatrix(a, b, mode)
+      if (fb) return fb
       return {
         distanceM: null, durationS: null, noRoute: false, source: "error",
         reason: `구글: ${json.status ?? "응답없음"}`,
       }
     }
-    if (el.status !== "OK") {
-      /*
-        ZERO_RESULTS 등 — 이 구간은 이 수단으로 갈 길이 없다.
-        ⚠️ 이것도 **캐시에 남긴다.** 일본 대중교통이 여기 해당하는데,
-           안 남기면 화면을 열 때마다 다시 물어보게 된다.
-      */
-      return { distanceM: null, durationS: null, noRoute: true, source: "google" }
-    }
     return {
-      distanceM: el.distance?.value ?? null,
-      durationS: el.duration?.value ?? null,
+      distanceM: leg.distance?.value ?? null,
+      durationS: leg.duration?.value ?? null,
       noRoute: false,
+      polyline: route?.overview_polyline?.points ?? null,
       source: "google",
     }
   } catch (e) {
