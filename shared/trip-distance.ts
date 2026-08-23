@@ -15,8 +15,12 @@
 
 export type LatLng = { lat: number; lng: number }
 
-/** 이동 수단. 대중교통은 나라마다 편차가 커서 따로 추정하지 않는다(실제 조회로 넘긴다). */
-export type TravelMode = "walk" | "drive"
+/**
+ * 이동 수단.
+ * ⚠️ 대중교통(transit)은 **추정하지 않는다** — 나라·시간대마다 편차가 너무 크다.
+ *    실제 조회값이 있을 때만 표기에 쓴다.
+ */
+export type TravelMode = "walk" | "drive" | "transit"
 
 /**
  * 두 점 사이 직선거리(km).
@@ -40,9 +44,9 @@ export function straightKm(a: LatLng, b: LatLng): number {
      건넌다. 그대로 쓰면 "10분이면 가겠네" 하고 계획을 짰다가 늦는다.
      도시에서 실제로 걷는 거리는 직선의 1.3배쯤, 차는 1.4배쯤이다.
 */
-const DETOUR = { walk: 1.3, drive: 1.4 } as const
-/** 걷는 속도 4.5km/h · 도시 주행 25km/h(신호·정체 포함) */
-const SPEED_KMH = { walk: 4.5, drive: 25 } as const
+const DETOUR = { walk: 1.3, drive: 1.4, transit: 1.4 } as const
+/** 걷는 속도 4.5km/h · 도시 주행 25km/h(신호·정체 포함). 대중교통은 추정 안 함(임시값) */
+const SPEED_KMH = { walk: 4.5, drive: 25, transit: 25 } as const
 
 /** 대략 몇 분 걸릴지. 어디까지나 추정이라 화면에는 "약" 을 붙여 보여 준다. */
 export function roughMinutes(km: number, mode: TravelMode): number {
@@ -112,7 +116,12 @@ export function legLabel(
   // 바로 옆이면 이동 시간을 말할 필요가 없다
   if (km < SAME_SPOT_KM) return "바로 근처"
   const dist = formatKm(km)
-  const name = mode === "walk" ? "도보" : "차"
+  const name = mode === "walk" ? "도보" : mode === "transit" ? "대중교통" : "차"
   if (realMinutes != null) return `${dist} · ${name} ${formatMinutes(realMinutes)}`
+  /*
+    ⚠️ 대중교통은 추정치를 만들지 않는다. 배차·환승은 지역마다 달라서
+       지어낸 숫자가 되기 때문이다. 실제 값이 없으면 도보 추정으로 대신한다.
+  */
+  if (mode === "transit") return `${dist} · 도보 약 ${formatMinutes(roughMinutes(km, "walk"))}`
   return `${dist} · ${name} 약 ${formatMinutes(roughMinutes(km, mode))}`
 }

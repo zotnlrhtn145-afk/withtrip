@@ -772,6 +772,7 @@ function MemberAvatars({ members, ownerId = "" }: { members: TripMember[]; owner
 function TimelineItem({
   item,
   nextItem,
+  realLeg,
   isLast,
   isAuthor,
   authorProfile,
@@ -784,6 +785,8 @@ function TimelineItem({
   item: TripSchedule
   /** 바로 다음 일정 — 사이 거리를 재는 데 쓴다. 마지막이면 null */
   nextItem?: TripSchedule | null
+  /** 실제 조회된 이동 시간 (없으면 추정치 사용) */
+  realLeg?: { minutes: number; mode: "transit" | "drive" } | null
   isLast: boolean
   isAuthor: boolean
   authorProfile?: TripMember | null
@@ -810,7 +813,11 @@ function TimelineItem({
             { lat: item.lat, lng: item.lng },
             { lat: nextItem.lat as number, lng: nextItem.lng as number }
           )
-          return { km, text: legLabel(km, "walk"), far: legTone(km) === "far" }
+          return {
+            km,
+            text: legLabel(km, realLeg?.mode ?? "walk", realLeg?.minutes ?? null),
+            far: legTone(km) === "far" && realLeg == null,
+          }
         })()
       : null
   const authorName = authorProfile?.name || "멤버"
@@ -1118,6 +1125,69 @@ export function ScheduleSection({
     return sortSchedules(items.filter((item) => item.dayNumber === selectedDay))
   }, [items, selectedDay])
 
+  /*
+    실제 이동 시간. 추정치를 먼저 그리고, 조회가 돌아오면 바꿔 끼운다.
+    ⚠️ 앱과 같은 규칙이다 — 2km 미만은 안 묻고(추정으로 충분), 2~20km 만 묻는다.
+       대중교통을 먼저 묻고, 노선이 없다면(일본) 차로 다시 물어 "차 N분" 으로.
+       서버(/api/routes/legs)가 캐시를 먼저 보므로 같은 구간은 한 번만 나간다.
+  */
+  const [realLegs, setRealLegs] = useState<Map<number, { minutes: number; mode: "transit" | "drive" }>>(
+    new Map()
+  )
+  useEffect(() => {
+    let alive = true
+    setRealLegs(new Map())
+    const pairs: { from: { lat: number; lng: number }; to: { lat: number; lng: number } }[] = []
+    const at: number[] = []
+    for (let i = 0; i < visibleItems.length - 1; i++) {
+      const a = visibleItems[i]
+      const b = visibleItems[i + 1]
+      if (a.lat == null || a.lng == null || b.lat == null || b.lng == null) continue
+      const km = straightKm({ lat: a.lat, lng: a.lng }, { lat: b.lat, lng: b.lng })
+      if (km >= 2 && km <= 20) {
+        pairs.push({ from: { lat: a.lat, lng: a.lng }, to: { lat: b.lat, lng: b.lng } })
+        at.push(i)
+      }
+    }
+    if (pairs.length === 0) return
+    void (async () => {
+      try {
+        const ask = async (mode: string, legs: typeof pairs) => {
+          const res = await fetch("/api/routes/legs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mode, legs }),
+          })
+          const json = (await res.json()) as {
+            results?: { durationS: number | null; noRoute: boolean }[]
+          }
+          return json.results ?? []
+        }
+        const tr = await ask("transit", pairs)
+        const next = new Map<number, { minutes: number; mode: "transit" | "drive" }>()
+        const misses: number[] = []
+        at.forEach((idx, j) => {
+          const r = tr[j]
+          if (r?.durationS != null) next.set(idx, { minutes: Math.round(r.durationS / 60), mode: "transit" })
+          else if (r?.noRoute) misses.push(j)
+        })
+        if (misses.length > 0) {
+          const dr = await ask("drive", misses.map((j) => pairs[j]))
+          misses.forEach((j, k) => {
+            const d = dr[k]?.durationS
+            if (d != null) next.set(at[j], { minutes: Math.round(d / 60), mode: "drive" })
+          })
+        }
+        if (alive && next.size > 0) setRealLegs(next)
+      } catch {
+        /* 조회가 실패해도 추정치가 이미 떠 있다 */
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [visibleItems])
+
   const activeMeta = getScheduleDayMeta(tripStartDate, selectedDay)
   const cityLabel = tripCity.trim() || "여행지"
   const subtitleParts = [
@@ -1244,6 +1314,7 @@ export function ScheduleSection({
                    웹과 앱이 다른 숫자를 보여 주면 안 된다.
               */
               nextItem={visibleItems[index + 1] ?? null}
+              realLeg={realLegs.get(index) ?? null}
               isAuthor={authReady && (isHost || isScheduleAuthor(item, currentUserId))}
               authorProfile={
                 profileById.get(String(item.createdBy || item.userId || "").trim()) ?? null
