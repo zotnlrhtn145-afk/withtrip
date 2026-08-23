@@ -125,3 +125,53 @@ export function legLabel(
   if (mode === "transit") return `${dist} · 도보 약 ${formatMinutes(roughMinutes(km, "walk"))}`
   return `${dist} · ${name} 약 ${formatMinutes(roughMinutes(km, mode))}`
 }
+
+/**
+ * 공항에서 뜨고 내리는 일정인가.
+ *
+ * 교통편을 등록하면 「인천국제공항 출발」 같은 일정이 자동으로 만들어진다.
+ * 이제 여기에 좌표가 있어서 지도에 찍히는데, 그 구간을 **다른 이동과 똑같이
+ * 다루면 안 된다.**
+ *
+ * ⚠️ 비행 구간을 "총 이동거리" 에 넣으면 도쿄 여행이 **28km 에서 1,200km 로**
+ *    바뀐다. 그 숫자는 원래 "오늘 시내를 얼마나 도나" 를 보려던 것이라
+ *    쓸모가 없어진다. 지도에는 그리되 거리에서는 뺀다.
+ *
+ * ⚠️ 구글에 길을 묻지도 않는다. 인천→나리타를 "자동차로" 물으면 답이 없거나
+ *    배를 타고 도는 엉뚱한 경로가 나온다. 돈만 나가고 쓸 데가 없다.
+ *
+ * ⚠️ **거리로 판단하지 않는다.** "300km 넘으면 비행기" 로 했다가는 제주–서울
+ *    배편이나 KTX 가 전부 비행기가 된다. 자동 생성된 일정의 **생김새**로 본다.
+ */
+export function isAirportStop(category: string | null | undefined, placeName: string | null | undefined): boolean {
+  if ((category ?? "") !== "이동") return false
+  return /공항|airport/i.test(placeName ?? "")
+}
+
+/**
+ * 두 일정 사이가 비행 구간인가.
+ *
+ * 두 곳이 다 공항이면 당연히 비행이다. 그런데 **그 사이에 다른 일정이 끼어
+ * 있는 경우**가 있다 — 시각을 잘못 넣어 "10:00 우동 신" 이 이륙과 착륙 사이에
+ * 들어가면, 인천공항 → 우동 신이 한 구간이 되어 **1,199km 를 걸어간다**고
+ * 나온다(실기기에서 그대로 봤다. "도보 약 346시간 24분").
+ *
+ * 그래서 **한쪽만 공항이어도 300km 를 넘으면** 비행으로 본다.
+ *
+ * ⚠️ 이건 "300km 넘으면 비행기" 와 다르다. 그 규칙은 제주–서울 배편이나
+ *    서울–부산 KTX 까지 비행기로 만든다. 여기서는 **한쪽이 공항일 때만**
+ *    본다 — 공항에서 300km 떨어진 곳을 그날 안에 차로 갈 수는 없다.
+ */
+const FLIGHT_MIN_KM = 300
+
+export function isFlightLeg(
+  a: { category?: string | null; place_name?: string | null },
+  b: { category?: string | null; place_name?: string | null },
+  km?: number
+): boolean {
+  const aAir = isAirportStop(a.category, a.place_name)
+  const bAir = isAirportStop(b.category, b.place_name)
+  if (aAir && bAir) return true
+  if (!aAir && !bAir) return false
+  return typeof km === "number" && km >= FLIGHT_MIN_KM
+}
