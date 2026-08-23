@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react"
 import {
   BedDouble,
   Calendar,
@@ -12,6 +12,7 @@ import {
   Footprints,
   Crown,
   Loader2,
+  LogOut,
   MapPin,
   Pencil,
   Phone,
@@ -62,7 +63,10 @@ import {
   type TripSchedule,
 } from "@/lib/schedules-api"
 import { legLabel, legTone, straightKm } from "@/shared/trip-distance"
+import { computePresence, presenceEvents, type PresenceEvent } from "@/shared/trip-presence"
+import { dayDate } from "@/shared/trip-days"
 import { fetchProfilesByIds, fetchTripOwnerId, type TripMember } from "@/lib/trip-members-api"
+import { supabase } from "@/lib/supabase"
 import {
   toWishlistKind,
   wishlistCategories,
@@ -969,6 +973,55 @@ function TimelineItem({
 /**
  * Supabase `trip_schedules` 연동 여행 일정 섹션 (타임라인 UI).
  */
+type TransportRow = {
+  passenger_ids: string[] | null
+  depart_date: string | null
+  depart_time: string | null
+  arrive_date: string | null
+  arrive_time: string | null
+}
+
+/**
+ * 「합류」·「먼저 출발」 띠.
+ *
+ * ⚠️ 일정 카드가 아니라 **가로줄**로 그린다. 카드로 그리면 일정처럼 보여서
+ *    "여기 뭘 하러 가지?" 가 된다. 이건 할 일이 아니라 **사람이 바뀌는 순간**이다.
+ * ⚠️ 이름을 쓴다. "2명 합류" 로는 누구인지 몰라 쓸모가 없다. 프로필을 못 찾은
+ *    사람은 조용히 뺀다.
+ */
+function JoinBand({
+  band,
+  profileById,
+}: {
+  band: PresenceEvent & { day: number }
+  profileById: Map<string, TripMember>
+}) {
+  const names = band.personIds
+    .map((id) => profileById.get(String(id).trim())?.name)
+    .filter((n): n is string => Boolean(n))
+  if (names.length === 0) return null
+  const who = names.join("·")
+  const join = band.kind === "join"
+  const text = join
+    ? band.everyoneNow
+      ? `${who} 합류 — 이제 ${band.countAfter}명 모두 모였어요`
+      : `${who} 합류 (${band.countAfter}명)`
+    : `${who} 먼저 출발 (남은 ${band.countAfter}명)`
+
+  return (
+    <li className="flex items-center gap-3 pb-3 text-xs">
+      <span className="w-12 shrink-0 text-right font-semibold text-slate-400 tabular-nums">
+        {band.at.time}
+      </span>
+      <span className={cn("shrink-0", join ? "text-amber-500" : "text-slate-400")}>
+        {join ? <Plane className="size-4" /> : <LogOut className="size-4" />}
+      </span>
+      <span className={cn("font-extrabold", join ? "text-amber-700" : "text-slate-500")}>{text}</span>
+      <span className={cn("h-px flex-1", join ? "bg-amber-200" : "bg-slate-200")} />
+    </li>
+  )
+}
+
 export function ScheduleSection({
   tripId,
   tripStartDate = "",
@@ -1124,6 +1177,68 @@ export function ScheduleSection({
   const visibleItems = useMemo(() => {
     return sortSchedules(items.filter((item) => item.dayNumber === selectedDay))
   }, [items, selectedDay])
+
+  /**
+   * 합류·먼저 출발 띠.
+   *
+   * 같은 여행이라도 다 같이 출발하지 않는다 — 제주 여행은 한 명이 10:10 에,
+   * 두 명이 10:25 에 따로 내려 공항에서 만난다. 날짜가 아예 달라서 이틀 뒤에
+   * 합류하는 경우도 있다.
+   *
+   * ⚠️ 앱과 **같은 공통 파일**(shared/trip-presence)을 쓴다. 웹과 앱이 다르게
+   *    읽히면 같은 여행을 두 기기로 볼 때 말이 달라진다.
+   */
+  const [transportRows, setTransportRows] = useState<TransportRow[]>([])
+  useEffect(() => {
+    if (!tripId) return
+    let alive = true
+    void supabase
+      .from("trip_transports")
+      .select("passenger_ids, depart_date, depart_time, arrive_date, arrive_time")
+      .eq("trip_id", tripId)
+      .then(({ data }) => {
+        if (alive) setTransportRows((data as TransportRow[] | null) ?? [])
+      })
+    return () => {
+      alive = false
+    }
+  }, [tripId, refreshKey])
+
+  const joinBands = useMemo(() => {
+    if (!tripStartDate) return []
+    const personIds = [
+      ...new Set(
+        [
+          ...transportRows.flatMap((t) => t.passenger_ids ?? []),
+          ...items.flatMap((i) => i.memberIds ?? []),
+        ]
+          .map((x) => String(x ?? "").trim())
+          .filter(Boolean)
+      ),
+    ]
+    if (personIds.length < 2) return []
+    const end = dayDate(tripStartDate, Math.max(1, tripDays))
+    const presence = computePresence({
+      startDate: tripStartDate,
+      endDate: end
+        ? `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`
+        : null,
+      personIds,
+      transports: transportRows.map((t) => ({
+        passengerIds: (t.passenger_ids ?? []).map(String),
+        departDate: t.depart_date,
+        departTime: t.depart_time,
+        arriveDate: t.arrive_date,
+        arriveTime: t.arrive_time,
+      })),
+    })
+    const s0 = new Date(tripStartDate + "T00:00:00")
+    return presenceEvents(presence).map((e) => ({
+      ...e,
+      day:
+        Math.floor((new Date(e.at.date + "T00:00:00").getTime() - s0.getTime()) / 86400000) + 1,
+    }))
+  }, [transportRows, items, tripStartDate, tripDays])
 
   /*
     실제 이동 시간. 추정치를 먼저 그리고, 조회가 돌아오면 바꿔 끼운다.
@@ -1302,8 +1417,22 @@ export function ScheduleSection({
       ) : (
         <ol className="px-0.5 pt-1">
           {visibleItems.map((item, index) => (
+            <Fragment key={item.id}>
+            {/*
+              이 일정 **앞에** 들어갈 띠. 앞 일정과 이 일정 사이의 시각인 것만
+              고른다 — 안 그러면 같은 띠가 하루에 여러 번 나온다.
+            */}
+            {joinBands
+              .filter(
+                (b) =>
+                  b.day === selectedDay &&
+                  b.at.time > (index === 0 ? "" : (visibleItems[index - 1].visitTime ?? "").slice(0, 5)) &&
+                  b.at.time <= (item.visitTime ?? "99:99").slice(0, 5)
+              )
+              .map((b) => (
+                <JoinBand key={`${b.kind}-${b.at.time}`} band={b} profileById={profileById} />
+              ))}
             <TimelineItem
-              key={item.id}
               item={item}
               isLast={index === visibleItems.length - 1}
               /*
@@ -1327,6 +1456,18 @@ export function ScheduleSection({
               onEdit={openEdit}
               onDelete={(id) => void handleDelete(id)}
             />
+            {/* 그날 마지막 일정 뒤에 오는 띠(저녁에 합류·출발)도 놓치지 않는다 */}
+            {index === visibleItems.length - 1
+              ? joinBands
+                  .filter(
+                    (b) =>
+                      b.day === selectedDay && b.at.time > (item.visitTime ?? "99:99").slice(0, 5)
+                  )
+                  .map((b) => (
+                    <JoinBand key={`tail-${b.kind}-${b.at.time}`} band={b} profileById={profileById} />
+                  ))
+              : null}
+            </Fragment>
           ))}
         </ol>
       )}
