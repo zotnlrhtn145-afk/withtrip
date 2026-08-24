@@ -151,6 +151,14 @@ export async function POST(req: Request) {
         { status: 503 }
       )
     }
+    /*
+      ⚠️ **오늘 날짜를 알려 준다.** 문자에 "08/24" 처럼 월·일만 있으면 AI 가
+         연도를 제멋대로 찍는다 — 실측: 2026년인데 `2024-08-24` 로 넣었다.
+         정산 날짜가 2년 전으로 들어가면 그 지출이 목록에서 사라진다.
+    */
+    const now = new Date()
+    const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+
     const allModelsToTry = models
     const tried = models
 
@@ -177,7 +185,9 @@ export async function POST(req: Request) {
                         "카드사/은행 앱의 거래내역 목록처럼 여러 건의 결제가 나열되어 있으면, 각 결제 건을 배열의 " +
                         "개별 항목으로 만들어줘 (합산하지 말고 건별로 분리). 각 항목은 title(가맹점명), " +
                         "amount(결제금액, 숫자만), category(식비/쇼핑/교통/숙박/기타 중 하나), " +
-                        "date(YYYY-MM-DD, 항목별 날짜가 다르면 각각 반영, 알 수 없으면 오늘 날짜)를 포함해야 해. " +
+                        `date(YYYY-MM-DD, 항목별 날짜가 다르면 각각 반영). ` +
+                        `오늘은 ${todayIso} 야. 영수증에 연도가 없고 "08/24" 처럼 월·일만 있으면 ` +
+                        `**올해 연도를 붙여라**. 알 수 없으면 오늘 날짜를 써라. ` +
                         '반드시 {"items": [{"title": "...", "amount": 0, "category": "...", "date": "..."}, ...]} ' +
                         "형태의 JSON으로만 응답해줘.",
                     },
@@ -209,7 +219,23 @@ export async function POST(req: Request) {
             // 마크다운 코드블록 제거 후 안전하게 JSON 파싱
             rawText = rawText.replace(/```json|```/g, "").trim()
             const parsedData: unknown = JSON.parse(rawText)
-            const items = extractItems(parsedData).filter((item) => item.amount > 0)
+            const items = extractItems(parsedData)
+              .filter((item) => item.amount > 0)
+              /*
+                ⚠️ 그래도 연도를 틀리면 **여기서 고친다.** 프롬프트로만 부탁하면
+                   가끔 무시한다. 영수증이 1년 넘게 지난 것일 리는 거의 없으므로,
+                   너무 먼 날짜는 올해로 끌어온다.
+              */
+              .map((item) => {
+                const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(item.date ?? ""))
+                if (!m) return { ...item, date: todayIso }
+                const year = Number(m[1])
+                const thisYear = now.getFullYear()
+                if (Math.abs(year - thisYear) >= 1) {
+                  return { ...item, date: `${thisYear}-${m[2]}-${m[3]}` }
+                }
+                return item
+              })
             if (items.length > 0) {
               console.info(
                 `[parse-receipt] success with model: ${model} (${items.length} item(s))`
