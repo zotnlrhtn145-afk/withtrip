@@ -1,5 +1,13 @@
 /** 장소 종류. 웹의 trip-itinerary.ts, 앱의 places.ts 와 같은 값이어야 한다. */
-export type WishlistKind = "restaurant" | "bar" | "stay" | "attraction"
+/**
+ * 장소 종류(대분류).
+ *
+ * ⚠️ **여기는 열어 두지 않는다.** 탭과 필터가 이 위에 서 있어서, 늘어나면
+ *    화면이 통째로 흔들린다. 애매한 것은 중분류에서 받는다.
+ * ⚠️ `shopping`·`experience` 는 나중에 붙였다. 넷뿐일 때는 옷가게·칼 쇼룸·
+ *    쇼핑거리·공연이 전부 「레스토랑」에 들어와 있었다 — 담을 칸이 없어서다.
+ */
+export type WishlistKind = "restaurant" | "bar" | "stay" | "attraction" | "shopping" | "experience"
 
 /** 레스토랑 세부 카테고리 — "저장한 장소" 탭의 음식 종류 분류 기준. */
 export const RESTAURANT_SUBCATEGORIES = [
@@ -47,11 +55,30 @@ export const ATTRACTION_SUBCATEGORIES = [
   "기타",
 ] as const
 
+export const SHOPPING_SUBCATEGORIES = [
+  "백화점·몰",
+  "편집숍·패션",
+  "기념품·특산품",
+  "생활·잡화",
+  "서점",
+  "기타",
+] as const
+
+export const EXPERIENCE_SUBCATEGORIES = [
+  "공연·전시",
+  "클래스·체험",
+  "스파·웰니스",
+  "액티비티",
+  "기타",
+] as const
+
 export const SUBCATEGORIES_BY_KIND: Record<WishlistKind, readonly string[]> = {
   restaurant: RESTAURANT_SUBCATEGORIES,
   bar: BAR_SUBCATEGORIES,
   stay: STAY_SUBCATEGORIES,
   attraction: ATTRACTION_SUBCATEGORIES,
+  shopping: SHOPPING_SUBCATEGORIES,
+  experience: EXPERIENCE_SUBCATEGORIES,
 }
 
 /**
@@ -229,9 +256,22 @@ const TYPE_KIND: [WishlistKind, RegExp][] = [
   ["stay", /^(lodging|hotel|resort_hotel|motel|guest_house|hostel|bed_and_breakfast|inn|japanese_inn|campground|rv_park|cottage|farmstay|extended_stay_hotel|budget_japanese_inn)$/],
   [
     "attraction",
-    /^(tourist_attraction|museum|art_gallery|park|national_park|state_park|hiking_area|beach|zoo|aquarium|amusement_park|theme_park|water_park|observation_deck|landmark|historical_place|historical_landmark|monument|cultural_landmark|place_of_worship|church|hindu_temple|mosque|synagogue|buddhist_temple|shinto_shrine|shrine|castle|palace|garden|botanical_garden|planetarium|观光|shopping_mall|department_store|market|flea_market|plaza|square|viewpoint|scenic_spot|ski_resort|cable_car|stadium|concert_hall|opera_house|performing_arts_theater|movie_theater|cultural_center|library|sculpture|wildlife_park|wildlife_refuge)$/,
+    /^(tourist_attraction|museum|art_gallery|park|national_park|state_park|hiking_area|beach|zoo|aquarium|amusement_park|theme_park|water_park|observation_deck|landmark|historical_place|historical_landmark|monument|cultural_landmark|place_of_worship|church|hindu_temple|mosque|synagogue|buddhist_temple|shinto_shrine|shrine|castle|palace|garden|botanical_garden|planetarium|观光|market|flea_market|plaza|square|viewpoint|scenic_spot|ski_resort|cable_car|stadium|concert_hall|opera_house|performing_arts_theater|movie_theater|cultural_center|library|sculpture|wildlife_park|wildlife_refuge)$/,
   ],
   ["bar", /^(bar|pub|wine_bar|night_club|bar_and_grill|cocktail_lounge|lounge|izakaya|beer_hall|brewery|distillery)$/],
+  /*
+    ⚠️ 맨 `store` 는 넣지 않는다. 구글은 카페에도 `store` 를 붙여서,
+       `["cafe","store"]` 인 곳이 통째로 쇼핑으로 갔다(실측: chạm bản café).
+       옷가게·서점처럼 **구체적인 것만** 본다.
+  */
+  [
+    "shopping",
+    /^(shopping_mall|department_store|clothing_store|shoe_store|jewelry_store|book_store|gift_shop|home_goods_store|furniture_store|electronics_store|convenience_store|supermarket|grocery_store|discount_store|outlet_(mall|store))$/,
+  ],
+  [
+    "experience",
+    /^(spa|massage|beauty_salon|amusement_center|bowling_alley|golf_course|gym|fitness_center|sports_complex|art_studio|cooking_school|school|event_venue|banquet_hall|casino)$/,
+  ],
 ]
 
 export function kindFromGoogleTypes(types: string[] | undefined | null): WishlistKind {
@@ -253,6 +293,8 @@ export const KIND_LABEL: Record<WishlistKind, string> = {
   bar: "라운지 & 바",
   stay: "숙소",
   attraction: "관광지",
+  shopping: "쇼핑",
+  experience: "체험",
 }
 
 /**
@@ -267,4 +309,113 @@ export function normalizeKindLabel(label: string | null | undefined): string {
   if (/^(숙소|호텔|숙박)/.test(s)) return "숙소"
   if (/^카페$/.test(s)) return "레스토랑" // 카페는 중분류다 — 대분류로 쓰면 필터가 갈린다
   return s
+}
+
+/**
+ * 이름만 보고 분류한다 — **구글도 AI 도 안 부르는 가장 싼 길.**
+ *
+ * ⚠️ 규칙을 넓히는 게 제일 싸다. 낱말 하나를 더 넣는 건 공짜이고 영원히
+ *    쓰이지만, AI 를 부르는 건 **매번** 돈이다. 실측으로 이름 규칙만으로
+ *    502곳 중 153곳이 걸렸는데, 한·일 음식 낱말이 거의 없어서 그랬다.
+ *
+ * ⚠️ 범용어(「레스토랑」·「restaurant」·「다이닝」)는 절대 쓰지 않는다.
+ *    모든 가게에 다 붙어서 아무 뜻이 없다.
+ *
+ * ⚠️ 위에서부터 먼저 걸리는 것을 쓴다. 그래서 **좁은 것을 위에** 둔다 —
+ *    「닭갈비」가 「갈비」보다 먼저 와야 고기·구이가 아니라 닭요리로 간다.
+ */
+const NAME_RULES: { kind: WishlistKind; sub: string; detail?: string; re: RegExp }[] = [
+  // ── 숙소 ──
+  { kind: "stay", sub: "료칸", re: /료칸|ryokan|旅館/i },
+  { kind: "stay", sub: "리조트", re: /리조트|resort/i },
+  { kind: "stay", sub: "게스트하우스", re: /게스트하우스|guest ?house|hostel|호스텔/i },
+  { kind: "stay", sub: "펜션", re: /펜션|pension|풀빌라|민박/i },
+  { kind: "stay", sub: "호텔", re: /호텔|hotel|레지던스|residence/i },
+
+  // ── 라운지 & 바 ──
+  { kind: "bar", sub: "이자카야", detail: "이자카야", re: /이자카야|izakaya|居酒屋/i },
+  { kind: "bar", sub: "와인 바", detail: "와인바", re: /와인|wine/i },
+  { kind: "bar", sub: "루프탑 라운지", detail: "루프탑", re: /루프탑|rooftop/i },
+  { kind: "bar", sub: "펍", detail: "펍", re: /\bpub\b|펍$|맥주|beer|브루|brew|탭하우스/i },
+  { kind: "bar", sub: "칵테일 바", detail: "클럽", re: /클럽|\bclub\b/i },
+  { kind: "bar", sub: "칵테일 바", re: /칵테일|cocktail|하이볼|\bbar\b|바$|라운지|lounge|위스키|whisky/i },
+
+  // ── 관광지 ──
+  { kind: "attraction", sub: "박물관·미술관", re: /박물관|museum|미술관|gallery|갤러리/i },
+  { kind: "attraction", sub: "사원·종교시설", re: /사원|temple|신사|shrine|성당|cathedral|교회|church|암자|사$|寺/i },
+  { kind: "attraction", sub: "전망대", re: /전망대|타워|tower|observatory|스카이|skytree/i },
+  { kind: "attraction", sub: "공원·자연", re: /공원|park|정원|garden|수목원|해수욕장|beach|폭포|falls|동굴|cave|계곡|오름|숲|산$/i },
+  { kind: "attraction", sub: "랜드마크", re: /랜드마크|landmark|성$|castle|궁$|palace|유적|거리$|street$/i },
+
+  // ── 쇼핑 ──
+  { kind: "shopping", sub: "백화점·몰", re: /백화점|아울렛|outlet|쇼핑몰|\bmall\b|면세점|duty ?free/i },
+  { kind: "shopping", sub: "서점", re: /서점|book ?store|책방|츠타야|tsutaya/i },
+  { kind: "shopping", sub: "편집숍·패션", re: /편집숍|편집샵|셀렉트|boutique|apparel/i },
+  { kind: "shopping", sub: "기념품·특산품", re: /기념품|souvenir|특산품|토산품/i },
+  { kind: "shopping", sub: "생활·잡화", re: /잡화|생활용품|드럭|donki|돈키호테|무인양품|muji|로프트|loft/i },
+
+  // ── 체험 ──
+  { kind: "experience", sub: "스파·웰니스", re: /스파$|\bspa\b|온천|사우나|찜질방|마사지|massage|온센/i },
+  { kind: "experience", sub: "공연·전시", re: /공연|콘서트|극장|theater|전시|exhibition|뮤지컬/i },
+  { kind: "experience", sub: "클래스·체험", re: /클래스|공방|체험|원데이|워크샵|workshop|쿠킹/i },
+  { kind: "experience", sub: "액티비티", re: /서핑|surf|다이빙|diving|카약|짚라인|승마|스키장|골프/i },
+
+  // ── 레스토랑: 좁은 것부터 ──
+  { kind: "restaurant", sub: "카페", detail: "로스터리", re: /로스터|roaster|커피\s?볶/i },
+  { kind: "restaurant", sub: "디저트", detail: "베이커리", re: /베이커리|bakery|빵집|제과/i },
+  { kind: "restaurant", sub: "디저트", re: /디저트|dessert|케이크|cake|빙수|아이스크림|gelato|젤라또/i },
+  { kind: "restaurant", sub: "카페", re: /카페|cafe|café|커피|coffee|喫茶/i },
+
+  { kind: "restaurant", sub: "국수·면요리", detail: "라멘", re: /라멘|ramen|ラーメン|라면/i },
+  { kind: "restaurant", sub: "국수·면요리", detail: "우동", re: /우동|udon|うどん/i },
+  { kind: "restaurant", sub: "국수·면요리", detail: "소바", re: /소바|soba|そば/i },
+  { kind: "restaurant", sub: "국수·면요리", detail: "쌀국수", re: /쌀국수|\bpho\b|포\s?베트남/i },
+  { kind: "restaurant", sub: "국수·면요리", detail: "우육면", re: /우육|牛肉麵|beef noodle/i },
+  { kind: "restaurant", sub: "국수·면요리", detail: "칼국수", re: /칼국수|손칼국수/i },
+  { kind: "restaurant", sub: "국수·면요리", detail: "냉면", re: /냉면|밀면/i },
+  { kind: "restaurant", sub: "국수·면요리", re: /국수|면옥|noodle|짬뽕|막국수/i },
+
+  { kind: "restaurant", sub: "한식", detail: "국밥·해장", re: /국밥|해장|순대|설렁탕|곰탕|추어탕|감자탕|해장국|콩나물국|뼈해장/i },
+  { kind: "restaurant", sub: "한식", detail: "족발·보쌈", re: /족발|보쌈/i },
+  { kind: "restaurant", sub: "한식", detail: "곱창·막창", re: /곱창|막창|대창|양곱창/i },
+  { kind: "restaurant", sub: "한식", detail: "닭요리", re: /닭갈비|찜닭|삼계탕|치킨|닭한마리|불닭/i },
+  { kind: "restaurant", sub: "한식", detail: "분식", re: /분식|떡볶이|김밥|순대국?집?$/i },
+  { kind: "restaurant", sub: "한식", detail: "한정식", re: /한정식|한상|반상/i },
+
+  { kind: "restaurant", sub: "고기·구이", detail: "야키니쿠", re: /야키니쿠|yakiniku|焼肉/i },
+  { kind: "restaurant", sub: "고기·구이", re: /삼겹|갈비|숯불|불고기|고깃|바비큐|\bbbq\b|스테이크|steak|정육|한우|우대|양갈비|뽈살/i },
+
+  { kind: "restaurant", sub: "스시", detail: "오마카세", re: /오마카세|omakase/i },
+  { kind: "restaurant", sub: "스시", re: /스시|sushi|寿司|초밥|사시미|회$|횟집/i },
+
+  { kind: "restaurant", sub: "일식", detail: "야키토리", re: /야키토리|yakitori|焼き鳥|꼬치구이/i },
+  { kind: "restaurant", sub: "일식", detail: "돈카츠", re: /돈카츠|돈까스|とんかつ|규카츠|牛カツ|가츠/i },
+  { kind: "restaurant", sub: "일식", detail: "덮밥", re: /텐동|천동|규동|가이센동|카이센동|덮밥|丼/i },
+  { kind: "restaurant", sub: "일식", detail: "오코노미야키", re: /오코노미야키|타코야키|다코야키|お好み焼/i },
+  { kind: "restaurant", sub: "일식", re: /일식|와쇼쿠|샤브샤브|스키야키|すき焼/i },
+
+  { kind: "restaurant", sub: "해산물", re: /해산물|seafood|조개|굴$|대게|킹크랩|랍스터|lobster|전복|해녀/i },
+  { kind: "restaurant", sub: "중식", re: /중식|중화|마라|훠궈|딤섬|dim ?sum|양꼬치|짜장/i },
+  { kind: "restaurant", sub: "이탈리안", re: /이탈리안|italian|파스타|pasta|피자|pizza|트라토리아/i },
+  { kind: "restaurant", sub: "프렌치", re: /프렌치|french|비스트로|bistro|브라세리/i },
+  { kind: "restaurant", sub: "브런치", re: /브런치|brunch|모닝|breakfast/i },
+  { kind: "restaurant", sub: "양식", re: /버거|burger|스테이크하우스|멕시칸|타코|taco|양식/i },
+]
+
+export type NameGuess = {
+  kind: WishlistKind
+  subCategory: string
+  detailCategory?: string
+}
+
+/** 이름(+메모)만으로 분류를 시도한다. 모르면 `null` — **지어내지 않는다.** */
+export function guessFromName(text: string | null | undefined): NameGuess | null {
+  const hay = String(text ?? "").toLowerCase()
+  if (!hay.trim()) return null
+  for (const r of NAME_RULES) {
+    if (r.re.test(hay)) {
+      return { kind: r.kind, subCategory: r.sub, detailCategory: r.detail }
+    }
+  }
+  return null
 }
