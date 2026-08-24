@@ -113,7 +113,14 @@ export async function POST(req: Request) {
     } catch {
       /* 목록 조회 실패는 무시하고 기본값으로 */
     }
-    if (models.length === 0) models = ["gemini-2.0-flash", "gemini-1.5-flash"]
+    /*
+      ⚠️ 죽은 이름을 폴백으로 두지 않는다. `gemini-2.0-flash`·`gemini-1.5-flash`
+         는 이 계정에 없어서(404) 두드려 봐야 시간만 버리고 끝은 같은 실패다.
+         목록을 못 받으면 빨리 말해 주는 게 낫다.
+    */
+    if (models.length === 0) {
+      return NextResponse.json({ items: [], reason: "모델 목록을 받지 못했습니다" })
+    }
 
     // 한 번은 90초를 넘겨 응답이 끊긴 적이 있다 → 호출마다 20초 상한을 건다.
     // 시도 횟수는 줄이지 않는다. 2회로 줄였더니 동작하던 모델이 밀려나 전부 실패했다.

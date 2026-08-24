@@ -73,7 +73,8 @@ export async function POST(req: Request) {
       // best-effort; fall back to the pinned default below
     }
     const allModelsToTry = Array.from(
-      new Set([...preferredFirst, ...candidateModels, "gemini-1.5-flash-latest", "gemini-1.5-flash"])
+      // ⚠️ 죽은 모델 이름을 폴백으로 두지 않는다 — 전부 404 라 시간만 버리고 끝은 같다
+      new Set([...preferredFirst, ...candidateModels])
     )
 
     for (const model of allModelsToTry) {

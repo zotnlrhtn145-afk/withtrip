@@ -170,9 +170,7 @@ export async function POST(request: Request) {
     // 모델에서 전체가 멈추지 않게 한다.
     const allModelsToTry = [
       "gemini-flash-latest",
-      "gemini-2.0-flash",
-      "gemini-1.5-flash-latest",
-      "gemini-1.5-flash",
+      // ⚠️ 죽은 모델 이름을 폴백으로 두지 않는다 — 전부 404 라 시간만 버린다
     ]
 
     let attractions: { name: string; reason: string }[] = []

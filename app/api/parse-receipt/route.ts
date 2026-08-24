@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { checkRateLimit } from "@/lib/rate-limit"
+import { flashModelCandidates, isTransient, modelFailed, rememberModel, sleep, TEXT_PURPOSE } from "@/lib/gemini-models"
 
 export const runtime = "nodejs"
 
@@ -129,49 +130,28 @@ export async function POST(req: Request) {
 
     const { mimeType, data: imageBase64 } = splitImagePayload(rawImage, mimeHint)
 
-    // 1. 현재 API 키로 사용 가능한 전체 모델 목록 조회 시도
-    let candidateModels: string[] = []
-    try {
-      const modelsResponse = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models",
-        {
-          headers: { "x-goog-api-key": apiKey },
-        }
-      )
-      if (modelsResponse.ok) {
-        const modelsData = (await modelsResponse.json()) as {
-          models?: GeminiModel[]
-        }
-        candidateModels = (modelsData.models || [])
-          .filter((m) =>
-            m.supportedGenerationMethods?.includes("generateContent")
-          )
-          .map((m) => String(m.name ?? "").replace(/^models\//, ""))
-          .filter(Boolean)
-      }
-    } catch {
-      console.warn("모델 목록 조회 실패, 기본 후보로 진행합니다.")
-    }
+    /*
+      쓸 수 있는 모델을 **직접 물어봐서** 고른다.
 
-    // 2. 기본 안전 후보 모델 목록 추가 및 중복 제거
-    // "gemini-flash-latest"를 최우선으로 — 검증된 빠른 모델. 나머지 구버전
-    // 모델명들은 계정에서 404로 죽어있는 경우가 많아 순서대로 다 시도하면
-    // 수십 초가 그냥 낭비된다 (실측 71초). 라이브 목록/레거시 기본값은
-    // 최후 폴백으로만 사용.
-    const preferredFirst = ["gemini-flash-latest"]
-    const flashFirst = [
-      ...candidateModels.filter((m) => m.includes("flash") && !/tts|image/i.test(m)),
-      ...candidateModels.filter((m) => !m.includes("flash") && !/tts|image/i.test(m)),
-    ]
-    const defaultCandidates = [
-      "gemini-1.5-flash-latest",
-      "gemini-1.5-flash",
-      "gemini-1.5-pro",
-      "gemini-2.0-flash-exp",
-    ]
-    const allModelsToTry = Array.from(
-      new Set([...preferredFirst, ...flashFirst, ...defaultCandidates])
-    )
+      ⚠️ **모델 이름을 코드에 박으면 안 된다.** 여기 폴백으로
+         `gemini-1.5-flash-latest` · `gemini-1.5-flash` · `gemini-1.5-pro` ·
+         `gemini-2.0-flash-exp` 넷이 박혀 있었는데 **넷 다 이 계정에 없다.**
+         그래서 영수증을 찍으면 넷을 차례로 두드리다 마지막 404 를 그대로
+         사용자에게 보여 줬다(신고받음 — "models/gemini-2.0-flash-exp is not
+         found for API version v1beta").
+         같은 함정에 도시 커버 생성·인스타 추출에서도 빠진 적이 있다.
+
+      ⚠️ 목록을 못 받으면 **아무것도 시도하지 않는다.** 죽은 이름을 두드려 봐야
+         시간만 버리고(실측 71초) 끝은 똑같이 실패다. 차라리 빨리 말해 준다.
+    */
+    const models = await flashModelCandidates(apiKey)
+    if (models.length === 0) {
+      return NextResponse.json(
+        { error: "지금은 영수증을 읽을 수 없어요. 잠시 뒤 다시 시도해 주세요." },
+        { status: 503 }
+      )
+    }
+    const allModelsToTry = models
 
     let lastError = ""
 
@@ -233,6 +213,8 @@ export async function POST(req: Request) {
               console.info(
                 `[parse-receipt] success with model: ${model} (${items.length} item(s))`
               )
+              // 통한 모델을 기억한다 — 다음 요청은 이것부터 본다(헛호출을 줄인다)
+              await rememberModel(TEXT_PURPOSE, model)
               return NextResponse.json({ items })
             }
           }
@@ -240,21 +222,37 @@ export async function POST(req: Request) {
           const errText = await response.text()
           lastError = `[${model}] HTTP ${response.status}: ${errText}`
           console.warn(`Gemini model ${model} skipped due to error:`, lastError)
+          /*
+            ⚠️ 과부하(503)·속도제한(429)은 **잠깐 기다렸다 같은 모델에 다시**
+               물으면 대개 통한다. 바로 다음 모델로 넘어가면 더 나쁜 모델을 쓴다.
+          */
+          if (isTransient(response.status)) {
+            await sleep(700)
+            continue
+          }
+          if (response.status === 404) await modelFailed(TEXT_PURPOSE)
         }
       } catch (e: unknown) {
         lastError = `[${model}] ${e instanceof Error ? e.message : String(e)}`
       }
     }
 
-    throw new Error(
-      `모든 Gemini 모델 시도 실패. 마지막 에러 상세: ${lastError}`
+    /*
+      ⚠️ **구글 원문 에러를 사용자에게 그대로 보여 주지 않는다.**
+         "models/gemini-2.0-flash-exp is not found for API version v1beta..." 가
+         통째로 알림창에 떴다(신고받음). 사용자가 할 수 있는 게 없는 말이고,
+         내부 사정만 드러난다. 원인은 로그에 남기고 화면에는 할 수 있는 말을 한다.
+    */
+    console.error("[parse-receipt] 모든 모델 실패:", lastError)
+    return NextResponse.json(
+      { error: "영수증을 읽지 못했어요. 사진이 흐리면 다시 찍어 주세요." },
+      { status: 502 }
     )
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "영수증 분석 실패"
-    console.error("[SettlementView] receipt scan error:", error)
+    // ⚠️ 여기서도 원문을 흘리지 않는다 — 위 주석 참고
+    console.error("[parse-receipt] 예외:", error)
     return NextResponse.json(
-      { error: message || "영수증 분석 실패" },
+      { error: "영수증을 읽지 못했어요. 잠시 뒤 다시 시도해 주세요." },
       { status: 500 }
     )
   }
