@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { checkRateLimit } from "@/lib/rate-limit"
-import { flashModelCandidates, isTransient, modelFailed, rememberModel, sleep, TEXT_PURPOSE } from "@/lib/gemini-models"
+import { flashModelCandidates, isBillingProblem, isTransient, modelFailed, rememberModel, sleep, TEXT_PURPOSE } from "@/lib/gemini-models"
 
 export const runtime = "nodejs"
 
@@ -227,7 +227,23 @@ export async function POST(req: Request) {
             ⚠️ 과부하(503)·속도제한(429)은 **잠깐 기다렸다 같은 모델에 다시**
                물으면 대개 통한다. 바로 다음 모델로 넘어가면 더 나쁜 모델을 쓴다.
           */
-          if (isTransient(response.status)) {
+          /*
+            ⚠️ 결제가 막힌 것이면 **바로 멈춘다.** 모델을 바꿔 봐야, 다시 해
+               봐야 똑같이 실패한다. 그리고 사용자에게 "사진이 흐리면 다시
+               찍어 주세요" 라고 하면 안 된다 — 사진 문제가 아니다.
+               (실측: "Your prepayment credits are depleted.")
+          */
+          if (isBillingProblem(response.status, errText)) {
+            console.error("[parse-receipt] Gemini 결제 문제:", errText.slice(0, 200))
+            return NextResponse.json(
+              {
+                error: "지금은 영수증 자동 입력을 쓸 수 없어요. 금액과 항목을 직접 넣어 주세요.",
+                reason: String(errText).slice(0, 300),
+              },
+              { status: 503 }
+            )
+          }
+          if (isTransient(response.status, errText)) {
             await sleep(700)
             continue
           }

@@ -75,8 +75,26 @@ export async function flashModelCandidates(apiKey: string): Promise<string[]> {
  * 과부하(503)·속도 제한(429)은 **잠깐 기다렸다 같은 모델에 다시 물으면** 대개 통한다.
  * 다른 모델로 바로 넘어가면 더 나쁜 모델을 쓰게 되므로 한 번은 제자리에서 기다린다.
  */
-export function isTransient(status: number): boolean {
+export function isTransient(status: number, body?: string): boolean {
+  /*
+    ⚠️ **429 라고 다 같은 429 가 아니다.**
+       - 속도 제한(잠깐 몰림) → 기다렸다 다시 하면 통한다
+       - **선불 크레딧 소진** → 몇 번을 다시 해도 안 된다
+
+    실측(2026-08-24): 영수증 스캔이 계속 실패했는데 원인이
+    `"Your prepayment credits are depleted."` 였다. 이걸 재시도로 다루면
+    모델 세 개를 두 번씩 두드리고 결국 같은 실패로 끝난다 — 시간만 버린다.
+  */
+  if (status === 429 && /credit|quota|billing|exhaust/i.test(String(body ?? ""))) return false;
   return status === 429 || status === 500 || status === 503;
+}
+
+/** 결제 문제인가 — 사용자에게 "다시 찍어 보세요" 라고 하면 안 되는 경우 */
+export function isBillingProblem(status: number, body?: string): boolean {
+  return (
+    (status === 429 || status === 402 || status === 403) &&
+    /credit|billing|prepayment|exhaust|quota/i.test(String(body ?? ""))
+  );
 }
 
 export function sleep(ms: number): Promise<void> {
