@@ -152,6 +152,7 @@ export async function POST(req: Request) {
       )
     }
     const allModelsToTry = models
+    const tried = models
 
     let lastError = ""
 
@@ -245,7 +246,16 @@ export async function POST(req: Request) {
     */
     console.error("[parse-receipt] 모든 모델 실패:", lastError)
     return NextResponse.json(
-      { error: "영수증을 읽지 못했어요. 사진이 흐리면 다시 찍어 주세요." },
+      {
+        error: "영수증을 읽지 못했어요. 사진이 흐리면 다시 찍어 주세요.",
+        /*
+          ⚠️ 진단용. **화면에는 안 쓴다** — 앱은 `error` 만 보여 준다.
+             이게 없으면 "왜 실패했는지" 를 알 길이 서버 로그뿐이라, 사용자
+             신고가 들어와도 재현부터 해야 한다. 짧게 잘라 담는다.
+        */
+        reason: String(lastError).slice(0, 300),
+        tried,
+      },
       { status: 502 }
     )
   } catch (error: unknown) {
