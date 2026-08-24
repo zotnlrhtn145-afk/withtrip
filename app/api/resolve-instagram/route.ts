@@ -1212,7 +1212,7 @@ export async function POST(request: Request) {
 
       const kind = inferCategoryFromTypes(hit.types);
       const subCategory = guessSubCategory({
-        kind: kind as "restaurant" | "bar" | "stay",
+        kind: kind as "restaurant" | "bar" | "stay" | "attraction",
         name: hit.name,
         types: hit.types,
       });

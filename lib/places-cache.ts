@@ -1,3 +1,4 @@
+import { kindFromGoogleTypes } from "@/shared/place-subcategories"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 
 /**
@@ -95,13 +96,13 @@ export async function readPlacesByGoogleIds(
 
 /**
  * 구글 types로 위드트립 카테고리(kind)를 추정한다.
- * 캐시에 쓰는 쪽마다 제각각 추정하면 값이 흔들리므로 여기 하나로 모은다.
+ *
+ * ⚠️ 규칙은 **`shared/place-subcategories` 한 곳**에 있다. 여기 따로 적으면
+ *    웹과 앱이 다르게 분류한다. 예전에 이 자리에 세 줄짜리 규칙이 박혀 있었고,
+ *    거기엔 **관광지가 아예 없었다**(박물관·공원·절이 전부 레스토랑이 됐다).
  */
 export function inferCategoryFromTypes(types: string[] | undefined | null): string {
-  const joined = (types ?? []).join(" ").toLowerCase()
-  if (/lodging|hotel|resort|motel|guest_house|hostel/.test(joined)) return "stay"
-  if (/bar|night_club|lounge/.test(joined)) return "bar"
-  return "restaurant"
+  return kindFromGoogleTypes(types)
 }
 
 /** 단건 조회 (상세 API용). */

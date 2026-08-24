@@ -84,6 +84,25 @@ const STAY_TYPE_RULES: { subCategory: string; types: string[] }[] = [
   { subCategory: "게스트하우스", types: ["guest_house", "hostel"] },
 ]
 
+/**
+ * 관광지 세부 분류 — 구글 types 로 먼저 본다.
+ * ⚠️ 이름만 보면 "○○공원 카페" 같은 데서 헛짚는다. types 가 있으면 그게 낫다.
+ */
+const ATTRACTION_TYPE_RULES: { subCategory: string; types: string[] }[] = [
+  { subCategory: "박물관·미술관", types: ["museum", "art_gallery", "planetarium"] },
+  {
+    subCategory: "공원·자연",
+    types: ["park", "national_park", "state_park", "garden", "botanical_garden", "beach", "hiking_area", "wildlife_park", "wildlife_refuge", "zoo", "aquarium"],
+  },
+  {
+    subCategory: "사원·종교시설",
+    types: ["place_of_worship", "church", "hindu_temple", "mosque", "synagogue", "buddhist_temple", "shinto_shrine", "shrine"],
+  },
+  { subCategory: "전망대", types: ["observation_deck", "viewpoint", "scenic_spot", "cable_car"] },
+  { subCategory: "쇼핑·거리", types: ["shopping_mall", "department_store", "market", "flea_market", "plaza", "square"] },
+  { subCategory: "랜드마크", types: ["landmark", "historical_landmark", "historical_place", "monument", "cultural_landmark", "castle", "palace"] },
+]
+
 function matchByTypes(
   types: string[] | null | undefined,
   rules: { subCategory: string; types: string[] }[]
@@ -122,6 +141,9 @@ export function guessSubCategory(input: {
     if (byType) return byType
   } else if (input.kind === "restaurant") {
     const byType = matchByTypes(input.types, RESTAURANT_TYPE_RULES)
+    if (byType) return byType
+  } else if (input.kind === "attraction") {
+    const byType = matchByTypes(input.types, ATTRACTION_TYPE_RULES)
     if (byType) return byType
   }
 
@@ -175,4 +197,74 @@ export function guessSubCategory(input: {
   if (/카페|cafe|coffee/.test(hay)) return "카페"
   if (/양식|western|콘티넨탈|continental|스테이크하우스/.test(hay)) return "양식"
   return "기타"
+}
+
+/**
+ * 구글 `types` 로 대분류(kind)를 정한다.
+ *
+ * ## 왜 다시 썼나 (신고: "카테고리가 제대로 안 나눠져")
+ *
+ * 예전 규칙은 세 줄이었다:
+ *
+ *     if (/lodging|hotel|.../) return "stay"
+ *     if (/bar|night_club|lounge/) return "bar"
+ *     return "restaurant"          // ← 나머지 전부
+ *
+ * 두 가지가 크게 잘못돼 있었다.
+ *
+ * ⚠️ **관광지가 아예 없다.** 박물관·공원·절·전망대가 전부 "레스토랑" 이 됐다.
+ *    저장된 502건 중 429건(85%)이 레스토랑이고 관광지는 11건(2%)뿐이었다.
+ *    "관광지만 보고 싶은데 안 찾아진다" 는 신고 그대로다.
+ *
+ * ⚠️ **`/bar/` 가 `barbecue_restaurant` 에 걸린다.** 고기집이 바로 분류됐다.
+ *    `barber_shop`(이발소)도 마찬가지다. 부분 문자열로 찾으면 안 되고
+ *    **낱말 단위**로 봐야 한다.
+ *
+ * ## 순서가 중요하다
+ *
+ * 호텔 안의 바, 미술관 안의 카페처럼 여러 개가 겹친다. **숙소 → 관광지 → 바 →
+ * 식당** 순으로 본다. 구글은 `types` 를 중요한 것부터 주지 않으므로 우리가 정한다.
+ */
+const TYPE_KIND: [WishlistKind, RegExp][] = [
+  ["stay", /^(lodging|hotel|resort_hotel|motel|guest_house|hostel|bed_and_breakfast|inn|japanese_inn|campground|rv_park|cottage|farmstay|extended_stay_hotel|budget_japanese_inn)$/],
+  [
+    "attraction",
+    /^(tourist_attraction|museum|art_gallery|park|national_park|state_park|hiking_area|beach|zoo|aquarium|amusement_park|theme_park|water_park|observation_deck|landmark|historical_place|historical_landmark|monument|cultural_landmark|place_of_worship|church|hindu_temple|mosque|synagogue|buddhist_temple|shinto_shrine|shrine|castle|palace|garden|botanical_garden|planetarium|观光|shopping_mall|department_store|market|flea_market|plaza|square|viewpoint|scenic_spot|ski_resort|cable_car|stadium|concert_hall|opera_house|performing_arts_theater|movie_theater|cultural_center|library|sculpture|wildlife_park|wildlife_refuge)$/,
+  ],
+  ["bar", /^(bar|pub|wine_bar|night_club|bar_and_grill|cocktail_lounge|lounge|izakaya|beer_hall|brewery|distillery)$/],
+]
+
+export function kindFromGoogleTypes(types: string[] | undefined | null): WishlistKind {
+  /*
+    ⚠️ 통째로 이어 붙여 정규식을 돌리지 않는다. 그러면 `barbecue_restaurant` 안의
+       "bar" 에 걸린다. 낱말 하나하나를 따로 본다.
+  */
+  const tokens = (types ?? []).map((t) => String(t ?? "").trim().toLowerCase()).filter(Boolean)
+  if (tokens.length === 0) return "restaurant"
+  for (const [kind, re] of TYPE_KIND) {
+    if (tokens.some((t) => re.test(t))) return kind
+  }
+  return "restaurant"
+}
+
+/** 대분류의 한글 표기 — DB `saved_places.category` 에 이 값이 들어간다 */
+export const KIND_LABEL: Record<WishlistKind, string> = {
+  restaurant: "레스토랑",
+  bar: "라운지 & 바",
+  stay: "숙소",
+  attraction: "관광지",
+}
+
+/**
+ * 예전에 저장된 표기를 정리한다.
+ * ⚠️ 「관광」과 「관광지」가 따로 저장돼 있어서 필터에서 서로 안 잡혔다.
+ */
+export function normalizeKindLabel(label: string | null | undefined): string {
+  const s = String(label ?? "").trim()
+  if (!s) return ""
+  if (/^관광/.test(s)) return "관광지"
+  if (/^(라운지|바$|바 |bar)/i.test(s)) return "라운지 & 바"
+  if (/^(숙소|호텔|숙박)/.test(s)) return "숙소"
+  if (/^카페$/.test(s)) return "레스토랑" // 카페는 중분류다 — 대분류로 쓰면 필터가 갈린다
+  return s
 }
