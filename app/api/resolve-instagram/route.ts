@@ -794,6 +794,8 @@ async function extractPlacesFromImages(
   imageUrls: string[],
   locationTag: string,
   diag: ExtractDiag,
+  /** 캡션 — 사진에 도시가 안 보여도 "교토" 같은 단서를 함께 준다 */
+  caption = "",
 ): Promise<ExtractedPlace[]> {
   const key = getGeminiKey();
   if (!key || imageUrls.length === 0) return [];
@@ -825,11 +827,20 @@ async function extractPlacesFromImages(
 
   parts.push({
     text:
-      `이 이미지들은 인스타그램 게시물의 카드들이다. 카드마다 장소를 하나씩 소개한다.\n\n` +
+      `이 이미지들은 인스타그램 게시물의 사진이다. 여기 나온 가게·장소를 찾아라.\n\n` +
       (locationTag ? `게시물 위치 태그: ${locationTag}\n\n` : "") +
+      (caption ? `게시물 캡션: ${caption.slice(0, 300)}\n\n` : "") +
       `규칙:\n` +
-      `- 이미지 위에 **글씨로 얹힌 가게·장소 이름**만 뽑아라.\n` +
-      `- 간판이나 메뉴판에 우연히 보이는 글자는 제외. 표지 카드(제목만 있는 것)도 제외.\n` +
+      /*
+        ⚠️ 예전엔 "간판이나 메뉴판 글자는 제외" 라고 못 박아 뒀다. 여러 장짜리
+           카드 게시물에는 맞는 규칙이지만, **릴스 표지 한 장**에는 정반대다 —
+           거기서는 간판이 유일한 단서인데 그걸 버리라고 시킨 셈이었다.
+           (실측: 저작권 음원 릴스는 영상을 못 받아 표지밖에 없다)
+      */
+      `- 사진에 보이는 **가게 이름·간판·메뉴판·명함·영수증 글자**를 모두 읽어라.\n` +
+      `- 글씨로 얹힌 제목도, 실제 간판도 다 후보다.\n` +
+      `- 캡션에 도시나 동네가 있으면 그걸 region 에 넣어 검색이 되게 하라.\n` +
+      `- 다만 **지어내지 마라.** 글자가 안 보이면 빈 배열이다.\n` +
       `- 같은 곳이 여러 장에 나오면 한 번만.\n` +
       `- name 은 지도에서 검색 가능한 형태로. 현지 표기가 보이면 nameLocal 에.\n` +
       `- region 에는 그 장소들이 있는 도시를 넣어라.\n` +
@@ -1144,7 +1155,7 @@ export async function POST(request: Request) {
   }
   // 캐러셀은 카드 커버만 읽는다 (영상 8개를 받는 것보다 훨씬 빠르고 가볍다)
   if (extracted.length === 0 && imageUrls.length > 0) {
-    const viaImages = await extractPlacesFromImages(imageUrls, locationTag, diag);
+    const viaImages = await extractPlacesFromImages(imageUrls, locationTag, diag, cleaned);
     if (viaImages.length > 0) {
       extracted = viaImages;
       source = "images";
