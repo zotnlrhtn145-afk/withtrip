@@ -67,6 +67,8 @@ export type YoutubeMaterial = {
   transcript: string;
   thumbnails: string[];
   channel: string;
+  /** 왜 비었는지 알려면 필요하다 — 배포 서버와 내 맥은 유튜브가 다르게 대한다 */
+  diag?: string;
 };
 
 /**
@@ -149,12 +151,26 @@ export async function fetchYoutubeMaterial(
   };
 
   try {
-    const res = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-      headers: { "User-Agent": UA, "Accept-Language": "ko-KR,ko;q=0.9" },
-      signal: AbortSignal.timeout(15000),
-    });
+    /*
+      ⚠️ **동의 화면을 건너뛰어야 한다.** 데이터센터 IP 로 들어가면 유튜브가
+         쿠키 동의 페이지를 대신 주고, 그 HTML 에는 설명란도 자막도 없다.
+         `CONSENT` 쿠키와 `bpctr`(연령 확인 우회) 를 붙이면 본문이 온다.
+    */
+    const res = await fetch(
+      `https://www.youtube.com/watch?v=${videoId}&hl=ko&gl=KR&has_verified=1&bpctr=9999999999`,
+      {
+        headers: {
+          "User-Agent": UA,
+          "Accept-Language": "ko-KR,ko;q=0.9",
+          Cookie: "CONSENT=YES+cb; SOCS=CAI",
+        },
+        signal: AbortSignal.timeout(15000),
+      },
+    );
+    out.diag = `http=${res.status}`;
     if (res.ok) {
       const html = await res.text();
+      out.diag += ` html=${html.length}`;
       const d = html.match(/"shortDescription":"((?:[^"\\]|\\.)*)"/);
       if (d?.[1]) out.description = unescapeJsString(d[1]).slice(0, 4000);
       const t = html.match(/"title":"((?:[^"\\]|\\.)*)","lengthSeconds"/);
@@ -162,9 +178,10 @@ export async function fetchYoutubeMaterial(
       const c = html.match(/"ownerChannelName":"((?:[^"\\]|\\.)*)"/);
       if (c?.[1]) out.channel = unescapeJsString(c[1]);
       out.transcript = await fetchTranscript(html);
+      out.diag += ` desc=${out.description.length} tracks=${html.includes("captionTracks")} cap=${out.transcript.length}`;
     }
-  } catch {
-    /* 페이지를 못 읽어도 아래 oEmbed 로 제목이라도 건진다 */
+  } catch (e) {
+    out.diag = `err=${e instanceof Error ? e.name : "unknown"}`;
   }
 
   if (!out.title) {

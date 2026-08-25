@@ -1175,6 +1175,7 @@ export async function POST(request: Request) {
        않아도 말한 내용이 글로 온다(lib/youtube.ts 참고).
   */
   const yt = body.url ? isYoutubeUrl(String(body.url)) : false;
+  let ytDiag = "";
   if (yt) {
     const m = await fetchYoutubeMaterial(String(body.url));
     if (!m) {
@@ -1185,6 +1186,7 @@ export async function POST(request: Request) {
     }
     const built = youtubeCaption(m);
     if (built) caption = built;
+    ytDiag = m.diag ?? "";
     // 표지 사진 — 설명·자막에서 못 찾았을 때 이걸 읽는다
     pageImage = m.thumbnails[0] ?? "";
   }
@@ -1262,6 +1264,7 @@ export async function POST(request: Request) {
   const og = splitOgPrefix(caption);
   let cleaned = og.body;
   const diag: ExtractDiag = { keyPresent: false, attempts: [] };
+  if (ytDiag) diag.attempts.push(`yt:${ytDiag}`);
   const tExtract = Date.now();
   let extracted = await extractPlaces(cleaned, locationTag, diag);
 
