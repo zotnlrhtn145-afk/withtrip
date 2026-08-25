@@ -129,8 +129,12 @@ export async function fetchTrack(url: string): Promise<string> {
 /**
  * 유튜브 플레이어에 직접 묻는다 — 설명란과 자막 목록이 여기 있다.
  *
- * ⚠️ 안드로이드 클라이언트인 척한다. 웹 클라이언트로 물으면 서명 확인에 걸려
- *    빈 응답이 오는 경우가 있는데, 안드로이드는 그대로 준다.
+ * ⚠️ **웹 클라이언트로 물어야 한다.** 실측: `ANDROID`·`IOS` 로 물으면 HTTP 400,
+ *    `WEB` 은 200 에 설명란 438자를 준다. 흔히 안드로이드가 잘 통한다고들 하는데
+ *    지금은 반대다 — 추측하지 말고 재 보고 고를 것.
+ *
+ * ⚠️ `playabilityStatus` 가 `UNPLAYABLE` 이어도 **설명란은 온다.** 재생이 막힌
+ *    것과 정보를 못 읽는 것은 다르다 — 여기서 포기하면 안 된다.
  */
 async function fetchPlayer(
   videoId: string,
@@ -144,11 +148,12 @@ async function fetchPlayer(
         headers: { "Content-Type": "application/json", "User-Agent": UA },
         body: JSON.stringify({
           videoId,
+          contentCheckOk: true,
+          racyCheckOk: true,
           context: {
             client: {
-              clientName: "ANDROID",
-              clientVersion: "19.09.37",
-              androidSdkVersion: 30,
+              clientName: "WEB",
+              clientVersion: "2.20240304.00.00",
               hl: "ko",
               gl: "KR",
             },
