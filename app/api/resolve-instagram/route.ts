@@ -790,6 +790,83 @@ export async function GET() {
  * 슬라이드가 영상이어도 **커버 이미지만** 읽는다 — 영상 8개를 받으면 20MB 가 넘고
  * 느린데, 이름은 어차피 커버에 박혀 있다.
  */
+
+/**
+ * 인스타 **임베드 페이지**에서 영상·표지·캡션을 캐온다.
+ *
+ * ⚠️ **이게 진짜 통하는 경로다.** 일반 게시물 페이지(`/reel/…`)는 로그인 없이
+ *    `video_url` 을 안 준다(실측: HTML 747KB 에 `video_url` 0건, 댓글도 0건).
+ *    그런데 `/embed/captioned/` 는 `contextJSON` 안에 `gql_data.shortcode_media`
+ *    를 통째로 담아 준다 — 영상 주소가 여기 있다.
+ *
+ * ⚠️ **이 처리가 앱에만 있었다.** 앱이 스크랩해서 서버로 넘겨 줄 때만 영상 분석이
+ *    돌았고, 앱 버전이 낮거나 앱 쪽이 실패하면 서버는 "영상을 잠가둬서 읽을 수
+ *    없어요" 로 끝났다. 서버가 직접 하면 **모든 사용자에게** 걸린다.
+ *
+ * ⚠️ `contextJSON` 은 JSON 안에 JSON 문자열로 들어 있다 — 두 번 풀어야 한다.
+ */
+async function fetchFromEmbed(
+  url: string,
+): Promise<{ videoUrl: string; imageUrls: string[]; caption: string }> {
+  const empty = { videoUrl: "", imageUrls: [] as string[], caption: "" };
+  const embed = url.replace(/\/$/, "") + "/embed/captioned/";
+  try {
+    const res = await fetch(embed, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+        Accept: "text/html",
+      },
+      cache: "no-store",
+    });
+    if (!res.ok) return empty;
+    const html = await res.text();
+    const key = '"contextJSON":"';
+    const i = html.indexOf(key);
+    if (i < 0) return empty;
+    let j = i + key.length;
+    let out = "";
+    while (j < html.length) {
+      const c = html[j];
+      if (c === "\\") {
+        out += html.slice(j, j + 2);
+        j += 2;
+        continue;
+      }
+      if (c === '"') break;
+      out += c;
+      j += 1;
+    }
+    const data = JSON.parse(JSON.parse('"' + out + '"')) as {
+      gql_data?: {
+        shortcode_media?: {
+          video_url?: string;
+          display_url?: string;
+          edge_media_to_caption?: { edges?: { node?: { text?: string } }[] };
+          edge_sidecar_to_children?: { edges?: { node?: { display_url?: string } }[] };
+        };
+      };
+    };
+    const m = data.gql_data?.shortcode_media;
+    const videoUrl = String(m?.video_url ?? "").startsWith("https://") ? String(m!.video_url) : "";
+    const imageUrls = (m?.edge_sidecar_to_children?.edges ?? [])
+      .map((e) => String(e?.node?.display_url ?? ""))
+      .filter((u) => u.startsWith("https://"))
+      .slice(0, 10);
+    const cover = String(m?.display_url ?? "");
+    // 영상을 받을 수 있으면 표지는 넣지 않는다 — 표지 한 장 때문에 영상 분석을 건너뛰면 나빠진다
+    if (!videoUrl && imageUrls.length === 0 && cover.startsWith("https://")) imageUrls.push(cover);
+    /*
+      ⚠️ 캡션도 여기서 가져온다. `og:description` 은 "10K likes, 20 comments - …"
+         처럼 껍데기가 붙고 본문이 잘리는데, 여기 것은 **본문 원문**이다.
+    */
+    const caption = String(m?.edge_media_to_caption?.edges?.[0]?.node?.text ?? "");
+    return { videoUrl, imageUrls, caption };
+  } catch {
+    return empty;
+  }
+}
+
 async function extractPlacesFromImages(
   imageUrls: string[],
   locationTag: string,
@@ -1129,16 +1206,39 @@ export async function POST(request: Request) {
     );
   }
 
-  const cleaned = stripOgPrefix(caption);
+  /*
+    ⚠️ 임베드가 준 캡션이 있으면 **그쪽을 쓴다.** `og:description` 은
+       "10K likes, 20 comments - byreginamalina on July 9, 2026: …" 처럼
+       껍데기가 붙고 본문이 잘린다. 임베드 것은 본문 원문이다.
+       (여기서 한 번 더 캐도 위에서 캔 것을 재사용하므로 요청이 늘지 않는다)
+  */
+  let cleaned = stripOgPrefix(caption);
   const diag: ExtractDiag = { keyPresent: false, attempts: [] };
   const tExtract = Date.now();
   let extracted = await extractPlaces(cleaned, locationTag, diag);
 
+  /*
+    ⚠️ **앱이 못 보냈으면 서버가 직접 캐온다.** 이 한 줄이 없어서 좋은 추출
+       경로가 앱에만 걸려 있었다.
+  */
+  let embed = { videoUrl: "", imageUrls: [] as string[], caption: "" };
+  if (body.url && !String(body.videoUrl ?? "").trim()) {
+    const t = normalizeInstagramUrl(String(body.url));
+    if (t) embed = await fetchFromEmbed(t);
+  }
+
+  if (embed.caption && embed.caption.length > cleaned.length) {
+    cleaned = embed.caption;
+    // 본문이 더 길게 들어왔으니 캡션 추출을 다시 한다 — 앞에서 짧은 걸로 헛돌았다
+    if (extracted.length === 0) extracted = await extractPlaces(cleaned, locationTag, diag);
+  }
+
   // 캡션에 이름이 없으면 영상 자막·카드 이미지를 읽는다
-  const videoUrl = String(body.videoUrl ?? "").trim();
+  const videoUrl = String(body.videoUrl ?? "").trim() || embed.videoUrl;
   const imageUrls = [
     ...(Array.isArray(body.imageUrls) ? body.imageUrls : []),
-    // ⚠️ 앱이 못 보냈어도 서버가 찾아 둔 표지를 쓴다 — 이게 있어야 모두에게 걸린다
+    // ⚠️ 앱이 못 보냈어도 서버가 찾아 둔 것을 쓴다 — 이게 있어야 모두에게 걸린다
+    ...embed.imageUrls,
     pageImage,
   ]
     .map((u) => String(u ?? "").trim())
