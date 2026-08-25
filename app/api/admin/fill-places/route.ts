@@ -33,7 +33,13 @@ type Row = { id: string; place_name: string | null; address: string | null; cate
 const VAGUE = new Set(["", "기타", "null", "레스토랑 · 다이닝", "라운지 · 바", "호텔 · 숙박"])
 
 export async function POST(req: Request) {
-  const secret = process.env.ADMIN_SESSION_SECRET ?? ""
+  /*
+    ⚠️ **서비스 키로 잠근다.** 처음엔 `ADMIN_SESSION_SECRET` 으로 했는데
+       로컬과 운영의 값이 달라서 막혔다. 서비스 키는 수파베이스 프로젝트
+       하나에 하나뿐이라 어디서든 같다. 이 키를 가진 쪽은 이미 DB 를 통째로
+       만질 수 있으므로 권한이 더 늘어나지도 않는다.
+  */
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""
   if (!secret || req.headers.get("x-admin-secret") !== secret) {
     return NextResponse.json({ error: "관리자만 쓸 수 있습니다." }, { status: 403 })
   }
