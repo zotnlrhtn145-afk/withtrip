@@ -92,8 +92,12 @@ async function fetchTranscript(html: string): Promise<string> {
     return 2;
   };
   const best = tracks.slice().sort((a, b) => score(a[2]) - score(b[2]))[0];
-  const url = unescapeJsString(best[1]).replace(/\\u0026/g, "&");
+  return fetchTrack(unescapeJsString(best[1]).replace(/\\u0026/g, "&"));
+}
 
+/** 자막 주소 하나를 글로 바꾼다 */
+export async function fetchTrack(url: string): Promise<string> {
+  if (!url) return "";
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": UA },
@@ -119,6 +123,61 @@ async function fetchTranscript(html: string): Promise<string> {
       .slice(0, 6000); // 긴 영상이 프롬프트를 다 먹지 않게 자른다
   } catch {
     return "";
+  }
+}
+
+/**
+ * 유튜브 플레이어에 직접 묻는다 — 설명란과 자막 목록이 여기 있다.
+ *
+ * ⚠️ 안드로이드 클라이언트인 척한다. 웹 클라이언트로 물으면 서명 확인에 걸려
+ *    빈 응답이 오는 경우가 있는데, 안드로이드는 그대로 준다.
+ */
+async function fetchPlayer(
+  videoId: string,
+  key: string,
+): Promise<{ desc: string; title: string; trackUrl: string } | null> {
+  try {
+    const res = await fetch(
+      `https://www.youtube.com/youtubei/v1/player?key=${encodeURIComponent(key)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "User-Agent": UA },
+        body: JSON.stringify({
+          videoId,
+          context: {
+            client: {
+              clientName: "ANDROID",
+              clientVersion: "19.09.37",
+              androidSdkVersion: 30,
+              hl: "ko",
+              gl: "KR",
+            },
+          },
+        }),
+        signal: AbortSignal.timeout(12000),
+      },
+    );
+    if (!res.ok) return null;
+    const j = (await res.json()) as {
+      videoDetails?: { shortDescription?: string; title?: string };
+      captions?: {
+        playerCaptionsTracklistRenderer?: {
+          captionTracks?: { baseUrl?: string; languageCode?: string; kind?: string }[];
+        };
+      };
+    };
+    const tracks =
+      j.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
+    const rank = (t: { languageCode?: string; kind?: string }) =>
+      t.languageCode === "ko" ? 0 : t.kind === "asr" ? 1 : 2;
+    const best = tracks.slice().sort((a, b) => rank(a) - rank(b))[0];
+    return {
+      desc: String(j.videoDetails?.shortDescription ?? ""),
+      title: String(j.videoDetails?.title ?? ""),
+      trackUrl: String(best?.baseUrl ?? ""),
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -178,7 +237,32 @@ export async function fetchYoutubeMaterial(
       const c = html.match(/"ownerChannelName":"((?:[^"\\]|\\.)*)"/);
       if (c?.[1]) out.channel = unescapeJsString(c[1]);
       out.transcript = await fetchTranscript(html);
-      out.diag += ` desc=${out.description.length} tracks=${html.includes("captionTracks")} cap=${out.transcript.length}`;
+      out.diag += ` desc=${out.description.length} cap=${out.transcript.length}`;
+
+      /*
+        ⚠️ **배포 서버에는 플레이어 설정이 빠진 판이 온다.** 실측: 페이지는
+           1.1MB 전문이 왔는데 `shortDescription` 도 `captionTracks` 도 0 이었다
+           (내 맥에서는 둘 다 왔다 — 그래서 못 알아챘다).
+
+           그럴 때는 유튜브 **자신의 플레이어 API** 에 직접 묻는다. 설명란과
+           자막 목록이 여기서 온다.
+
+        ⚠️ 열쇠(`INNERTUBE_API_KEY`)를 코드에 박지 않는다 — 방금 받은 페이지에서
+           꺼내 쓴다. 박아 두면 바뀌는 날 조용히 죽는다(모델 이름으로 두 번 당했다).
+      */
+      if (!out.description || !out.transcript) {
+        const k = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
+        if (k?.[1]) {
+          const pr = await fetchPlayer(videoId, k[1]);
+          if (pr) {
+            if (!out.description && pr.desc) out.description = pr.desc.slice(0, 4000);
+            if (!out.title && pr.title) out.title = pr.title;
+            if (!out.transcript && pr.trackUrl)
+              out.transcript = await fetchTrack(pr.trackUrl);
+            out.diag += ` player(desc=${pr.desc.length} track=${pr.trackUrl ? "y" : "n"})`;
+          } else out.diag += " player=fail";
+        } else out.diag += " nokey";
+      }
     }
   } catch (e) {
     out.diag = `err=${e instanceof Error ? e.name : "unknown"}`;
