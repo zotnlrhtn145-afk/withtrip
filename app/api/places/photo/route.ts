@@ -126,9 +126,24 @@ export async function GET(request: Request) {
   }
 
   // ── 2) 없거나 오래됐으면 구글에서 한 번 받아온다
-  const target = new URL("https://maps.googleapis.com/maps/api/place/photo")
-  target.searchParams.set("maxwidth", String(width))
-  target.searchParams.set("photo_reference", ref)
+  /*
+    ⚠️ 구글 사진 참조가 **두 가지 형식**이다.
+       옛것: `AWCwyd...` (한 덩어리)          → legacy `place/photo`
+       새것: `places/ChIJ../photos/AXQ..`     → Places API (New) `…/media`
+       새 형식을 옛 주소에 넣으면 502 가 난다 — 실제로 그렇게 깨졌다.
+       어느 쪽이든 받아 준다.
+  */
+  const isNewRef = ref.startsWith("places/")
+  const target = isNewRef
+    ? new URL(`https://places.googleapis.com/v1/${ref}/media`)
+    : new URL("https://maps.googleapis.com/maps/api/place/photo")
+  if (isNewRef) {
+    target.searchParams.set("maxWidthPx", String(width))
+    target.searchParams.set("skipHttpRedirect", "false")
+  } else {
+    target.searchParams.set("maxwidth", String(width))
+    target.searchParams.set("photo_reference", ref)
+  }
   target.searchParams.set("key", apiKey)
 
   let res: Response
