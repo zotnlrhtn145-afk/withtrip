@@ -49,13 +49,31 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as { limit?: number }
   const limit = Math.min(20, Math.max(1, Number(body.limit ?? 20)))
 
-  // 중분류가 비었거나 뭉뚱그린 것만
+  /*
+    중분류가 비었거나 뭉뚱그린 것만.
+
+    ⚠️ **거르는 일을 DB 에 시킨다.** 예전엔 아무 조건 없이 600건을 받아 와서
+       코드에서 걸렀는데, 저장된 곳이 600건을 넘자 **뒤쪽 행은 아예 보이지도
+       않았다.** 그래서 실제로 259건이 미분류인데 배치는 "남음 0" 이라고
+       답했다(실측). 조건을 SQL 로 내려보내면 몇 건이 있든 앞에서부터 집는다.
+
+    ⚠️ **아직 안 물어본 것을 먼저 집는다**(`category_source` 가 빈 것).
+       한 번 물어봤는데 AI 가 「기타」라고 한 것들이 앞자리를 차지하면
+       새로 담은 곳이 영원히 순서를 못 받는다.
+  */
+  const vague = [...VAGUE].filter((v) => v !== "")
+  const orFilter = [
+    "sub_category.is.null",
+    ...vague.map((v) => `sub_category.eq.${v}`),
+  ].join(",")
   const { data } = await db
     .from("saved_places")
     .select("id, place_name, address, category, sub_category, google_place_id")
-    .limit(600)
-  const targets = ((data as (Row & { sub_category: string | null })[]) ?? []).filter(
-    (r) => VAGUE.has(String(r.sub_category ?? "")) && (r.place_name ?? "").trim()
+    .or(orFilter)
+    .order("category_source", { ascending: true, nullsFirst: true })
+    .limit(400)
+  const targets = ((data as (Row & { sub_category: string | null })[]) ?? []).filter((r) =>
+    (r.place_name ?? "").trim()
   )
   if (targets.length === 0) return NextResponse.json({ done: true, left: 0, filled: 0 })
 
@@ -147,15 +165,26 @@ export async function POST(req: Request) {
     if (!label) continue
     const allowed = SUBCATEGORIES_BY_KIND[kind] ?? []
     const sub = allowed.includes(it.sub) ? it.sub : "기타"
-    // ⚠️ "기타" 로 온 건 저장하지 않는다 — 모른다는 뜻이고, 덮어써 봐야 그대로다
-    if (sub === "기타") continue
     const detail = String(it.detail ?? "").trim().slice(0, 24) || null
 
+    /*
+      ⚠️ **「기타」로 왔어도 물어봤다는 사실은 남긴다.**
+
+         예전엔 여기서 `continue` 해서 아무것도 저장하지 않았다. 그러면 그 행은
+         영원히 미분류로 남고, 배치는 **매번 같은 곳을 다시 물어본다.**
+         실측: "채움 0 · 남음 0" 이 열두 번 반복됐고 259건은 그대로였다.
+         돈은 계속 나가는데 아무것도 안 바뀐다.
+
+         이제 대분류는 채우고 `category_source='ai'`, 확신은 낮게 남긴다.
+         「확인했는데 모르겠다」와 「아직 안 물어봤다」가 구분되므로, 다음 배치는
+         **안 물어본 것부터** 집는다. 나중에 더 좋은 모델로 다시 돌릴 수도 있다.
+    */
+    const unsure = sub === "기타"
     const patch: Record<string, unknown> = {
       category: label,
       sub_category: sub,
       category_source: "ai",
-      category_confidence: 0.75,
+      category_confidence: unsure ? 0.3 : 0.75,
     }
     if (detail) patch.detail_category = detail
 
@@ -172,5 +201,14 @@ export async function POST(req: Request) {
     changes.push(`${rows[0].place_name} → ${label}/${sub}${detail ? "/" + detail : ""}`)
   }
 
-  return NextResponse.json({ filled, left: Math.max(0, byName.size - uniq.length), changes })
+  /*
+    ⚠️ **남은 수를 다시 센다.** 예전엔 이번에 받아 온 묶음 안에서만 계산해서
+       (`byName.size - uniq.length`) 실제로 259건이 남았는데도 0 이라고 답했다.
+       "다 끝났다" 는 거짓말이 제일 나쁘다 — 아무도 다시 돌리지 않게 만든다.
+  */
+  const { count } = await db
+    .from("saved_places")
+    .select("id", { count: "exact", head: true })
+    .is("category_source", null)
+  return NextResponse.json({ filled, left: count ?? 0, changes })
 }
