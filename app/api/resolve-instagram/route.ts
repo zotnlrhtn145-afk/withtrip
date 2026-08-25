@@ -1176,7 +1176,11 @@ export async function POST(request: Request) {
   */
   const yt = body.url ? isYoutubeUrl(String(body.url)) : false;
   let ytDiag = "";
-  if (yt) {
+  /*
+    ⚠️ **앱이 이미 글을 보냈으면 서버는 캐지 않는다.** 안 그러면 폰이 힘들게
+       받아 온 설명란·자막을, 서버가 데이터센터 IP 로 받은 빈 값으로 덮어쓴다.
+  */
+  if (yt && !caption) {
     const m = await fetchYoutubeMaterial(String(body.url));
     if (!m) {
       return NextResponse.json(
