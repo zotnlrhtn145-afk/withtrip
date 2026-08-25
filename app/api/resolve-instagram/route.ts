@@ -8,6 +8,7 @@ import {
   resolveRequestOrigin,
 } from "@/lib/place-cover-image";
 import { guessSubCategory } from "@/lib/place-subcategories";
+import { fetchYoutubeMaterial, isYoutubeUrl, youtubeCaption } from "@/lib/youtube";
 import {
   flashModelCandidates,
   isTransient,
@@ -1165,7 +1166,30 @@ export async function POST(request: Request) {
   /** 게시물 표지 사진 — 영상이 잠겨 있을 때 이것이라도 읽는다 */
   let pageImage = "";
 
-  if (!caption && body.url) {
+  /*
+    ⚠️ **유튜브면 여기서 재료를 다 캐고 인스타 경로는 아예 안 탄다.**
+       뒤쪽 파이프라인(캡션 → AI → 구글 → 사진)은 똑같이 쓴다 — 다른 건
+       "글을 어디서 얻느냐" 뿐이라 갈아 끼우는 것으로 충분하다.
+
+    ⚠️ 인스타와 달리 유튜브는 **자막**을 준다. 영상을 프레임으로 자르지
+       않아도 말한 내용이 글로 온다(lib/youtube.ts 참고).
+  */
+  const yt = body.url ? isYoutubeUrl(String(body.url)) : false;
+  if (yt) {
+    const m = await fetchYoutubeMaterial(String(body.url));
+    if (!m) {
+      return NextResponse.json(
+        { places: [], error: "유튜브 주소를 알아보지 못했어요." },
+        { status: 200 },
+      );
+    }
+    const built = youtubeCaption(m);
+    if (built) caption = built;
+    // 표지 사진 — 설명·자막에서 못 찾았을 때 이걸 읽는다
+    pageImage = m.thumbnails[0] ?? "";
+  }
+
+  if (!caption && body.url && !yt) {
     const target = normalizeInstagramUrl(String(body.url));
     if (!target) {
       return NextResponse.json(
@@ -1221,8 +1245,9 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         places: [],
-        error:
-          "캡션을 읽지 못했어요. 앱에서 게시물 내용을 함께 보내주세요(서버에서는 인스타를 읽을 수 없습니다).",
+        error: yt
+          ? "이 영상은 설명란도 자막도 비어 있어서 읽을 내용이 없어요."
+          : "캡션을 읽지 못했어요. 앱에서 게시물 내용을 함께 보내주세요(서버에서는 인스타를 읽을 수 없습니다).",
       },
       { status: 200 },
     );
@@ -1245,7 +1270,7 @@ export async function POST(request: Request) {
        경로가 앱에만 걸려 있었다.
   */
   let embed = { videoUrl: "", imageUrls: [] as string[], caption: "" };
-  if (body.url && !String(body.videoUrl ?? "").trim()) {
+  if (body.url && !yt && !String(body.videoUrl ?? "").trim()) {
     const t = normalizeInstagramUrl(String(body.url));
     if (t) embed = await fetchFromEmbed(t);
   }
