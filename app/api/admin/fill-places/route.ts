@@ -206,9 +206,19 @@ export async function POST(req: Request) {
        (`byName.size - uniq.length`) 실제로 259건이 남았는데도 0 이라고 답했다.
        "다 끝났다" 는 거짓말이 제일 나쁘다 — 아무도 다시 돌리지 않게 만든다.
   */
+  /*
+    ⚠️ **「아직 안 물어본 것」과 「채울 게 남은 것」은 다르다.**
+       처음엔 `category_source is null` 을 세서 251 이라고 답했는데, 그중
+       251건 전부가 **중분류가 이미 제대로 붙어 있는 곳**이었다(예전에 구글
+       types 로 정해진 것들이라 출처 표시만 없었다). 채울 게 없는데 251건이
+       밀린 것처럼 보여서, 배치를 열여섯 번 헛돌렸다.
+
+       진짜 대기는 **뭉뚱그려진 것 중 아직 안 물어본 것**이다.
+  */
   const { count } = await db
     .from("saved_places")
     .select("id", { count: "exact", head: true })
+    .or(orFilter)
     .is("category_source", null)
   return NextResponse.json({ filled, left: count ?? 0, changes })
 }
