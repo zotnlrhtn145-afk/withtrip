@@ -148,8 +148,22 @@ export async function modelFailed(purpose: string): Promise<void> {
   }
 }
 
-/** 기억해 둔 모델을 맨 앞으로 보낸다 (중복 제거) */
+/**
+ * 기억해 둔 모델을 맨 앞으로 보낸다 (중복 제거).
+ *
+ * ⚠️ **기억은 상한다.** 실측(2026-08-25): 표에 `gemini-2.5-flash` 가 남아 있는데
+ *    구글이 이 이름을 내려서 HTTP 404 였다. 그런데도 매번 맨 앞에 세우느라,
+ *    첫 후보가 404 → 다음이 503(과부하) → 그대로 "장소를 찾지 못했어요" 가 됐다.
+ *    모델 이름을 박아 둔 것과 증상이 똑같다 — 박은 곳이 코드가 아니라 표일 뿐이다.
+ *
+ *    그래서 **살아 있는 목록에 없는 기억은 무시한다.** 방금 구글에 물어서 받은
+ *    목록이 진실이고, 표는 그 안에서 순서만 바꾸는 힌트로만 쓴다.
+ *
+ * ⚠️ 목록이 비었을 때는(조회 자체가 실패) 기억이라도 써야 한다 — 안 그러면
+ *    후보가 하나도 없어서 시도조차 못 한다.
+ */
 export function withPreferredFirst(models: string[], preferred: string | null): string[] {
   if (!preferred) return models;
+  if (models.length && !models.includes(preferred)) return models;
   return Array.from(new Set([preferred, ...models]));
 }
