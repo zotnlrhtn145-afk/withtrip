@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/refresh-places",
       "schedule": "0 19 * * 6"
+    },
+    {
+      "path": "/api/cron/fill-places",
+      "schedule": "0 18 * * *"
     }
   ]
 }
