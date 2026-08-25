@@ -17,9 +17,16 @@ import { NextResponse } from "next/server"
 export const maxDuration = 300
 
 export async function GET(req: Request) {
+  /*
+    ⚠️ **열쇠가 없으면 잠근다 — 열지 않는다.**
+       예전엔 `if (secret && ...)` 이라, `CRON_SECRET` 을 지우는 순간
+       **아무나 눌러서 AI 비용을 태울 수 있는 주소**가 됐다. 설정을 실수로
+       빼먹는 건 흔한 일인데, 그 실수의 대가가 요금이면 안 된다.
+       못 여는 편이 낫다 — 안 도는 건 알아채지만, 새는 건 청구서로 안다.
+  */
   const secret = process.env.CRON_SECRET ?? ""
   const auth = req.headers.get("authorization") ?? ""
-  if (secret && auth !== `Bearer ${secret}`) {
+  if (!secret || auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "권한이 없습니다." }, { status: 401 })
   }
 
