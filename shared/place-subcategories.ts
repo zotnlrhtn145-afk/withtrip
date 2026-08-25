@@ -375,7 +375,10 @@ const NAME_RULES: { kind: WishlistKind; sub: string; detail?: string; re: RegExp
   { kind: "restaurant", sub: "국수·면요리", detail: "냉면", re: /냉면|밀면/i },
   { kind: "restaurant", sub: "국수·면요리", re: /국수|면옥|noodle|짬뽕|막국수/i },
 
-  { kind: "restaurant", sub: "한식", detail: "국밥·해장", re: /국밥|해장|순대|설렁탕|곰탕|추어탕|감자탕|해장국|콩나물국|뼈해장/i },
+  { kind: "restaurant", sub: "한식", detail: "국밥·해장", re: /국밥|해장|순대|설렁탕|곰탕|추어탕|감자탕|해장국|콩나물국|뼈해장|소머리|돼지국/i },
+  { kind: "restaurant", sub: "한식", detail: "죽", re: /전복죽|\b죽집|죽전문|본죽/i },
+  { kind: "restaurant", sub: "한식", detail: "백반·가정식", re: /백반|가정식|기사식당|한상차림/i },
+  { kind: "restaurant", sub: "한식", detail: "오리", re: /오리백숙|훈제오리|오리주물럭|오리구이/i },
   { kind: "restaurant", sub: "한식", detail: "족발·보쌈", re: /족발|보쌈/i },
   { kind: "restaurant", sub: "한식", detail: "곱창·막창", re: /곱창|막창|대창|양곱창/i },
   { kind: "restaurant", sub: "한식", detail: "닭요리", re: /닭갈비|찜닭|삼계탕|치킨|닭한마리|불닭/i },
@@ -383,10 +386,17 @@ const NAME_RULES: { kind: WishlistKind; sub: string; detail?: string; re: RegExp
   { kind: "restaurant", sub: "한식", detail: "한정식", re: /한정식|한상|반상/i },
 
   { kind: "restaurant", sub: "고기·구이", detail: "야키니쿠", re: /야키니쿠|yakiniku|焼肉/i },
-  { kind: "restaurant", sub: "고기·구이", re: /삼겹|갈비|숯불|불고기|고깃|바비큐|\bbbq\b|스테이크|steak|정육|한우|우대|양갈비|뽈살/i },
+  { kind: "restaurant", sub: "고기·구이", re: /삼겹|갈비|숯불|불고기|고깃|바비큐|\bbbq\b|스테이크|steak|정육|한우|우대|양갈비|뽈살|식육|돼지|생고기|목살|항정|막창집|축산/i },
 
   { kind: "restaurant", sub: "스시", detail: "오마카세", re: /오마카세|omakase/i },
-  { kind: "restaurant", sub: "스시", re: /스시|sushi|寿司|초밥|사시미|회$|횟집/i },
+  /*
+    ⚠️ 「회」 를 넓게 잡으면 **물회·육회가 스시로 간다**(실측: 포항물회 → 스시).
+       물회는 해산물, 육회는 고기다. 그래서 앞에 아무 글자나 붙은 「…회」 는
+       스시로 보지 않는다 — `횟집` 처럼 분명한 것만 본다.
+  */
+  { kind: "restaurant", sub: "해산물", detail: "물회", re: /물회/i },
+  { kind: "restaurant", sub: "고기·구이", detail: "육회", re: /육회/i },
+  { kind: "restaurant", sub: "스시", re: /스시|sushi|寿司|초밥|사시미|횟집|생선회/i },
 
   { kind: "restaurant", sub: "일식", detail: "야키토리", re: /야키토리|yakitori|焼き鳥|꼬치구이/i },
   { kind: "restaurant", sub: "일식", detail: "돈카츠", re: /돈카츠|돈까스|とんかつ|규카츠|牛カツ|가츠/i },
@@ -394,8 +404,8 @@ const NAME_RULES: { kind: WishlistKind; sub: string; detail?: string; re: RegExp
   { kind: "restaurant", sub: "일식", detail: "오코노미야키", re: /오코노미야키|타코야키|다코야키|お好み焼/i },
   { kind: "restaurant", sub: "일식", re: /일식|와쇼쿠|샤브샤브|스키야키|すき焼/i },
 
-  { kind: "restaurant", sub: "해산물", re: /해산물|seafood|조개|굴$|대게|킹크랩|랍스터|lobster|전복|해녀/i },
-  { kind: "restaurant", sub: "중식", re: /중식|중화|마라|훠궈|딤섬|dim ?sum|양꼬치|짜장/i },
+  { kind: "restaurant", sub: "해산물", re: /해산물|seafood|조개|굴$|대게|킹크랩|랍스터|lobster|전복|해녀|물회|과메기|회센터|수산|활어|아구|복어|장어|멍게|해물/i },
+  { kind: "restaurant", sub: "중식", re: /중식|중화|마라|훠궈|딤섬|dim ?sum|양꼬치|짜장|반점$|반점\b|각$|루$|만두/i },
   { kind: "restaurant", sub: "이탈리안", re: /이탈리안|italian|파스타|pasta|피자|pizza|트라토리아/i },
   { kind: "restaurant", sub: "프렌치", re: /프렌치|french|비스트로|bistro|브라세리/i },
   { kind: "restaurant", sub: "브런치", re: /브런치|brunch|모닝|breakfast/i },
