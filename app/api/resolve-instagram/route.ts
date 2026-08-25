@@ -205,16 +205,38 @@ export function normalizeInstagramUrl(input: string): string | null {
 }
 
 /** 캡션에서 og:description 앞머리("62K likes, 99 comments - user - date:")를 걷어낸다. */
+/**
+ * 캡션 앞에 붙는 껍데기를 벗긴다.
+ *
+ * ⚠️ **좋아요·댓글 수가 없는 형태가 있다.** 예전엔 이렇게만 왔는데
+ *
+ *     10K likes, 20 comments - byreginamalina on July 9, 2026: "본문"
+ *
+ * 요즘은 앞의 수치 없이 이렇게도 온다
+ *
+ *     cup.of.jill - July 25, 2026: "본문"
+ *
+ * 수치 부분을 필수로 받고 있어서 이 형태가 **통째로 본문에 남았고**,
+ * 그 결과 계정 이름(`alviansilver`)이 가게 이름으로 뽑혔다.
+ * 이제 수치 부분은 있어도 없어도 된다.
+ *
+ * 핸들을 같이 돌려준다 — 뒤에서 "혹시 이게 가게 이름으로 뽑혔나" 를 거른다.
+ */
 function stripOgPrefix(caption: string): string {
+  return splitOgPrefix(caption).body;
+}
+
+function splitOgPrefix(caption: string): { body: string; handle: string } {
   const m = caption.match(
-    /^[\d.,KMB]+\s*likes?,\s*[\d.,KMB]+\s*comments?\s*-\s*[^-]+-\s*[^:]+:\s*/i,
+    /^(?:[\d.,KMB]+\s*likes?,\s*[\d.,KMB]+\s*comments?\s*[-–—]\s*)?([A-Za-z0-9._]{2,40})\s*(?:on\b|[-–—])\s*[A-Za-z]+\s+\d{1,2},\s*\d{4}\s*:\s*/i,
   );
+  const handle = m ? m[1] : "";
   let body = m ? caption.slice(m[0].length) : caption;
   body = body.trim();
   if (body.startsWith('"')) body = body.slice(1);
   if (body.endsWith('".') || body.endsWith('"'))
     body = body.replace(/"\.?$/, "");
-  return body.trim();
+  return { body: body.trim(), handle };
 }
 
 /** 진단용 — 추출이 왜 실패했는지 응답에 실어 보낸다(비밀값은 담지 않는다). */
@@ -1212,7 +1234,8 @@ export async function POST(request: Request) {
        껍데기가 붙고 본문이 잘린다. 임베드 것은 본문 원문이다.
        (여기서 한 번 더 캐도 위에서 캔 것을 재사용하므로 요청이 늘지 않는다)
   */
-  let cleaned = stripOgPrefix(caption);
+  const og = splitOgPrefix(caption);
+  let cleaned = og.body;
   const diag: ExtractDiag = { keyPresent: false, attempts: [] };
   const tExtract = Date.now();
   let extracted = await extractPlaces(cleaned, locationTag, diag);
@@ -1262,6 +1285,20 @@ export async function POST(request: Request) {
     }
   }
   diag.ms = Date.now() - tExtract;
+
+  /*
+    ⚠️ **계정 이름은 가게가 아니다.** 껍데기를 다 벗겨도 화면 글씨나 워터마크에
+       `@handle` 이 찍혀 있어서 그걸 가게로 뽑는 일이 있다(실측: `alviansilver`).
+       구글에 물어보면 엉뚱한 데가 걸리므로 여기서 버린다.
+  */
+  if (og.handle) {
+    const h = og.handle.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const before = extracted.length;
+    extracted = extracted.filter(
+      (e) => String(e?.name ?? "").toLowerCase().replace(/[^a-z0-9]/g, "") !== h,
+    );
+    if (extracted.length < before) diag.attempts.push("handle_dropped");
+  }
 
   if (extracted.length === 0) {
     console.warn("[resolve-instagram] 추출 0건", JSON.stringify(diag));
