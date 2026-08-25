@@ -1052,6 +1052,9 @@ export async function POST(request: Request) {
 
   // url만 온 경우: 이 서버에서 인스타를 읽어본다. 배포 환경(데이터센터 IP)에서는
   // 거의 실패하므로 어디까지나 로컬 테스트용 폴백이다.
+  /** 게시물 표지 사진 — 영상이 잠겨 있을 때 이것이라도 읽는다 */
+  let pageImage = "";
+
   if (!caption && body.url) {
     const target = normalizeInstagramUrl(String(body.url));
     if (!target) {
@@ -1070,6 +1073,23 @@ export async function POST(request: Request) {
         cache: "no-store",
       });
       const html = await res.text();
+      /*
+        ⚠️ **표지 사진을 여기서 같이 챙긴다.**
+
+        저작권 음원이 깔린 릴스는 인스타가 `video_url` 을 아예 안 준다(실측).
+        표지라도 읽자는 처리는 **앱에만** 들어가 있어서, 앱이 안 보내 주면
+        서버는 빈손이었다 — "영상을 잠가둬서 읽을 수 없어요" 가 그것이다.
+        (실측 7건 중 3건이 이 오류, 나머지는 시간 초과)
+
+        서버가 이미 이 페이지를 읽고 있으니 `og:image` 를 같이 가져오면
+        **앱 버전과 상관없이 모든 사용자에게** 같은 처리가 걸린다.
+      */
+      const img = html.match(/<meta property="og:image" content="([^"]+)"/);
+      if (img?.[1]) {
+        pageImage = img[1]
+          .replace(/&amp;/g, "&")
+          .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)));
+      }
       const m = html.match(/<meta property="og:description" content="([^"]*)"/);
       if (m) {
         caption = m[1]
@@ -1105,9 +1125,14 @@ export async function POST(request: Request) {
 
   // 캡션에 이름이 없으면 영상 자막·카드 이미지를 읽는다
   const videoUrl = String(body.videoUrl ?? "").trim();
-  const imageUrls = (Array.isArray(body.imageUrls) ? body.imageUrls : [])
+  const imageUrls = [
+    ...(Array.isArray(body.imageUrls) ? body.imageUrls : []),
+    // ⚠️ 앱이 못 보냈어도 서버가 찾아 둔 표지를 쓴다 — 이게 있어야 모두에게 걸린다
+    pageImage,
+  ]
     .map((u) => String(u ?? "").trim())
-    .filter((u) => u.startsWith("https://"));
+    .filter((u) => u.startsWith("https://"))
+    .filter((u, i, a) => a.indexOf(u) === i);
   let source: "caption" | "video" | "images" = "caption";
 
   if (extracted.length === 0 && videoUrl.startsWith("https://")) {
