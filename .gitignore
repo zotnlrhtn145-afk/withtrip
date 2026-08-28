@@ -19,3 +19,5 @@ node_modules
 # supabase CLI 로컬 상태 (커밋 대상 아님)
 supabase/.temp/
 
+.vercel
+.env*
