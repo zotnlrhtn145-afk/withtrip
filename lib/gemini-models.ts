@@ -15,6 +15,22 @@ type GeminiModel = { name?: string; supportedGenerationMethods?: string[] };
 let cached: string[] | null = null;
 
 /**
+ * 구글이 목록에는 주는데 **부르면 404** 인 이름들.
+ *
+ * ⚠️ 실측(2026-08-28): `gemini-2.5-flash` 가 목록에 들어 있는데 호출하면 404 다.
+ *    그런데 매 요청마다 후보에 다시 끼어서, 인스타 한 건 읽을 때마다 죽은
+ *    문을 한 번씩 두드렸다. 한 번 404 를 본 이름은 그때부터 건너뛴다.
+ *
+ * ⚠️ 프로세스가 사는 동안만 기억한다. 구글이 그 이름을 되살리면 다음 배포
+ *    때 자연히 풀린다 — 영영 못 쓰게 박아 두지 않는다.
+ */
+const gone = new Set<string>();
+
+export function markModelGone(name: string): void {
+  gone.add(name);
+}
+
+/**
  * 이름만 flash 일 뿐 우리 용도에 못 쓰는 것들.
  *
  * ⚠️ 실측: 목록에 `gemini-3.7-flash-video-understanding-eap` 가 딸려 왔고
@@ -46,7 +62,9 @@ function rank(name: string): number {
 export const TEXT_PURPOSE = "text";
 
 export async function flashModelCandidates(apiKey: string): Promise<string[]> {
-  if (cached) return withPreferredFirst(cached, await preferredModel(TEXT_PURPOSE));
+  const alive = (names: string[]) => names.filter((n) => !gone.has(n));
+  if (cached)
+    return alive(withPreferredFirst(cached, await preferredModel(TEXT_PURPOSE)));
   try {
     const res = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models",
@@ -65,7 +83,7 @@ export async function flashModelCandidates(apiKey: string): Promise<string[]> {
       .sort((a, b) => rank(a) - rank(b))
       .slice(0, 3);
     if (names.length) cached = names;
-    return withPreferredFirst(names, await preferredModel(TEXT_PURPOSE));
+    return alive(withPreferredFirst(names, await preferredModel(TEXT_PURPOSE)));
   } catch {
     return [];
   }

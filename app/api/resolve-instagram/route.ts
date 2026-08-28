@@ -11,6 +11,7 @@ import { guessSubCategory } from "@/lib/place-subcategories";
 import { fetchYoutubeMaterial, isYoutubeUrl, youtubeCaption } from "@/lib/youtube";
 import {
   flashModelCandidates,
+  markModelGone,
   isTransient,
   rememberModel,
   sleep,
@@ -289,12 +290,27 @@ async function extractPlaces(
   // 모델마다 15초를 주면 셋이 다 실패할 때 45초가 그냥 흘러간다.
   // 그 사이 앱은 이미 포기한 뒤다.
   const MODEL_TIMEOUT_MS = 10_000;
+  /*
+    ⚠️ **전체 시간 예산.** 모델 3개 × 재시도 2번이면 최악에 60초까지 간다.
+       실측: 실패한 요청이 25.7초였고 그중 24.1초가 여기였다 — 사용자 화면에는
+       "시간이 오래 걸려요" 만 떴다.
+
+       못 찾는 건 어쩔 수 없지만 **오래 끄는 건 고칠 수 있다.** 예산을 넘기면
+       남은 모델을 건너뛰고 지금까지의 결과로 끝낸다. 답을 못 준다는 점은
+       같은데, 12초에 알려 주는 쪽이 낫다.
+  */
+  const deadline = Date.now() + 12_000;
 
   for (const model of models) {
+    if (Date.now() > deadline) {
+      diag.attempts.push("BUDGET_OUT");
+      break;
+    }
     // thinkingConfig 를 모르는 모델이면 한 번은 빼고 다시 부른다
     let noThinking = false;
     // 과부하는 잠깐 기다렸다 같은 모델에 다시 묻는 게 낫다
     for (let tryNo = 0; tryNo < 3; tryNo += 1) {
+      if (Date.now() > deadline) break;
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS);
       try {
@@ -325,8 +341,22 @@ async function extractPlaces(
             noThinking = true;
             continue;
           }
-          if (isTransient(res.status) && tryNo === 0) {
-            await sleep(600);
+          /*
+            ⚠️ **404 는 그 이름이 없다는 뜻이다.** 기다렸다 다시 불러도 영영
+               안 된다. 다음 요청에서도 또 두드리지 않게 기억해 둔다.
+          */
+          if (res.status === 404) {
+            markModelGone(model);
+            break;
+          }
+          /*
+            ⚠️ 과부하(503)는 한 번만 다시 물어본다. 예전엔 재시도 뒤에도 또
+               503 이 나는 일이 흔했는데(실측), 그때마다 600ms 씩 쌓여서
+               모델 세 개를 도는 데만 몇 초가 더 들었다. 한 번 기다려 보고
+               안 되면 **다음 모델로 넘어가는 게 빠르다.**
+          */
+          if (isTransient(res.status) && tryNo === 0 && Date.now() < deadline) {
+            await sleep(400);
             continue;
           }
           break;
