@@ -396,7 +396,12 @@ const NAME_RULES: { kind: WishlistKind; sub: string; detail?: string; re: RegExp
   */
   { kind: "restaurant", sub: "해산물", detail: "물회", re: /물회/i },
   { kind: "restaurant", sub: "고기·구이", detail: "육회", re: /육회/i },
-  { kind: "restaurant", sub: "스시", re: /스시|sushi|寿司|초밥|사시미|횟집|생선회/i },
+  /*
+    ⚠️ **「횟집」은 여기서 빼야 한다.** 스시는 일식이고 횟집은 한국식 회집이다 —
+       메뉴도 분위기도 다르다. 아래 「해산물」 규칙이 잡게 둔다.
+       (「회」 하나만으로 잡으면 물회·육회까지 끌려온다 — 그래서 위에 따로 뒀다)
+  */
+  { kind: "restaurant", sub: "스시", re: /스시|sushi|寿司|초밥|사시미|생선회/i },
 
   { kind: "restaurant", sub: "일식", detail: "야키토리", re: /야키토리|yakitori|焼き鳥|꼬치구이/i },
   { kind: "restaurant", sub: "일식", detail: "돈카츠", re: /돈카츠|돈까스|とんかつ|규카츠|牛カツ|가츠/i },
@@ -410,6 +415,23 @@ const NAME_RULES: { kind: WishlistKind; sub: string; detail?: string; re: RegExp
   { kind: "restaurant", sub: "프렌치", re: /프렌치|french|비스트로|bistro|브라세리/i },
   { kind: "restaurant", sub: "브런치", re: /브런치|brunch|모닝|breakfast/i },
   { kind: "restaurant", sub: "양식", re: /버거|burger|스테이크하우스|멕시칸|타코|taco|양식/i },
+
+  /*
+    ── 마지막 그물 ────────────────────────────────────────────────
+    ⚠️ **반드시 맨 끝에 둔다.** 위 규칙들이 먼저 걸려야 한다. 「스시야 식당」을
+       여기서 한식으로 잡으면 안 된다 — 규칙은 위에서부터 먼저 맞는 것을 쓴다.
+
+    ⚠️ 왜 필요한가: 「번네식당」·「제주고기집」 같은 흔한 이름이 **하나도 안
+       걸려서** 전부 「기타」로 들어갔다(실측: guessFromName 이 null 을 냈다).
+       구체적인 음식 이름은 촘촘한데 **가장 흔한 말이 빠져 있었다.**
+
+    ⚠️ 「식당」을 한식으로 보는 건 한국어 이름에 한해서다. 가게 이름에 굳이
+       「식당」을 쓰는 곳은 거의 한식이다. 틀리면 사용자가 칩을 눌러 고치면
+       되고, 「기타」로 두는 것보다는 맞을 확률이 훨씬 높다.
+  */
+  { kind: "restaurant", sub: "고기·구이", re: /고기집|고깃집|숯불|화로|삼겹|목살|갈비|한우|우삼겹|불판|정육식당/i },
+  { kind: "restaurant", sub: "해산물", re: /횟집|회집|물회집|조개구이|해물탕/i },
+  { kind: "restaurant", sub: "한식", re: /식당|밥집|맛집|한정식|기사식당|국수집|칼국수|한식/i },
 ]
 
 export type NameGuess = {

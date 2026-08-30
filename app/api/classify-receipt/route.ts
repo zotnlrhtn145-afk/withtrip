@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { flashModelCandidates } from "@/lib/gemini-models"
+import { flashModelCandidates , markModelGone} from "@/lib/gemini-models"
 import { checkRateLimit } from "@/lib/rate-limit"
 
 export const runtime = "nodejs"
@@ -117,7 +117,12 @@ export async function POST(request: Request) {
           signal: controller.signal,
         },
       )
-      if (!res.ok) continue
+      if (!res.ok) {
+        /* ⚠️ 404 는 그 이름이 없다는 뜻이다 — 다음부터 후보에서 뺀다.
+              구글이 주는 살아 있는 목록에도 죽은 이름이 끼어 있다(실측). */
+        if (res.status === 404) markModelGone(model)
+        continue
+      }
       const data = (await res.json()) as {
         candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
       }

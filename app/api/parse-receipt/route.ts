@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { checkRateLimit } from "@/lib/rate-limit"
-import { flashModelCandidates, isBillingProblem, isTransient, modelFailed, rememberModel, sleep, TEXT_PURPOSE } from "@/lib/gemini-models"
+import { flashModelCandidates, isBillingProblem, isTransient, markModelGone, modelFailed, rememberModel, sleep, TEXT_PURPOSE } from "@/lib/gemini-models"
 
 export const runtime = "nodejs"
 
@@ -273,7 +273,20 @@ export async function POST(req: Request) {
             await sleep(700)
             continue
           }
-          if (response.status === 404) await modelFailed(TEXT_PURPOSE)
+          /*
+            ⚠️ **404 는 그 이름이 없다는 뜻이다.** 표에 남은 「지난번 통했던
+               모델」을 지우는 것만으로는 부족하다 — 구글이 주는 **살아 있는
+               목록에도** 그 이름이 계속 끼어 있어서, 영수증을 찍을 때마다
+               죽은 문을 다시 두드렸다.
+               실측(2026-08-30): `gemini-2.5-flash` 가 목록에 있는데 부르면
+               "no longer available to new users" 404 였고, 그래서 영수증
+               스캔이 통째로 실패했다(신고받음).
+               이제 그 이름을 이 프로세스가 사는 동안 후보에서 뺀다.
+          */
+          if (response.status === 404) {
+            markModelGone(model)
+            await modelFailed(TEXT_PURPOSE)
+          }
         }
       } catch (e: unknown) {
         lastError = `[${model}] ${e instanceof Error ? e.message : String(e)}`

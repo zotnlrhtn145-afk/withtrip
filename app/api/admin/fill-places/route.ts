@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
-import { flashModelCandidates, isBillingProblem, rememberModel, TEXT_PURPOSE } from "@/lib/gemini-models"
+import { flashModelCandidates, isBillingProblem, rememberModel, TEXT_PURPOSE , markModelGone} from "@/lib/gemini-models"
 import {
   KIND_LABEL,
   SUBCATEGORIES_BY_KIND,
@@ -131,6 +131,9 @@ export async function POST(req: Request) {
         }
       )
       if (!res.ok) {
+        /* ⚠️ 404 는 그 이름이 없다는 뜻이다 — 다음부터 후보에서 뺀다.
+              구글이 주는 살아 있는 목록에도 죽은 이름이 끼어 있다(실측). */
+        if (res.status === 404) markModelGone(model)
         const t = await res.text()
         lastError = `[${model}] ${res.status}`
         if (isBillingProblem(res.status, t)) {
