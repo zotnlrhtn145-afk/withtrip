@@ -54,6 +54,24 @@ function rank(name: string): number {
 }
 
 /**
+ * 이름에 든 판 번호. `gemini-3.6-flash` → 3.6, 없으면 0.
+ *
+ * ⚠️ **낡은 판을 뒤로 보내려고 쓴다.** 구글은 목록에 옛 이름을 남겨 두는데
+ *    막상 부르면 404 다 — 실측(2026-08-30): `gemini-2.5-flash` 가 목록에
+ *    있는데 "no longer available to new users" 로 죽었고, 그것 때문에
+ *    **영수증 스캔이 통째로 실패했다.**
+ *
+ * ⚠️ 죽은 이름을 그때그때 빼는 것(`markModelGone`)만으로는 부족하다. 서버는
+ *    요청마다 새로 떠서 그 기억이 사라진다 — **순서 자체**를 고쳐야 다음
+ *    요청도 안전하다.
+ */
+function version(name: string): number {
+  const m = name.match(/gemini-(\d+)(?:\.(\d+))?/);
+  if (!m) return 0;
+  return Number(m[1]) + Number(m[2] ?? 0) / 10;
+}
+
+/**
  * 글자용 flash 모델 후보.
  *
  * ⚠️ 지난번에 통했던 모델을 맨 앞에 세운다. 서버는 요청마다 새로 떠서
@@ -80,7 +98,8 @@ export async function flashModelCandidates(apiKey: string): Promise<string[]> {
       )
       .map((m) => String(m.name ?? "").replace(/^models\//, ""))
       .filter((n) => n.includes("flash") && isUsable(n))
-      .sort((a, b) => rank(a) - rank(b))
+      /* 종류(latest·정식·실험)를 먼저 보고, 같으면 **최신 판**을 앞에 둔다 */
+      .sort((a, b) => rank(a) - rank(b) || version(b) - version(a))
       .slice(0, 3);
     if (names.length) cached = names;
     return alive(withPreferredFirst(names, await preferredModel(TEXT_PURPOSE)));
