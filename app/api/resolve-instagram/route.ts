@@ -7,6 +7,7 @@ import {
   resolveCoverImageUrl,
   resolveRequestOrigin,
 } from "@/lib/place-cover-image";
+import { classifySubCategories } from "@/lib/classify-subcategory-server";
 import { guessSubCategory } from "@/lib/place-subcategories";
 import { fetchYoutubeMaterial, isYoutubeUrl, youtubeCaption } from "@/lib/youtube";
 import {
@@ -1507,6 +1508,42 @@ export async function POST(request: Request) {
     ⚠️ 실패해도 그냥 비워 둔다. 번호 하나 때문에 저장 자체가 막히면 안 된다.
   */
   await fillPhoneNumbers(grounded);
+
+  /*
+    세부 카테고리 AI 보정.
+
+    ⚠️ **여기가 빠져 있어서** 인스타로 들어온 곳의 11%(27/243)가 「기타」로
+       쌓였다. 같은 가게라도 웹의 「장소 추가」로 넣으면 보정을 거쳐 제대로
+       들어가는데, 공유로 들어오면 정규식만 거쳤다 — 들어온 문으로 결과가
+       달라진 셈이다(신고받음: "왜 기타로 들어와 찜에서?").
+    ⚠️ **정규식이 못 잡은 것만** 넘긴다. 이미 답이 있는 곳까지 물으면 돈만 나가고
+       답은 같다. 넘긴 것도 **한 번에 묶어서** 묻는다.
+    ⚠️ 관광지는 뺀다 — 고를 값 목록이 AI 쪽에 없다(레스토랑·바·숙소뿐).
+    ⚠️ 실패해도 그냥 둔다. 분류 하나 때문에 공유가 막히면 안 된다.
+  */
+  const needClassify = grounded
+    .filter(
+      (g) =>
+        g.place &&
+        g.place.subCategory === "기타" &&
+        (g.place.kind === "restaurant" || g.place.kind === "bar" || g.place.kind === "stay"),
+    )
+    .map((g) => ({
+      key: g.place!.googlePlaceId,
+      kind: g.place!.kind as "restaurant" | "bar" | "stay",
+      placeName: g.place!.placeName,
+      address: g.place!.address,
+    }));
+  if (needClassify.length) {
+    const fixed = await classifySubCategories(needClassify);
+    for (const g of grounded) {
+      const sub = g.place && fixed.get(g.place.googlePlaceId);
+      if (g.place && sub) g.place.subCategory = sub;
+    }
+    console.log(
+      `[api/resolve-instagram] 세부 카테고리 보정 ${fixed.size}/${needClassify.length}곳`,
+    );
+  }
 
   const groundMs = Date.now() - tGround;
 

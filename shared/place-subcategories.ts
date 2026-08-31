@@ -204,25 +204,51 @@ export function guessSubCategory(input: {
     return "기타"
   }
 
-  // restaurant — 구체적인 신호만 매칭하고, "레스토랑"/"restaurant"/"다이닝"처럼
-  // 모든 곳에 다 붙는 범용어는 절대 매칭 조건으로 쓰지 않는다.
-  if (/스시|sushi|오마카세|omakase/.test(hay)) return "스시"
-  if (/라멘|ramen|우동|udon|소바|soba|국수|면요리|noodle/.test(hay)) return "국수·면요리"
-  if (/야키니쿠|yakiniku|고기|구이|삼겹살|갈비|바비큐|\bbbq\b|스테이크|steak/.test(hay)) {
+  /*
+    restaurant — 구체적인 신호만 매칭하고, "레스토랑"/"restaurant"/"다이닝"처럼
+    모든 곳에 다 붙는 범용어는 절대 매칭 조건으로 쓰지 않는다.
+
+    ⚠️ **음식 이름을 넉넉히 넣는다.** 예전엔 「국밥」·「돼지」·「닭」·「탕」 같은
+       가장 흔한 말이 빠져 있어서, **돈꿀돼지국밥·교래흑돼지·꼬꼬닭집·원대구탕**
+       이 전부 「기타」로 들어왔다(신고받음). 사람이 보면 1초에 아는 것들이다.
+       한 줄 더 적는 값은 0원이고, 여기서 잡으면 AI 를 부를 일이 없다.
+    ⚠️ 다만 **범용어는 여전히 넣지 않는다.** 「식당」·「맛집」·「본점」 은 무엇에나
+       붙어서, 넣는 순간 엉뚱한 칸으로 몰아넣는다 — 「기타」로 두고 AI 에 맡기는
+       편이 낫다.
+  */
+  if (/스시|sushi|초밥|오마카세|omakase/.test(hay)) return "스시"
+  if (/라멘|ramen|우동|udon|소바|soba|국수|면요리|noodle|칼국수|냉면|막국수|쌀국수|짜장|짬뽕|파스타면|麺|麵/.test(hay)) {
+    return "국수·면요리"
+  }
+  if (
+    /야키니쿠|yakiniku|고기|구이|삼겹살|갈비|바비큐|\bbbq\b|스테이크|steak|돼지|흑돼지|한우|소고기|곱창|막창|대창|차돌|닭갈비|족발|보쌈|butcher|정육/.test(
+      hay
+    )
+  ) {
     return "고기·구이"
   }
-  if (/해산물|seafood|조개|굴\b|생선회/.test(hay)) return "해산물"
-  if (/일식|japanese|가이세키|kaiseki|이자카야/.test(hay)) return "일식"
-  if (/한식|korean|정식|백반/.test(hay)) return "한식"
-  if (/중식|chinese|딤섬|dim ?sum|마라/.test(hay)) return "중식"
+  if (/해산물|seafood|조개|굴\b|생선회|횟집|물회|대구탕|매운탕|해물|전복|성게|보말|오징어|장어|унаги|unagi/.test(hay)) {
+    return "해산물"
+  }
+  if (/일식|japanese|가이세키|kaiseki|이자카야|돈까스|돈카츠|규동|덮밥|텐동|사시미/.test(hay)) return "일식"
+  if (/한식|korean|정식|백반|국밥|해장국|순대|김치|비빔밥|찌개|전골|보리밥|한정식|분식|김밥|떡볶이|삼계탕|닭|찜닭|백숙/.test(hay)) {
+    return "한식"
+  }
+  if (/중식|chinese|딤섬|dim ?sum|마라|양꼬치|훠궈/.test(hay)) return "중식"
   if (/이탈리안|italian|파스타|pasta|피자|pizza/.test(hay)) return "이탈리안"
   if (/프렌치|french|비스트로|bistro/.test(hay)) return "프렌치"
-  if (/브런치|brunch/.test(hay)) return "브런치"
-  if (/디저트|dessert|베이커리|bakery|빵집|patisserie|아이스크림|ice ?cream/.test(hay)) {
+  if (/브런치|brunch|브렉퍼스트|breakfast/.test(hay)) return "브런치"
+  if (/디저트|dessert|베이커리|bakery|빵집|patisserie|아이스크림|ice ?cream|도넛|donut|케이크|cake|와플/.test(hay)) {
     return "디저트"
   }
-  if (/카페|cafe|coffee/.test(hay)) return "카페"
-  if (/양식|western|콘티넨탈|continental|스테이크하우스/.test(hay)) return "양식"
+  if (/카페|cafe|café|coffee|커피|로스터/.test(hay)) return "카페"
+  if (
+    /양식|western|콘티넨탈|continental|스테이크하우스|버거|burger|치킨|chicken|타코|taco|멕시칸|mexican|카레|curry|태국|\\bthai\\b|베트남|vietnam|인도요리|\\bindian\\b|케밥|kebab|샌드위치|sandwich/.test(
+      hay
+    )
+  ) {
+    return "양식"
+  }
   return "기타"
 }
 
