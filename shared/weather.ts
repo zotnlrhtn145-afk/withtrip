@@ -309,3 +309,69 @@ export function climateSummary(c: ClimateHint): string {
       : ""
   return `지난 ${c.years}년 이맘때 ${c.tempMin}° / ${c.tempMax}°${rain}`
 }
+
+/** 좌표를 고를 때 보는 최소한의 일정 정보 */
+export type CoordCandidate = {
+  /** 1부터. 없으면 1일차로 본다 */
+  dayNumber: number | null
+  lat: number | null
+  lng: number | null
+  /** `transport_depart` / `transport_arrive` 처럼 **거쳐 가는 곳**인지 */
+  sourceType?: string | null
+}
+
+/**
+ * 그 일차의 날씨를 어디 기준으로 볼지 고른다.
+ *
+ * ## ⚠️ 이 규칙이 왜 여기 있나
+ *
+ * 실제로 틀렸었다. 제주 여행인데 **서울 날씨**가 떴다(신고받음). 실측 대조로
+ * 확인한 값이다 — 화면 22°/24°·비 100% = **김포공항**, 그날 실제 제주는 27~28°.
+ * 6일 중 **3일**(1·4·5일차)이 서울이었다. 원인이 둘 겹쳐 있었다.
+ *
+ *   1. 그날 좌표가 없으면 **여행 전체의 첫 좌표**로 떨어졌다. 손으로 적은
+ *      일정에는 좌표가 없다 — 그 여행은 39건 중 25건이 없었다.
+ *   2. 그 첫 좌표가 하필 **「김포국제공항 출발」** 이었다. 공항은 검색으로
+ *      넣어서 좌표가 늘 있고, 늘 1일차 앞머리에 있다.
+ *
+ * 부르는 쪽마다 이 규칙을 다시 짜면 **한쪽만 고쳐진다.** 그래서 공통으로 둔다.
+ *
+ * ## 고르는 차례
+ *
+ *   1. **그날** 일정 중 오가는 편이 아닌 것
+ *   2. **날짜가 가장 가까운 날** — 여행은 지역을 옮겨 다니므로 옆 날이 먼
+ *      날보다 가깝다. 같은 거리면 **지난 날**을 먼저 본다(이미 다녀온 곳이라
+ *      예정보다 확실하다)
+ *   3. **찜한 곳** — 목적지에 있는 곳들이라 적어도 지역은 맞는다
+ *
+ * ⚠️ **오가는 편은 뺀다.** 출발·도착 공항은 여행지가 아니라 거쳐 가는 곳이다.
+ *    1일차 아침을 김포에서 보내더라도, 그날 옷차림을 정하는 건 제주 날씨다.
+ */
+export function pickDayCoord(
+  day: number,
+  schedules: CoordCandidate[],
+  savedPins: { lat: number; lng: number }[] = [],
+): { lat: number; lng: number } | null {
+  const stays = schedules.filter(
+    (s) =>
+      s.lat != null &&
+      s.lng != null &&
+      !(s.sourceType ?? "").startsWith("transport_"),
+  )
+  const at = (s: CoordCandidate) => ({ lat: s.lat as number, lng: s.lng as number })
+
+  const sameDay = stays.find((s) => (s.dayNumber ?? 1) === day)
+  if (sameDay) return at(sameDay)
+
+  if (stays.length > 0) {
+    const nearest = stays.slice().sort((a, b) => {
+      const da = Math.abs((a.dayNumber ?? 1) - day)
+      const db = Math.abs((b.dayNumber ?? 1) - day)
+      return da !== db ? da - db : (a.dayNumber ?? 1) - (b.dayNumber ?? 1)
+    })[0]
+    return at(nearest)
+  }
+
+  const saved = savedPins[0]
+  return saved ? { lat: saved.lat, lng: saved.lng } : null
+}
