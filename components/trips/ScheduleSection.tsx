@@ -8,6 +8,7 @@ import {
   AlertCircle,
   Check,
   ChevronDown,
+  ChevronRight,
   Coffee,
   Footprints,
   Crown,
@@ -80,6 +81,7 @@ import {
   WISHLIST_CATEGORY_VALUE,
   type WishlistKind,
 } from "@/lib/trip-itinerary"
+import { PlaceDetailSheet, type PlaceDetailInput } from "@/components/place-detail-sheet"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/utils/supabase/client"
 
@@ -805,6 +807,7 @@ function TimelineItem({
   deleting,
   onEdit,
   onDelete,
+  onOpenPlace,
 }: {
   item: TripSchedule
   /** 바로 다음 일정 — 사이 거리를 재는 데 쓴다. 마지막이면 null */
@@ -826,6 +829,8 @@ function TimelineItem({
   deleting: boolean
   onEdit: (item: TripSchedule) => void
   onDelete: (id: string) => void
+  /** 가게 상세를 연다. 가게가 아닌 일정(조식 등)에는 안 준다 */
+  onOpenPlace?: (item: TripSchedule) => void
 }) {
   const Icon = CATEGORY_ICON[item.category] ?? MapPin
   const timeLabel = item.visitTime || "--:--"
@@ -894,9 +899,30 @@ function TimelineItem({
             {/* 좁은 모바일 폭에서 제목이 뱃지와 폭 경쟁하다 글자 단위로 줄바꿈되던 문제 →
                 flex-wrap 으로 좁으면 뱃지를 아래 줄로, break-keep 으로 한글은 단어 단위로만 줄바꿈 */}
             <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
-              <p className="min-w-0 text-base leading-snug font-bold break-keep text-slate-900">
-                {item.placeName}
-              </p>
+              {/*
+                ⚠️ **가게면 눌러서 상세로 간다.** 사진·별점·영업시간·리뷰가
+                   거기 다 있는데, 일정에서는 갈 길이 없었다(앱에서 신고받음).
+                ⚠️ 갈 수 있는지는 부르는 쪽이 정한다(`onOpenPlace` 가 있는가).
+                   「조식」처럼 주소도 좌표도 없는 일정은 **누르는 표시를 아예
+                   안 준다** — 눌리는 것처럼 보였다가 아무 일도 안 일어나는 게
+                   제일 나쁘다.
+              */}
+              {onOpenPlace ? (
+                <button
+                  type="button"
+                  onClick={() => onOpenPlace(item)}
+                  className="group -m-1 flex min-w-0 items-center gap-1 rounded-lg p-1 text-left transition-colors hover:bg-amber-50"
+                >
+                  <span className="min-w-0 text-base leading-snug font-bold break-keep text-slate-900 group-hover:text-amber-700">
+                    {item.placeName}
+                  </span>
+                  <ChevronRight className="size-4 shrink-0 text-slate-300 transition-colors group-hover:text-amber-500" />
+                </button>
+              ) : (
+                <p className="min-w-0 text-base leading-snug font-bold break-keep text-slate-900">
+                  {item.placeName}
+                </p>
+              )}
               <span className="flex shrink-0 items-center gap-1">
                 {isAuto ? (
                   <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500">
@@ -1095,6 +1121,8 @@ export function ScheduleSection({
   const [modalOpen, setModalOpen] = useState(false)
   const [editingSchedule, setEditingSchedule] = useState<TripSchedule | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  /** 일정에서 연 가게 상세 — 닫으면 null */
+  const [detailPlace, setDetailPlace] = useState<PlaceDetailInput | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [authReady, setAuthReady] = useState(false)
   const [profileById, setProfileById] = useState<Map<string, TripMember>>(new Map())
@@ -1574,6 +1602,28 @@ export function ScheduleSection({
               deleting={deletingId === item.id}
               onEdit={openEdit}
               onDelete={(id) => void handleDelete(id)}
+              /*
+                ⚠️ **가게인 일정만** 넘긴다. 「조식」·「호텔에서 수영」처럼 주소도
+                   좌표도 없는 것은 구글에 물어도 나올 게 없다 — 그런 줄에
+                   화살표를 달면 눌러 보고 실망한다.
+                ⚠️ 앱과 같은 기준이다(`src/app/trips/[id].tsx` 의 `detailHref`).
+              */
+              onOpenPlace={
+                item.placeName.trim() && (item.address || item.lat != null)
+                  ? (it) =>
+                      setDetailPlace({
+                        name: it.placeName,
+                        address: it.address ?? null,
+                        lat: it.lat ?? null,
+                        lng: it.lng ?? null,
+                        /*
+                          ⚠️ 일정에는 찜 번호가 없다. 시트는 이름·좌표만 있으면
+                             사진·별점·영업시간을 구글에서 받아 오므로 그대로 열린다
+                             (`savedPlaceId` 는 원래 선택값이다).
+                        */
+                      })
+                  : undefined
+              }
             />
             {/* 그날 마지막 일정 뒤에 오는 띠(저녁에 합류·출발)도 놓치지 않는다 */}
             {index === visibleItems.length - 1
@@ -1609,6 +1659,9 @@ export function ScheduleSection({
           void load()
         }}
       />
+
+      {/* 일정에서 연 가게 상세 — 찜 탭과 같은 시트를 쓴다 */}
+      <PlaceDetailSheet place={detailPlace} onClose={() => setDetailPlace(null)} />
     </section>
   )
 }
