@@ -68,9 +68,17 @@ export async function POST(req: Request) {
   ].join(",")
   const { data } = await db
     .from("saved_places")
-    .select("id, place_name, address, category, sub_category, google_place_id")
+    .select("id, place_name, address, category, sub_category, google_place_id, category_source")
     .or(orFilter)
-    .order("category_source", { ascending: true, nullsFirst: true })
+    /*
+      ⚠️ **이미 물어봤는데 AI 도 「기타」라고 한 곳은 다시 묻지 않는다.**
+         예전엔 정렬로만 뒤로 밀었는데, 앞에 다른 게 없으면 **또 대상이 되어**
+         돌릴 때마다 같은 곳에 같은 돈이 나갔다(실측: 2회차에서 12곳을 그대로
+         다시 물었다). 「가게A」·「Asia Today (Thailand) Ltd」처럼 애초에
+         음식점이 아닌 곳들이라 몇 번을 물어도 답은 같다.
+      ⚠️ 값이 바뀌어 다시 묻고 싶으면 그 줄의 `category_source` 를 비우면 된다.
+    */
+    .is("category_source", null)
     .limit(400)
   const targets = ((data as (Row & { sub_category: string | null })[]) ?? []).filter((r) =>
     (r.place_name ?? "").trim()
@@ -183,8 +191,16 @@ export async function POST(req: Request) {
          **안 물어본 것부터** 집는다. 나중에 더 좋은 모델로 다시 돌릴 수도 있다.
     */
     const unsure = sub === "기타"
+    /*
+      ⚠️ **대분류(레스토랑/바/숙소)는 확신이 있을 때만 바꾼다.** 「인디안썸머
+         애월」이 이름만 보고 **레스토랑 → 라운지 & 바** 로 옮겨졌다(실제로는
+         카페다). 대분류가 바뀌면 필터에서 아예 다른 칸으로 가 버려서, 찾던
+         사람이 영영 못 찾는다 — 중분류가 틀린 것보다 훨씬 나쁘다.
+      ⚠️ 세부를 「기타」라고밖에 못 한 곳이면 대분류도 믿을 수 없다. 그대로 둔다.
+    */
+    const keepKind = unsure || !label
     const patch: Record<string, unknown> = {
-      category: label,
+      ...(keepKind ? {} : { category: label }),
       sub_category: sub,
       category_source: "ai",
       category_confidence: unsure ? 0.3 : 0.75,
@@ -198,7 +214,15 @@ export async function POST(req: Request) {
     // 가게 캐시에도 남긴다 — 다음 사람은 공짜로 얻는다
     const gid = rows.find((r) => r.google_place_id)?.google_place_id
     if (gid) {
-      await db.from("places").update({ category: kind, sub_category: sub, detail_category: detail, category_source: "ai" }).eq("google_place_id", gid)
+      await db
+        .from("places")
+        .update({
+          ...(keepKind ? {} : { category: kind }),
+          sub_category: sub,
+          detail_category: detail,
+          category_source: "ai",
+        })
+        .eq("google_place_id", gid)
     }
     if (detail) await db.rpc("use_place_tag", { p_name: detail, p_sub: sub })
     changes.push(`${rows[0].place_name} → ${label}/${sub}${detail ? "/" + detail : ""}`)
