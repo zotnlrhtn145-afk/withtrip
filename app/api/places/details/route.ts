@@ -41,10 +41,21 @@ type DetailsResult = {
   types?: string[]
   editorial_summary?: { overview?: string }
   opening_hours?: OpeningHours
-  /** 그 장소의 UTC 시차(분). 현지 시각으로 영업 여부를 재려면 반드시 필요하다 */
+  /**
+   * 그 장소의 UTC 시차(분). 현지 시각으로 영업 여부를 재려면 반드시 필요하다.
+   * ⚠️ 응답에 오는 이름이 두 가지다 — 둘 다 받는다.
+   */
+  utc_offset?: number
   utc_offset_minutes?: number
   photos?: Photo[]
   geometry?: { location?: { lat?: number; lng?: number } }
+}
+
+/** 두 이름 중 있는 쪽을 쓴다 */
+function utcOffsetOf(r: DetailsResult): number | null {
+  if (typeof r.utc_offset_minutes === "number") return r.utc_offset_minutes
+  if (typeof r.utc_offset === "number") return r.utc_offset
+  return null
 }
 
 async function findPlaceId(apiKey: string, q: string, lat?: string, lng?: string): Promise<string | null> {
@@ -78,8 +89,13 @@ async function fetchDetails(apiKey: string, placeId: string): Promise<DetailsRes
       "types",
       "editorial_summary",
       "opening_hours",
-      /* 도쿄 가게가 열었는지를 한국 시각으로 재면 틀린다 */
-      "utc_offset_minutes",
+      /*
+        도쿄 가게가 열었는지를 한국 시각으로 재면 틀린다.
+        ⚠️ **웹 서비스에서는 이름이 `utc_offset` 이다.** `utc_offset_minutes` 는
+           자바스크립트 라이브러리 쪽 이름이라, 여기 적으면 요청이 통째로
+           INVALID_REQUEST 가 되어 **상세가 전부 빈 값으로 돌아온다**(실측).
+      */
+      "utc_offset",
       "photos",
       "geometry",
     ].join(",")
@@ -170,8 +186,7 @@ export async function GET(request: Request) {
           */
           openingPeriods: r.opening_hours?.periods ?? null,
           hoursText: r.opening_hours?.weekday_text ?? null,
-          utcOffsetMin:
-            typeof r.utc_offset_minutes === "number" ? r.utc_offset_minutes : null,
+          utcOffsetMin: utcOffsetOf(r),
         },
       ])
     }
@@ -192,7 +207,7 @@ export async function GET(request: Request) {
         hours: r.opening_hours?.weekday_text ?? [],
         /* 앱·웹이 현지 시각으로 직접 판단할 수 있게 숫자도 같이 준다 */
         periods: r.opening_hours?.periods ?? [],
-        utcOffsetMin: typeof r.utc_offset_minutes === "number" ? r.utc_offset_minutes : null,
+        utcOffsetMin: utcOffsetOf(r),
         lat: r.geometry?.location?.lat ?? (lat ? Number(lat) : null),
         lng: r.geometry?.location?.lng ?? (lng ? Number(lng) : null),
         photos,
