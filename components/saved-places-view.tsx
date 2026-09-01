@@ -3,7 +3,24 @@
 import dynamic from "next/dynamic"
 import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Bookmark, Check, Heart, Info, Loader2, Map as MapIcon, MapPin, Plane, Plus, Search, Send, SlidersHorizontal, Star, Users, X } from "lucide-react"
+import {
+  Bookmark,
+  Check,
+  Clock,
+  Heart,
+  Info,
+  Loader2,
+  Map as MapIcon,
+  MapPin,
+  Plane,
+  Plus,
+  Search,
+  Send,
+  SlidersHorizontal,
+  Star,
+  Users,
+  X,
+} from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -18,6 +35,8 @@ import {
 import { DirectionsMenu } from "@/components/directions-menu"
 import { InstagramIcon } from "@/components/icon-instagram"
 import { PlaceDetailSheet, type PlaceDetailInput } from "@/components/place-detail-sheet"
+import { fetchPlaceHours, type PlaceHours } from "@/lib/place-hours"
+import { openLabel, openState } from "@/shared/opening-hours"
 import { ScrollTopButton } from "@/components/scroll-top-button"
 import { RecommendPlaceDialog, type RecommendTarget } from "@/components/recommend-place-dialog"
 import { SwipeToDelete } from "@/components/swipe-to-delete"
@@ -277,6 +296,42 @@ export function SavedPlacesView() {
     }
   }, [places])
 
+  /**
+   * 영업시간. 캐시에서만 읽으므로 돈이 안 든다.
+   * ⚠️ 앱과 같은 규칙으로 판단한다(`shared/opening-hours`).
+   */
+  const [hours, setHours] = useState<Record<string, PlaceHours>>({})
+  useEffect(() => {
+    const ids = places.map((p) => p.googlePlaceId).filter((v): v is string => !!v)
+    if (ids.length === 0) return
+    let alive = true
+    void fetchPlaceHours(ids)
+      .then((h) => {
+        if (alive) setHours(h)
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [places])
+
+  /*
+    1분마다 다시 그린다 — 영업 상태는 시간이 지나면 저절로 바뀐다.
+    ⚠️ 초 단위면 목록이 계속 다시 그려진다. 분이면 충분하다.
+  */
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 60_000)
+    return () => clearInterval(t)
+  }, [])
+
+  /*
+    지금 갈 수 있는 곳만 보기.
+    ⚠️ **쉬는 시간은 남긴다** — 기다리면 갈 수 있다.
+    ⚠️ **모르는 곳도 남긴다** — 캐시가 안 찬 곳까지 지우면 찜이 사라진 것처럼 보인다.
+  */
+  const [openOnly, setOpenOnly] = useState(false)
+
   /** 나라 필터(country_code). "all" 이면 전체 */
   const [country, setCountry] = useState("all")
   /** 지역 필터(region 원문). 나라를 고른 뒤에만 쓴다 */
@@ -411,6 +466,20 @@ export function SavedPlacesView() {
     })
   }, [places, subFilter, geo.position, sort, search, starredOnly, country, region])
 
+  /*
+    지금 갈 수 있는 곳만 남긴다.
+    ⚠️ 정렬이 끝난 **뒤에** 거른다 — 거르고 정렬하면 같은 결과지만, 위 목록은
+       이미 정렬까지 끝내 두었으므로 여기서 한 겹만 얹는다.
+  */
+  const visiblePlaces = useMemo(() => {
+    if (!openOnly) return filteredPlaces
+    return filteredPlaces.filter((p) => {
+      const h = p.googlePlaceId ? hours[p.googlePlaceId] : null
+      if (!h) return true
+      return openState(h.periods, h.utcOffsetMin, nowMs).state !== "closed"
+    })
+  }, [filteredPlaces, openOnly, hours, nowMs])
+
   /**
    * 별표 켜기/끄기. 화면을 먼저 바꾸고 저장한다 —
    * 누르자마자 반응해야 부담 없이 누른다.
@@ -432,17 +501,17 @@ export function SavedPlacesView() {
   /** 리스트 카드에도 거리를 보여준다 — 좌표 없는 곳은 null. */
   const placeDistanceLabels = useMemo(() => {
     const map = new Map<string, string>()
-    for (const place of filteredPlaces) {
+    for (const place of visiblePlaces) {
       if (typeof place.lat !== "number" || typeof place.lng !== "number") continue
       const meters = distanceMeters(geo.position, { lat: place.lat, lng: place.lng })
       map.set(place.id, formatDistance(meters))
     }
     return map
-  }, [filteredPlaces, geo.position])
+  }, [visiblePlaces, geo.position])
 
   /** 지도 마커 — 현재 카테고리 필터가 그대로 적용되고, 좌표가 없는 곳은 제외된다. */
   const mapSpots: MapSpot[] = useMemo(() => {
-    return filteredPlaces
+    return visiblePlaces
       .filter(
         (place): place is SavedPlace & { lat: number; lng: number } =>
           typeof place.lat === "number" && typeof place.lng === "number"
@@ -470,7 +539,7 @@ export function SavedPlacesView() {
         }
       })
       .sort((a, b) => a.distanceMeters - b.distanceMeters)
-  }, [filteredPlaces, geo.position, avatarUrl, userId])
+  }, [visiblePlaces, geo.position, avatarUrl, userId])
 
   // ── 여행클립 찜 (여행별 멤버 기여) ──────────────────────
   const tripChips = useMemo(() => {
@@ -909,6 +978,46 @@ export function SavedPlacesView() {
             </div>
 
             {/*
+              영업 상태.
+
+              ⚠️ **평점보다 위에 둔다.** 급할 때 필요한 건 "지금 갈 수 있나" 이지
+                 별점이 아니다(신고: 브레이크타임인 걸 몰라 계획이 깨졌다).
+              ⚠️ 색이 셋이다 — 초록(간다) / 주황(기다리면 간다) / 회색(오늘은 끝).
+                 쉬는 시간을 회색으로 하면 후보에서 빼 버리게 된다.
+              ⚠️ 모르는 곳은 줄 자체를 안 그린다.
+            */}
+            {(() => {
+              const h = place.googlePlaceId ? hours[place.googlePlaceId] : undefined
+              if (!h) return null
+              const tag = openLabel(openState(h.periods, h.utcOffsetMin, nowMs))
+              if (tag.tone === "none") return null
+              return (
+                <span
+                  className={cn(
+                    "mt-1 inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-bold",
+                    tag.tone === "good"
+                      ? "bg-emerald-50 text-emerald-700"
+                      : tag.tone === "warn"
+                        ? "bg-amber-50 text-amber-700"
+                        : "bg-slate-100 text-slate-500"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "size-1.5 rounded-full",
+                      tag.tone === "good"
+                        ? "bg-emerald-500"
+                        : tag.tone === "warn"
+                          ? "bg-amber-500"
+                          : "bg-slate-400"
+                    )}
+                  />
+                  {tag.text}
+                </span>
+              )
+            })()}
+
+            {/*
               내 평점 — 위 줄의 별점은 **구글** 것이다. 섞으면 둘 다 뜻을 잃으므로
               한 칸 아래에 따로 둔다. 사진이 없어 배지를 못 그린 경우엔 다녀옴도 여기서 알린다.
             */}
@@ -1300,7 +1409,7 @@ export function SavedPlacesView() {
               */}
               <p className="min-w-0 flex-1 truncate text-xs font-bold text-slate-400">
                 {(subTab === "wish" ? "나의 찜 " : "여행클립 찜 ") +
-                  (subTab === "wish" ? filteredPlaces.length : filteredTripSpots.length)}
+                  (subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length)}
                 {subTab === "trip" && tripFilter !== "all"
                   ? ` · ${tripOptions.find((t) => t.id === tripFilter)?.title ?? ""}`
                   : ""}
@@ -1324,6 +1433,27 @@ export function SavedPlacesView() {
                   )}
                 >
                   <Star className={cn("size-3.5", starredOnly && "fill-red-500")} />
+                </button>
+              ) : null}
+              {/*
+                지금 갈 수 있는 곳만 보기.
+                ⚠️ 문 닫은 곳만 지운다 — 쉬는 시간은 기다리면 되고, 영업시간을
+                   모르는 곳은 지울 근거가 없다.
+              */}
+              {subTab === "wish" ? (
+                <button
+                  type="button"
+                  onClick={() => setOpenOnly((v) => !v)}
+                  aria-pressed={openOnly}
+                  title="지금 갈 수 있는 곳만"
+                  className={cn(
+                    "flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors",
+                    openOnly
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-600"
+                      : "border-slate-200 text-slate-500 hover:bg-slate-50"
+                  )}
+                >
+                  <Clock className="size-3.5" />
                 </button>
               ) : null}
               <button
@@ -1355,13 +1485,13 @@ export function SavedPlacesView() {
 
             <div className="px-4 pt-3 pb-6 md:px-6">
               {subTab === "wish" ? (
-                filteredPlaces.length === 0 ? (
+                visiblePlaces.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
                     {search.trim() ? `'${search.trim()}' 검색 결과가 없어요.` : "이 카테고리에 저장된 장소가 없어요."}
                   </div>
                 ) : (
                   <ul className="flex flex-col gap-2.5 md:grid md:grid-cols-2 xl:grid-cols-3">
-                    {filteredPlaces.slice(0, visible).map((place) => renderPlaceCard(place))}
+                    {visiblePlaces.slice(0, visible).map((place) => renderPlaceCard(place))}
                   </ul>
                 )
               ) : filteredTripSpots.length === 0 ? (
@@ -1604,7 +1734,7 @@ export function SavedPlacesView() {
                 onClick={() => setFilterOpen(false)}
                 className="flex-1 rounded-full bg-amber-400 py-3 text-[15px] font-bold text-slate-950 transition-colors hover:bg-amber-500"
               >
-                {(subTab === "wish" ? filteredPlaces.length : filteredTripSpots.length).toLocaleString()}곳 보기
+                {(subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length).toLocaleString()}곳 보기
               </button>
             </footer>
           </aside>
