@@ -48,6 +48,15 @@ export type PlaceCacheInput = {
   googleTypes?: string[] | null
   photoReferences?: string[] | null
   phone?: string | null
+  /*
+    영업시간. **상세를 열 때만 들어온다** — 검색 결과에는 없다.
+    ⚠️ `undefined` 와 `null` 이 다르다. `undefined` 면 **손대지 않고**,
+       `null` 이면 지운다. 검색으로 캐시를 덮어쓸 때 애써 받아 둔 영업시간이
+       날아가면 안 된다.
+  */
+  openingPeriods?: unknown[] | null
+  hoursText?: string[] | null
+  utcOffsetMin?: number | null
 }
 
 const SELECT_COLS =
@@ -209,6 +218,18 @@ export async function writePlaces(inputs: PlaceCacheInput[]): Promise<void> {
     phone: p.phone ?? null,
     is_closed: false,
     last_refreshed_at: new Date().toISOString(),
+    /*
+      ⚠️ 영업시간은 **받아 왔을 때만** 적는다. 검색 결과에는 영업시간이 없어서,
+         늘 적으면 상세에서 받아 둔 값을 검색이 지워 버린다.
+    */
+    ...(p.openingPeriods !== undefined
+      ? {
+          opening_periods: p.openingPeriods,
+          hours_text: p.hoursText ?? null,
+          utc_offset_min: p.utcOffsetMin ?? null,
+          hours_refreshed_at: new Date().toISOString(),
+        }
+      : {}),
   }))
 
   try {

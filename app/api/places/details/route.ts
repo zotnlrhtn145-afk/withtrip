@@ -20,7 +20,16 @@ function getApiKey() {
 }
 
 type Photo = { photo_reference?: string }
-type OpeningHours = { open_now?: boolean; weekday_text?: string[] }
+/*
+  ⚠️ `periods` 를 같이 받는다 — **추가 비용이 0원**이다. `opening_hours` 를
+     이미 요청하고 있고, 구글은 한 응답에 글자와 숫자를 함께 준다.
+     지금까지는 숫자를 버리고 글자만 썼다.
+*/
+type OpeningPeriod = {
+  open?: { day?: number; time?: string }
+  close?: { day?: number; time?: string }
+}
+type OpeningHours = { open_now?: boolean; weekday_text?: string[]; periods?: OpeningPeriod[] }
 type DetailsResult = {
   place_id?: string
   name?: string
@@ -32,6 +41,8 @@ type DetailsResult = {
   types?: string[]
   editorial_summary?: { overview?: string }
   opening_hours?: OpeningHours
+  /** 그 장소의 UTC 시차(분). 현지 시각으로 영업 여부를 재려면 반드시 필요하다 */
+  utc_offset_minutes?: number
   photos?: Photo[]
   geometry?: { location?: { lat?: number; lng?: number } }
 }
@@ -67,6 +78,8 @@ async function fetchDetails(apiKey: string, placeId: string): Promise<DetailsRes
       "types",
       "editorial_summary",
       "opening_hours",
+      /* 도쿄 가게가 열었는지를 한국 시각으로 재면 틀린다 */
+      "utc_offset_minutes",
       "photos",
       "geometry",
     ].join(",")
@@ -151,6 +164,14 @@ export async function GET(request: Request) {
             .map((p) => p.photo_reference ?? "")
             .filter(Boolean),
           phone: r.formatted_phone_number ?? null,
+          /*
+            ⚠️ 여기서 담아 두는 게 이 변경의 핵심이다. 찜 목록에서 곳마다 구글에
+               다시 물으면 1000회당 $17 라 못 한다 — 상세를 한 번 열 때 받아 둔다.
+          */
+          openingPeriods: r.opening_hours?.periods ?? null,
+          hoursText: r.opening_hours?.weekday_text ?? null,
+          utcOffsetMin:
+            typeof r.utc_offset_minutes === "number" ? r.utc_offset_minutes : null,
         },
       ])
     }
@@ -169,6 +190,9 @@ export async function GET(request: Request) {
         summary: r.editorial_summary?.overview ?? "",
         openNow: typeof r.opening_hours?.open_now === "boolean" ? r.opening_hours.open_now : null,
         hours: r.opening_hours?.weekday_text ?? [],
+        /* 앱·웹이 현지 시각으로 직접 판단할 수 있게 숫자도 같이 준다 */
+        periods: r.opening_hours?.periods ?? [],
+        utcOffsetMin: typeof r.utc_offset_minutes === "number" ? r.utc_offset_minutes : null,
         lat: r.geometry?.location?.lat ?? (lat ? Number(lat) : null),
         lng: r.geometry?.location?.lng ?? (lng ? Number(lng) : null),
         photos,
