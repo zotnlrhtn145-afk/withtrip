@@ -23,6 +23,7 @@
  */
 
 import { openState, type OpenState, type Period } from "./opening-hours"
+import { FAR_KM } from "./trip-distance"
 
 /**
  * 그 종류의 곳에서 보통 얼마나 머무는가(분).
@@ -51,6 +52,17 @@ export type Candidate = {
   goMin: number | null
   /** 거기서 마감 장소까지(분). 못 구했으면 null */
   backMin: number | null
+  /**
+   * 출발지에서 직선거리(km).
+   *
+   * ⚠️ **왜 이유를 가르는 데 쓰나.** 시간을 못 구한 데는 이유가 여럿인데,
+   *    「가는 시간을 못 구했어요」 하나로 뭉뚱그리면 사용자가 할 수 있는 게
+   *    없다(신고받음). 실제로 그 화면은 **서울에서 제주 찜**을 재고 있었다 —
+   *    답은 「모름」이 아니라 **「너무 멀다」** 였어야 한다.
+   */
+  straightKm?: number | null
+  /** 길찾기가 **길이 없다**고 답했나 (섬·바다 건너 등). 조회 실패와 다르다 */
+  noRoute?: boolean
   /** 머무는 시간(분). 없으면 분류에서 정한다 */
   stayMin?: number | null
   /** 영업시간 — 도착 시각에 열려 있는지 본다 */
@@ -99,6 +111,28 @@ export function toMin(hm: string | null | undefined): number | null {
 export const TIGHT_MIN = 20
 
 /**
+ * 이보다 멀면 **물어보지도 않는다**(직선 km).
+ *
+ * ⚠️ 요금 때문이다. 서울에서 제주 찜까지 길을 묻는 건 답이 뻔한데 돈만 나간다.
+ *    실제로 그런 화면이 있었다 — 1일차 서울 구간인데 후보가 전부 제주였다.
+ * ⚠️ 시간으로도 한 번 더 거른다(`tooFar`) — 30분 비는데 40km 밖은 못 간다.
+ */
+export const SKIP_KM = 80
+
+/**
+ * 물어볼 가치가 있나. **묻기 전에** 부른다.
+ *
+ * ⚠️ 왕복이라 편도 시간을 두 배로 본다. 거기에 머무는 시간까지 있으니,
+ *    왕복만으로 이미 빈 시간을 넘으면 답은 볼 것도 없이 「무리」다.
+ */
+export function tooFar(straightKm: number, gapMin: number): boolean {
+  if (straightKm >= SKIP_KM) return true
+  /* 60km/h 어림 — 실제보다 넉넉하게 잡아야 아슬아슬한 곳을 안 버린다 */
+  const oneWay = (straightKm / 60) * 60
+  return oneWay * 2 >= gapMin
+}
+
+/**
  * 후보 하나를 판정한다.
  *
  * @param startMin 출발 가능 시각(분). 보통 앞 일정이 끝나는 때
@@ -123,19 +157,39 @@ export function judge(
   }
 
   /*
-    ⚠️ **시간을 못 구했으면 판정하지 않는다.** 모르는 걸 "갈 수 있다" 고 하면
-       그걸 믿고 갔다가 비행기를 놓친다. 모른다고 말하는 편이 낫다.
+    ⚠️ **시간을 못 구했어도 아는 것은 말해 준다.** 예전엔 전부 「가는 시간을 못
+       구했어요」 하나로 끝냈는데, 그러면 사용자가 할 수 있는 게 없다(신고받음).
+       이유를 갈라서 알려 준다 — 멀어서인지, 문을 안 열어서인지, 길이 없어서인지.
   */
   if (c.goMin == null || c.backMin == null) {
+    /* 시간이 없어도 **영업 여부는 알 수 있다.** 오늘 쉬는 곳이면 그게 먼저다 */
+    const openToday = openState(c.periods, c.utcOffsetMin, dayMs + startMin * 60_000)
+    const shutToday =
+      openToday.state === "closed" && (openToday.reason === "dayoff" || openToday.reason === "after")
+
+    const km = c.straightKm ?? null
+    const why = shutToday
+      ? openToday.state === "closed" && openToday.reason === "dayoff"
+        ? "오늘 휴무예요"
+        : "오늘 영업이 끝났어요"
+      : c.noRoute
+        ? km != null && km >= 50
+          ? `차로 갈 수 있는 길이 없어요 · 직선 ${Math.round(km)}km`
+          : "차로 갈 수 있는 길이 없어요"
+        : km != null && km >= FAR_KM
+          ? `너무 멀어요 · 직선 ${Math.round(km)}km`
+          : "가는 시간을 못 구했어요"
+
     return {
       ...base,
-      fit: "unknown",
+      /* ⚠️ 못 가는 게 **확실한** 경우는 「무리」다. 「모름」으로 두면 위로 올라온다 */
+      fit: shutToday || c.noRoute || (km != null && km >= FAR_KM) ? "no" : "unknown",
       arriveAt: null,
       leaveAt: null,
       backAt: null,
       slackMin: null,
-      open: { state: "unknown" },
-      why: "가는 시간을 못 구했어요",
+      open: openToday,
+      why,
     }
   }
 
