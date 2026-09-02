@@ -282,3 +282,43 @@ export function poolState(currency: string, entries: PoolEntry[], spent: number)
   }
   return { currency, total, spent, left: total - spent, byUser }
 }
+
+/**
+ * 공동 지갑을 원화로 — **모은 사람들이 실제로 낸 돈** 기준.
+ *
+ * ## ⚠️ 새 환율을 만들지 않는다
+ *
+ * 이미 각자 「얼마 내고 얼마 받았나」(`trip_cash_rates`)가 있다. 그게 그 사람이
+ * 실제로 치른 값이므로, 지갑의 원화 가치는 **넣은 사람들이 낸 돈을 합친 것**이다.
+ *
+ *     A  10,000엔을 넣음   (A 는 100,000원 내고 10,000엔 받았다 → 10원/엔)
+ *     B  10,000엔을 넣음   (B 는 105,000원 내고 10,000엔 받았다 → 10.5원/엔)
+ *     ────────────────────────────────────────────────
+ *     지갑 20,000엔 = 205,000원   →  섞인 환율 10.25원/엔
+ *
+ * ⚠️ **섞인 환율을 쓰는 게 유일하게 공정하다.** 봉투에 들어간 순간 누구 돈으로
+ *    샀는지 구분할 수 없다. B 가 나쁘게 바꾼 손해도 넣은 비율대로 나뉜다.
+ * ⚠️ 환전 실적을 안 넣은 사람은 **그날 기준환율**로 어림잡는다. 아무도 안
+ *    넣었으면 지갑 전체가 기준환율로 계산된다 — 어림값이지만 답은 나온다.
+ */
+export function poolKrwRate(
+  entries: PoolEntry[],
+  /** 사람별 환전 실적 (없는 사람은 빠진다) */
+  exchanges: Map<string, CashExchange>,
+  /** 환전 실적이 없는 사람에게 쓸 기준환율 */
+  fallbackRate: number
+): number | null {
+  let krw = 0
+  let local = 0
+  for (const e of entries) {
+    const v = Number(e.amount)
+    if (!Number.isFinite(v) || v <= 0) continue
+    const ex = exchanges.get(e.userId)
+    const r = (ex && cashRate(ex)) ?? fallbackRate
+    if (!Number.isFinite(r) || r <= 0) continue
+    krw += v * r
+    local += v
+  }
+  if (local <= 0) return null
+  return krw / local
+}
