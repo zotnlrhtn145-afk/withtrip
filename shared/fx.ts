@@ -232,3 +232,53 @@ export function cashToKrw(m: Money, exchange: CashExchange | null): number {
   if (!Number.isFinite(rate) || rate <= 0) return 0
   return roundKrw(m.amount * rate)
 }
+
+/**
+ * 공동 현금 지갑.
+ *
+ * ## ⚠️ 현지통화로만 다룬다
+ *
+ * 실제로 사람들은 "만엔씩 걷자" 하고 **현지통화로 똑같이** 모은다. 각자 얼마의
+ * 환율로 바꿨는지 따져서 걷지 않는다. 그러니 지갑도 현지통화로 관리하고,
+ * 원화 환산은 **맨 마지막에 한 번**만 한다.
+ *
+ * 중간에 사람마다 다른 환율로 환산하면 봉투에 섞인 돈을 누구 것인지 가르는
+ * 셈이라 오히려 불공정해진다.
+ *
+ * ⚠️ 「사람마다 환전 실적」(`cashRate`)과 다르다. 저건 **혼자 쓴 현금**,
+ *    이건 **같이 모아 쓴 현금**이다.
+ */
+export type PoolEntry = {
+  userId: string
+  /** 넣은 금액 — 현지통화 그대로 */
+  amount: number
+}
+
+export type PoolState = {
+  currency: string
+  /** 모은 총액 (현지통화) */
+  total: number
+  /** 지갑에서 나간 총액 (현지통화) */
+  spent: number
+  /** 남은 돈 (현지통화). 음수면 더 걷어야 한다 */
+  left: number
+  byUser: Map<string, number>
+}
+
+/**
+ * 지갑 현황.
+ *
+ * ⚠️ **남은 돈이 음수일 수 있다.** 모은 것보다 많이 쓰면 그렇다 — 흔한 일이라
+ *    오류로 다루지 않고 「더 걷어야 함」 으로 보여 준다.
+ */
+export function poolState(currency: string, entries: PoolEntry[], spent: number): PoolState {
+  const byUser = new Map<string, number>()
+  let total = 0
+  for (const e of entries) {
+    const v = Number(e.amount)
+    if (!Number.isFinite(v) || v <= 0) continue
+    byUser.set(e.userId, (byUser.get(e.userId) ?? 0) + v)
+    total += v
+  }
+  return { currency, total, spent, left: total - spent, byUser }
+}
