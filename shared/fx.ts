@@ -137,3 +137,56 @@ export function moneyWithKrw(
     krw: `${calibrated ? "" : "약 "}${krw.toLocaleString()}원`,
   }
 }
+
+/**
+ * 나라 → 통화.
+ *
+ * ⚠️ **여행 지역에서 통화를 짐작하는 데만 쓴다.** 정답이 아니라 «기본값» 이다 —
+ *    홍콩 경유처럼 다른 통화를 쓰는 일이 흔하므로 사용자가 바꿀 수 있어야 한다.
+ * ⚠️ 여기 없는 나라는 짐작하지 않는다. 틀린 통화를 미리 넣어 두면, 사용자가
+ *    눈치채지 못한 채 엉뚱한 환율로 정산된다 — 비워 두고 고르게 하는 편이 낫다.
+ */
+const CURRENCY_BY_COUNTRY: Record<string, string> = {
+  KR: "KRW", JP: "JPY", VN: "VND", TH: "THB", TW: "TWD", HK: "HKD",
+  SG: "SGD", CN: "CNY", PH: "PHP", MY: "MYR", ID: "IDR", MO: "MOP",
+  US: "USD", GU: "USD", CA: "CAD", AU: "AUD", NZ: "NZD", GB: "GBP",
+  CH: "CHF", TR: "TRY", AE: "AED", IN: "INR", MN: "MNT", LA: "LAK",
+  KH: "KHR", MM: "MMK", RU: "RUB", BR: "BRL", MX: "MXN", EG: "EGP",
+  ZA: "ZAR", MA: "MAD", PE: "PEN", AR: "ARS", CL: "CLP",
+  /* 유로를 쓰는 나라들 */
+  FR: "EUR", DE: "EUR", IT: "EUR", ES: "EUR", PT: "EUR", NL: "EUR",
+  BE: "EUR", AT: "EUR", GR: "EUR", IE: "EUR", FI: "EUR", HR: "EUR",
+}
+
+/** 나라 코드로 통화를 짐작한다. 모르면 `null` — 지어내지 않는다 */
+export function currencyOfCountry(code: string | null | undefined): string | null {
+  const c = String(code ?? "").toUpperCase()
+  return CURRENCY_BY_COUNTRY[c] ?? null
+}
+
+/**
+ * 여행 지역 글자에서 통화를 짐작한다.
+ *
+ * 값이 이렇게 생겼다 — `"오사카 · 일본"` · `"도쿄"` · `"제주 · 한국"`
+ *
+ * ⚠️ **나라 이름이 붙어 있으면 그걸 먼저 본다.** 도시 이름만으로 찾으면
+ *    같은 이름이 여러 나라에 있을 때 엉뚱한 통화가 나온다.
+ * ⚠️ 못 찾으면 `null` — 짐작을 못 하겠으면 안 한다. 틀린 통화가 미리 채워져
+ *    있으면 사용자가 눈치 못 채고 그대로 저장한다.
+ */
+export function currencyOfLocation(
+  location: string | null | undefined,
+  findCountry: (name: string) => { code: string } | undefined,
+  findByCity: (city: string) => { code: string } | undefined
+): string | null {
+  const raw = String(location ?? "").trim()
+  if (!raw) return null
+  const parts = raw.split("·").map((x) => x.trim()).filter(Boolean)
+  if (parts.length >= 2) {
+    const byCountry = findCountry(parts[parts.length - 1])
+    if (byCountry) return currencyOfCountry(byCountry.code)
+  }
+  /* 나라가 안 적힌 경우(「도쿄」) — 도시로 찾아본다 */
+  const byCity = findByCity(parts[0])
+  return byCity ? currencyOfCountry(byCity.code) : null
+}
