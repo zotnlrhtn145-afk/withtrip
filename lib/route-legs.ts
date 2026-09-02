@@ -239,12 +239,109 @@ async function askGoogle(a: LegPoint, b: LegPoint, mode: LegMode): Promise<LegRe
 }
 
 /** 한 구간의 실제 이동 시간. 캐시 → 구글 순으로 본다. */
+/**
+ * 한국 안인가.
+ *
+ * ⚠️ **구글은 한국 안에서 자동차 길을 아예 안 준다**(`noRoute`). 한국이 지도
+ *    데이터 반출을 막고 있어서다. 실측으로 확인했다 —
+ *      도쿄 신주쿠→스카이트리 자동차  34분 ✅
+ *      서울 김포공항→강남역 자동차     못 구함 ❌
+ *      서울 김포공항→강남역 대중교통   69분 ✅
+ *    그래서 제주 여행에서 구간 시간이 전부 **직선거리 추정치**였다. 사용자가
+ *    티맵을 일일이 켜야 했던 이유다(신고받음).
+ *
+ * ⚠️ 넉넉히 잡는다. 경계에서 조금 틀려도 **티맵을 먼저 물어보고 실패하면
+ *    구글로 떨어지므로** 손해가 없다.
+ */
+function inKorea(p: LegPoint): boolean {
+  return p.lat >= 33 && p.lat <= 39.5 && p.lng >= 124 && p.lng <= 132
+}
+
+function tmapKey(): string {
+  return (process.env.TMAP_APP_KEY ?? "").trim()
+}
+
+/**
+ * 티맵에 자동차 경로를 묻는다.
+ *
+ * ⚠️ **한국 자동차 구간에만 쓴다.** 도보·대중교통은 구글이 한국에서도 잘 준다.
+ * ⚠️ 무료 한도는 하루 1,000건이다. 캐시가 앞에 있어서 같은 구간은 한 번만 나간다.
+ * ⚠️ 실패하면 **던지지 않고** 그냥 실패를 돌려준다 — 부르는 쪽이 구글로 떨어진다.
+ */
+async function askTmap(a: LegPoint, b: LegPoint): Promise<LegResult> {
+  const key = tmapKey()
+  if (!key) return { distanceM: null, durationS: null, noRoute: false, source: "error", reason: "티맵 키 없음" }
+  try {
+    const res = await fetch("https://apis.openapi.sk.com/tmap/routes?version=1&format=json", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", appKey: key },
+      body: JSON.stringify({
+        startX: String(a.lng),
+        startY: String(a.lat),
+        endX: String(b.lng),
+        endY: String(b.lat),
+        /* 좌표계를 명시하지 않으면 기본값이 달라 엉뚱한 곳으로 잡힌다 */
+        reqCoordType: "WGS84GEO",
+        resCoordType: "WGS84GEO",
+        startName: "출발",
+        endName: "도착",
+        /* 0 = 교통최적 (티맵 기본). 사용자가 티맵에서 보는 값과 맞춘다 */
+        searchOption: "0",
+        trafficInfo: "N",
+      }),
+      cache: "no-store",
+    })
+    if (!res.ok) {
+      return { distanceM: null, durationS: null, noRoute: false, source: "error", reason: `티맵 ${res.status}` }
+    }
+    const json = (await res.json()) as {
+      features?: { properties?: { totalTime?: number; totalDistance?: number } }[]
+    }
+    const props = json.features?.[0]?.properties
+    const t = Number(props?.totalTime)
+    const d = Number(props?.totalDistance)
+    if (!Number.isFinite(t) || !Number.isFinite(d)) {
+      /* 길이 없는 경우(섬 사이 등)도 있다 — 다시 물어도 답은 같으니 저장한다 */
+      return { distanceM: null, durationS: null, noRoute: true, source: "google", reason: "티맵 경로 없음" }
+    }
+    return {
+      distanceM: Math.round(d),
+      durationS: Math.round(t),
+      noRoute: false,
+      source: "google",
+      /*
+        ⚠️ 선은 안 받는다. 티맵은 좌표를 조각조각 주는데 구글 polyline 과 형식이
+           달라, 지도 그리는 쪽까지 같이 고쳐야 한다. 지금 필요한 건 **몇 분**이다.
+      */
+      polyline: null,
+    }
+  } catch (e) {
+    return {
+      distanceM: null,
+      durationS: null,
+      noRoute: false,
+      source: "error",
+      reason: e instanceof Error ? `티맵 ${e.message}` : "티맵 실패",
+    }
+  }
+}
+
 export async function getLeg(a: LegPoint, b: LegPoint, mode: LegMode): Promise<LegResult> {
   const hit = await fromCache(a, b, mode)
   if (hit) return hit
 
-  const fresh = await askGoogle(a, b, mode)
+  /*
+    ⚠️ **한국 자동차만 티맵에 묻는다.** 구글이 못 주는 구간이기 때문이다.
+       나머지(도보·대중교통·해외)는 구글이 잘 주고, 선(polyline)까지 준다.
+    ⚠️ 티맵이 실패하면 **구글로 떨어진다.** 키가 없거나 한도를 넘겨도 지금과
+       똑같이 동작한다 — 새로 깨지는 건 없다.
+  */
+  const useTmap = mode === "drive" && tmapKey() && inKorea(a) && inKorea(b)
+  const fresh = useTmap ? await askTmap(a, b) : await askGoogle(a, b, mode)
+  const final =
+    useTmap && fresh.source === "error" ? await askGoogle(a, b, mode) : fresh
+
   // 오류(네트워크·키 문제)는 저장하지 않는다 — 다음에 다시 시도해야 한다
-  if (fresh.source === "google") await toCache(a, b, mode, fresh)
-  return fresh
+  if (final.source === "google") await toCache(a, b, mode, final)
+  return final
 }
