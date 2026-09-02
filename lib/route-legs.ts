@@ -261,6 +261,75 @@ function tmapKey(): string {
   return (process.env.TMAP_APP_KEY ?? "").trim()
 }
 
+function kakaoKey(): string {
+  return (process.env.KAKAO_REST_KEY ?? "").trim()
+}
+
+/** 한국 자동차 구간을 물어볼 곳이 있나 */
+function koreaDriveProvider(): "kakao" | "tmap" | null {
+  /*
+    ⚠️ 카카오를 먼저 본다. 승인 없이 바로 쓸 수 있고 무료 한도가 훨씬 크다.
+       티맵은 사용자가 보는 값과 같다는 장점이 있어, 키가 있으면 그때 쓴다.
+  */
+  if (kakaoKey()) return "kakao"
+  if (tmapKey()) return "tmap"
+  return null
+}
+
+/**
+ * 카카오모빌리티에 자동차 경로를 묻는다.
+ *
+ * ⚠️ 좌표 순서가 **경도,위도**다. 뒤집으면 바다 한가운데로 잡힌다.
+ * ⚠️ `routes[0].result_code` 가 0 이어야 성공이다. HTTP 200 이어도 여기가
+ *    0 이 아니면 길을 못 찾은 것이다(출발·도착이 너무 가까운 경우 등).
+ * ⚠️ 실패해도 던지지 않는다 — 부르는 쪽이 구글로 떨어진다.
+ */
+async function askKakao(a: LegPoint, b: LegPoint): Promise<LegResult> {
+  const key = kakaoKey()
+  if (!key) return { distanceM: null, durationS: null, noRoute: false, source: "error", reason: "카카오 키 없음" }
+  try {
+    const url =
+      `https://apis-navi.kakaomobility.com/v1/directions` +
+      `?origin=${a.lng},${a.lat}&destination=${b.lng},${b.lat}&priority=RECOMMEND`
+    const res = await fetch(url, {
+      headers: { Authorization: `KakaoAK ${key}` },
+      cache: "no-store",
+    })
+    if (!res.ok) {
+      return { distanceM: null, durationS: null, noRoute: false, source: "error", reason: `카카오 ${res.status}` }
+    }
+    const json = (await res.json()) as {
+      routes?: { result_code?: number; summary?: { distance?: number; duration?: number } }[]
+    }
+    const route = json.routes?.[0]
+    if (!route || route.result_code !== 0) {
+      /* 길이 없는 경우는 다시 물어도 답이 같으니 저장한다 */
+      return { distanceM: null, durationS: null, noRoute: true, source: "google", reason: `카카오 코드 ${route?.result_code}` }
+    }
+    const d = Number(route.summary?.distance)
+    const t = Number(route.summary?.duration)
+    if (!Number.isFinite(d) || !Number.isFinite(t)) {
+      return { distanceM: null, durationS: null, noRoute: true, source: "google", reason: "카카오 값 없음" }
+    }
+    return {
+      distanceM: Math.round(d),
+      durationS: Math.round(t),
+      noRoute: false,
+      source: "google",
+      /* 선은 안 받는다 — 형식이 구글과 달라 지도 코드까지 고쳐야 한다. 지금 필요한 건 몇 분이다 */
+      polyline: null,
+    }
+  } catch (e) {
+    return {
+      distanceM: null,
+      durationS: null,
+      noRoute: false,
+      source: "error",
+      reason: e instanceof Error ? `카카오 ${e.message}` : "카카오 실패",
+    }
+  }
+}
+
 /**
  * 티맵에 자동차 경로를 묻는다.
  *
@@ -331,15 +400,19 @@ export async function getLeg(a: LegPoint, b: LegPoint, mode: LegMode): Promise<L
   if (hit) return hit
 
   /*
-    ⚠️ **한국 자동차만 티맵에 묻는다.** 구글이 못 주는 구간이기 때문이다.
+    ⚠️ **한국 자동차만 국내 업체에 묻는다.** 구글이 못 주는 구간이기 때문이다.
        나머지(도보·대중교통·해외)는 구글이 잘 주고, 선(polyline)까지 준다.
-    ⚠️ 티맵이 실패하면 **구글로 떨어진다.** 키가 없거나 한도를 넘겨도 지금과
+    ⚠️ 카카오 → 티맵 → 구글 순으로 있는 것을 쓴다. 하나도 없으면 지금과
        똑같이 동작한다 — 새로 깨지는 건 없다.
   */
-  const useTmap = mode === "drive" && tmapKey() && inKorea(a) && inKorea(b)
-  const fresh = useTmap ? await askTmap(a, b) : await askGoogle(a, b, mode)
-  const final =
-    useTmap && fresh.source === "error" ? await askGoogle(a, b, mode) : fresh
+  const provider = mode === "drive" && inKorea(a) && inKorea(b) ? koreaDriveProvider() : null
+  const fresh = provider
+    ? provider === "kakao"
+      ? await askKakao(a, b)
+      : await askTmap(a, b)
+    : await askGoogle(a, b, mode)
+  /* 한국 업체가 실패하면 구글로 떨어진다 — 키가 없거나 한도를 넘겨도 지금과 똑같이 동작한다 */
+  const final = provider && fresh.source === "error" ? await askGoogle(a, b, mode) : fresh
 
   // 오류(네트워크·키 문제)는 저장하지 않는다 — 다음에 다시 시도해야 한다
   if (final.source === "google") await toCache(a, b, mode, final)
