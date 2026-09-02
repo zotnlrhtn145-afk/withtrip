@@ -1,15 +1,7 @@
 "use client"
 
-import {
-  BedDouble,
-  LogIn,
-  LogOut,
-  MapPin,
-  Moon,
-  Navigation,
-  Phone,
-  Plus,
-} from "lucide-react"
+import { ContactLine } from "@/components/contact-line"
+import { BedDouble, LogIn, LogOut, Moon, Navigation, Phone, Plus } from "lucide-react"
 
 import { StayDialog } from "@/components/itinerary/stay-dialog"
 import { useTrips } from "@/components/trips-store"
@@ -88,10 +80,7 @@ function StayItem({ stay }: { stay: StayEntry }) {
         </div>
 
         {stay.address ? (
-          <div className="flex items-start gap-2 text-sm">
-            <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            <span className="text-pretty">{stay.address}</span>
-          </div>
+          <ContactLine kind="address" value={stay.address} className="text-sm" textClassName="text-pretty" />
         ) : null}
 
         {stay.phone ? (

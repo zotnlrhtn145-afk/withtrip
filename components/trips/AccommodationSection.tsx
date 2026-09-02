@@ -1,21 +1,8 @@
 "use client"
 
+import { ContactLine } from "@/components/contact-line"
 import { useCallback, useEffect, useState } from "react"
-import {
-  BedDouble,
-  Crown,
-  Loader2,
-  LogIn,
-  LogOut,
-  MapPin,
-  Moon,
-  Navigation,
-  NotebookPen,
-  Pencil,
-  Phone,
-  Trash2,
-  UserRound,
-} from "lucide-react"
+import { BedDouble, Crown, Loader2, LogIn, LogOut, Moon, Navigation, NotebookPen, Pencil, Phone, Trash2, UserRound } from "lucide-react"
 
 import { AccommodationRegisterModal } from "@/components/trips/AccommodationRegisterModal"
 import { AddSectionButton } from "@/components/trips/AddSectionButton"
@@ -181,10 +168,7 @@ function AccommodationCard({
 
       <div className="relative flex flex-col gap-3 px-5 pt-3 pb-5" style={{ color: TEXT }}>
         {item.address ? (
-          <p className="flex items-start gap-1.5 text-sm" style={{ color: MUTED }}>
-            <MapPin className="mt-0.5 size-3.5 shrink-0" style={{ color: ICON }} />
-            <span className="text-pretty">{item.address}</span>
-          </p>
+          <ContactLine kind="address" value={item.address} className="text-sm" textClassName="text-pretty" />
         ) : null}
 
         <div className="grid grid-cols-2 gap-2">

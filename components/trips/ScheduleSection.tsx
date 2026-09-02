@@ -1,30 +1,8 @@
 "use client"
 
+import { ContactLine } from "@/components/contact-line"
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react"
-import {
-  BedDouble,
-  Calendar,
-  Camera,
-  AlertCircle,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Coffee,
-  Footprints,
-  Crown,
-  Loader2,
-  LogOut,
-  MapPin,
-  Pencil,
-  Phone,
-  Plane,
-  Plus,
-  Search,
-  Trash2,
-  UserRound,
-  Utensils,
-  type LucideIcon,
-} from "lucide-react"
+import { BedDouble, Calendar, Camera, AlertCircle, Check, ChevronDown, ChevronRight, Coffee, Footprints, Crown, Loader2, LogOut, MapPin, Pencil, Plane, Plus, Search, Trash2, UserRound, Utensils, type LucideIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { DirectionsMenu } from "@/components/directions-menu"
@@ -1006,18 +984,8 @@ function TimelineItem({
         ) : null}
         {item.address || item.phoneNumber ? (
           <div className="mt-1.5 flex flex-col gap-y-0.5 text-xs text-gray-500">
-            {item.address ? (
-              <p className="flex items-start gap-1">
-                <MapPin className="mt-0.5 size-3 shrink-0" />
-                <span className="min-w-0 flex-1 break-keep">{item.address}</span>
-              </p>
-            ) : null}
-            {item.phoneNumber ? (
-              <p className="flex items-center gap-1 tabular-nums">
-                <Phone className="size-3 shrink-0" />
-                <span>{item.phoneNumber}</span>
-              </p>
-            ) : null}
+            {item.address ? <ContactLine kind="address" value={item.address} /> : null}
+            {item.phoneNumber ? <ContactLine kind="phone" value={item.phoneNumber} /> : null}
           </div>
         ) : null}
       </div>

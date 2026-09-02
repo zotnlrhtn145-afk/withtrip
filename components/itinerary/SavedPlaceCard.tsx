@@ -1,8 +1,9 @@
 "use client"
 
+import { ContactLine } from "@/components/contact-line"
 import { useEffect, useState } from "react"
 import Image from "next/image"
-import { Loader2, MapPin, Phone, Star, Trash2 } from "lucide-react"
+import { Loader2, Star, Trash2 } from "lucide-react"
 import type { User } from "@supabase/supabase-js"
 
 import { DirectionsMenu } from "@/components/directions-menu"
@@ -195,18 +196,8 @@ export function SavedPlaceCard({
         </div>
 
         <div className="flex flex-col gap-1.5 text-xs leading-relaxed text-gray-500">
-          {place.address ? (
-            <p className="flex items-start gap-1.5">
-              <MapPin className="mt-0.5 size-3.5 shrink-0" />
-              <span className="text-pretty">{place.address}</span>
-            </p>
-          ) : null}
-          {place.phoneNumber ? (
-            <p className="flex items-center gap-1.5 tabular-nums">
-              <Phone className="size-3.5 shrink-0" />
-              <span>{place.phoneNumber}</span>
-            </p>
-          ) : null}
+          {place.address ? <ContactLine kind="address" value={place.address} /> : null}
+          {place.phoneNumber ? <ContactLine kind="phone" value={place.phoneNumber} /> : null}
           {place.memo ? <p className="text-pretty text-gray-500">{place.memo}</p> : null}
         </div>
 
