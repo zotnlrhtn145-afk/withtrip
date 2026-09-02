@@ -190,3 +190,45 @@ export function currencyOfLocation(
   const byCity = findByCity(parts[0])
   return byCity ? currencyOfCountry(byCity.code) : null
 }
+
+/**
+ * 환전 실적 — 「얼마 내고 얼마 받았나」.
+ *
+ * ⚠️ **환율 한 숫자로 받지 않는 이유가 있다.** 베트남처럼 두 번 바꾸는 경우가
+ *    흔하다 — `100만원 → $700 → 17,500,000동`. 이때 중간 통화(달러)는 알
+ *    필요가 없고, **처음 낸 원화와 최종 받은 현지 돈**만 있으면 실효환율이
+ *    나온다. 환율을 직접 적게 하면 사용자가 저 나눗셈을 해야 하고, 두 번
+ *    바꾼 경우엔 무엇으로 나눌지도 헷갈린다.
+ */
+export type CashExchange = {
+  /** 낸 원화 */
+  krwPaid: number
+  /** 받은 현지 돈 */
+  foreignReceived: number
+}
+
+/** 환전으로 정해진 실효환율(현지 1단위 = 몇 원). 말이 안 되면 `null` */
+export function cashRate(x: CashExchange): number | null {
+  const paid = Number(x.krwPaid)
+  const got = Number(x.foreignReceived)
+  if (!Number.isFinite(paid) || !Number.isFinite(got)) return null
+  if (paid <= 0 || got <= 0) return null
+  const r = paid / got
+  /* ⚠️ 자릿수를 잘못 넣으면 여기서 걸러야 한다 — 그대로 받으면 정산이 통째로 망가진다 */
+  if (!Number.isFinite(r) || r <= 0) return null
+  return r
+}
+
+/**
+ * 현금으로 낸 지출을 원화로.
+ *
+ * ⚠️ **카드 수수료를 붙이지 않는다.** 현금은 바꾸는 순간 원가가 끝났다.
+ * ⚠️ 환전 실적이 없으면 **그날 기준환율을 수수료 없이** 쓴다. 어림값이지만,
+ *    카드 수수료를 잘못 붙이는 것보다는 훨씬 가깝다.
+ */
+export function cashToKrw(m: Money, exchange: CashExchange | null): number {
+  if (!m.currency || m.currency === "KRW") return roundKrw(m.amount)
+  const rate = (exchange && cashRate(exchange)) ?? Number(m.fxRate)
+  if (!Number.isFinite(rate) || rate <= 0) return 0
+  return roundKrw(m.amount * rate)
+}
