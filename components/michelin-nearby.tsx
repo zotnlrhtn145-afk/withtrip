@@ -163,24 +163,22 @@ export function MichelinNearby({ tripId }: { tripId: string }) {
                       ⚠️ 등급을 모르면 회색. 색까지 같으면 확인된 것과 아직 모르는
                          것이 한눈에 같아 보인다.
                     */}
-                    {m.distinction ? (
-                      <span className="mt-1 inline-flex items-center gap-1.5 rounded-md bg-slate-800 px-2 py-1">
-                        <span className="text-[9.5px] font-extrabold tracking-[0.09em] text-amber-300">
-                          MICHELIN
-                        </span>
-                        <span className="text-[12px] font-extrabold text-white">{m.distinction}</span>
-                        {m.award_year ? (
-                          <span className="text-[10px] font-bold text-slate-400">{m.award_year}</span>
-                        ) : null}
+                    {/*
+                      ⚠️ 등급을 모르는 경우도 **같은 검은 칩**이다. 회색으로 뒀더니
+                         목록에서 미쉐린이 하나도 안 걸렸다 — 지금은 1,406곳이
+                         전부 그 상태라 회색이면 기능이 통째로 안 보인다.
+                    */}
+                    <span className="mt-1 inline-flex items-center gap-1.5 rounded-md bg-slate-800 px-2 py-1">
+                      <span className="text-[9.5px] font-extrabold tracking-[0.09em] text-amber-300">
+                        MICHELIN
                       </span>
-                    ) : (
-                      <span className="mt-1 inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1">
-                        <span className="text-[9.5px] font-extrabold tracking-[0.09em] text-zinc-400">
-                          MICHELIN
-                        </span>
-                        <span className="text-[12px] font-extrabold text-zinc-500">가이드 등재</span>
+                      <span className="text-[12px] font-extrabold text-white">
+                        {m.distinction ?? "가이드 등재"}
                       </span>
-                    )}
+                      {m.award_year ? (
+                        <span className="text-[10px] font-bold text-slate-400">{m.award_year}</span>
+                      ) : null}
+                    </span>
                     {/* ⚠️ 「0.4km」만 있으면 무엇으로부터인지 알 수 없다 */}
                     <p className="mt-0.5 truncate text-xs text-zinc-400">
                       {m.nearName}에서{" "}
