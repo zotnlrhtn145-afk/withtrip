@@ -156,8 +156,14 @@ export function MichelinNearby({ tripId }: { tripId: string }) {
                 <li key={m.url} className="flex items-center gap-3 py-2.5">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-zinc-900">{m.name}</p>
-                    <p className="mt-0.5 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800">
-                      <Award className="size-3" />
+                    {/* ⚠️ 미쉐린 별·빕구르망 그림은 인증 표식이라 안 쓴다 — 글자로 적는다 */}
+                    <p
+                      className={`mt-0.5 inline-block rounded-full border px-2 py-0.5 text-[11px] font-bold ${
+                        m.distinction
+                          ? "border-amber-300 bg-amber-50 text-amber-800"
+                          : "border-zinc-200 bg-zinc-50 text-zinc-500"
+                      }`}
+                    >
                       {m.distinction
                         ? `미쉐린${m.award_year ? ` ${m.award_year}` : ""} · ${m.distinction}`
                         : "미쉐린 가이드"}
