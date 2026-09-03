@@ -16,6 +16,15 @@ import { getLeg, type LegMode, type LegPoint } from "@/lib/route-legs"
  */
 export const runtime = "nodejs"
 
+/**
+ * 한 번에 받는 구간 수.
+ *
+ * ⚠️ **넘치면 조용히 자른다 — 부르는 쪽이 그걸 모르면 사고가 난다.**
+ *    「들를 곳 찾기」가 16구간을 보냈는데 뒤 4개가 버려져서, 가장 먼 두 곳이
+ *    늘 「가는 시간을 못 구했어요」로 나왔다(신고받음). 앱은 이제 12개씩
+ *    나눠서 묻는다. 그래도 넘겨 보내는 쪽이 있을 수 있으니 **몇 개를 버렸는지
+ *    응답에 적어 준다** — 다음 사람이 원인을 찾는 데 며칠 안 걸리게.
+ */
 const MAX_LEGS = 12
 const MODES = new Set(["walk", "drive", "transit"])
 
@@ -75,5 +84,7 @@ export async function POST(req: NextRequest) {
     fromGoogle: results.filter((r) => r.source === "google").length,
     // 진단용 — 왜 값을 못 받았는지. 키 내용은 담지 않는다
     reasons: Array.from(new Set(results.map((r) => r.reason).filter(Boolean))),
+    /* ⚠️ 한도를 넘겨 보내서 **버린 개수.** 0 이 아니면 부르는 쪽이 나눠 물어야 한다 */
+    dropped: Math.max(0, (Array.isArray(body.legs) ? body.legs.length : 0) - MAX_LEGS),
   })
 }
