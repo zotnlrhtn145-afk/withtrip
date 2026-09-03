@@ -156,18 +156,31 @@ export function MichelinNearby({ tripId }: { tripId: string }) {
                 <li key={m.url} className="flex items-center gap-3 py-2.5">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-zinc-900">{m.name}</p>
-                    {/* ⚠️ 미쉐린 별·빕구르망 그림은 인증 표식이라 안 쓴다 — 글자로 적는다 */}
-                    <p
-                      className={`mt-0.5 inline-block rounded-full border px-2 py-0.5 text-[11px] font-bold ${
-                        m.distinction
-                          ? "border-amber-300 bg-amber-50 text-amber-800"
-                          : "border-zinc-200 bg-zinc-50 text-zinc-500"
-                      }`}
-                    >
-                      {m.distinction
-                        ? `미쉐린${m.award_year ? ` ${m.award_year}` : ""} · ${m.distinction}`
-                        : "미쉐린 가이드"}
-                    </p>
+                    {/*
+                      ⚠️ 미쉐린 로제트·비벤덤은 인증 표식이라 안 쓴다 — 글자로 적는다.
+                      ⚠️ **어두운 색인 이유:** 이 앱·웹은 온통 앰버다(평점 칩도 앰버).
+                         미쉐린도 앰버로 두면 목록에서 하나도 안 걸린다.
+                      ⚠️ 등급을 모르면 회색. 색까지 같으면 확인된 것과 아직 모르는
+                         것이 한눈에 같아 보인다.
+                    */}
+                    {m.distinction ? (
+                      <span className="mt-1 inline-flex items-center gap-1.5 rounded-md bg-slate-800 px-2 py-1">
+                        <span className="text-[9.5px] font-extrabold tracking-[0.09em] text-amber-300">
+                          MICHELIN
+                        </span>
+                        <span className="text-[12px] font-extrabold text-white">{m.distinction}</span>
+                        {m.award_year ? (
+                          <span className="text-[10px] font-bold text-slate-400">{m.award_year}</span>
+                        ) : null}
+                      </span>
+                    ) : (
+                      <span className="mt-1 inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1">
+                        <span className="text-[9.5px] font-extrabold tracking-[0.09em] text-zinc-400">
+                          MICHELIN
+                        </span>
+                        <span className="text-[12px] font-extrabold text-zinc-500">가이드 등재</span>
+                      </span>
+                    )}
                     {/* ⚠️ 「0.4km」만 있으면 무엇으로부터인지 알 수 없다 */}
                     <p className="mt-0.5 truncate text-xs text-zinc-400">
                       {m.nearName}에서{" "}
