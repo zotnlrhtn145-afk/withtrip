@@ -9,6 +9,14 @@
  */
 export type WishlistKind = "restaurant" | "bar" | "stay" | "attraction" | "shopping" | "experience"
 
+/** 값이 여섯 종류 안에 드나 — 밖에서 온 값(구글·AI)을 받을 때 쓴다 */
+export function isWishlistKind(v: unknown): v is WishlistKind {
+  return (
+    v === "restaurant" || v === "bar" || v === "stay" ||
+    v === "attraction" || v === "shopping" || v === "experience"
+  )
+}
+
 /** 레스토랑 세부 카테고리 — "저장한 장소" 탭의 음식 종류 분류 기준. */
 export const RESTAURANT_SUBCATEGORIES = [
   "한식",
@@ -130,6 +138,41 @@ const ATTRACTION_TYPE_RULES: { subCategory: string; types: string[] }[] = [
   { subCategory: "랜드마크", types: ["landmark", "historical_landmark", "historical_place", "monument", "cultural_landmark", "castle", "palace"] },
 ]
 
+/**
+ * 쇼핑·체험 세부 분류 — 구글 types 로 먼저 본다.
+ *
+ * ⚠️ **이 둘이 통째로 빠져 있었다.** `guessSubCategory` 가 stay·bar·restaurant·
+ *    attraction 만 갈라 보고, shopping·experience 는 **레스토랑 규칙으로
+ *    떨어졌다.** 그래서 옷가게가 「기타」로 들어오거나, 이름에 「커피」가 있는
+ *    편집숍이 「카페」로 갔다(실측: STUDIO NICHOLSON KYOTO·Patta 가 기타).
+ */
+const SHOPPING_TYPE_RULES: { subCategory: string; types: string[] }[] = [
+  { subCategory: "백화점·몰", types: ["department_store", "shopping_mall", "outlet_mall"] },
+  { subCategory: "서점", types: ["book_store", "library"] },
+  {
+    subCategory: "편집숍·패션",
+    types: ["clothing_store", "shoe_store", "jewelry_store", "boutique", "apparel_store"],
+  },
+  { subCategory: "기념품·특산품", types: ["gift_shop", "souvenir_store", "market"] },
+  {
+    subCategory: "생활·잡화",
+    types: ["home_goods_store", "furniture_store", "convenience_store", "supermarket", "drugstore", "pharmacy", "hardware_store", "electronics_store", "store"],
+  },
+]
+
+const EXPERIENCE_TYPE_RULES: { subCategory: string; types: string[] }[] = [
+  { subCategory: "스파·웰니스", types: ["spa", "wellness_center", "massage", "sauna", "public_bath", "onsen", "beauty_salon"] },
+  {
+    subCategory: "공연·전시",
+    types: ["performing_arts_theater", "movie_theater", "concert_hall", "opera_house", "auditorium", "cultural_center", "event_venue"],
+  },
+  { subCategory: "클래스·체험", types: ["school", "art_studio", "cooking_school"] },
+  {
+    subCategory: "액티비티",
+    types: ["amusement_park", "water_park", "theme_park", "ski_resort", "golf_course", "bowling_alley", "gym", "sports_complex", "sports_activity_location", "adventure_sports_center", "marina", "campground", "casino"],
+  },
+]
+
 function matchByTypes(
   types: string[] | null | undefined,
   rules: { subCategory: string; types: string[] }[]
@@ -172,6 +215,12 @@ export function guessSubCategory(input: {
   } else if (input.kind === "attraction") {
     const byType = matchByTypes(input.types, ATTRACTION_TYPE_RULES)
     if (byType) return byType
+  } else if (input.kind === "shopping") {
+    const byType = matchByTypes(input.types, SHOPPING_TYPE_RULES)
+    if (byType) return byType
+  } else if (input.kind === "experience") {
+    const byType = matchByTypes(input.types, EXPERIENCE_TYPE_RULES)
+    if (byType) return byType
   }
 
   const hay = `${input.name ?? ""} ${(input.types ?? []).join(" ")} ${input.hint ?? ""}`.toLowerCase()
@@ -195,12 +244,42 @@ export function guessSubCategory(input: {
   }
 
   if (input.kind === "attraction") {
-    if (/박물관|museum|미술관|gallery/.test(hay)) return "박물관·미술관"
-    if (/공원|park|정원|garden|자연|산\b|해변|beach/.test(hay)) return "공원·자연"
+    if (/박물관|museum|미술관|gallery|갤러리|전시관|전시장|기념관|아쿠아리움|aquarium|수족관|동물원|\bzoo\b/.test(hay)) return "박물관·미술관"
+    if (/공원|park|정원|garden|자연|산\b|해변|beach|호수|lake|湖|저수지|폭포|falls|계곡|숲|forest|섬\b|island|오름|동굴|cave|온천마을/.test(hay)) return "공원·자연"
     if (/사원|temple|신사|shrine|성당|cathedral|교회|church|절\b/.test(hay)) return "사원·종교시설"
-    if (/전망대|타워|tower|observatory|스카이/.test(hay)) return "전망대"
+    if (/전망대|타워|tower|observatory|스카이|포토스팟|photo ?spot|뷰포인트|view ?point|전망/.test(hay)) return "전망대"
     if (/시장|market|거리|street|쇼핑|shopping/.test(hay)) return "쇼핑·거리"
     if (/랜드마크|landmark|성\b|castle|궁\b|palace/.test(hay)) return "랜드마크"
+    return "기타"
+  }
+
+  /*
+    ⚠️ 여기 아래로 내려오면 **전부 레스토랑 규칙**을 탄다. shopping·experience 가
+       이 갈래를 안 가지고 있어서, 옷가게·서점·스파가 음식 규칙에 걸리거나
+       (「커피」가 든 편집숍 → 카페) 아무것도 안 걸려 「기타」가 됐다.
+  */
+  if (input.kind === "shopping") {
+    if (/백화점|아울렛|outlet|쇼핑몰|\bmall\b|면세점|duty ?free|플라자|plaza/.test(hay)) return "백화점·몰"
+    if (/서점|book ?store|bookshop|책방|츠타야|tsutaya|문고/.test(hay)) return "서점"
+    if (/편집숍|편집샵|셀렉트|select ?shop|boutique|부티크|apparel|패션|fashion|의류|스토어|store|샵|shop|웨어|wear/.test(hay)) {
+      return "편집숍·패션"
+    }
+    if (/기념품|souvenir|특산품|토산품|시장|market|공예|craft/.test(hay)) return "기념품·특산품"
+    if (/잡화|생활용품|드럭|donki|돈키호테|무인양품|muji|로프트|loft|마트|mart|슈퍼|super/.test(hay)) {
+      return "생활·잡화"
+    }
+    return "기타"
+  }
+
+  if (input.kind === "experience") {
+    if (/스파|\bspa\b|온천|사우나|찜질방|마사지|massage|온센|족욕|테르메/.test(hay)) return "스파·웰니스"
+    if (/공연|콘서트|극장|theater|theatre|전시|exhibition|뮤지컬|영화관|cinema|아트센터/.test(hay)) {
+      return "공연·전시"
+    }
+    if (/클래스|공방|체험|원데이|워크샵|workshop|쿠킹|cooking|만들기|공예/.test(hay)) return "클래스·체험"
+    if (/서핑|surf|다이빙|diving|카약|kayak|짚라인|승마|스키|ski|골프|golf|카트|kart|테마파크|놀이공원|워터파크|랜드$|월드$/.test(hay)) {
+      return "액티비티"
+    }
     return "기타"
   }
 
@@ -456,9 +535,59 @@ const NAME_RULES: { kind: WishlistKind; sub: string; detail?: string; re: RegExp
        되고, 「기타」로 두는 것보다는 맞을 확률이 훨씬 높다.
   */
   { kind: "restaurant", sub: "고기·구이", re: /고기집|고깃집|숯불|화로|삼겹|목살|갈비|한우|우삼겹|불판|정육식당/i },
-  { kind: "restaurant", sub: "해산물", re: /횟집|회집|물회집|조개구이|해물탕/i },
+  /* ⚠️ 「…회식당」이 아래 「식당」 규칙에 먼저 걸려 한식으로 갔다(실측: 완도회식당) */
+  { kind: "restaurant", sub: "해산물", re: /횟집|회집|회식당|물회집|조개구이|해물탕|어시장|수산시장/i },
   { kind: "restaurant", sub: "한식", re: /식당|밥집|맛집|한정식|기사식당|국수집|칼국수|한식/i },
 ]
+
+/**
+ * AI 나 외부에서 온 **자유로운 세부 이름**을 화면의 고정 목록으로 옮긴다.
+ *
+ * ## ⚠️ 왜 이게 필요한가 (「기타」로 쌓인 진짜 원인)
+ *
+ * AI 는 거의 맞는 답을 낸다. 그런데 받는 쪽이 **글자가 똑같을 때만** 인정하고
+ * 나머지는 통째로 버려서 「기타」로 떨어뜨렸다. 실제로 이렇게 버려졌다.
+ *
+ *     편집숍   → 목록엔 「편집숍·패션」    → 버려짐 → 기타
+ *     한식당   → 목록엔 「한식」          → 버려짐 → 기타
+ *     호수     → 목록엔 「공원·자연」      → 버려짐 → 기타
+ *     포토스팟 → 목록엔 「전망대」         → 버려짐 → 기타
+ *
+ * 사람이 보면 1초에 아는 것들이다. 답은 있는데 받는 문이 좁았을 뿐이다.
+ *
+ * 네 단계로 좁혀 간다. 그래도 모르면 `null` — **지어내지 않는다.**
+ */
+export function normalizeSubCategory(kind: WishlistKind, raw: string | null | undefined): string | null {
+  const text = String(raw ?? "").trim()
+  if (!text) return null
+  const allowed = SUBCATEGORIES_BY_KIND[kind] ?? []
+  const flat = (v: string) => v.toLowerCase().replace(/[\s·&,\-_/]/g, "")
+  const key = flat(text)
+  if (!key) return null
+
+  // 1) 글자 그대로
+  for (const a of allowed) if (flat(a) === key) return a
+
+  // 2) 한쪽이 다른 쪽을 품고 있나 — 「편집숍」⊂「편집숍·패션」, 「한식」⊂「한식당」
+  //    ⚠️ 긴 것부터 본다. 「기타」는 답이 아니라 포기라서 여기서 뺀다.
+  const real = allowed.filter((a) => a !== "기타").sort((a, b) => flat(b).length - flat(a).length)
+  for (const a of real) {
+    const f = flat(a)
+    if (key.includes(f) || f.includes(key)) return a
+  }
+
+  // 3) 「공원·자연」처럼 두 낱말로 된 값은 낱말 하나만 맞아도 인정한다
+  for (const a of real) {
+    for (const part of a.split(/[·&/]/)) {
+      const f = flat(part)
+      if (f.length >= 2 && (key.includes(f) || f.includes(key))) return a
+    }
+  }
+
+  // 4) 마지막으로 낱말 규칙에 걸어 본다 — 「호수」·「포토스팟」이 여기서 잡힌다
+  const guessed = guessSubCategory({ kind, name: text })
+  return guessed && guessed !== "기타" ? guessed : null
+}
 
 export type NameGuess = {
   kind: WishlistKind

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { classifySubCategories } from "@/lib/classify-subcategory-server"
+import { classifySubCategories, isClassifyKind } from "@/lib/classify-subcategory-server"
 import { checkRateLimit } from "@/lib/rate-limit"
 
 export const runtime = "nodejs"
@@ -26,7 +26,9 @@ export async function POST(req: Request) {
       localName?: string
       address?: string
     }
-    const kind = body.kind === "bar" || body.kind === "stay" ? body.kind : "restaurant"
+    /* ⚠️ 예전엔 bar·stay 만 알아듣고 나머지를 전부 restaurant 로 눌러 버렸다 —
+           관광지를 물어도 음식 목록에서 고르게 되니 답이 「기타」밖에 안 나왔다 */
+    const kind = isClassifyKind(body.kind) ? body.kind : "restaurant"
     const placeName = String(body.placeName ?? "").trim()
     if (!placeName) return NextResponse.json({ subCategory: null })
 

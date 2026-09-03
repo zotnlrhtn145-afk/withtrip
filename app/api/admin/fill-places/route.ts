@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import { flashModelCandidates, isBillingProblem, rememberModel, TEXT_PURPOSE , markModelGone} from "@/lib/gemini-models"
 import {
   KIND_LABEL,
+  normalizeSubCategory,
   SUBCATEGORIES_BY_KIND,
   guessFromName,
   type WishlistKind,
@@ -174,9 +175,17 @@ export async function POST(req: Request) {
     const kind = (it.kind ?? "") as WishlistKind
     const label = KIND_LABEL[kind]
     if (!label) continue
-    const allowed = SUBCATEGORIES_BY_KIND[kind] ?? []
-    const sub = allowed.includes(it.sub) ? it.sub : "기타"
-    const detail = String(it.detail ?? "").trim().slice(0, 24) || null
+    /*
+      ⚠️ **거의 맞는 답을 버리지 않는다.** 예전엔 `allowed.includes()` 로 글자가
+         똑같을 때만 인정해서, AI 가 「편집숍」·「한식당」·「호수」처럼 사람이
+         보면 1초에 아는 답을 내도 목록에 그 글자가 없으면 통째로 「기타」가 됐다
+         (실측: 돈어길 det=한식당 인데 sub=기타, Patta det=편집숍 인데 sub=기타).
+      ⚠️ `detail` 도 같이 본다 — AI 가 `sub` 는 못 맞춰도 `detail` 에 답을
+         적어 두는 일이 잦다.
+    */
+    const detailRaw = String(it.detail ?? "").trim()
+    const sub = normalizeSubCategory(kind, it.sub) ?? normalizeSubCategory(kind, detailRaw) ?? "기타"
+    const detail = detailRaw.slice(0, 24) || null
 
     /*
       ⚠️ **「기타」로 왔어도 물어봤다는 사실은 남긴다.**

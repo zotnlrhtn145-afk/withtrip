@@ -26,7 +26,7 @@ import {
   WISHLIST_CATEGORY_VALUE,
   type WishlistKind,
 } from "@/lib/trip-itinerary"
-import { guessSubCategory, SUBCATEGORIES_BY_KIND } from "@/lib/place-subcategories"
+import { guessFromName, guessSubCategory, isWishlistKind, SUBCATEGORIES_BY_KIND } from "@/lib/place-subcategories"
 import { classifySubCategory } from "@/lib/place-subcategory-classifier"
 import { cn } from "@/lib/utils"
 
@@ -64,6 +64,8 @@ export function AddSavedPlaceModal({
     onOpenChange?.(next)
   }
   const [kind, setKind] = useState<WishlistKind>(defaultKind)
+  /* 사용자가 칩을 직접 누른 뒤에는 자동 분류가 끼어들지 않는다 */
+  const [chose, setChose] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [placeName, setPlaceName] = useState("")
   const [localName, setLocalName] = useState("")
@@ -161,10 +163,11 @@ export function AddSavedPlaceModal({
     const name = String(place.placeName ?? "").trim()
     const localName = String(place.localName ?? "").trim() || name
     const address = String(place.address ?? "").trim()
-    const resolvedKind =
-      place.kind === "restaurant" || place.kind === "bar" || place.kind === "stay"
-        ? place.kind
-        : kind
+    /*
+      ⚠️ 예전엔 restaurant·bar·stay 만 받고 나머지를 화면의 현재 값으로 눌렀다 —
+         구글이 「쇼핑」이라고 알려줘도 레스토랑으로 들어왔다.
+    */
+    const resolvedKind = isWishlistKind(place.kind) ? place.kind : kind
     const guessed = guessSubCategory({
       kind: resolvedKind,
       name,
@@ -187,9 +190,12 @@ export function AddSavedPlaceModal({
     setDropdownOpen(false)
     setError(null)
 
-    // 정규식으로 못 잡는 경우(유명 체인점 등)를 Gemini 상식으로 한 번 더 보정한다.
-    // (관광지는 /api/classify-subcategory가 아직 지원하지 않아 제외)
-    if (guessed === "기타" && resolvedKind !== "attraction") {
+    /*
+      정규식으로 못 잡는 경우(유명 체인점 등)를 Gemini 상식으로 한 번 더 보정한다.
+      ⚠️ 예전엔 관광지를 뺐다 — 라우트가 못 알아들어서였다. 이제 여섯 종류를
+         다 받으므로 뺄 이유가 없다.
+    */
+    if (guessed === "기타") {
       const token = ++selectionTokenRef.current
       setClassifyingSubCategory(true)
       void classifySubCategory({ kind: resolvedKind, placeName: name, localName, address })
@@ -202,6 +208,27 @@ export function AddSavedPlaceModal({
         })
     }
   }
+
+  /*
+    이름을 **직접 칠 때도** 분류를 짚는다.
+
+    ⚠️ 예전엔 검색 결과를 고를 때만 돌았다. 검색을 안 쓰고 이름만 적어 넣으면
+       세부 카테고리가 끝까지 빈칸이었다(실측: 「단골집」이 null 로 저장돼 있다).
+    ⚠️ 0.5초 기다렸다 본다 — 한 글자마다 돌면 「고」 에서 「고기·구이」로 튀었다가
+       「고내리」를 다 치면 되돌아온다.
+    ⚠️ 사용자가 칩을 직접 누른 뒤에는 끼어들지 않는다.
+  */
+  useEffect(() => {
+    if (chose || subCategory) return
+    const t = window.setTimeout(() => {
+      const g = guessFromName(searchQuery || placeName)
+      if (!g) return
+      if (g.kind !== kind) setKind(g.kind)
+      const opts = SUBCATEGORIES_BY_KIND[g.kind] ?? []
+      if ((opts as readonly string[]).includes(g.subCategory)) setSubCategory(g.subCategory)
+    }, 500)
+    return () => window.clearTimeout(t)
+  }, [searchQuery, placeName, chose, subCategory, kind])
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -229,13 +256,25 @@ export function AddSavedPlaceModal({
         }
       }
 
+      /*
+        마지막 그물 — **여기까지 비어 있으면 AI 에 한 번 묻는다.**
+        ⚠️ 규칙이 답을 낸 곳은 부르지 않으므로 돈은 여기서만 나간다.
+        ⚠️ 실패해도 그냥 저장한다 — 분류 하나 때문에 등록이 막히면 안 된다.
+      */
+      let sub = subCategory.trim()
+      if (!sub || sub === "기타") {
+        sub =
+          (await classifySubCategory({ kind, placeName: name, localName: localName.trim(), address: address.trim() })) ||
+          sub
+      }
+
       const saved = await insertSavedPlace({
         tripId,
         ...(userId ? { userId } : {}),
         placeName: name,
         category: WISHLIST_CATEGORY_VALUE[kind],
         localName: localName.trim(),
-        subCategory: subCategory.trim(),
+        subCategory: sub,
         guideBadge: guideBadge.trim(),
         priceRange: "",
         address: address.trim(),
@@ -458,7 +497,7 @@ export function AddSavedPlaceModal({
                       <button
                         key={option}
                         type="button"
-                        onClick={() => setSubCategory(active ? "" : option)}
+                        onClick={() => { setChose(true); setSubCategory(active ? "" : option) }}
                         className={cn(
                           "rounded-full px-3 py-1.5 text-xs font-medium transition-all",
                           active

@@ -7,7 +7,7 @@ import {
   resolveCoverImageUrl,
   resolveRequestOrigin,
 } from "@/lib/place-cover-image";
-import { classifySubCategories } from "@/lib/classify-subcategory-server";
+import { classifySubCategories, isClassifyKind, type ClassifyKind } from "@/lib/classify-subcategory-server";
 import { guessSubCategory } from "@/lib/place-subcategories";
 import { fetchYoutubeMaterial, isYoutubeUrl, youtubeCaption } from "@/lib/youtube";
 import {
@@ -1518,19 +1518,18 @@ export async function POST(request: Request) {
        달라진 셈이다(신고받음: "왜 기타로 들어와 찜에서?").
     ⚠️ **정규식이 못 잡은 것만** 넘긴다. 이미 답이 있는 곳까지 물으면 돈만 나가고
        답은 같다. 넘긴 것도 **한 번에 묶어서** 묻는다.
-    ⚠️ 관광지는 뺀다 — 고를 값 목록이 AI 쪽에 없다(레스토랑·바·숙소뿐).
+    ⚠️ **관광지·쇼핑·체험도 넘긴다.** 예전엔 「고를 값 목록이 AI 쪽에 없다」는
+       이유로 셋을 걸러내고 넘겼는데, 그래서 정규식이 못 잡은 관광지·쇼핑은
+       AI 를 볼 기회조차 없이 「기타」로 굳었다. 목록을 채웠으니 이제 넘긴다.
+    ⚠️ **세부값이 비어 있는 것도 넘긴다.** 「기타」만 보고 있어서, 아예 못 정한
+       (null) 곳은 그대로 빈칸으로 저장됐다.
     ⚠️ 실패해도 그냥 둔다. 분류 하나 때문에 공유가 막히면 안 된다.
   */
   const needClassify = grounded
-    .filter(
-      (g) =>
-        g.place &&
-        g.place.subCategory === "기타" &&
-        (g.place.kind === "restaurant" || g.place.kind === "bar" || g.place.kind === "stay"),
-    )
+    .filter((g) => g.place && (!g.place.subCategory || g.place.subCategory === "기타") && isClassifyKind(g.place.kind))
     .map((g) => ({
       key: g.place!.googlePlaceId,
-      kind: g.place!.kind as "restaurant" | "bar" | "stay",
+      kind: g.place!.kind as ClassifyKind,
       placeName: g.place!.placeName,
       address: g.place!.address,
     }));

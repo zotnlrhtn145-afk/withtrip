@@ -85,6 +85,9 @@ const SCHEDULE_CATEGORY_OF_KIND: Record<WishlistKind, ScheduleCategory> = {
   bar: "카페",
   stay: "숙소",
   attraction: "관광",
+  /* 쇼핑·체험은 일정에서 「관광」으로 묶는다 — 일정 카테고리엔 따로 칸이 없다 */
+  shopping: "관광",
+  experience: "관광",
 }
 
 function ScheduleRegisterModal({
@@ -135,6 +138,8 @@ function ScheduleRegisterModal({
 
   const groupedPlaces = useMemo(() => {
     const groups: Record<WishlistKind, SavedPlace[]> = {
+      shopping: [],
+      experience: [],
       restaurant: [],
       bar: [],
       stay: [],

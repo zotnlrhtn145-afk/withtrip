@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Heart, Landmark, Loader2, Martini, BedDouble, Utensils } from "lucide-react"
+import { BedDouble, Heart, Landmark, Loader2, Martini, ShoppingBag, Ticket, Utensils } from "lucide-react"
 
 import { AddSavedPlaceModal } from "@/components/itinerary/AddSavedPlaceModal"
 import { AttractionSuggestions } from "@/components/itinerary/AttractionSuggestions"
@@ -28,6 +28,8 @@ const KIND_ICON: Record<WishlistKind, typeof Utensils> = {
   bar: Martini,
   stay: BedDouble,
   attraction: Landmark,
+  shopping: ShoppingBag,
+  experience: Ticket,
 }
 
 function CategorySummary({
@@ -110,12 +112,14 @@ export function WishlistSection({
     void load()
   }, [load])
 
+  /*
+    ⚠️ 종류를 손으로 하나씩 세면 **종류가 늘 때마다 여기가 빠진다.** 실제로
+       쇼핑·체험을 붙였을 때 이 칸이 넷에 머물러 있었다. 목록을 돌게 둔다.
+  */
   const counts = useMemo(() => {
-    const restaurant = places.filter((place) => toWishlistKind(place.category) === "restaurant").length
-    const bar = places.filter((place) => toWishlistKind(place.category) === "bar").length
-    const stay = places.filter((place) => toWishlistKind(place.category) === "stay").length
-    const attraction = places.filter((place) => toWishlistKind(place.category) === "attraction").length
-    return { restaurant, bar, stay, attraction }
+    const out = Object.fromEntries(wishlistCategories.map((c) => [c.kind, 0])) as Record<WishlistKind, number>
+    for (const place of places) out[toWishlistKind(place.category)] += 1
+    return out
   }, [places])
 
   const tripCity = trip.title.split(/[·•]/)[0]?.trim() || trip.region

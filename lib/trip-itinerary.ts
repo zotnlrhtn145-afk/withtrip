@@ -163,7 +163,13 @@ export const seedStays: Record<string, StayEntry[]> = {}
 
 /* ── 가고 싶은 곳 (Wishlist) ───────────────────────────────────────── */
 
-export type WishlistKind = 'restaurant' | 'bar' | 'stay' | 'attraction'
+/*
+  ⚠️ **쇼핑·체험이 빠져 있었다.** DB 에도 화면에도 여섯 종류가 있는데 웹의 이
+     타입만 넷이라, 「장소 추가」에서는 옷가게·서점·스파를 담을 칸이 없어서
+     전부 레스토랑이나 관광지로 들어갔다. `shared/place-subcategories.ts` 의
+     `WishlistKind` 와 **같은 값이어야 한다.**
+*/
+export type WishlistKind = 'restaurant' | 'bar' | 'stay' | 'attraction' | 'shopping' | 'experience'
 
 export type WishlistEntry = Place & { kind: WishlistKind }
 
@@ -176,6 +182,8 @@ export const wishlistCategories: {
   { kind: 'bar', label: '라운지 & 바', guide: 'Lounge & Bar' },
   { kind: 'stay', label: '숙소', guide: 'Hotel & Stay' },
   { kind: 'attraction', label: '관광지', guide: 'Attraction' },
+  { kind: 'shopping', label: '쇼핑', guide: 'Shopping' },
+  { kind: 'experience', label: '체험', guide: 'Experience' },
 ]
 
 /** Canonical category values stored in `saved_places.category`. */
@@ -184,6 +192,8 @@ export const WISHLIST_CATEGORY_VALUE: Record<WishlistKind, string> = {
   bar: '라운지 & 바',
   stay: '숙소',
   attraction: '관광지',
+  shopping: '쇼핑',
+  experience: '체험',
 }
 
 export function toWishlistKind(category: unknown): WishlistKind {
@@ -191,8 +201,12 @@ export function toWishlistKind(category: unknown): WishlistKind {
   if (raw === WISHLIST_CATEGORY_VALUE.stay || raw === 'stay' || raw === '숙소') return 'stay'
   if (raw === WISHLIST_CATEGORY_VALUE.bar || raw === 'bar') return 'bar'
   if (raw === WISHLIST_CATEGORY_VALUE.attraction || raw === 'attraction') return 'attraction'
+  if (raw === WISHLIST_CATEGORY_VALUE.shopping || raw === 'shopping') return 'shopping'
+  if (raw === WISHLIST_CATEGORY_VALUE.experience || raw === 'experience') return 'experience'
   if (/숙소|hotel|lodging|resort|리조트|료칸|ryokan|stay/i.test(raw)) return 'stay'
   if (/라운지|lounge|\bbar\b|바/i.test(raw)) return 'bar'
+  if (/쇼핑|shopping|백화점|아울렛|편집숍|서점|store/i.test(raw)) return 'shopping'
+  if (/체험|experience|스파|\bspa\b|온천|공연|액티비티|클래스/i.test(raw)) return 'experience'
   if (/관광|명소|랜드마크|landmark|공원|park|사원|temple|박물관|museum|미술관|gallery|전망대|타워|tower|신사|shrine|성당|cathedral/i.test(raw)) {
     return 'attraction'
   }
