@@ -1,5 +1,6 @@
 "use client"
 
+import { MichelinNearby } from "@/components/michelin-nearby"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { BedDouble, Heart, Landmark, Loader2, Martini, ShoppingBag, Ticket, Utensils } from "lucide-react"
 
@@ -165,6 +166,9 @@ export function WishlistSection({
 
       <CardContent className="flex flex-col gap-5">
         <AddSectionButton label="장소 추가" onClick={() => setAddOpen(true)} />
+
+        {/* 담아 둔 곳 근처의 미쉐린 — 없는 지역이면 스스로 사라진다 */}
+        <MichelinNearby tripId={trip.id} />
 
         <AttractionSuggestions
           tripId={trip.id}
