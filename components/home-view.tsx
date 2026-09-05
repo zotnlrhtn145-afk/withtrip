@@ -17,7 +17,6 @@ import {
 } from "lucide-react"
 
 import { CreateTripDialog } from "@/components/create-trip-dialog"
-import { TripClipsTray } from "@/components/home/TripClipsTray"
 import { LoginRedirectOverlay } from "@/components/login-redirect-overlay"
 import { TripBannerCard } from "@/components/trip-banner-card"
 import { useTrips } from "@/components/trips-store"
@@ -147,7 +146,11 @@ export function HomeView({
 
   return (
     <div className="flex flex-col gap-5">
-      <TripClipsTray trips={trips} />
+      {/*
+        ⚠️ 「TRIP CLIPS」 줄을 뺐다 — 안 쓰는 기능이라 빼 달라는 요청.
+           앱에서도 같이 뺐다. 부품(`TripClipsTray`)과 올려 둔 자료는 그대로
+           둔다 — 되살리려면 이 줄만 도로 넣으면 된다.
+      */}
 
       {error && hasMounted ? (
         <div className="flex flex-col items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-4">
