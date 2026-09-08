@@ -1,14 +1,14 @@
 /**
- * 한글로 쳐도 걸리게 — **검색어 쪽을 늘린다.**
+ * 한글로 쳐도, 영어로 쳐도 걸리게 — **검색어 쪽을 늘린다.**
  *
  * ## 왜 이 방향인가 (비용)
  *
- * 저장된 502곳 중 **해외 193곳은 주소에 한글 지역명이 하나도 없다.**
+ * 저장된 652곳 중 **해외 265곳은 주소에 한글 지역명이 하나도 없다.**
  * 주소가 `일본 〒604-8083 Kyoto, Nakagyo Ward` 라서 "교토" 로 치면 안 걸렸다.
  *
  * 이걸 푸는 방법이 두 가지다.
  *
- *   ① 저장된 502곳을 전부 한글로도 번역해서 넣는다  → 502번 변환 + 계속 늘어남
+ *   ① 저장된 652곳을 전부 한글로도 번역해서 넣는다  → 652번 변환 + 계속 늘어남
  *   ② **검색어 하나**를 "교토 → Kyoto" 로 늘려서 둘 다 찾는다  → 1번
  *
  * ②가 압도적으로 싸다. 데이터를 안 건드리고, 장소가 5만 개가 돼도 비용이 그대로다.
@@ -21,14 +21,79 @@
  *
  * ⚠️ 이 파일은 `~/withtrip/shared/` 가 원본이다.
  *    앱 쪽 `src/lib/shared/` 는 복사본이므로 직접 고치지 말 것.
+ *
+ * ## 실측으로 확인한 구멍 세 가지 (2026-09)
+ *
+ *   ① **나라는 한국어로만 저장된다.** `country` 가 "일본"·"미국"·"독일" 이라
+ *      `japan` 으로 치면 123건 중 2건만 나왔다. → 나라 표는 `country-flags`·
+ *      `travel-destinations` 에서 **자동으로 만든다**(손으로 또 적지 않는다).
+ *   ② **글자 위의 점.** 구글이 `Đà Nẵng`·`Hồ Chí Minh`·`Île-de-France` 로 준다.
+ *      `da nang` 으로 치면 0건이었다. → 양쪽 다 점을 떼고 비교한다.
+ *   ③ **띄어쓰기.** `hochiminh`·`newyork` 이 0건이었다. → 붙여 쓴 꼴로도 본다.
  */
 
+import { FLAGS } from "./country-flags"
+import { REGION_KO } from "./region-names"
+import { travelCountries } from "./travel-destinations"
+
 /**
- * 한글 ↔ 원문. 왼쪽이 한글, 오른쪽은 그 말이 데이터에 나타나는 형태들이다.
+ * 글자 위의 점을 뗀다. `Đà Nẵng` → `da nang`, `Île-de-France` → `ile-de-france`.
  *
- * 담는 기준: **우리 데이터에 실제로 있는 나라**(한국 295 · 일본 92 · 베트남 54 ·
- * 태국 11 · 호주 9 · 싱가포르 6 · 홍콩 6) 위주로 도시·구, 그리고 업종어.
- * 여기 없는 건 다음에 신고가 들어올 때 한 줄씩 늘리면 된다 — 공짜다.
+ * ⚠️ `NFD` 로는 **`Đ`(획이 그어진 D)가 안 풀린다.** 결합 문자가 아니라 그 자체로
+ *    다른 글자이기 때문이다. 베트남 지명 대부분이 여기 걸려서 따로 적어 둔다.
+ */
+const STROKED: Record<string, string> = {
+  đ: "d", ð: "d", ø: "o", ł: "l", ß: "ss", æ: "ae", œ: "oe", þ: "th", ı: "i", ħ: "h",
+}
+
+export function foldText(value: string | null | undefined): string {
+  return String(value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[đðøłßæœþıħ]/g, (c) => STROKED[c] ?? c)
+}
+
+/**
+ * 띄어쓰기·붙임표를 없앤 꼴. `ho chi minh` → `hochiminh`.
+ *
+ * ⚠️ `\p{L}` 같은 유니코드 속성은 **헤르메스(앱 엔진)에서 못 믿는다.** 우리가 쓰는
+ *    글자 범위(라틴·한글·가나·한자)를 직접 적는다.
+ */
+const KEEP = /[^0-9a-z぀-ヿ一-鿿가-힣]+/g
+
+function compact(value: string | null | undefined): string {
+  return foldText(value).replace(KEEP, "")
+}
+
+/** 한글·가나·한자가 하나라도 있으면 「띄어쓰기가 없는 말」로 본다 */
+const CJK = /[぀-ヿ一-鿿가-힣]/
+
+/**
+ * 한 낱말로 들어 있나. `kyoto station` 안의 `kyoto` 는 통과,
+ * `house` 안의 `us` 는 **통과하지 못한다**.
+ *
+ * ⚠️ 그냥 `includes` 로 두면 `us`(미국) 가 `house`·`museum` 에 걸리고,
+ *    `bar` 가 `barcelona` 에 걸린다. 로마자는 낱말 경계를 본다.
+ */
+function hasWord(hay: string, needle: string): boolean {
+  if (!needle) return false
+  let at = hay.indexOf(needle)
+  while (at !== -1) {
+    const before = at === 0 ? "" : hay[at - 1]
+    const after = hay[at + needle.length] ?? ""
+    const edge = (c: string) => c === "" || !/[0-9a-z]/.test(c)
+    if (edge(before) && edge(after)) return true
+    at = hay.indexOf(needle, at + 1)
+  }
+  return false
+}
+
+/**
+ * 같은 곳을 가리키는 말끼리 한 묶음. 하나가 걸리면 나머지도 같이 찾는다.
+ *
+ * 손으로 적는 건 **도시·구·업종어뿐**이다. 나라와 시·도는 이미 다른 파일에
+ * 있으므로 거기서 만든다 — 두 군데에 적으면 조용히 어긋난다.
  */
 const ALIAS: Record<string, string[]> = {
   // ── 일본 도시·지역 ──
@@ -61,51 +126,104 @@ const ALIAS: Record<string, string[]> = {
   다이토: ["taito", "台東"],
   스미다: ["sumida", "墨田"],
   미나토: ["minato", "港"],
+  세타가야: ["setagaya", "世田谷"],
+  메구로: ["meguro", "目黒"],
+  지요다: ["chiyoda", "千代田"],
+  주오: ["chuo", "中央"],
   // 교토·오사카 안쪽
   나카교: ["nakagyo", "中京"],
   기온: ["gion", "祇園"],
   아라시야마: ["arashiyama", "嵐山"],
+  히가시야마: ["higashiyama", "東山"],
   난바: ["namba", "難波"],
   우메다: ["umeda", "梅田"],
   도톤보리: ["dotonbori", "道頓堀"],
+  신사이바시: ["shinsaibashi", "心斎橋"],
 
   // ── 베트남 ──
-  베트남: ["vietnam", "viet nam", "việt nam"],
-  호치민: ["ho chi minh", "hồ chí minh", "saigon", "sài gòn"],
+  호치민: ["ho chi minh", "hồ chí minh", "saigon", "sài gòn", "사이공"],
   하노이: ["hanoi", "hà nội"],
   다낭: ["da nang", "đà nẵng"],
   호이안: ["hoi an", "hội an"],
   나트랑: ["nha trang"],
   푸꾸옥: ["phu quoc", "phú quốc"],
+  달랏: ["da lat", "đà lạt"],
+  붕따우: ["vung tau", "vũng tàu"],
 
   // ── 태국 ──
-  태국: ["thailand", "thái lan"],
-  방콕: ["bangkok", "krung thep"],
+  방콕: ["bangkok", "krung thep", "krung thep maha nakhon"],
   치앙마이: ["chiang mai"],
   푸켓: ["phuket"],
+  파타야: ["pattaya"],
+  끄라비: ["krabi", "크라비"],
 
-  // ── 그 밖 ──
-  싱가포르: ["singapore"],
-  홍콩: ["hong kong", "hongkong", "香港"],
-  대만: ["taiwan", "台灣", "台湾"],
+  // ── 중화권 ──
   타이베이: ["taipei", "台北"],
+  가오슝: ["kaohsiung", "高雄"],
+  지우펀: ["jiufen", "九份"],
+  상하이: ["shanghai", "上海"],
+  베이징: ["beijing", "peking", "北京"],
+  구룡: ["kowloon", "九龍"],
+  센트럴: ["central", "中環"],
+  침사추이: ["tsim sha tsui", "尖沙咀"],
+  마카오: ["macau", "macao", "澳門"],
+
+  // ── 그 밖 도시 ──
   시드니: ["sydney"],
   멜버른: ["melbourne"],
+  브리즈번: ["brisbane"],
   뉴욕: ["new york"],
-  로스앤젤레스: ["los angeles"],
+  로스앤젤레스: ["los angeles", "la"],
+  샌프란시스코: ["san francisco"],
+  라스베이거스: ["las vegas"],
+  시애틀: ["seattle"],
+  하와이: ["hawaii"],
+  호놀룰루: ["honolulu"],
   파리: ["paris"],
+  런던: ["london"],
+  로마: ["rome", "roma"],
+  밀라노: ["milan", "milano"],
+  피렌체: ["florence", "firenze"],
+  베네치아: ["venice", "venezia", "베니스"],
+  바르셀로나: ["barcelona"],
+  마드리드: ["madrid"],
   베를린: ["berlin"],
-  브뤼셀: ["bruxelles", "brussels"],
+  뮌헨: ["munich", "münchen"],
+  프랑크푸르트: ["frankfurt"],
+  브뤼셀: ["bruxelles", "brussels", "brussel"],
+  암스테르담: ["amsterdam"],
+  프라하: ["prague", "praha"],
+  빈: ["vienna", "wien"],
+  취리히: ["zurich", "zürich"],
+  인터라켄: ["interlaken"],
+  이스탄불: ["istanbul"],
+  두바이: ["dubai"],
+  세부: ["cebu"],
+  보라카이: ["boracay"],
+  발리: ["bali"],
+  쿠알라룸푸르: ["kuala lumpur"],
+  괌: ["guam"],
+  사이판: ["saipan"],
+  밴쿠버: ["vancouver"],
+  토론토: ["toronto"],
+  오클랜드: ["auckland"],
 
   // ── 한국(로마자로 저장된 경우 대비) ──
   서울: ["seoul"],
   부산: ["busan", "pusan"],
-  제주: ["jeju"],
+  제주: ["jeju", "cheju"],
   포항: ["pohang"],
   경주: ["gyeongju"],
   대구: ["daegu"],
   인천: ["incheon"],
+  강릉: ["gangneung"],
+  속초: ["sokcho"],
+  전주: ["jeonju"],
+  여수: ["yeosu"],
+  통영: ["tongyeong"],
   해운대: ["haeundae"],
+  광안리: ["gwangalli"],
+  서귀포: ["seogwipo"],
 
   // ── 업종·음식 ──
   카페: ["cafe", "coffee", "커피", "喫茶"],
@@ -120,17 +238,78 @@ const ALIAS: Record<string, string[]> = {
   돈카츠: ["tonkatsu", "とんかつ", "돈까스"],
   호텔: ["hotel"],
   리조트: ["resort"],
-  바: ["bar"],
   레스토랑: ["restaurant"],
 }
 
-/** 한글 → 원문들 */
-const TO_FOREIGN = new Map<string, string[]>()
-/** 원문 → 한글 */
-const TO_KOREAN = new Map<string, string>()
-for (const [ko, others] of Object.entries(ALIAS)) {
-  TO_FOREIGN.set(ko, others)
-  for (const o of others) TO_KOREAN.set(o.toLowerCase(), ko)
+/**
+ * 나라 이름 — 두 표에 흩어져 있는 걸 **코드로 묶는다.**
+ *
+ * `country-flags` 는 "대한민국"·"오스트레일리아", `travel-destinations` 는
+ * "한국"·"호주" 로 적어 두었다. 둘 다 맞는 말이라 어느 쪽으로 쳐도 나와야 한다.
+ * 코드가 같으면 한 묶음이므로 저절로 해결된다.
+ */
+const COUNTRY_EXTRA: Record<string, string[]> = {
+  KR: ["korea", "south korea", "republic of korea"],
+  JP: ["japan", "nippon", "日本"],
+  US: ["usa", "united states", "united states of america", "america"],
+  GB: ["uk", "england", "britain", "great britain", "잉글랜드"],
+  CN: ["china", "prc", "中国"],
+  HK: ["hong kong", "hongkong", "香港"],
+  TW: ["taiwan", "台灣", "台湾"],
+  VN: ["vietnam", "viet nam", "việt nam"],
+  TH: ["thailand", "thai"],
+  DE: ["germany", "deutschland"],
+  BE: ["belgium", "belgique", "belgië"],
+  AU: ["australia"],
+  NL: ["netherlands", "holland"],
+  CH: ["switzerland", "schweiz", "suisse"],
+  TR: ["turkiye", "turkey"],
+  CZ: ["czechia", "czech republic"],
+  AE: ["uae", "united arab emirates"],
+  MO: ["macau", "macao"],
+}
+
+function buildGroups(): string[][] {
+  const groups: string[][] = []
+
+  // ① 나라 — 코드로 묶는다
+  const byCode = new Map<string, Set<string>>()
+  const put = (code: string, ...names: (string | undefined)[]) => {
+    const set = byCode.get(code) ?? new Set<string>()
+    for (const n of names) if (n) set.add(n)
+    byCode.set(code, set)
+  }
+  for (const [code, flag] of Object.entries(FLAGS)) put(code, flag.name)
+  for (const c of travelCountries) put(c.code, c.nameKo, c.nameEn)
+  for (const [code, names] of Object.entries(COUNTRY_EXTRA)) put(code, ...names)
+  for (const set of byCode.values()) if (set.size > 1) groups.push([...set])
+
+  // ② 시·도 — 구글이 주는 원문과 우리가 보여 주는 한국어
+  for (const [원문, 한국어] of Object.entries(REGION_KO)) {
+    if (원문 !== 한국어) groups.push([원문, 한국어])
+  }
+
+  // ③ 손으로 적은 도시·구·업종어
+  for (const [ko, others] of Object.entries(ALIAS)) groups.push([ko, ...others])
+
+  return groups
+}
+
+/** [{말, 접힌 꼴, 붙인 꼴, 한중일인가}] 를 미리 만들어 둔다 — 글자 칠 때마다 다시 만들지 않는다 */
+const GROUPS = buildGroups().map((names) =>
+  names.map((raw) => ({
+    fold: foldText(raw),
+    tight: compact(raw),
+    cjk: CJK.test(raw),
+  })),
+)
+
+/** 이 말이 검색어 안에 들어 있나 */
+function inQuery(q: string, qTight: string, m: { fold: string; tight: string; cjk: boolean }): boolean {
+  if (m.cjk) return m.fold.length >= 2 && q.includes(m.fold)
+  // 로마자는 두 글자짜리가 너무 많이 걸린다("us" 가 "house" 에)
+  if (m.fold.length < 3) return false
+  return hasWord(q, m.fold) || (m.tight.length >= 3 && hasWord(qTight, m.tight))
 }
 
 /**
@@ -142,17 +321,33 @@ for (const [ko, others] of Object.entries(ALIAS)) {
  * ⚠️ 늘린 말은 **원래 검색어를 대체하지 않고 더한다.** 어느 쪽으로 저장돼 있든
  *    걸리게 하려는 것이지, 검색어를 바꾸려는 게 아니다.
  */
+/**
+ * ⚠️ **맨 앞이 사용자가 친 말이다.** `matchesQuery` 가 그걸로 느슨함을 가른다 —
+ *    친 말은 글자 그대로 찾고(치는 중에도 걸려야 한다), 우리가 늘린 말은
+ *    낱말째로 찾는다("america" 가 "Americano" 에 걸리면 안 된다).
+ */
 export function expandQuery(query: string): string[] {
-  const q = String(query ?? "").trim().toLowerCase()
+  return expand(query, false)
+}
+
+/**
+ * `wholeNameOnly` 는 **여러 낱말을 친 경우**에만 쓴다.
+ *
+ * ⚠️ "제주 카페" 를 그냥 늘리면 `제주`·`카페` 가 따로 걸려서 「제주 전부 + 카페 전부」
+ *    207건이 나온다. 통째로 보는 쪽에서는 **여러 낱말짜리 이름**(ho chi minh,
+ *    hong kong)만 인정하고, 한 낱말짜리는 낱말별 걸기에 맡긴다.
+ */
+function expand(query: string, wholeNameOnly: boolean): string[] {
+  const q = foldText(query).trim()
   if (!q) return []
+  const qTight = compact(query)
   const out = new Set<string>([q])
 
-  for (const [ko, others] of TO_FOREIGN) {
-    const k = ko.toLowerCase()
-    if (q.includes(k)) for (const o of others) out.add(o.toLowerCase())
-  }
-  for (const [foreign, ko] of TO_KOREAN) {
-    if (q.includes(foreign)) out.add(ko.toLowerCase())
+  for (const group of GROUPS) {
+    const hit = group.find((m) => inQuery(q, qTight, m))
+    if (!hit) continue
+    if (wholeNameOnly && !hit.fold.includes(" ") && hit.fold !== q) continue
+    for (const m of group) out.add(m.fold)
   }
   return [...out]
 }
@@ -162,11 +357,64 @@ export function expandQuery(query: string): string[] {
  *
  * ⚠️ "모두 걸려야 한다" 로 하면 안 된다. `["교토","kyoto"]` 를 둘 다 요구하면
  *    아무것도 안 나온다 — 한 장소에 두 표기가 같이 있을 리가 없다.
+ *
+ * ⚠️ 저장된 쪽도 **점을 떼고** 본다. `Đà Nẵng` 을 `da nang` 으로 찾을 수 있어야 한다.
+ *
+ * ⚠️ 늘린 말은 **낱말째로** 본다. 그냥 포함으로 두면 "미국" 이 늘어난 `america` 가
+ *    카페 이름 "Americano" 에 걸린다(실측 3건). 사용자가 친 말만 글자 그대로 본다 —
+ *    "toky" 까지 쳤을 때도 도쿄가 나와야 하기 때문이다.
  */
 export function matchesQuery(terms: string[], fields: (string | null | undefined)[]): boolean {
   if (terms.length === 0) return true
-  const hay = fields
-    .map((f) => String(f ?? "").toLowerCase())
-    .join(" ")
-  return terms.some((t) => hay.includes(t))
+  const hay = fields.map((f) => foldText(f)).join(" ")
+  return hitTerms(hay, hay.replace(KEEP, ""), terms)
+}
+
+function hitTerms(hay: string, tight: string, terms: string[]): boolean {
+  return terms.some((t, i) => {
+    const packed = t.replace(KEEP, "")
+    // 사용자가 친 말 — 치는 중에도 걸려야 하니 글자 그대로
+    if (i === 0) return hay.includes(t) || (packed.length >= 2 && tight.includes(packed))
+    // 우리가 늘린 말 — 한글·한자는 붙여 쓰니 그대로, 로마자는 낱말째로
+    if (CJK.test(t)) return hay.includes(t)
+    if (hasWord(hay, t)) return true
+    /*
+      두 낱말짜리는 **저장된 쪽이 붙여 쓴 경우**도 본다("NewYork Bakery").
+      한 낱말짜리(`america`)는 이 길을 막는다 — 그게 "Americano" 를 물어 온다.
+    */
+    return t.includes(" ") && packed.length >= 6 && tight.includes(packed)
+  })
+}
+
+/**
+ * 여러 낱말을 친 검색어. `expandQuery` 한 번으로는 못 푼다.
+ *
+ * ⚠️ **낱말마다 따로 늘려서 「모두 걸려야 한다」로 두면 안 된다.**
+ *    "ho chi minh" 이 `ho` + `chi` + `minh` 으로 쪼개져 아무것도 안 나온다.
+ * ⚠️ **통째로만 보면 그것도 안 된다.**
+ *    "제주 카페" 가 한 이름인 곳은 없으니 0건이 된다.
+ *
+ * 그래서 **둘 다** 본다 — 통째로 걸리거나(한 이름), 낱말이 모두 걸리거나(좁히기).
+ * 실측: 예전엔 "제주 카페" 가 207건(제주 전부 + 카페 전부)이었다.
+ */
+export type SearchQuery = {
+  /** 통째로 친 말을 늘린 것 */
+  phrase: string[]
+  /** 낱말별로 늘린 것 — 둘 이상일 때만 채운다 */
+  words: string[][]
+}
+
+export function buildQuery(search: string): SearchQuery | null {
+  const parts = foldText(search).trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return null
+  if (parts.length === 1) return { phrase: expand(search, false), words: [] }
+  return { phrase: expand(search, true), words: parts.map((w) => expand(w, false)) }
+}
+
+export function matchesSearch(q: SearchQuery | null, fields: (string | null | undefined)[]): boolean {
+  if (!q) return true
+  const hay = fields.map((f) => foldText(f)).join(" ")
+  const tight = hay.replace(KEEP, "")
+  if (hitTerms(hay, tight, q.phrase)) return true
+  return q.words.length > 1 && q.words.every((w) => hitTerms(hay, tight, w))
 }

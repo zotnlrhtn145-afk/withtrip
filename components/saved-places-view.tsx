@@ -69,6 +69,7 @@ import { cn } from "@/lib/utils"
 import { createClient } from "@/utils/supabase/client"
 import { PHOTO_W } from "@/shared/photo-widths"
 import { regionLabel } from "@/shared/region-names"
+import { buildQuery, matchesSearch } from "@/shared/search-alias"
 import { flagNameOf } from "@/shared/country-flags"
 import { CountryFlag } from "@/components/country-flag"
 import { fetchFastPhotoUrls, photoUrlWith, resizePlacePhotoUrl } from "@/lib/place-cover-image"
@@ -430,12 +431,17 @@ export function SavedPlacesView() {
   /** 사진의 빠른(스토리지 직행) 주소 — 프록시 302 왕복을 없앤다 */
 
   const filteredPlaces = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    // ⚠️ 해외 주소는 현지어·영어라 "오사카"로 쳐도 안 걸렸다.
-    //    한국어로 저장해 둔 나라·지역을 검색 대상에 같이 넣는다.
+    /*
+      ⚠️ 해외 주소는 현지어·영어라 "오사카"로 쳐도 안 걸렸다.
+         한국어로 저장해 둔 나라·지역을 검색 대상에 같이 넣는다.
+      ⚠️ 그것만으로는 모자랐다. 나라는 **한국어로만** 저장돼 `japan` 이 123건 중
+         2건만 나왔고, `Đà Nẵng`·`Île-de-France` 는 글자 위의 점 때문에
+         `da nang` 으로 0건이었다. `buildQuery` 가 검색어를 늘리고 점을 뗀다.
+    */
+    const q = buildQuery(search)
     const bySearch = q
       ? places.filter((p) =>
-          [
+          matchesSearch(q, [
             p.placeName,
             p.localName,
             p.address,
@@ -444,7 +450,7 @@ export function SavedPlacesView() {
             p.country,
             p.region,
             regionLabel(p.region),
-          ].some((v) => String(v ?? "").toLowerCase().includes(q))
+          ])
         )
       : places
     const byCountry =
@@ -556,13 +562,9 @@ export function SavedPlacesView() {
 
   const filteredTripSpots = useMemo(() => {
     const byTrip = tripFilter === "all" ? tripSpots : tripSpots.filter((s) => s.tripId === tripFilter)
-    const q = search.trim().toLowerCase()
+    const q = buildQuery(search)
     const bySearch = q
-      ? byTrip.filter((s) =>
-          [s.name, s.nameLocal, s.address, s.category].some((v) =>
-            String(v ?? "").toLowerCase().includes(q)
-          )
-        )
+      ? byTrip.filter((s) => matchesSearch(q, [s.name, s.nameLocal, s.address, s.category]))
       : byTrip
     const base = subFilter ? bySearch.filter((s) => (s.category ?? "").trim() === subFilter) : bySearch
     const arr = [...base]
