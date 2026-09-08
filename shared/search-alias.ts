@@ -51,6 +51,11 @@ export function foldText(value: string | null | undefined): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
+    /*
+      ⚠️ **다시 합쳐야 한다.** `NFD` 는 한글 음절도 자모로 쪼갠다("괌" → ㄱㅘㅁ).
+         그대로 두면 글자 수를 세는 곳이 전부 어긋난다(한 글자가 셋으로 잡힌다).
+    */
+    .normalize("NFC")
     .replace(/[đðøłßæœþıħ]/g, (c) => STROKED[c] ?? c)
 }
 
@@ -76,6 +81,17 @@ const CJK = /[぀-ヿ一-鿿가-힣]/
  * ⚠️ 그냥 `includes` 로 두면 `us`(미국) 가 `house`·`museum` 에 걸리고,
  *    `bar` 가 `barcelona` 에 걸린다. 로마자는 낱말 경계를 본다.
  */
+/** 낱말이 **이 글자로 시작하나.** "la" 는 "Lavender" 를 잡고 "Villa" 는 놓친다 */
+function startsWord(hay: string, needle: string): boolean {
+  if (!needle) return false
+  let at = hay.indexOf(needle)
+  while (at !== -1) {
+    if (at === 0 || !/[0-9a-z]/.test(hay[at - 1])) return true
+    at = hay.indexOf(needle, at + 1)
+  }
+  return false
+}
+
 function hasWord(hay: string, needle: string): boolean {
   if (!needle) return false
   let at = hay.indexOf(needle)
@@ -172,13 +188,23 @@ const ALIAS: Record<string, string[]> = {
   시드니: ["sydney"],
   멜버른: ["melbourne"],
   브리즈번: ["brisbane"],
-  뉴욕: ["new york"],
-  로스앤젤레스: ["los angeles", "la"],
-  샌프란시스코: ["san francisco"],
-  라스베이거스: ["las vegas"],
+  /*
+    ⚠️ 줄인 말은 **딱 그것만 쳤을 때** 통한다 — `inQuery` 가 두 글자 로마자를
+       그렇게 다룬다. 안 그러면 "la" 가 "La Vie" 에, "ny" 가 "many" 에 걸린다.
+  */
+  뉴욕: ["new york", "ny", "엔와이", "뉴욕주", "뉴욕시"],
+  로스앤젤레스: ["los angeles", "la", "엘에이", "엘아이", "로스엔젤레스", "로스앤젤리스"],
+  샌프란시스코: ["san francisco", "sf", "샌프란", "에스에프"],
+  라스베이거스: ["las vegas", "vegas", "라스베가스", "베가스"],
   시애틀: ["seattle"],
-  하와이: ["hawaii"],
+  하와이: ["hawaii", "honolulu"],
   호놀룰루: ["honolulu"],
+  워싱턴: ["washington", "dc", "워싱턴디시"],
+  캘리포니아: ["california", "ca", "캘리"],
+  오리건: ["oregon", "오리곤"],
+  플로리다: ["florida"],
+  텍사스: ["texas"],
+  네바다: ["nevada"],
   파리: ["paris"],
   런던: ["london"],
   로마: ["rome", "roma"],
@@ -249,24 +275,39 @@ const ALIAS: Record<string, string[]> = {
  * 코드가 같으면 한 묶음이므로 저절로 해결된다.
  */
 const COUNTRY_EXTRA: Record<string, string[]> = {
-  KR: ["korea", "south korea", "republic of korea"],
-  JP: ["japan", "nippon", "日本"],
-  US: ["usa", "united states", "united states of america", "america"],
-  GB: ["uk", "england", "britain", "great britain", "잉글랜드"],
-  CN: ["china", "prc", "中国"],
-  HK: ["hong kong", "hongkong", "香港"],
-  TW: ["taiwan", "台灣", "台湾"],
-  VN: ["vietnam", "viet nam", "việt nam"],
-  TH: ["thailand", "thai"],
-  DE: ["germany", "deutschland"],
-  BE: ["belgium", "belgique", "belgië"],
-  AU: ["australia"],
-  NL: ["netherlands", "holland"],
-  CH: ["switzerland", "schweiz", "suisse"],
-  TR: ["turkiye", "turkey"],
-  CZ: ["czechia", "czech republic"],
-  AE: ["uae", "united arab emirates"],
-  MO: ["macau", "macao"],
+  KR: ["korea", "south korea", "republic of korea", "코리아"],
+  JP: ["japan", "nippon", "日本", "재팬"],
+  US: ["usa", "us", "united states", "united states of america", "america", "아메리카", "유에스에이", "유에스"],
+  GB: ["uk", "england", "britain", "great britain", "잉글랜드", "브리튼", "유케이"],
+  CN: ["china", "prc", "中国", "차이나"],
+  HK: ["hong kong", "hongkong", "香港", "홍콩섬"],
+  TW: ["taiwan", "台灣", "台湾", "타이완"],
+  VN: ["vietnam", "viet nam", "việt nam", "비엣남", "베트남"],
+  TH: ["thailand", "thai", "타일랜드"],
+  DE: ["germany", "deutschland", "도이칠란트", "저머니"],
+  BE: ["belgium", "belgique", "belgië", "벨기움"],
+  AU: ["australia", "오스트랄리아"],
+  NL: ["netherlands", "holland", "홀란드", "네덜란트"],
+  CH: ["switzerland", "schweiz", "suisse", "스윗잘랜드"],
+  TR: ["turkiye", "turkey", "터키", "튀르키예"],
+  CZ: ["czechia", "czech republic", "체코"],
+  AE: ["uae", "united arab emirates", "에미리트"],
+  MO: ["macau", "macao", "마카오"],
+  SG: ["싱가폴"], // 사람들이 이렇게 더 많이 친다
+  IT: ["이태리"],
+  ES: ["에스파냐"],
+  PH: ["필리핀", "필리핀즈"],
+  ID: ["인도네시아"],
+  MY: ["말레이시아", "말레이"],
+  CA: ["캐나다"],
+  NZ: ["뉴질랜드"],
+  GR: ["그리스"],
+  PT: ["포르투갈"],
+  AT: ["오스트리아", "외스터라이히"],
+  KH: ["캄보디아"],
+  LA: ["라오스"],
+  MV: ["몰디브"],
+  GU: ["괌", "사이판"],
 }
 
 function buildGroups(): string[][] {
@@ -306,9 +347,15 @@ const GROUPS = buildGroups().map((names) =>
 
 /** 이 말이 검색어 안에 들어 있나 */
 function inQuery(q: string, qTight: string, m: { fold: string; tight: string; cjk: boolean }): boolean {
-  if (m.cjk) return m.fold.length >= 2 && q.includes(m.fold)
-  // 로마자는 두 글자짜리가 너무 많이 걸린다("us" 가 "house" 에)
-  if (m.fold.length < 3) return false
+  /*
+    짧은 말은 **딱 그것만 쳤을 때**만 인정한다.
+    "la"(엘에이)가 "La Vie" 에, "빈"(비엔나)이 "빈티지" 에 걸리면 안 된다.
+    줄인 말을 아예 안 넣는 것보다는 이쪽이 낫다 — 사람들은 "LA" 라고 친다.
+  */
+  const short = m.cjk ? m.fold.length < 2 : m.fold.length < 3
+  if (short) return q === m.fold || (qTight.length > 0 && qTight === m.tight)
+
+  if (m.cjk) return q.includes(m.fold)
   return hasWord(q, m.fold) || (m.tight.length >= 3 && hasWord(qTight, m.tight))
 }
 
@@ -366,17 +413,43 @@ function expand(query: string, wholeNameOnly: boolean): string[] {
  */
 export function matchesQuery(terms: string[], fields: (string | null | undefined)[]): boolean {
   if (terms.length === 0) return true
-  const hay = fields.map((f) => foldText(f)).join(" ")
-  return hitTerms(hay, hay.replace(KEEP, ""), terms)
+  return hitTerms(makeHay(fields), terms)
 }
 
-function hitTerms(hay: string, tight: string, terms: string[]): boolean {
+type Hay = { text: string; tight: string; jamo: string }
+
+function makeHay(fields: (string | null | undefined)[]): Hay {
+  const text = fields.map((f) => foldText(f)).join(" ")
+  return { text, tight: text.replace(KEEP, ""), jamo: text.normalize("NFD") }
+}
+
+function hitTerms({ text: hay, tight, jamo }: Hay, terms: string[]): boolean {
   return terms.some((t, i) => {
     const packed = t.replace(KEEP, "")
-    // 사용자가 친 말 — 치는 중에도 걸려야 하니 글자 그대로
-    if (i === 0) return hay.includes(t) || (packed.length >= 2 && tight.includes(packed))
+    /*
+      사용자가 친 말 — 치는 중에도 걸려야 하니 글자 그대로.
+      ⚠️ 한글은 **자모로 쪼개서** 본다. 「부산」을 치는 도중의 「부사」가 걸려야 하고,
+         「회」로 「횟집」이 나와야 한다(받침만 다르다). 완성된 글자로만 보면 둘 다 0건이다.
+    */
+    if (i === 0) {
+      /*
+        ⚠️ 로마자 한두 글자는 **낱말 첫머리**로만 본다. 그냥 포함으로 두면
+           "LA" 가 "Villa"·"Gelato" 까지 물어 와 36건이 됐다.
+      */
+      if (t.length < 3 && !CJK.test(t)) return startsWord(hay, t)
+      return (
+        hay.includes(t) ||
+        jamo.includes(t.normalize("NFD")) ||
+        (packed.length >= 2 && tight.includes(packed))
+      )
+    }
     // 우리가 늘린 말 — 한글·한자는 붙여 쓰니 그대로, 로마자는 낱말째로
     if (CJK.test(t)) return hay.includes(t)
+    /*
+      ⚠️ 늘어난 줄임말로는 **찾지 않는다.** "엘에이" 를 늘리면 `la` 가 따라오는데,
+         그걸로 찾으면 "La Vie" 가 걸린다. 같은 묶음의 `los angeles` 가 할 일이다.
+    */
+    if (t.length < 3) return false
     if (hasWord(hay, t)) return true
     /*
       두 낱말짜리는 **저장된 쪽이 붙여 쓴 경우**도 본다("NewYork Bakery").
@@ -413,8 +486,7 @@ export function buildQuery(search: string): SearchQuery | null {
 
 export function matchesSearch(q: SearchQuery | null, fields: (string | null | undefined)[]): boolean {
   if (!q) return true
-  const hay = fields.map((f) => foldText(f)).join(" ")
-  const tight = hay.replace(KEEP, "")
-  if (hitTerms(hay, tight, q.phrase)) return true
-  return q.words.length > 1 && q.words.every((w) => hitTerms(hay, tight, w))
+  const hay = makeHay(fields)
+  if (hitTerms(hay, q.phrase)) return true
+  return q.words.length > 1 && q.words.every((w) => hitTerms(hay, w))
 }
