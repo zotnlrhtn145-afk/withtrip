@@ -142,7 +142,12 @@ export function tooFar(straightKm: number, gapMin: number): boolean {
 export function judge(
   c: Candidate,
   startMin: number,
-  deadlineMin: number,
+  /**
+   * ⚠️ `null` = **마감이 없다** — "다음 일정" 이 없는 경우다(오늘 일정 끝,
+   *    당일치기). 그때는 돌아오는 길·늦음 계산을 건너뛰고
+   *    영업시간만 본다. 돌아오는 시간이 없으니 backAt 도 없다.
+   */
+  deadlineMin: number | null,
   dayMs: number
 ): Verdict {
   const stay = c.stayMin ?? STAY_MIN[c.category ?? ""] ?? STAY_DEFAULT
@@ -161,7 +166,7 @@ export function judge(
        구했어요」 하나로 끝냈는데, 그러면 사용자가 할 수 있는 게 없다(신고받음).
        이유를 갈라서 알려 준다 — 멀어서인지, 문을 안 열어서인지, 길이 없어서인지.
   */
-  if (c.goMin == null || c.backMin == null) {
+  if (c.goMin == null || (deadlineMin != null && c.backMin == null)) {
     /* 시간이 없어도 **영업 여부는 알 수 있다.** 오늘 쉬는 곳이면 그게 먼저다 */
     const openToday = openState(c.periods, c.utcOffsetMin, dayMs + startMin * 60_000)
     const shutToday =
@@ -211,32 +216,45 @@ export function judge(
   }
 
   const leave = arrive + stay
-  const back = leave + c.backMin
-  const slack = deadlineMin - back
+  /* 마감이 없으면 돌아오는 길이 없다 — back·slack 도 없다 */
+  const back = deadlineMin != null && c.backMin != null ? leave + c.backMin : null
+  const slack = deadlineMin != null && back != null ? deadlineMin - back : null
 
   /* 오늘 문을 안 여는 곳은 시간이 남아도 못 간다 */
   const shut =
     openAtArrive.state === "closed" &&
     (openAtArrive.reason === "dayoff" || openAtArrive.reason === "after")
 
-  const fit: Verdict["fit"] = shut ? "no" : slack < 0 ? "no" : slack < TIGHT_MIN ? "tight" : "ok"
+  const fit: Verdict["fit"] = shut
+    ? "no"
+    : slack == null
+      ? "ok"
+      : slack < 0
+        ? "no"
+        : slack < TIGHT_MIN
+          ? "tight"
+          : "ok"
 
   const why = shut
     ? openAtArrive.state === "closed" && openAtArrive.reason === "dayoff"
       ? "오늘 휴무예요"
       : "도착하면 이미 영업이 끝나요"
-    : slack < 0
-      ? `${-slack}분 늦어요`
-      : waited > 0
-        ? `문 열 때까지 ${waited}분 기다려야 해요 · ${slack}분 남음`
-        : `${slack}분 남음`
+    : slack == null
+      ? waited > 0
+        ? `문 열 때까지 ${waited}분 기다려야 해요`
+        : `${hhmm(arrive)} 도착 예상`
+      : slack < 0
+        ? `${-slack}분 늦어요`
+        : waited > 0
+          ? `문 열 때까지 ${waited}분 기다려야 해요 · ${slack}분 남음`
+          : `${slack}분 남음`
 
   return {
     ...base,
     fit,
     arriveAt: hhmm(arrive),
     leaveAt: hhmm(leave),
-    backAt: hhmm(back),
+    backAt: back != null ? hhmm(back) : null,
     slackMin: slack,
     open: openAtArrive,
     why,
