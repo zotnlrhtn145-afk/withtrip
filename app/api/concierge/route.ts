@@ -235,10 +235,17 @@ export async function POST(request: Request) {
         .gte("lng", Math.min(...lngs) - 0.05)
         .lte("lng", Math.max(...lngs) + 0.05)
       for (const r of results) {
+        /*
+          ⚠️ 근접만으로 붙이면 안 된다 — 미쉐린 식당 옆 스파에 뱃지가 붙었다(실측).
+             이름이 같거나, (식당이면서 60m 안)일 때만 인정한다.
+        */
         const hit = ((mich ?? []) as { name: string; distinction: string | null; lat: number | null; lng: number | null }[]).find(
           (m) =>
             normalizeName(m.name) === normalizeName(r.name) ||
-            (m.lat != null && m.lng != null && distanceMeters({ lat: m.lat, lng: m.lng }, { lat: r.lat, lng: r.lng }) < 150)
+            (r.kind === "식당" &&
+              m.lat != null &&
+              m.lng != null &&
+              distanceMeters({ lat: m.lat, lng: m.lng }, { lat: r.lat, lng: r.lng }) < 60)
         )
         if (hit) r.michelin = hit.distinction ?? "가이드 등재"
       }
