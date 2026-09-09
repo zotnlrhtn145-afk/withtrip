@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { TemplateStrip } from "@/components/template-strip"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
@@ -151,6 +152,9 @@ export function HomeView({
            앱에서도 같이 뺐다. 부품(`TripClipsTray`)과 올려 둔 자료는 그대로
            둔다 — 되살리려면 이 줄만 도로 넣으면 된다.
       */}
+
+      {/* 인기 템플릿 한 줄 — 템플릿이 없으면 줄 자체가 안 보인다 */}
+      <TemplateStrip />
 
       {error && hasMounted ? (
         <div className="flex flex-col items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-4">

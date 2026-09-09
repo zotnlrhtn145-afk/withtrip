@@ -14,6 +14,6 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: "PerplexityBot", allow: ["/templates", "/llms.txt"], disallow },
       { userAgent: "Google-Extended", allow: ["/templates", "/llms.txt"], disallow },
     ],
-    sitemap: "https://www.withtrip.app/sitemap.xml",
+    sitemap: "https://www.withtrip.co.kr/sitemap.xml",
   }
 }

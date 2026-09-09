@@ -91,7 +91,7 @@ export default async function OgImage({ params }: { params: Promise<{ slug: stri
           {title.length > 24 ? title.slice(0, 24) + "…" : title}
         </div>
         <div style={{ fontSize: 34, color: "#e7e5e4", marginTop: 18 }}>{sub}</div>
-        <div style={{ fontSize: 26, color: "#a8a29e", marginTop: 30 }}>복제해서 바로 내 여행으로 — withtrip.app</div>
+        <div style={{ fontSize: 26, color: "#a8a29e", marginTop: 30 }}>복제해서 바로 내 여행으로 — withtrip.co.kr</div>
       </div>
     ),
     {

@@ -8,7 +8,7 @@ import { fetchTemplateCards } from "@/lib/templates-api"
  */
 export const revalidate = 3600
 
-const BASE = "https://www.withtrip.app"
+const BASE = "https://www.withtrip.co.kr"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const cards = await fetchTemplateCards(500)

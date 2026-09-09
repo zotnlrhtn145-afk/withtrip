@@ -20,7 +20,7 @@ export async function GET() {
     "",
     ...cards.map(
       (c) =>
-        `- [${c.title}](https://www.withtrip.app/templates/${encodeURIComponent(c.slug)}) — ${[
+        `- [${c.title}](https://www.withtrip.co.kr/templates/${encodeURIComponent(c.slug)}) — ${[
           c.city,
           c.duration,
           `일정 ${c.stopCount}곳`,
@@ -31,7 +31,7 @@ export async function GET() {
     ),
     "",
     "## 둘러보기",
-    "- [전체 템플릿](https://www.withtrip.app/templates)",
+    "- [전체 템플릿](https://www.withtrip.co.kr/templates)",
   ]
   return new Response(lines.join("\n"), {
     headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600" },
