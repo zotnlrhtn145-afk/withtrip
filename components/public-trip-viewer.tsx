@@ -1,10 +1,11 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Clock, Copy, Link2, Loader2, MapPin, PartyPopper, Sparkles, X } from "lucide-react"
 
 import { DirectionsMenu } from "@/components/directions-menu"
+import { TripRouteMap, type RouteStop } from "@/components/trip-route-map"
 import { FALLBACK_TRIP_COVER, CITY_IMAGES, withUnsplashQuality } from "@/shared/city-images"
 import type { PublicTrip } from "@/lib/templates-api"
 import { cn } from "@/lib/utils"
@@ -26,6 +27,46 @@ export function PublicTripViewer({ trip, mode }: { trip: PublicTrip; mode: "temp
   const [forkError, setForkError] = useState<string | null>(null)
 
   const stops = useMemo(() => trip.days.find((d) => d.day === day)?.stops ?? [], [trip.days, day])
+
+  /*
+    데스크톱 반반(회의 확정: "웹에서는 지도를 오른쪽편에 절반정도").
+
+    ⚠️ CSS 로 숨기기만 하면 안 된다 — 숨겨도 지도는 **만들어지고 과금된다.**
+       화면이 넓을 때만 마운트한다. 접히면 내려서 돈을 아낀다.
+  */
+  const [wide, setWide] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)")
+    const sync = () => setWide(mq.matches)
+    sync()
+    mq.addEventListener("change", sync)
+    return () => mq.removeEventListener("change", sync)
+  }, [])
+
+  /* 지도에 찍을 수 있는 일정(좌표 있는 것)과, 타임라인 줄 ↔ 핀 연결 고리 */
+  const mapStops = useMemo<RouteStop[]>(
+    () =>
+      stops
+        .filter((s) => s.lat != null && s.lng != null)
+        .map((s) => ({ name: s.placeName, lat: s.lat as number, lng: s.lng as number })),
+    [stops]
+  )
+  const [selectedStop, setSelectedStop] = useState<number | null>(null)
+  useEffect(() => setSelectedStop(null), [day])
+  /* 타임라인 줄 번호 → 지도 핀 번호 (좌표 없는 줄은 핀이 없다) */
+  const pinIndexOf = useMemo(() => {
+    const m = new Map<number, number>()
+    let pin = 0
+    stops.forEach((s, i) => {
+      if (s.lat != null && s.lng != null) m.set(i, pin++)
+    })
+    return m
+  }, [stops])
+  const rowIndexOf = useMemo(() => {
+    const m = new Map<number, number>()
+    for (const [row, pin] of pinIndexOf) m.set(pin, row)
+    return m
+  }, [pinIndexOf])
   const cover =
     trip.coverImage || (trip.city && CITY_IMAGES[trip.city] ? withUnsplashQuality(CITY_IMAGES[trip.city]) : FALLBACK_TRIP_COVER)
 
@@ -51,7 +92,8 @@ export function PublicTripViewer({ trip, mode }: { trip: PublicTrip; mode: "temp
   }
 
   return (
-    <div className="mx-auto min-h-dvh w-full max-w-lg bg-background pb-28">
+    <div className="mx-auto min-h-dvh w-full max-w-lg bg-background pb-28 lg:grid lg:max-w-7xl lg:grid-cols-2 lg:gap-0 lg:pb-0">
+      <div className="min-w-0 lg:max-h-dvh lg:overflow-y-auto lg:pb-28">
       {/* 표지 — 도시 사진 위에 제목. 글씨는 그림자만, 상자 배경 금지(스토리와 같은 규칙) */}
       <div className="relative h-44 w-full overflow-hidden sm:rounded-b-3xl">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -115,10 +157,26 @@ export function PublicTripViewer({ trip, mode }: { trip: PublicTrip; mode: "temp
         {stops.map((s, i) => (
           <div
             key={`${s.placeName}-${i}`}
-            className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both flex items-start gap-3 border-b border-secondary py-3 duration-500 last:border-b-0"
+            id={`viewer-stop-${day}-${i}`}
+            onClick={() => {
+              const pin = pinIndexOf.get(i)
+              if (pin != null) setSelectedStop(pin)
+            }}
+            className={cn(
+              "animate-in fade-in slide-in-from-bottom-2 fill-mode-both flex items-start gap-3 border-b border-secondary py-3 duration-500 last:border-b-0",
+              pinIndexOf.has(i) ? "lg:cursor-pointer lg:rounded-xl lg:px-2 lg:transition-colors lg:hover:bg-secondary/60" : "",
+              selectedStop != null && pinIndexOf.get(i) === selectedStop ? "lg:bg-accent" : ""
+            )}
             style={{ animationDelay: `${Math.min(i * 60, 480)}ms` }}
           >
-            <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary/25 text-[12px] font-black text-foreground">
+            <span
+              className={cn(
+                "mt-0.5 grid size-7 shrink-0 place-items-center rounded-full text-[12px] font-black transition-colors",
+                selectedStop != null && pinIndexOf.get(i) === selectedStop
+                  ? "bg-foreground text-primary"
+                  : "bg-primary/25 text-foreground"
+              )}
+            >
               {i + 1}
             </span>
             <div className="min-w-0 flex-1">
@@ -146,7 +204,7 @@ export function PublicTripViewer({ trip, mode }: { trip: PublicTrip; mode: "temp
       </div>
 
       {/* 하단 고정 CTA — 어느 Day 를 보다가도 한 번에 */}
-      <div className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-lg bg-gradient-to-t from-background via-background/95 to-transparent px-4 pb-5 pt-8">
+      <div className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-lg bg-gradient-to-t from-background via-background/95 to-transparent px-4 pb-5 pt-8 lg:inset-x-auto lg:left-0 lg:right-1/2 lg:mx-0 lg:max-w-none lg:px-[max(1rem,calc((100vw/2)-40rem+1rem))]">
         {forkError ? <p className="mb-2 text-center text-xs font-bold text-destructive">{forkError}</p> : null}
         {mode === "template" ? (
           <button
@@ -189,6 +247,27 @@ export function PublicTripViewer({ trip, mode }: { trip: PublicTrip; mode: "temp
 
       {/* 복제 완료 — 앱으로 넘어가는 다리 */}
       {forked ? <ForkDoneModal tripTitle={trip.title} newTripId={forked} onClose={() => setForked(null)} /> : null}
+      </div>
+
+      {/*
+        오른쪽 절반 — 그 날의 동선 지도 (데스크톱만).
+        ⚠️ `wide` 일 때만 마운트 — CSS 숨김만으로는 지도가 만들어져 과금된다.
+      */}
+      {wide && mapStops.length > 0 ? (
+        <div className="hidden lg:sticky lg:top-0 lg:block lg:h-dvh">
+          <TripRouteMap
+            stops={mapStops}
+            selectedIndex={selectedStop}
+            onSelect={(pin) => {
+              setSelectedStop(pin)
+              const row = rowIndexOf.get(pin)
+              if (row != null) {
+                document.getElementById(`viewer-stop-${day}-${row}`)?.scrollIntoView({ behavior: "smooth", block: "center" })
+              }
+            }}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }

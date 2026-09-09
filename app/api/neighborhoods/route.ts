@@ -241,9 +241,16 @@ export async function POST(request: Request) {
           flagships.push(String(found?.name ?? h))
         }
 
-        /* 스타일 조건부 점수 — 요청이 럭셔리면 스타·플래그십, 로컬이면 빕 */
+        /*
+          스타일 조건부 점수 — 요청이 럭셔리면 스타·플래그십, 로컬이면 빕.
+          ⚠️ 럭셔리 모드에서 빕은 양념까지만(상한 20곳 x 0.2 = 최대 4점).
+             실측: HCMC 3군이 빕 37곳으로 스타 4곳·플래그십 동네를 눌렀다 —
+             빕 밀집은 로컬의 증거지 럭셔리의 증거가 아니다.
+        */
         const upscale = p.vibe === "upscale"
-        const score = upscale ? stars * 3 + flagships.length * 4 + bibs : bibs * 3 + stars + flagships.length
+        const score = upscale
+          ? stars * 5 + flagships.length * 6 + Math.min(bibs, 20) * 0.2
+          : bibs * 3 + stars + flagships.length
 
         return {
           name: p.name,
