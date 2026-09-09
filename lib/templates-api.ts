@@ -48,6 +48,8 @@ export type PublicTrip = {
 export type TemplateCard = {
   id: string
   slug: string
+  /** 발행한 사람 — 앱 프로필의 「이 사람의 공개 코스」 필터용. 화면에 그대로 노출하진 않는다 */
+  ownerId: string | null
   title: string
   city: string | null
   countryCode: string | null
@@ -62,7 +64,7 @@ export type TemplateCard = {
 }
 
 const TRIP_COLS =
-  "id, slug, title, location, start_date, end_date, cover_image, description, tag_list, country_code, city, fork_count, published_at, is_public"
+  "id, slug, title, location, start_date, end_date, cover_image, description, tag_list, country_code, city, fork_count, published_at, is_public, user_id"
 
 function mapThemes(tagList: unknown): PublicTrip["themes"] {
   if (!Array.isArray(tagList)) return []
@@ -195,6 +197,7 @@ export async function fetchTemplateCards(limit = 60): Promise<TemplateCard[]> {
     .map((r) => ({
       id: String(r.id),
       slug: String(r.slug),
+      ownerId: (r.user_id as string) ?? null,
       title: String(r.title ?? "여행"),
       city: (r.city as string) ?? null,
       countryCode: (r.country_code as string) ?? null,
