@@ -200,7 +200,7 @@ export async function POST(request: Request) {
       day: d.day,
       theme: d.theme,
       slots: d.slots
-        .map((sl) => {
+        .map((sl): DraftSlot | null => {
           const g = groundedBy.get(sl.name)
           if (!g) return null
           /* 실존 확인 실패·평점 4.0 미만 탈락 — 집 규칙. 초안에 유령이 섞이면 끝장이다 */
