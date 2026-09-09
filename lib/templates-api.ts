@@ -141,11 +141,16 @@ export async function fetchTemplateBySlug(slug: string): Promise<PublicTrip | nu
   const db = getSupabaseAdmin()
   const idPart = slugIdPart(decodeURIComponent(slug))
   if (!db || !idPart) return null
+  /*
+    ⚠️ uuid 컬럼에는 like 를 못 쓴다(42883 — 실측). 공개 여행의 slug 는
+       "…-{id 앞 8자}" 로 끝나므로, slug 뒷조각 일치로 찾는 게 정확하고
+       인덱스(idx_trips_public_slug)도 탄다.
+  */
   const { data } = await db
     .from("trips")
     .select(TRIP_COLS)
     .eq("is_public", true)
-    .like("id", `${idPart}%`)
+    .like("slug", `%${idPart}`)
     .limit(1)
     .maybeSingle()
   if (!data) return null
