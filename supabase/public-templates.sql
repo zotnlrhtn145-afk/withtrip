@@ -57,9 +57,9 @@ BEGIN
     RAISE EXCEPTION '복제할 수 없는 여행입니다';
   END IF;
 
-  -- 앱은 trip_members 로 여행 목록을 읽는다 — 빠지면 복제해도 안 보인다
-  INSERT INTO trip_members (trip_id, user_id, role, status)
-  VALUES (v_new_id, v_uid, 'owner', 'active');
+  -- ⚠️ trip_members 에는 넣지 않는다. 이 앱에서 주인은 trips.user_id 로 보고,
+  --    trip_members 의 CHECK 는 ('member','accepted')류만 받는다 — 'owner'를
+  --    넣으면 23514 로 복제가 통째로 실패한다(실측).
 
   -- 일정만 복제한다. 항공·숙소·정산·메모·멤버는 원작자의 것이라 가져가지 않는다.
   -- created_by 는 새 주인으로, member_ids 는 비운다.
@@ -79,3 +79,9 @@ $$;
 -- 로그인한 사용자만 부를 수 있다
 REVOKE ALL ON FUNCTION fork_trip(UUID) FROM anon;
 GRANT EXECUTE ON FUNCTION fork_trip(UUID) TO authenticated;
+
+-- ── 3. 시드 템플릿용 kind 확장 ─────────────────────────────────
+-- 시드 사본은 kind='template' 로 둔다 — 앱 여행 목록(kind='trip')에 안 섞인다.
+ALTER TABLE trips DROP CONSTRAINT IF EXISTS trips_kind_check;
+ALTER TABLE trips ADD CONSTRAINT trips_kind_check
+  CHECK (kind = ANY (ARRAY['trip'::text, 'chat'::text, 'template'::text]));
