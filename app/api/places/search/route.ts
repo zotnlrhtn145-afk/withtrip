@@ -327,6 +327,15 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const q = String(searchParams.get("q") ?? "").trim()
   const kind = String(searchParams.get("kind") ?? "").trim()
+  /*
+    위치 편향 — 「들를 곳 찾기」의 주변 검색이 쓴다.
+    ⚠️ 없으면 예전 그대로다(전 세계 검색). 있으면 그 좌표 주변을 우선한다.
+    ⚠️ 캐시 열쇠에 좌표를 **반올림해서** 넣는다 — 도쿄에서 "카페"를 찾은
+       답을 서울 "카페"에 돌려주면 안 된다. 0.1° ≈ 11km 칸이면 충분하다.
+  */
+  const biasLat = Number(searchParams.get("lat"))
+  const biasLng = Number(searchParams.get("lng"))
+  const hasBias = Number.isFinite(biasLat) && Number.isFinite(biasLng)
   if (q.length < 1) {
     return NextResponse.json({ results: [] })
   }
@@ -339,7 +348,9 @@ export async function GET(request: Request) {
          캐시에 담는 건 place_id 목록뿐이고, 이름·평점은 `places` 표가
          자기 수명(30일)을 따로 지킨다 — 그래서 오래된 정보가 나가지 않는다.
     */
-    const cacheKey = searchCacheKey(q, kind)
+    const cacheKey = hasBias
+      ? searchCacheKey(`${q}@${biasLat.toFixed(1)},${biasLng.toFixed(1)}`, kind)
+      : searchCacheKey(q, kind)
     const cachedIds = await getCachedSearch(cacheKey)
 
     let top: GoogleTextSearchItem[]
@@ -359,6 +370,10 @@ export async function GET(request: Request) {
       url.searchParams.set("language", "ko")
       if (kind === "stay") {
         url.searchParams.set("type", "lodging")
+      }
+      if (hasBias) {
+        url.searchParams.set("location", `${biasLat},${biasLng}`)
+        url.searchParams.set("radius", "5000")
       }
 
       const res = await fetch(url.toString(), { cache: "no-store" })
