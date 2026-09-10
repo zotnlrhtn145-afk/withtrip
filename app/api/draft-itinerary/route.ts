@@ -13,7 +13,7 @@ import { NextResponse } from "next/server"
 export const runtime = "nodejs"
 export const maxDuration = 30
 
-export type DraftBlock = { start: string; end: string; title: string; icon: string }
+export type DraftBlock = { start: string; end: string; title: string; icon: string; hint: string }
 export type DraftDay = { day: number; theme: string; blocks: DraftBlock[] }
 
 export async function POST(request: Request) {
@@ -58,8 +58,10 @@ export async function POST(request: Request) {
       `- 하루 2~4블록. 시간대는 현실적으로(느긋한 아침, 이동 여유). 첫날은 도착, 마지막 날은 출발을 감안해라.\n` +
       `- 밤 문화를 요청한 요일에는 밤 블록을 넣어라.\n` +
       `- 블록 제목은 12자 내외 한국어, 각 블록에 어울리는 이모지 하나(🌅🌇🌃☕🍜🛍🏛🧖🍷🎉 등).\n` +
+      `- 블록마다 hint: 그 활동으로 그 도시에서 유명한 것을 **거리·동네·명물 수준**으로 18~28자. ` +
+      `(예: "부이비엔 워킹 스트리트와 1군 루프탑 바가 몰린 곳") 구체적인 가게 이름은 여기서도 금지.\n` +
       `- 하루마다 그날 분위기를 6자 내외 테마로.\n` +
-      `반드시 JSON 만: {"days":[{"day":1,"theme":"테마","blocks":[{"start":"11:00","end":"14:00","title":"블록 제목","icon":"🌅"}]}]}`
+      `반드시 JSON 만: {"days":[{"day":1,"theme":"테마","blocks":[{"start":"11:00","end":"14:00","title":"블록 제목","icon":"🌅","hint":"유명한 거리·동네 한 줄"}]}]}`
 
     let days: DraftDay[] = []
     try {
@@ -96,6 +98,8 @@ export async function POST(request: Request) {
                 end: String(b.end ?? "").trim(),
                 title: String(b.title ?? "").trim().slice(0, 24),
                 icon: String(b.icon ?? "✨").trim().slice(0, 4),
+                /* 힌트 — "화려한 밤문화"만으론 무슨 말인지 모른다(신고). 뭐가 유명한지 한 줄 */
+                hint: String((b as Partial<DraftBlock>).hint ?? "").trim().slice(0, 40),
               }))
               .filter((b) => b.title && /^\d{1,2}:\d{2}$/.test(b.start))
               .slice(0, 5),
