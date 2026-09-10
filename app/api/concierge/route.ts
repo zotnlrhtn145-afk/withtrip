@@ -106,6 +106,23 @@ async function ground(
   }
 }
 
+/*
+  비용 안전장치 (v3.2 GO 확정):
+  ① 같은 도시+비슷한 질문 1시간 캐시 — 위디의 방에서 같은 걸 다시 물어도 0원
+  ② 그라운딩 후보 10 → 6곳 (Text Search 회당 $0.032)
+  ③ 여행당 일 상한 — 폭주 방지 뚜껑 (넘으면 정중히 내일로)
+  서버리스 메모리 캐시라 인스턴스마다 따로지만, 같은 사용자의 연타는 대부분
+  같은 인스턴스에 떨어진다 — 완벽보다 뚜껑이 목적이다.
+*/
+const CACHE = new Map<string, { at: number; results: ConciergePick[] }>()
+const CACHE_TTL = 60 * 60 * 1000
+const DAILY = new Map<string, { day: string; n: number }>()
+const DAILY_CAP = 10
+
+function normQuery(q: string): string {
+  return q.toLowerCase().replace(/[\s.,!?~·…]/g, "").slice(0, 60)
+}
+
 export async function POST(request: Request) {
   try {
     const geminiKey = (process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || "").trim()
@@ -126,7 +143,29 @@ export async function POST(request: Request) {
     if (!query || !city) {
       return NextResponse.json({ results: [], error: "무엇을 찾는지 적어 주세요." }, { status: 200 })
     }
+    const tripId = String((body as { tripId?: string }).tripId ?? "").trim()
     const country = String(body.country ?? "").trim()
+
+    /* ① 캐시 — 같은 도시+질문이면 그대로 돌려준다 */
+    const cacheKey = `${city}|${normQuery(query)}`
+    const hit = CACHE.get(cacheKey)
+    if (hit && Date.now() - hit.at < CACHE_TTL) {
+      return NextResponse.json({ results: hit.results, cached: true })
+    }
+
+    /* ③ 여행당 일 상한 */
+    if (tripId) {
+      const today = new Date().toISOString().slice(0, 10)
+      const d = DAILY.get(tripId)
+      const n = d && d.day === today ? d.n : 0
+      if (n >= DAILY_CAP) {
+        return NextResponse.json(
+          { results: [], error: "오늘은 위디가 많이 뛰었어요 — 내일 다시 물어봐 주세요." },
+          { status: 200 }
+        )
+      }
+      DAILY.set(tripId, { day: today, n: n + 1 })
+    }
     const destination = country ? `${city}, ${country}` : city
     const existingNames = Array.isArray(body.existingNames)
       ? body.existingNames.map((n) => String(n ?? "").trim()).filter(Boolean)
@@ -188,6 +227,8 @@ export async function POST(request: Request) {
     if (picks.length === 0) {
       return NextResponse.json({ results: [], error: "추천을 만들지 못했어요. 다시 물어봐 주세요." }, { status: 200 })
     }
+    /* ② 그라운딩은 6곳까지 — Text Search 가 회당 돈이다 */
+    picks = picks.slice(0, 6)
 
     /* 그라운딩 — 실존·좌표·평점. 평점 4.0 미만은 탈락(집 규칙) */
     const origin = new URL(request.url).origin
@@ -254,7 +295,13 @@ export async function POST(request: Request) {
     /* 숙소 가까운 순 */
     if (accommodation) results.sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
 
-    return NextResponse.json({ results: results.slice(0, 8) })
+    const out = results.slice(0, 6)
+    CACHE.set(cacheKey, { at: Date.now(), results: out })
+    if (CACHE.size > 300) {
+      const oldest = [...CACHE.entries()].sort((x, y) => x[1].at - y[1].at)[0]
+      if (oldest) CACHE.delete(oldest[0])
+    }
+    return NextResponse.json({ results: out })
   } catch (error) {
     console.error("[concierge] error:", error)
     return NextResponse.json({ results: [], error: "추천 중 오류가 났어요." }, { status: 200 })
