@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { TemplateStrip } from "@/components/template-strip"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
@@ -153,8 +152,11 @@ export function HomeView({
            둔다 — 되살리려면 이 줄만 도로 넣으면 된다.
       */}
 
-      {/* 인기 템플릿 한 줄 — 템플릿이 없으면 줄 자체가 안 보인다 */}
-      <TemplateStrip />
+      {/*
+        ⚠️ 「인기 템플릿」 줄도 뺐다 — 메인에서 빼 달라는 요청(2026-09-10).
+           /templates 허브 자체는 그대로 산다(SEO 입구). 되살리려면
+           <TemplateStrip /> 한 줄만 도로 넣으면 된다.
+      */}
 
       {error && hasMounted ? (
         <div className="flex flex-col items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-4">
