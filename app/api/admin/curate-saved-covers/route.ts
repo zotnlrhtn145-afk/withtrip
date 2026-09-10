@@ -250,7 +250,7 @@ export async function POST(req: Request) {
       .from("places")
       .select("google_place_id, cover_photo_reference")
       .in("google_place_id", allGids.slice(i, i + 200))
-      .not("cover_photo_reference", "is", null)
+      .not("cover_curated_at", "is", null)
     for (const r of (data as { google_place_id: string }[] | null) ?? []) doneSet.add(r.google_place_id)
   }
   const todo = allGids.filter((g) => !doneSet.has(g)).slice(0, limit)
@@ -281,6 +281,8 @@ export async function POST(req: Request) {
         }
       }
       if (refs.length === 0) {
+        /* 돈 주고 확인했으니 완료로 적는다 — 안 적으면 매 라운드 Details 를 다시 사게 된다(실측) */
+        await writePlaces(db, gid, meta, { photo_references: [], cover_curated_at: new Date().toISOString() })
         results.push({ gid, name: meta.name, picked: false, updated: 0, note: "사진 없음" })
         continue
       }
@@ -294,6 +296,7 @@ export async function POST(req: Request) {
       const best = await pickBest(gemKey, model, meta.name, meta.category, images)
       const chosen = best >= 0 ? refs[best] : refs[0] /* 모델이 못 고르면 첫 장이라도 — 지금보다 나쁠 순 없다? 아니, 첫 장이 문제였다 → 고른 것만 반영 */
       if (best < 0) {
+        await writePlaces(db, gid, meta, { cover_curated_at: new Date().toISOString() })
         results.push({ gid, name: meta.name, picked: false, updated: 0, note: "쓸 만한 후보 없음" })
         continue
       }
