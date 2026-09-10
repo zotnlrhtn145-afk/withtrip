@@ -99,6 +99,27 @@ async function candidateImages(
   return out.sort((a, b) => a.i - b.i).map((x) => x.inline)
 }
 
+/**
+ * places 에 확실히 적는다 — update 먼저, 없으면 **온전한 줄**로 insert.
+ * ⚠️ upsert 로 일부 칸만 넣었더니 name·lat·lng NOT NULL 에 걸려 **조용히**
+ *    실패했고, 같은 15곳을 계속 재처리했다(실측 — 라운드 19회 낭비).
+ */
+async function writePlaces(
+  db: Db,
+  gid: string,
+  meta: { name: string; lat: number | null; lng: number | null },
+  patch: Record<string, unknown>
+): Promise<string | null> {
+  const { data: upd, error: e1 } = await db.from("places").update(patch).eq("google_place_id", gid).select("id")
+  if (e1) return e1.message
+  if ((upd as { id: number }[] | null)?.length) return null
+  if (meta.lat == null || meta.lng == null) return "좌표 없음 — places 줄을 만들 수 없음"
+  const { error: e2 } = await db
+    .from("places")
+    .insert({ google_place_id: gid, name: meta.name, lat: meta.lat, lng: meta.lng, ...patch })
+  return e2 ? e2.message : null
+}
+
 function kindOf(category: string | null): { label: string; good: string; bad: string } {
   const c = category ?? ""
   if (c.includes("숙소") || c.includes("호텔"))
@@ -214,13 +235,13 @@ export async function POST(req: Request) {
   /* ── 1) 아직 표지를 안 고른 가게 고르기 ── */
   const { data: savedRows } = await db
     .from("saved_places")
-    .select("google_place_id, place_name, category")
+    .select("google_place_id, place_name, category, lat, lng")
     .not("google_place_id", "is", null)
     .order("created_at", { ascending: false })
     .limit(1500)
-  const byGid = new Map<string, { name: string; category: string | null }>()
-  for (const r of (savedRows as { google_place_id: string; place_name: string | null; category: string | null }[] | null) ?? []) {
-    if (!byGid.has(r.google_place_id)) byGid.set(r.google_place_id, { name: r.place_name ?? "장소", category: r.category })
+  const byGid = new Map<string, { name: string; category: string | null; lat: number | null; lng: number | null }>()
+  for (const r of (savedRows as { google_place_id: string; place_name: string | null; category: string | null; lat: number | null; lng: number | null }[] | null) ?? []) {
+    if (!byGid.has(r.google_place_id)) byGid.set(r.google_place_id, { name: r.place_name ?? "장소", category: r.category, lat: r.lat, lng: r.lng })
   }
   const allGids = [...byGid.keys()]
   const doneSet = new Set<string>()
@@ -252,7 +273,11 @@ export async function POST(req: Request) {
         const j = (await res.json()) as { result?: { photos?: { photo_reference?: string }[] } }
         refs = (j.result?.photos ?? []).map((p) => p.photo_reference ?? "").filter(Boolean).slice(0, 6)
         if (refs.length > 0) {
-          await db.from("places").upsert({ google_place_id: gid, photo_references: refs }, { onConflict: "google_place_id" })
+          const werr = await writePlaces(db, gid, meta, { photo_references: refs })
+          if (werr) {
+            results.push({ gid, name: meta.name, picked: false, updated: 0, note: `places 기록 실패: ${werr.slice(0, 60)}` })
+            continue
+          }
         }
       }
       if (refs.length === 0) {
@@ -273,12 +298,14 @@ export async function POST(req: Request) {
         continue
       }
 
-      await db
-        .from("places")
-        .upsert(
-          { google_place_id: gid, cover_photo_reference: chosen, cover_curated_at: new Date().toISOString() },
-          { onConflict: "google_place_id" }
-        )
+      const cerr = await writePlaces(db, gid, meta, {
+        cover_photo_reference: chosen,
+        cover_curated_at: new Date().toISOString(),
+      })
+      if (cerr) {
+        results.push({ gid, name: meta.name, picked: false, updated: 0, note: `표지 기록 실패: ${cerr.slice(0, 60)}` })
+        continue
+      }
       const cover = buildPlacePhotoProxyUrl(chosen, 1200, origin)
       const { data: upd } = await db
         .from("saved_places")
