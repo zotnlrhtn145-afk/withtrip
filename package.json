@@ -7,7 +7,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck:web": "next typegen && tsc --noEmit --incremental false",
+    "typecheck:functions": "node scripts/check-edge-functions.mjs",
+    "typecheck": "npm run typecheck:web && npm run typecheck:functions"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

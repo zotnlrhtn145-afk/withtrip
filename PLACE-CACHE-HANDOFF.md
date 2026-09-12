@@ -1,3 +1,11 @@
+## 2026-09-12 Codex · 남은 타입 진단26개 해결 (미배포)
+
+- `npm run typecheck` 전체 통과/진단0. 세부 절차 `docs/TYPECHECK.md`.
+- Next 개발/일반 생성 타입에서 관리자 경로 인코딩 차이로 생긴 충돌2개: dev 생성물 중복 제외, next typegen 후 canonical routes/validator 검사. 생성 파일/관리자 URL 직접 변경 없음.
+- Deno 전용 함수24개: 웹 검사와 분리하고 고정 Deno 2.9.6 + frozen 잠금 파일로 실제3개 함수 엄격 검사. 설정은 scripts/edge-typecheck에 격리. Deno 2.1.14 검사도 통과. 서버 함수 본문/API/DB 변경 없음.
+- 잘못된 웹 페이지/서버 함수 임시 표본은 각각 실패하는 것까지 검증, 제거 후 전체 성공. ignoreBuildErrors=false로 복원.
+- npm 검사 스크립트/설정/잠금/문서만 로컬 커밋. 실제 빌드·배포·푸시 발송 없음. 사용자 eas.json/tsconfig.tsbuildinfo/AGENTS.md/app.json 변경 보존.
+
 ## 2026-09-12 Codex · 자동완성/디버깅 1차 (미배포)
 
 - 국가 코드 검색 옵션, SearchableSelect 한글 조합 Enter 방지/방향키 선택, 숙소 검색 삭제/닫힘 후 응답 무효화.
