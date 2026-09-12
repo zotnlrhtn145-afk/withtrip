@@ -2,7 +2,7 @@
 
 import { ContactLine } from "@/components/contact-line"
 import { useCallback, useEffect, useState } from "react"
-import { BedDouble, Crown, Loader2, LogIn, LogOut, Moon, Navigation, NotebookPen, Pencil, Phone, Trash2, UserRound } from "lucide-react"
+import { BedDouble, Crown, Loader2, LogIn, LogOut, Moon, Navigation, NotebookPen, Pencil, Plus, Phone, Trash2, UserRound } from "lucide-react"
 
 import { AccommodationRegisterModal } from "@/components/trips/AccommodationRegisterModal"
 import { AddSectionButton } from "@/components/trips/AddSectionButton"
@@ -104,9 +104,9 @@ function AccommodationCard({
   )}`
 
   return (
-    <li className="group media-card overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm ring-0 transition-all hover:shadow-md">
+    <li className="group media-card border-b border-slate-200 bg-white py-[23px]">
       {/* Banner — natural cool night tones, no sepia wash */}
-      <div className="relative h-[132px] w-full overflow-hidden bg-[#E9ECEF]">
+      <div className="relative h-[135px] w-full overflow-hidden rounded-[15px] bg-white">
         <img
           src={bannerSrc}
           alt={`${item.name} 숙소`}
@@ -116,12 +116,6 @@ function AccommodationCard({
             event.currentTarget.style.visibility = "hidden"
           }}
         />
-        {/* Subtle cool scrim for title legibility only */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"
-        />
-
         {isAuthor ? (
           <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-end gap-0.5 p-2.5">
             <Button
@@ -153,47 +147,47 @@ function AccommodationCard({
           </div>
         ) : null}
 
-        <div className="absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-3 p-4">
-          <p className="min-w-0 flex-1 truncate text-lg font-extrabold text-white drop-shadow-sm">
+      </div>
+        <div className="flex items-start justify-between gap-3 pt-[19px] pb-1">
+          <p className="min-w-0 flex-1 text-[19px] leading-[27px] font-medium text-slate-900">
             {item.name}
           </p>
           {duration ? (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-xs font-bold text-white tabular-nums backdrop-blur-sm">
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 tabular-nums">
               <Moon aria-hidden="true" className="size-3" />
               {duration}
             </span>
           ) : null}
         </div>
-      </div>
 
-      <div className="relative flex flex-col gap-3 px-5 pt-3 pb-5" style={{ color: TEXT }}>
+      <div className="relative flex flex-col gap-[17px] pt-3 pb-5" style={{ color: TEXT }}>
         {item.address ? (
           <ContactLine kind="address" value={item.address} className="text-sm" textClassName="text-pretty" />
         ) : null}
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-[18px]">
           <div
-            className="flex flex-col gap-1 rounded-xl p-3 ring-1 ring-[#E9ECEF]"
-            style={{ backgroundColor: PANEL }}
+            className="flex flex-col gap-[7px]"
+            style={{ backgroundColor: "white" }}
           >
             <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: MUTED }}>
               <LogIn className="size-3.5" style={{ color: ICON }} />
               체크인
             </span>
             <span className="text-sm font-semibold tabular-nums" style={{ color: TEXT }}>
-              {formatStamp(item.checkInDate, item.checkInTime)}
+              {item.checkInDate || "—"}{item.checkInTime ? <><br />{item.checkInTime.slice(0, 5)}</> : null}
             </span>
           </div>
           <div
-            className="flex flex-col gap-1 rounded-xl p-3 ring-1 ring-[#E9ECEF]"
-            style={{ backgroundColor: PANEL }}
+            className="flex flex-col gap-[7px]"
+            style={{ backgroundColor: "white" }}
           >
             <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: MUTED }}>
               <LogOut className="size-3.5" style={{ color: ICON }} />
               체크아웃
             </span>
             <span className="text-sm font-semibold tabular-nums" style={{ color: TEXT }}>
-              {formatStamp(item.checkOutDate, item.checkOutTime)}
+              {item.checkOutDate || "—"}{item.checkOutTime ? <><br />{item.checkOutTime.slice(0, 5)}</> : null}
             </span>
           </div>
         </div>
@@ -343,17 +337,12 @@ export function AccommodationSection({
   }
 
   return (
-    <Card className="rounded-2xl border border-slate-100 bg-white shadow-sm ring-0 transition-all hover:shadow-md">
-      <CardHeader>
-        <CardDescription className="mb-1 text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-          Stay
-        </CardDescription>
-        <CardTitle className="text-lg font-bold tracking-tight text-slate-900">숙소 정보</CardTitle>
+    <Card className="gap-0 rounded-none border-0 bg-white py-0 shadow-none ring-0">
+      <CardHeader className="flex flex-row items-center justify-between px-0 pb-4">
+        <CardTitle className="text-[22px] font-medium text-slate-900">숙소</CardTitle>
+        <button type="button" aria-label="숙소 추가" onClick={openCreate} className="grid size-11 place-items-center rounded-full bg-[#FBBF24] text-slate-900"><Plus className="size-6" /></button>
       </CardHeader>
-
-      <CardContent className="flex flex-col gap-4">
-        <AddSectionButton label="숙소 추가" onClick={openCreate} />
-
+      <CardContent className="flex flex-col gap-4 px-0">
         {loading ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 px-6 py-10 text-center">
             <Loader2 className="size-6 animate-spin text-amber-500" />
