@@ -2,7 +2,7 @@
 
 import { ContactLine } from "@/components/contact-line"
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react"
-import { Calendar, AlertCircle, Check, ChevronDown, ChevronRight, MoreHorizontal, Footprints, Crown, Loader2, LogOut, MapPin, Pencil, Plane, Plus, Search, Trash2, UserRound } from "lucide-react"
+import { Calendar, AlertCircle, Check, ChevronDown, ChevronRight, MoreHorizontal, Car, Bus, Footprints, Crown, Loader2, LogOut, MapPin, Pencil, Plane, Plus, Search, Trash2, UserRound } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { DirectionsMenu } from "@/components/directions-menu"
@@ -788,9 +788,10 @@ export function TimelineItem({
   const showAuthor = !isAuto && Boolean(item.createdBy || item.userId)
 
   return (
-    <li className="relative flex gap-[14px] pb-5 last:pb-0">
-      <div className="w-[38px] shrink-0 pt-1">
-        <span className="text-[13px] leading-5 font-normal tabular-nums text-slate-500">{timeLabel}</span>
+    <li className="relative flex gap-[14px] pb-8 pl-5 last:pb-0">
+      <span aria-hidden="true" className="absolute top-[9px] left-0 z-10 size-2.5 rounded-full border-2 border-slate-900 bg-[#FBBF24]" />
+      <div className="w-[44px] shrink-0 pt-1">
+        <span className="text-[14px] leading-5 font-semibold tabular-nums text-slate-800">{timeLabel}</span>
       </div>
       {/* Right: content card */}
       {/*
@@ -799,7 +800,7 @@ export function TimelineItem({
       */}
       <div
         className={cn(
-          "min-w-0 flex-1 border-b border-slate-200 bg-white pb-5",
+          "min-w-0 flex-1 border-b border-slate-200 bg-white pb-6",
           notMine && "opacity-45"
         )}
       >
@@ -882,25 +883,15 @@ export function TimelineItem({
           </div>
         ) : null}
         {item.placeName || item.address ? <DirectionsMenu destination={item.lat != null && item.lng != null ? { name: item.placeName, lat: item.lat, lng: item.lng } : null} fallbackQuery={item.address || item.placeName} className="mt-3 h-11 rounded-[13px] px-3 text-[13px] font-medium text-slate-900" /> : null}
+        {leg ? (
+          <div className={cn("mt-5 flex min-h-11 items-center gap-2 border-t border-slate-100 pt-4 text-[14px] leading-6", leg.far ? "text-amber-700" : "text-slate-600")}>
+            {leg.far ? <AlertCircle className="size-[18px] shrink-0" /> : realLeg?.mode === "drive" ? <Car className="size-[18px] shrink-0" /> : realLeg?.mode === "transit" ? <Bus className="size-[18px] shrink-0" /> : <Footprints className="size-[18px] shrink-0" />}
+            <span>{leg.text}</span>
+          </div>
+        ) : null}
       </div>
 
-      {/*
-        일정과 일정 사이 — 얼마나 떨어져 있는지.
-        ⚠️ `li` 아래쪽 여백(pb-6) 자리에 얹는다. 카드 안에 넣으면 카드가 복잡해지고,
-           새 줄을 만들면 연결선이 끊긴다.
-        왼쪽 여백은 확정 시안의 시간칸38px + 간격14px이다.
-      */}
-      {leg ? (
-        <span
-          className={cn(
-            "absolute bottom-0.5 left-[52px] flex items-center gap-1 text-xs font-normal",
-            leg.far ? "text-amber-700" : "text-slate-400"
-          )}
-        >
-          {leg.far ? <AlertCircle className="size-3.5" /> : <Footprints className="size-3.5" />}
-          {leg.text}
-        </span>
-      ) : null}
+
     </li>
   )
 }
@@ -938,8 +929,9 @@ function JoinBand({
   const who = names.join("·")
   const join = band.kind === "join"
   return (
-    <li className="flex gap-[14px] py-4">
-      <span className="w-[38px] shrink-0 pt-1 text-xs font-normal text-slate-500 tabular-nums">{band.at.time}</span>
+    <li className="relative flex gap-[14px] py-5 pl-5">
+      <span aria-hidden="true" className="absolute top-[27px] left-0 size-2.5 rounded-full border-2 border-slate-400 bg-white" />
+      <span className="w-[44px] shrink-0 pt-1 text-sm font-normal text-slate-500 tabular-nums">{band.at.time}</span>
       <div className="flex min-w-0 flex-1 items-start gap-2">
         {join ? <Plane className="mt-1 size-4 shrink-0 text-amber-500" /> : <LogOut className="mt-1 size-4 shrink-0 text-slate-400" />}
         <div className="min-w-0"><p className="text-sm font-medium text-slate-900">{who} {join ? "합류" : "먼저 출발"}</p><p className="mt-1 text-[13px] text-slate-500">{join ? (band.everyoneNow ? `이제 ${band.countAfter}명 모두 모였어요` : `현재 ${band.countAfter}명이 함께해요`) : `${band.countAfter}명이 여행 중이에요`}</p></div>
@@ -1353,7 +1345,7 @@ export function ScheduleSection({
           <p className="mt-1 text-xs text-slate-500">첫 번째 장소를 등록해보세요!</p>
         </div>
       ) : (
-        <ol className="px-0.5 pt-1">
+        <ol className="relative pt-1 before:pointer-events-none before:absolute before:top-3 before:bottom-5 before:left-1 before:w-0.5 before:bg-slate-200">
           {visibleItems.map((item, index) => (
             <Fragment key={item.id}>
             {/*

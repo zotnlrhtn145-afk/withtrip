@@ -1,3 +1,7 @@
+## 2026-09-12 Codex · 일정 시간축 가독성 재수정
+
+앱125 사용자 피드백 공통 반영. ScheduleSection 시간 앞 점·세로선, 14px 시간, 이동 표시를 absolute에서 본문 아래 정상 흐름으로 옮겨 겹침 방지. 실제 조회 mode에 맞춰 차/버스/도보 아이콘 표시. 조회/편집/연락처/길찾기/권한은 유지. 웹에 없는 위디·빈시간 추천 작성 기능 신설 없음. npm run typecheck:web 통과. 앱 JSX 예시320/390px 검사는 네이티브 검수와 다름. push/배포 없음. 기존 사용자 eas.json/tsconfig.tsbuildinfo/AGENTS.md/app.json 변경 보존.
+
 ## 2026-09-12 Codex · 승인 로그인 시안 실제 연결 (미배포)
 
 사용자가 `login-quiet-motion.html`의 흰 로그인 화면을 승인하고 실제 적용 요청. `components/auth/login-view.tsx`, 새 `login-motion-art.tsx`·`login-quiet.module.css`에 작은 실제 로고/26px 문구/나침반과 경로/노란 이메일 버튼/흰 소셜 행을 적용했습니다. 앱 로고와 웹 `withtrip-logo.png` SHA가 같습니다. 가입·비밀번호 재설정은 기존 폼을 같은 Base UI 슬라이드 시트 안에 넣고 240ms 옆 이동, 시트 300ms 감속·닫힘·Escape·포커스 복원을 연결했습니다. 비밀번호 표시, 미일치·필수 약관 검사, 중복 제출 방지, 로딩·성공·오류 상태를 유지합니다. 애니메이션은 시트 뒤·백그라운드·화면 밖에서 중단하고 동작 줄이기를 따릅니다.
