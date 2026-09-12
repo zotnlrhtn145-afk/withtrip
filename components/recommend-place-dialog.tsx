@@ -63,9 +63,9 @@ export function RecommendPlaceDialog({
         if (!next) onClose()
       }}
     >
-      <DialogContent className="w-full max-w-sm rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl">
+      <DialogContent className="w-full max-w-sm rounded-[30px] border border-slate-100 bg-white p-6 shadow-2xl">
         <DialogHeader className="mb-2 text-left">
-          <DialogTitle className="text-base font-bold text-slate-900">친구에게 추천</DialogTitle>
+          <DialogTitle className="text-[25px] leading-8 font-semibold text-slate-900">누구에게 추천할까요?</DialogTitle>
           <DialogDescription className="text-xs leading-relaxed text-slate-400">
             {target ? `"${target.label}"을(를) 보낼 친구를 선택하세요.` : ""}
           </DialogDescription>
@@ -84,7 +84,7 @@ export function RecommendPlaceDialog({
                 <li key={f.userId} className="flex items-center gap-3 py-2.5">
                   <Avatar className="size-10 shrink-0">
                     {f.avatarUrl ? <AvatarImage src={f.avatarUrl} alt="" /> : null}
-                    <AvatarFallback className="text-xs font-semibold">{initials(f.nickname)}</AvatarFallback>
+                    <AvatarFallback className="border border-slate-200 bg-white" />
                   </Avatar>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-slate-900">{f.nickname}</p>

@@ -34,32 +34,17 @@ function StayItem({ stay }: { stay: StayEntry }) {
   )}`
 
   return (
-    <li className="group media-card overflow-hidden rounded-2xl bg-card ring-1 ring-border">
-      {/* 히어로 배너 — 숙소 사진 위에 이름과 숙박일수를 얹는다. */}
-      <div className="relative h-[120px] w-full overflow-hidden bg-secondary">
-        <img
-          src={stay.imageUrl || DEFAULT_STAY_IMAGE}
-          alt={`${stay.name} 숙소 사진`}
-          className="media-card-image absolute inset-0 size-full object-cover"
-        />
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"
-        />
-        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4">
-          <p className="min-w-0 flex-1 truncate text-lg font-extrabold text-white drop-shadow-sm">
-            {stay.name}
-          </p>
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-black/40 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-sm tabular-nums">
-            <Moon aria-hidden="true" className="size-3" />
-            {nightsBetween(stay)}박
-          </span>
-        </div>
+    <li className="group border-b border-border bg-white py-[23px]">
+      <div className="relative h-[135px] w-full overflow-hidden rounded-[15px] bg-white">
+        <img src={stay.imageUrl || DEFAULT_STAY_IMAGE} alt={`${stay.name} 숙소 사진`} className="absolute inset-0 size-full object-cover" />
       </div>
-
-      <div className="flex flex-col gap-3 p-4">
+      <div className="mt-[19px] flex items-center justify-between gap-3">
+        <p className="min-w-0 flex-1 text-[17px] font-semibold">{stay.name}</p>
+        <span className="text-sm text-muted-foreground">{nightsBetween(stay)}박</span>
+      </div>
+      <div className="flex flex-col gap-4 py-[17px]">
         <div className="grid grid-cols-2 gap-2">
-          <div className="flex min-w-0 flex-col gap-1 rounded-xl border border-slate-200 bg-white p-3">
+          <div className="flex min-w-0 flex-col gap-1 bg-white">
             <span className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600">
               <LogIn className="size-3.5" />
               체크인
@@ -68,7 +53,7 @@ function StayItem({ stay }: { stay: StayEntry }) {
               {stampLabel(stay.checkInDate, stay.checkInTime)}
             </span>
           </div>
-          <div className="flex min-w-0 flex-col gap-1 rounded-xl border border-slate-200 bg-white p-3">
+          <div className="flex min-w-0 flex-col gap-1 bg-white">
             <span className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600">
               <LogOut className="size-3.5" />
               체크아웃
@@ -130,7 +115,7 @@ export function StaySection({ trip }: { trip: Trip }) {
   const stays = staysByTrip[trip.id] ?? []
 
   return (
-    <Card>
+    <Card className="rounded-none border-0 bg-white shadow-none">
       <CardHeader>
         <CardDescription className="flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
           <BedDouble className="size-3.5" />

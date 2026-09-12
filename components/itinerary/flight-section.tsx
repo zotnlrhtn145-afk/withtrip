@@ -31,25 +31,10 @@ function FlightTicket({ flight }: { flight: FlightEntry }) {
   const badgeLabel = [airline.name, flight.flightNo].filter(Boolean).join(" · ")
 
   return (
-    <li className="relative overflow-hidden rounded-2xl bg-secondary/70 ring-1 ring-border">
-      {/* 항공사 워터마크 — 우측 배경에 IATA 코드를 크게 깔아 브랜드감을 준다. */}
-      {airline.code ? (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-3 -bottom-6 scale-125 font-mono text-7xl leading-none font-black tracking-tighter text-foreground opacity-10 select-none"
-        >
-          {airline.code}
-        </span>
-      ) : (
-        <Plane
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-5 -bottom-5 size-24 scale-125 text-foreground opacity-10"
-        />
-      )}
-
+    <li className="relative border-b border-border bg-white py-[23px]">
       {badgeLabel ? (
-        <div className="relative flex items-center gap-1.5 px-5 pt-4">
-          <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-card px-2.5 py-1 ring-1 ring-border">
+        <div className="relative flex items-center gap-1.5">
+          <span className="inline-flex max-w-full items-center gap-1.5">
             <Plane
               aria-hidden="true"
               className="size-3.5 shrink-0"
@@ -62,7 +47,7 @@ function FlightTicket({ flight }: { flight: FlightEntry }) {
 
       <div
         className={cn(
-          "relative flex items-center gap-4 px-5 pb-5",
+          "relative flex items-center gap-4 pb-2",
           badgeLabel ? "pt-3" : "pt-5"
         )}
       >
@@ -112,7 +97,7 @@ export function FlightSection({ trip }: { trip: Trip }) {
   const flights = flightsByTrip[trip.id] ?? []
 
   return (
-    <Card>
+    <Card className="rounded-none border-0 bg-white shadow-none">
       <CardHeader>
         <CardDescription className="flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
           <PlaneTakeoff className="size-3.5" />
