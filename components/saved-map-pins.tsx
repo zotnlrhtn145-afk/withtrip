@@ -4,18 +4,20 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { AdvancedMarker, AdvancedMarkerAnchorPoint, useMap } from "@vis.gl/react-google-maps"
 import { SavedDesignIcon } from "./saved-place-card"
 import styles from "./saved-exact.module.css"
+import { inMapViewport } from "@/shared/map-viewport"
 import type { MapSpot } from "./nearby-map"
 
 type Group = { id: string; lat: number; lng: number; spots: MapSpot[] }
 type Viewport = { north: number; south: number; west: number; east: number; zoom: number }
 /** Approx. 44 screen pixels per bucket, recalculated only when the camera settles. */
 export function groupSavedPins(spots: MapSpot[], viewport: Viewport | null): Group[] {
-  const zoom = viewport?.zoom ?? 15
+  if (!viewport) return []
+  const zoom = viewport.zoom
   const cell = 44 / (256 * 2 ** zoom)
   const groups = new Map<string, Group>()
   for (const spot of spots) {
     if (!Number.isFinite(spot.lat) || !Number.isFinite(spot.lng)) continue
-    if (viewport && (spot.lat > viewport.north || spot.lat < viewport.south || (viewport.west < viewport.east ? spot.lng < viewport.west || spot.lng > viewport.east : spot.lng < viewport.west && spot.lng > viewport.east))) continue
+    if (!inMapViewport(spot, viewport)) continue
     const sin = Math.sin(Math.max(-85, Math.min(85, spot.lat)) * Math.PI / 180)
     const x = (spot.lng + 180) / 360, y = .5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)
     const key = `${Math.floor(x / cell)}:${Math.floor(y / cell)}`
