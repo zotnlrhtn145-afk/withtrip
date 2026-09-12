@@ -2,18 +2,17 @@
 
 import { useEffect, useState, type MouseEvent } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { motion } from "framer-motion"
-import { Bookmark, Home, Users, Wallet, type LucideIcon } from "lucide-react"
+import { motion, useReducedMotion } from "framer-motion"
+import { Compass, Heart, CircleUserRound, type LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
 export type NavKey = "home" | "friends" | "spots" | "settlement" | "mypage" | "saved"
 
 export const navItems: { key: NavKey; label: string; icon: LucideIcon }[] = [
-  { key: "home", label: "홈", icon: Home },
-  { key: "saved", label: "저장", icon: Bookmark },
-  { key: "friends", label: "친구", icon: Users },
-  { key: "settlement", label: "정산", icon: Wallet },
+  { key: "home", label: "여행", icon: Compass },
+  { key: "saved", label: "찜", icon: Heart },
+  { key: "mypage", label: "프로필", icon: CircleUserRound },
 ]
 
 function toHref(key: NavKey): string {
@@ -38,12 +37,21 @@ export function BottomNav({
   const pathname = usePathname()
   const [compact, setCompact] = useState(false)
 
+  const reduced = useReducedMotion()
   useEffect(() => {
-    const onScroll = () => setCompact(window.scrollY > 20)
+    let previousY = window.scrollY
+    setCompact(false)
+    const onScroll = () => {
+      const y = window.scrollY
+      const delta = y - previousY
+      previousY = y
+      if (y < 20) setCompact(false)
+      else if (Math.abs(delta) > 4) setCompact(delta > 0)
+    }
     onScroll()
     window.addEventListener("scroll", onScroll, { passive: true })
     return () => window.removeEventListener("scroll", onScroll)
-  }, [])
+  }, [pathname])
 
   const handleTabClick = (event: MouseEvent<HTMLButtonElement>, key: NavKey) => {
     event.stopPropagation()
@@ -59,60 +67,26 @@ export function BottomNav({
     }
   }
 
+  if (pathname === "/saved" || pathname.startsWith("/saved/")) return null
   return (
-    <nav
-      aria-label="주요 메뉴"
-      style={{
-        position: "fixed",
-        bottom: "1rem",
-        left: 0,
-        right: 0,
-        marginLeft: "auto",
-        marginRight: "auto",
-        zIndex: 20,
-        width: "calc(100% - 2rem)",
-        maxWidth: "380px",
-        pointerEvents: "auto",
-      }}
-      className={cn(
-        "fixed bottom-4 inset-x-0 mx-auto z-20 w-[calc(100%-2rem)] max-w-[380px] md:hidden",
-        "flex items-center justify-between px-3 py-2 pointer-events-auto",
-        "rounded-full border border-white/30 bg-white/85 shadow-2xl backdrop-blur-md",
-        "transition-all duration-300 ease-in-out transform",
-        compact ? "scale-90 opacity-90 py-1.5" : "scale-100 opacity-100 py-3"
-      )}
-    >
-      <ul className="relative m-0 grid w-full list-none grid-cols-4 items-center px-3 py-1.5">
-        {navItems.map((item) => {
-          const isActive = item.key === active
-          return (
-            <li key={item.key} className="relative m-0 list-none px-0 py-0">
-              <motion.button
-                type="button"
-                onClick={(event) => handleTabClick(event, item.key)}
-                aria-current={isActive ? "page" : undefined}
-                style={{ touchAction: "manipulation" }}
-                whileTap={{ scale: 1.1 }}
-                transition={{ type: "spring", stiffness: 460, damping: 28 }}
-                className={cn(
-                  "relative z-10 flex w-full flex-col items-center justify-center py-1 text-[11px] font-medium whitespace-nowrap",
-                  isActive ? "text-foreground" : "text-muted-foreground"
-                )}
-              >
-                {isActive ? (
-                  <motion.div
-                    layoutId="activeTabIndicator"
-                    transition={{ type: "spring", stiffness: 520, damping: 34 }}
-                    className="absolute inset-0 -z-10 rounded-full bg-amber-100"
-                  />
-                ) : null}
-                <item.icon className="size-4.5 stroke-[1.8]" />
-                <span>{item.label}</span>
-              </motion.button>
-            </li>
-          )
+    <motion.nav aria-label="주요 메뉴" initial={false}
+      animate={{ width: compact ? 210 : 350 }}
+      transition={{ duration: reduced ? 0 : .3, ease: [.22, 1, .36, 1] }}
+      style={{ bottom: "max(16px, env(safe-area-inset-bottom))", maxWidth: "calc(100% - 44px)" }}
+      className="fixed inset-x-0 z-20 mx-auto rounded-full border border-slate-100 bg-white/95 px-3 py-2 shadow-[0_6px_28px_#0f172a14] backdrop-blur-xl md:hidden">
+      <ul className="m-0 flex list-none items-center justify-around p-0">
+        {navItems.map(item => {
+          const selected = item.key === active
+          return <li key={item.key}>
+            <motion.button type="button" aria-label={item.label} aria-current={selected ? "page" : undefined}
+              onClick={event => handleTabClick(event, item.key)} whileTap={reduced ? undefined : { scale: .92 }}
+              className="flex min-h-12 min-w-12 items-center justify-center gap-2 rounded-full px-2 focus-visible:outline-2 focus-visible:outline-amber-400">
+              <item.icon className={cn("size-7 stroke-[1.8]", selected ? "fill-amber-400 text-slate-900" : "text-slate-500")} />
+              {selected && !compact ? <span className="text-[13px] font-bold text-slate-900">{item.label}</span> : null}
+            </motion.button>
+          </li>
         })}
       </ul>
-    </nav>
+    </motion.nav>
   )
 }

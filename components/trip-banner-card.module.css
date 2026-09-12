@@ -1,0 +1,12 @@
+/* Compact applies only to subsequent upcoming trips; all actions stay mounted. */
+.compact { height: 192px; border: 0; border-bottom: 1px solid #e2e8f0; border-radius: 0; overflow: visible; background: white; }
+.compact > button > img { width: 80px !important; height: 148px !important; top: 12px !important; border-radius: 18px; }
+.compact > button > div { display: none; }
+.compact > div:first-of-type { padding: 8px 0 0 96px; }
+.compact > div:first-of-type button { color: #0f172a; }
+.compact > div:last-of-type { padding: 0; left: 96px; bottom: 20px; }
+.compact > div:last-of-type button { width: 100%; gap: 6px; }
+.compact > div:last-of-type h3 { color: #0f172a; font-size: 18px; text-shadow: none; }
+.compact > div:last-of-type span, .compact > div:last-of-type div { color: #475569; }
+.compact > div:last-of-type h3 + span { display: none; }
+@media (min-width: 640px) { .compact { height: 180px; } }

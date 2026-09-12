@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import styles from "./trip-banner-card.module.css"
 import { useEffect, useRef, useState } from "react"
 import {
   CalendarDays,
@@ -48,12 +49,14 @@ export function TripBannerCard({
   onSelect,
   priority = false,
   muted = false,
+  compact = false,
 }: {
   trip: Trip
   onSelect: (trip: Trip) => void
   priority?: boolean
   /** 지난 여행 — 흐리게+탈색 처리. */
   muted?: boolean
+  compact?: boolean
 }) {
   const { members, refreshTrips } = useTrips()
   const { weather } = useWeather(trip.region)
@@ -113,7 +116,8 @@ export function TripBannerCard({
       <article
         className={cn(
           "group media-card relative h-64 w-full overflow-hidden rounded-2xl border border-border text-left sm:h-72",
-          muted && "opacity-80 saturate-0"
+          muted && "opacity-80 saturate-0",
+          compact && styles.compact
         )}
       >
         <button

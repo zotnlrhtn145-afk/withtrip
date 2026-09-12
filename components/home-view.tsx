@@ -18,6 +18,7 @@ import {
 
 import { CreateTripDialog } from "@/components/create-trip-dialog"
 import { LoginRedirectOverlay } from "@/components/login-redirect-overlay"
+import { TravelStartArt } from "@/components/travel-start-art"
 import { TripBannerCard } from "@/components/trip-banner-card"
 import { useTrips } from "@/components/trips-store"
 import { Badge } from "@/components/ui/badge"
@@ -210,17 +211,13 @@ export function HomeView({
       {showLoading ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-6 py-16 text-center">
           <Loader2 className="size-6 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Supabase에서 여행을 불러오는 중…</p>
+          <p className="text-sm text-muted-foreground">여행을 불러오는 중…</p>
         </div>
       ) : showEmpty ? (
-        <div className="mx-auto flex min-h-[70vh] w-full max-w-2xl flex-col items-center justify-center rounded-3xl border-2 border-dashed border-amber-300/70 bg-white/50 p-8 text-center backdrop-blur-sm transition-all md:p-12">
-          <div className="rounded-full bg-gradient-to-tr from-amber-400 via-rose-400 to-amber-500 p-[2.5px] shadow-md">
-            <span className="flex size-16 items-center justify-center rounded-full bg-white">
-              <Compass className="size-7 text-amber-500" />
-            </span>
-          </div>
-          <h3 className="mt-6 mb-2 text-xl font-bold tracking-tight text-gray-900 md:text-2xl">
-            등록된 여행이 없습니다. 첫 번째 여행을 시작해 보세요!
+        <div className="mx-auto flex min-h-[70vh] w-full max-w-2xl flex-col items-center justify-center bg-white px-6 py-8 text-center md:p-12">
+          <TravelStartArt />
+          <h3 className="mt-6 mb-3 text-[30px] leading-[1.3] font-bold tracking-tight text-slate-900">
+            우리의 다음 여행,<br />어디로 떠날까요?
           </h3>
           <p className="mx-auto mb-8 max-w-sm text-sm leading-relaxed text-gray-500">
             새 여행을 만들면 일정·숙소·정산을 친구들과 함께 관리할 수 있어요.
@@ -342,7 +339,7 @@ export function HomeView({
             const list = isFiltered ? filteredTrips : homeFilter === "past" ? pastList : upcomingList
             const showAdd = !isFiltered && homeFilter === "upcoming"
             return (
-              <div className={compact ? "flex flex-col gap-4" : "grid gap-5 xl:grid-cols-2"}>
+              <div className={compact ? "flex flex-col gap-4" : "flex flex-col gap-5"}>
                 {list.length === 0 ? (
                   <p className="col-span-full rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 py-10 text-center text-sm text-slate-400">
                     {homeFilter === "past" ? "지난 여행이 없어요." : "다가오는 여행이 없어요."}
@@ -355,6 +352,7 @@ export function HomeView({
                       onSelect={onSelectTrip}
                       priority={index === 0 && homeFilter !== "past"}
                       muted={tripPhase(trip) === "past"}
+                      compact={homeFilter !== "past" && index > 0}
                     />
                   ))
                 )}

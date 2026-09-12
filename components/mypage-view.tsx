@@ -289,6 +289,10 @@ export function MyPageView({
             </button>
           </div>
 
+          <nav aria-label="여행 관리" className="flex gap-3 border-b border-slate-100 pb-4">
+            <a href="/friends" className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold">친구</a>
+            <a href="/settlement" className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold">정산</a>
+          </nav>
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl bg-slate-50 px-4 py-3">
               <p className={labelClass}>가입일</p>

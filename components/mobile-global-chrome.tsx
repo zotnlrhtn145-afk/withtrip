@@ -6,6 +6,7 @@ import type { SupabaseClient, User } from "@supabase/supabase-js"
 import { LogIn, PlusSquare } from "lucide-react"
 
 import { AccountMenu } from "@/components/account-menu"
+import Image from "next/image"
 import { BottomNav, type NavKey } from "@/components/bottom-nav"
 import { useNavigateToLogin } from "@/components/login-navigation"
 import { NotificationBellButton } from "@/components/notifications/NotificationBellButton"
@@ -126,7 +127,7 @@ export function MobileGlobalChrome() {
   // it. Hide the global header there — but keep the bottom nav.
   const hideHeader = hideChrome || pathname.startsWith("/trips/")
 
-  const hideBottomNav = hideChrome
+  const hideBottomNav = hideChrome || pathname === "/saved" || pathname.startsWith("/saved/")
 
   return (
     <>
@@ -144,6 +145,7 @@ export function MobileGlobalChrome() {
               <PlusSquare className="size-6 stroke-[1.5]" />
             </button>
 
+            <Image src="/withtrip-logo.png" alt="위드트립" width={32} height={32} className="rounded-[10px]" />
             <div className="flex flex-row items-center gap-1.5">
               <HeaderAuthControl />
               <NotificationBellButton className="size-9" iconClassName="size-5" />
