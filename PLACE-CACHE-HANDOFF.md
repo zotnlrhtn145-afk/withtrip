@@ -1,3 +1,11 @@
+## 2026-09-13 Codex · 위디 개인화 운영 권한 적용
+
+사용자가 여행 멤버간 위디 질문/답 공유를 중지하고 본인만 보도록 명시 요청. 운영 migration20260912161605 적용: trip_messages에 restrictive SELECT(위디 prefix면 auth.uid=user_id)를 추가하여 기존 참여자/숨김 정책과 함께 적용. 기존53개 위디 모두 user_id 존재, 기록 삭제/갱신 없음. 일반 메시지 권한 변경 없음. 본인 조회 복합 인덱스 추가.
+
+위디 INSERT는 wt_push_trip_chat 및 tg_unread_trip_message 호출에서 제외하는 WHEN 조건 추가. 기존 함수와 webhook 인수 유지. send-chat-push v6 실제 원격v5 소스에 위디 조기반환만 추가해 배포(기존 verify_jwt=false 유지). 위디 테스트 요청은 private_widy 반환, 푸시 전송 없음. 일반 웹 push/Next배포와는 별개인 명시 요청 범위의 DB/Edge 변경.
+
+검증 migration20260912161830에서 실제 동일 여행 두 사람 역할로 본인 SELECT 허용·다른 멤버 SELECT 거부 확인. 기존 데이터를 수정하지 않는 DO 검사. MCP 읽기 도구는 readonly 역할로 SET ROLE 불가하여 검증 migration으로 수행; 관리 API 로컬 토큰은401여서 사용하지 않음. 트리거 WHEN/Edge guard 확인. 앱 개인조회·개인실시간·맥락 필터는 다음 앱빌드 대기. 웹에 위디 화면 신설 없음.
+
 ## 2026-09-12 Codex · 이동수단·숙소 디자인 재정리
 
 앱 사용자 요청 공통 반영. 이동수단 제목/흰 윤곽44px 추가, 노란 점 역할명, 출발·도착 이름16px 두 줄과 시간30px, 파스텔/워터마크/중첩 카드 제거. 경유/항공 시간대/사람/권한/편집 유지. 숙소 이름22px·체크인/아웃 구분선과 시간26px, 사진·전화·메모·길찾기·투숙자 유지. 새 travel-detail.module.css 카드 등장320ms 및 동작줄이기. 앱도 같은 위계로 변경. 웹배포 없음.

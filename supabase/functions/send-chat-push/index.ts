@@ -106,6 +106,7 @@ Deno.serve(async (req) => {
   try {
     const payload = await req.json()
     const record: MessageRow | undefined = payload.record ?? payload.new
+    if (record?.kind?.startsWith("widy")) return new Response(JSON.stringify({ ok: true, reason: "private_widy" }), { status: 200 })
     if (!record?.trip_id || !record.user_id) {
       return new Response(JSON.stringify({ ok: false, reason: "no record" }), { status: 200 })
     }
