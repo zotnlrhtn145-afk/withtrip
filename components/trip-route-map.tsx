@@ -76,7 +76,31 @@ function RouteLine({ stops }: { stops: RouteStop[] }) {
       strokeOpacity: 0.95,
       strokeWeight: 4.5,
     })
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    let frame = 0
+    let start: number | null = null
+    const finish = () => { cancelAnimationFrame(frame); casing.setPath(path); line.setPath(path) }
+    const draw = (now: number) => {
+      if (document.hidden || media.matches) { finish(); return }
+      start ??= now
+      const progress = Math.min(1, (now - start) / 850)
+      const cursor = (1 - Math.pow(1 - progress, 3)) * (path.length - 1)
+      const index = Math.floor(cursor)
+      const partial = path.slice(0, index + 1)
+      if (index < path.length - 1) {
+        const a = path[index], b = path[index + 1], t = cursor - index
+        partial.push({ lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t })
+      }
+      casing.setPath(partial); line.setPath(partial)
+      if (progress < 1) frame = requestAnimationFrame(draw)
+    }
+    if (!media.matches && !document.hidden) frame = requestAnimationFrame(draw)
+    document.addEventListener("visibilitychange", finish)
+    media.addEventListener("change", finish)
     return () => {
+      cancelAnimationFrame(frame)
+      document.removeEventListener("visibilitychange", finish)
+      media.removeEventListener("change", finish)
       casing.setMap(null)
       line.setMap(null)
     }

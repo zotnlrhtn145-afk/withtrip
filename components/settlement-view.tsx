@@ -1065,10 +1065,10 @@ export function SettlementView({
               aria-selected={isActive}
               onClick={() => setActiveTab(tab.key)}
               className={cn(
-                "inline-flex flex-1 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200",
+                "inline-flex flex-1 shrink-0 items-center justify-center gap-1.5 border-b-[3px] px-3 py-3 text-sm font-semibold transition-colors duration-200",
                 isActive
-                  ? "bg-neutral-900 text-white shadow-sm"
-                  : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
+                  ? "border-[#fbbf24] text-neutral-900"
+                  : "border-transparent text-neutral-500 hover:text-neutral-800"
               )}
             >
               <tab.icon className="size-4 stroke-[1.75]" />
@@ -1091,11 +1091,11 @@ export function SettlementView({
             </div>
 
             {/* Compact totals */}
-            <div className="rounded-2xl border border-neutral-100/80 bg-gradient-to-br from-amber-50/90 to-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-              <div className="flex items-end justify-between gap-3">
+            <div className="relative rounded-3xl border border-neutral-200 bg-white p-5 shadow-[0_6px_24px_rgba(0,0,0,0.05)] before:absolute before:left-0 before:top-5 before:h-8 before:w-1 before:rounded-r-full before:bg-[#fbbf24]">
+              <div className="flex flex-wrap items-end justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-medium text-neutral-500">총지출</p>
-                  <p className="mt-0.5 truncate text-xl font-extrabold tracking-tight text-neutral-900 tabular-nums">
+                  <p className="text-[13px] font-semibold text-neutral-500">총지출</p>
+                  <p className="mt-1 break-all text-[38px] leading-tight font-extrabold tracking-[-1.5px] text-neutral-900 tabular-nums">
                     {loading ? "—" : formatWon(total)}
                   </p>
                 </div>
@@ -1162,9 +1162,7 @@ export function SettlementView({
                             {member?.avatarUrl ? (
                               <AvatarImage src={member.avatarUrl} alt="" />
                             ) : null}
-                            <AvatarFallback className="bg-neutral-200 text-[9px] font-bold text-neutral-600">
-                              {initialsFromNickname(name)}
-                            </AvatarFallback>
+                            <AvatarFallback className="border border-neutral-200 bg-white" />
                           </Avatar>
                           <span className="truncate text-xs font-medium text-neutral-700">
                             {name}
@@ -1338,7 +1336,7 @@ export function SettlementView({
               <div className="flex flex-col gap-8">
                 {showTransfers ? (
                   <div className="flex flex-col gap-4">
-                    <div className="flex items-end justify-between gap-3">
+                    <div className="flex flex-wrap items-end justify-between gap-3">
                       <div>
                         <h3 className="text-[15px] font-semibold text-neutral-900">송금 현황</h3>
                         <p className="mt-0.5 text-xs text-neutral-500">
@@ -1376,16 +1374,12 @@ export function SettlementView({
                                     {from?.avatarUrl ? (
                                       <AvatarImage src={from.avatarUrl} alt="" />
                                     ) : null}
-                                    <AvatarFallback className="bg-neutral-200 text-[11px] font-bold text-neutral-700">
-                                      {initialsFromNickname(fromName)}
-                                    </AvatarFallback>
+                                    <AvatarFallback className="border border-neutral-200 bg-white" />
                                   </Avatar>
                                   <ArrowRight className="size-3.5 shrink-0 text-neutral-400" />
                                   <Avatar className="size-9">
                                     {to?.avatarUrl ? <AvatarImage src={to.avatarUrl} alt="" /> : null}
-                                    <AvatarFallback className="bg-amber-400 text-[11px] font-bold text-neutral-900">
-                                      {initialsFromNickname(toName)}
-                                    </AvatarFallback>
+                                    <AvatarFallback className="border border-neutral-200 bg-white" />
                                   </Avatar>
                                 </div>
                                 <div className="min-w-0">
@@ -1502,7 +1496,7 @@ export function SettlementView({
 
                 {showExpenses ? (
                   <div className="flex flex-col gap-4">
-                    <div className="flex items-end justify-between gap-3">
+                    <div className="flex flex-wrap items-end justify-between gap-3">
                       <div>
                         <h3 className="text-[15px] font-semibold text-neutral-900">지출 내역</h3>
                         <p className="mt-0.5 text-xs text-neutral-500">최신 등록순으로 표시됩니다</p>
@@ -1531,9 +1525,7 @@ export function SettlementView({
                                 {expense.payerAvatarUrl ? (
                                   <AvatarImage src={expense.payerAvatarUrl} alt="" />
                                 ) : null}
-                                <AvatarFallback className="bg-amber-100 text-xs font-bold text-amber-900">
-                                  {initialsFromNickname(expense.payerNickname)}
-                                </AvatarFallback>
+                                <AvatarFallback className="border border-neutral-200 bg-white" />
                               </Avatar>
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
@@ -1918,7 +1910,7 @@ export function SettlementView({
                 <>
                   {/* Amount — compact high contrast */}
               <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5">
-                <div className="flex items-end justify-between gap-3">
+                <div className="flex flex-wrap items-end justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <label
                       htmlFor="expense-amount"
@@ -2016,9 +2008,7 @@ export function SettlementView({
                                 {payer?.avatarUrl ? (
                                   <AvatarImage src={payer.avatarUrl} alt="" />
                                 ) : null}
-                                <AvatarFallback className="bg-gray-200 text-[9px] font-bold text-gray-700">
-                                  {initialsFromNickname(payer?.nickname ?? "?")}
-                                </AvatarFallback>
+                                <AvatarFallback className="border border-neutral-200 bg-white" />
                               </Avatar>
                               <SelectValue placeholder="선택" />
                             </>
@@ -2034,9 +2024,7 @@ export function SettlementView({
                               {member.avatarUrl ? (
                                 <AvatarImage src={member.avatarUrl} alt="" />
                               ) : null}
-                              <AvatarFallback className="text-[9px] font-bold text-gray-700">
-                                {initialsFromNickname(member.nickname)}
-                              </AvatarFallback>
+                              <AvatarFallback className="border border-neutral-200 bg-white" />
                             </Avatar>
                             {member.nickname}
                           </span>
@@ -2094,9 +2082,7 @@ export function SettlementView({
                           {member.avatarUrl ? (
                             <AvatarImage src={member.avatarUrl} alt="" />
                           ) : null}
-                          <AvatarFallback className="bg-gray-200 text-[8px] font-bold text-gray-700">
-                            {initialsFromNickname(member.nickname)}
-                          </AvatarFallback>
+                          <AvatarFallback className="border border-neutral-200 bg-white" />
                         </Avatar>
                         {member.nickname}
                         {/*

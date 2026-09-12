@@ -9,6 +9,8 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
   Bookmark,
+  Grid2X2,
+  Layers,
   Check,
   Clock,
   Heart,
@@ -132,7 +134,7 @@ export function SavedPlacesView() {
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null)
   const [detailPlace, setDetailPlace] = useState<PlaceDetailInput | null>(null)
   const [detailAssign, setDetailAssign] = useState<SavedPlace | null>(null) // 상세에서 "담기" 대상
-  const [tab, setTab] = useState<"mine" | "friends">("mine")
+  const [tab, setTab] = useState<"all" | "mine" | "friends">("mine")
   /*
     ⚠️ 주소로 탭을 정할 수 있어야 한다. 알림에서 "누가 맛집을 추천했어요" 를
        눌렀을 때 곧장 친구 추천찜으로 보내려면 여기로 링크를 걸어야 하는데,
@@ -422,13 +424,13 @@ export function SavedPlacesView() {
     if (!el) return
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries.some((e) => e.isIntersecting)) setVisible((v) => v + PAGE)
+        if (entries.some((e) => e.isIntersecting)) setVisible((v) => Math.min(v + PAGE, Math.max(PAGE, places.length, tripSpots.length, recs.length)))
       },
       { rootMargin: "400px" }
     )
     io.observe(el)
     return () => io.disconnect()
-  }, [subTab, visible, loading, places.length, tripSpots.length])
+  }, [tab, subTab, visible, loading, places.length, tripSpots.length, recs.length])
 
   /** 꼭 가고 싶은 곳만 보기 — 켜면 목록도 지도도 별표만 남는다 */
   const [starredOnly, setStarredOnly] = useState(false)
@@ -625,7 +627,19 @@ export function SavedPlacesView() {
   }, [tripSpots])
 
   const activeChips = subTab === "wish" ? subChips : tripChips
-  const activeMapSpots = subTab === "wish" ? mapSpots : tripMapSpots
+  const searchedRecs = useMemo(() => { const q = buildQuery(search); return q ? recs.filter(r => matchesSearch(q, [r.placeName, r.address, r.category, r.subCategory])) : recs }, [recs, search])
+  const friendMapSpots = useMemo<MapSpot[]>(() => searchedRecs.filter(r => r.lat != null && r.lng != null).map(r => {
+    const meters = distanceMeters(geo.position, { lat: r.lat!, lng: r.lng! })
+    return { id: r.id, name: r.placeName, nameLocal: r.placeName, category: r.category ?? "친구찜", address: r.address ?? "", lat: r.lat!, lng: r.lng!, rating: r.rating ?? 0, image: r.imageUrl ?? "", imageAlt: r.placeName, distanceMeters: meters, distanceLabel: formatDistance(meters) }
+  }), [searchedRecs, geo.position])
+  const activeMapSpots = useMemo(() => tab === "all" ? [...mapSpots, ...tripMapSpots, ...friendMapSpots] : tab === "friends" ? friendMapSpots : subTab === "wish" ? mapSpots : tripMapSpots, [tab, subTab, mapSpots, tripMapSpots, friendMapSpots])
+  const selectCategory = (key: "all" | "wish" | "trip" | "friends") => {
+    setTab(key === "all" ? "all" : key === "friends" ? "friends" : "mine")
+    if (key === "wish" || key === "trip") setSubTab(key)
+    if (key === "all") { setSubFilter(""); setCountry("all"); setRegion("all"); setTripFilter("all"); setStarredOnly(false); setOpenOnly(false) }
+    setSelectedMapId(null)
+    setVisible(PAGE)
+  }
 
   useEffect(() => {
     if (geo.status !== "ready") return
@@ -1267,62 +1281,7 @@ export function SavedPlacesView() {
         ) : null}
       </div>
 
-      {/* 탭: 내 저장 / 친구 추천 */}
-      <div className="flex border-b border-slate-100">
-        {(
-          [
-            { k: "mine", label: "저장" },
-            { k: "friends", label: recs.length > 0 ? `친구 추천찜 ${recs.length}` : "친구 추천찜" },
-          ] as const
-        ).map((it) => (
-          <button
-            key={it.k}
-            type="button"
-            onClick={() => setTab(it.k)}
-            className={cn(
-              "relative flex-1 py-3 text-sm font-bold transition-colors",
-              tab === it.k ? "text-slate-900" : "text-slate-400 hover:text-slate-600"
-            )}
-          >
-            {it.label}
-            {tab === it.k ? (
-              <span className="absolute -bottom-px left-1/2 h-[3px] w-10 -translate-x-1/2 rounded bg-amber-400" />
-            ) : null}
-          </button>
-        ))}
-      </div>
-
-      {tab === "friends" ? (
-        <FriendRecsList
-          recs={recs}
-          savingId={savingRecId}
-          onRegister={handleRegisterRec}
-          onSave={handleSaveRec}
-          onDismiss={handleDismissRec}
-        />
-      ) : loading ? (
-        <div className="flex min-h-[40vh] items-center justify-center">
-          <Loader2 className="size-7 animate-spin text-amber-500" />
-        </div>
-      ) : places.length === 0 && tripSpots.length === 0 ? (
-        <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-amber-300/80 bg-amber-50/20 p-8 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-amber-400 text-slate-950">
-            <Heart className="size-5" />
-          </span>
-          <h3 className="text-lg font-bold text-slate-900">아직 담아둔 장소가 없어요</h3>
-          <p className="max-w-xs text-sm text-slate-500">
-            여행과 상관없이 가고 싶은 곳을 먼저 저장해 두세요. 나중에 원하는 여행에 바로 옮길 수
-            있어요.
-          </p>
-          <button
-            type="button"
-            onClick={() => setAddOpen(true)}
-            className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-slate-950 shadow-md transition-all hover:bg-amber-500"
-          >
-            첫 장소 저장하기
-          </button>
-        </div>
-      ) : (
+      {loading ? <div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="size-7 animate-spin text-amber-500" /></div> : (
         <div className="relative -mx-4 h-[calc(100dvh-190px)] min-h-[400px] overflow-hidden md:-mx-6">
           {/*
             지도는 sticky로 화면에 고정되고, 리스트 카드는 지도 아래를 살짝 겹치도록
@@ -1350,35 +1309,13 @@ export function SavedPlacesView() {
             />
           </div>
 
-          <SavedMapSheet revealKey={selectedMapId} count={subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length}>
-
-            {/* 소탭: 나의 찜 / 여행클립 찜 */}
-            <div className="px-4 pb-1 md:px-6">
-              <div className="flex border-b border-slate-100 bg-white">
-                {(
-                  [
-                    { k: "wish", label: `나의 찜 ${places.length}` },
-                    { k: "trip", label: `여행클립 찜 ${tripSpots.length}` },
-                  ] as const
-                ).map((it) => (
-                  <button
-                    key={it.k}
-                    type="button"
-                    onClick={() => {
-                      setSubTab(it.k)
-                      setSubFilter(null)
-                      setTripFilter("all")
-                    }}
-                    className={cn(
-                      "relative flex-1 border-b-[3px] py-3 text-sm font-bold transition-colors",
-                      subTab === it.k ? "border-amber-400 text-slate-900" : "border-transparent text-slate-500"
-                    )}
-                  >
-                    {it.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div className="absolute right-3 top-4 z-20 flex flex-col gap-2">
+            {([{ key: "all", icon: Grid2X2, label: "전체보기" }, { key: "wish", icon: Heart, label: "나의 찜" }, { key: "trip", icon: Layers, label: "여행클립" }, { key: "friends", icon: Users, label: "친구찜" }] as const).map(item => {
+              const active = tab === item.key || (tab === "mine" && subTab === item.key)
+              return <button key={item.key} type="button" aria-label={item.label} aria-pressed={active} onClick={() => selectCategory(item.key)} className="flex size-12 flex-col items-center justify-center gap-0.5 rounded-full bg-white/95 shadow-md transition-transform active:scale-90"><item.icon className="size-5" fill={active ? "#fbbf24" : "none"} stroke={active ? "#a16a00" : "#0f172a"} /><span className="text-[8px] font-semibold text-slate-700">{item.label}</span></button>
+            })}
+          </div>
+          <SavedMapSheet revealKey={selectedMapId} count={tab === "all" ? visiblePlaces.length + filteredTripSpots.length + searchedRecs.length : tab === "friends" ? searchedRecs.length : subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length}>
 
             {/* 저장 전용 검색 — 이름·지역·주소로 실시간 필터 (현재 탭에 적용) */}
             <div className="px-4 pt-2 pb-1 md:px-6">
@@ -1404,6 +1341,7 @@ export function SavedPlacesView() {
               </div>
             </div>
 
+            {tab === "mine" ? <>
             <div className={cn(filterStyles.quick, "sticky z-10 top-0 bg-white px-4 pb-2.5 md:px-6")}>
               {/*
                 ⚠️ **min-w-0 flex-1 이 있어야 한다.** 없으면 justify-between 이 세 덩어리를
@@ -1486,8 +1424,13 @@ export function SavedPlacesView() {
               </button>
             </div>
 
+            </> : <div className="px-4 pt-2"><h3 className="text-lg font-bold">{tab === "all" ? "전체 찜" : "친구찜"}</h3></div>}
             <div className="px-4 pt-3 pb-6 md:px-6">
-              {subTab === "wish" ? (
+              {tab === "all" ? <div className="space-y-6">
+                <section><button className="mb-3 min-h-11 text-base font-bold" onClick={() => selectCategory("wish")}>나의 찜 {visiblePlaces.length} · 필터/관리 ›</button><ul className="flex flex-col gap-2.5">{visiblePlaces.slice(0, visible).map(renderPlaceCard)}</ul></section>
+                <section><button className="mb-3 min-h-11 text-base font-bold" onClick={() => selectCategory("trip")}>여행클립 {filteredTripSpots.length} · 필터/관리 ›</button><ul className="flex flex-col gap-2.5">{filteredTripSpots.slice(0, visible).map(renderTripSpotCard)}</ul></section>
+                <section><h4 className="mb-3 text-base font-bold">친구찜 {searchedRecs.length}</h4><FriendRecsList recs={searchedRecs.slice(0,visible)} savingId={savingRecId} onRegister={handleRegisterRec} onSave={handleSaveRec} onDismiss={handleDismissRec} /></section>
+              </div> : tab === "friends" ? <FriendRecsList recs={searchedRecs.slice(0,visible)} savingId={savingRecId} onRegister={handleRegisterRec} onSave={handleSaveRec} onDismiss={handleDismissRec} /> : subTab === "wish" ? (
                 visiblePlaces.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
                     {search.trim() ? `'${search.trim()}' 검색 결과가 없어요.` : "이 카테고리에 저장된 장소가 없어요."}

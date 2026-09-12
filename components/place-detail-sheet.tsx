@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ComponentProps } from "react"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { Check, CheckCircle2, ChevronLeft, Clock, ExternalLink, MapPin, Navigation, Phone, Plane, Star } from "lucide-react"
 
 import { DirectionsMenu } from "@/components/directions-menu"
@@ -60,7 +61,30 @@ const todayIdx = (() => {
   return js === 0 ? 6 : js - 1 // google weekday_text: 월~일
 })()
 
-export function PlaceDetailSheet({
+export function PlaceDetailSheet(props: ComponentProps<typeof PlaceDetailContents>) {
+  const reduced = useReducedMotion()
+  const container = useRef<HTMLDivElement>(null)
+  const returnFocus = useRef<HTMLElement | null>(null)
+  const open = !!props.place
+  useEffect(() => {
+    if (!open) return
+    returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const frame = requestAnimationFrame(() => container.current?.querySelector<HTMLButtonElement>("button")?.focus())
+    const trap = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return
+      const items = Array.from(container.current?.querySelectorAll<HTMLElement>('button:not([disabled]),a[href],input:not([disabled]),[tabindex="0"]') ?? []).filter(e => e.getClientRects().length > 0)
+      const first = items[0], last = items[items.length - 1]
+      if (!first) { event.preventDefault(); return }
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
+    document.addEventListener("keydown", trap)
+    return () => { cancelAnimationFrame(frame); document.removeEventListener("keydown", trap) }
+  }, [open])
+  return <AnimatePresence onExitComplete={() => returnFocus.current?.focus()}>{props.place ? <motion.div ref={container} key="place-detail" className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label={`${props.place.name} 장소 상세`} initial={{ opacity: 0, x: reduced ? 0 : 28 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: reduced ? 0 : 28 }} transition={{ duration: reduced ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}><PlaceDetailContents {...props} /></motion.div> : null}</AnimatePresence>
+}
+
+function PlaceDetailContents({
   place,
   userLoc,
   onClose,
@@ -81,6 +105,7 @@ export function PlaceDetailSheet({
   const [detail, setDetail] = useState<ApiDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const [showHours, setShowHours] = useState(false)
+  const [tab, setTab] = useState<"photos" | "reviews" | "info">("photos")
 
   // ── 다녀옴 ────────────────────────────────────────────────
   const [visited, setVisitedState] = useState(false)
@@ -191,6 +216,7 @@ export function PlaceDetailSheet({
       return
     }
     setShowHours(false)
+    setTab("photos")
     setDetail(null)
     setLoading(true)
     const params = new URLSearchParams({ q: place.name })
@@ -281,43 +307,16 @@ export function PlaceDetailSheet({
         onClick={onClose}
         className="fixed inset-0 hidden bg-slate-900/45 animate-in fade-in-0 md:left-20 md:block"
       />
-      <div className="relative flex h-full w-full flex-col overflow-hidden bg-white duration-300 animate-in slide-in-from-right md:w-[92%] md:max-w-[440px] md:shadow-2xl md:slide-in-from-left">
-        {/* 사진 캐러셀 */}
-        <div className="relative aspect-[4/3] w-full shrink-0 bg-slate-100">
-          {photos.length > 0 ? (
-            <div className="flex h-full w-full snap-x snap-mandatory overflow-x-auto">
-              {photos.map((p, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={i} src={p} alt="" className="h-full w-full shrink-0 snap-center object-cover" draggable={false} />
-              ))}
-            </div>
-          ) : (
-            <div className="flex h-full items-center justify-center text-slate-300">
-              <MapPin className="size-12" />
-            </div>
-          )}
-          {photos.length > 1 ? (
-            <div className="pointer-events-none absolute bottom-2 left-0 right-0 flex justify-center gap-1">
-              {photos.map((_, i) => (
-                <span key={i} className="size-1.5 rounded-full bg-white/70 shadow" />
-              ))}
-            </div>
-          ) : null}
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute left-3 top-3 flex size-9 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/55"
-            aria-label="뒤로"
-          >
-            <ChevronLeft className="size-6" />
-          </button>
-        </div>
+      <div className="relative flex h-full w-full flex-col overflow-hidden bg-white md:w-[92%] md:max-w-[440px] md:shadow-2xl">
+        <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-neutral-100 px-4">
+          <button type="button" onClick={onClose} aria-label="뒤로" className="grid size-11 place-items-center rounded-full border border-neutral-200 text-slate-900"><ChevronLeft className="size-5" /></button><span className="text-sm font-semibold text-slate-800">장소 상세</span>
+        </header>
 
         {/* 본문 */}
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5">
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-extrabold text-slate-900">{name}</h2>
+              <h2 className="text-[26px] leading-tight font-extrabold text-slate-900">{name}</h2>
               {detail?.openNow != null ? (
                 <span
                   className={cn(
@@ -333,7 +332,7 @@ export function PlaceDetailSheet({
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {category ? (
-                <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">{category}</span>
+                <span className="text-xs font-medium text-slate-600">{category}</span>
               ) : null}
               {rating ? (
                 <span className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500">
@@ -392,6 +391,12 @@ export function PlaceDetailSheet({
             </p>
           ) : null}
 
+          <div role="tablist" aria-label="장소 상세 보기" className="flex shrink-0 border-b border-neutral-200">
+            {([{ key: "photos", label: `사진 ${photos.length}` }, { key: "reviews", label: "리뷰" }, { key: "info", label: "정보" }] as const).map(t => <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)} className={cn("min-h-12 flex-1 border-b-[3px] text-sm font-bold transition-colors", tab === t.key ? "border-[#fbbf24] text-slate-900" : "border-transparent text-slate-500")}>{t.label}</button>)}
+          </div>
+          <div key={tab} role="tabpanel" className="flex flex-col gap-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-2 duration-200">
+          {tab === "photos" ? <><h3 className="text-lg font-bold">장소 사진</h3>{photos.length ? <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto">{photos.map((photo, i) => <img key={i} src={photo} alt={`${name} 사진 ${i + 1}`} className="aspect-[4/3] w-full shrink-0 snap-center rounded-2xl object-cover" loading="lazy" />)}</div> : <p className="py-8 text-center text-sm text-slate-500">아직 사진이 없어요</p>}</> : null}
+          {tab === "info" ? <>
           {/*
             어디서 보고 담았는지.
             ⚠️ 담아 놓고 "이거 어디서 봤더라" 하는 일이 잦다 — 원본으로 바로 갈 수 있게 한다.
@@ -415,9 +420,9 @@ export function PlaceDetailSheet({
           {summary ? <p className="text-sm leading-relaxed text-slate-500">{summary}</p> : null}
 
           {address ? (
-            <div className="flex items-center gap-3">
-              <MapPin className="size-5 shrink-0 text-amber-500" />
-              <span className="min-w-0 flex-1 text-sm text-slate-800">{address}</span>
+            <div className="space-y-3 border-t border-neutral-100 pt-5">
+              <h3 className="text-lg font-bold text-slate-950">주소 및 위치</h3>
+              <p className="w-full select-text text-base leading-relaxed text-slate-800">{address}</p>
               <DirectionsMenu
                 destination={lat != null && lng != null ? { name, lat, lng } : null}
                 fallbackQuery={address || name}
@@ -428,9 +433,9 @@ export function PlaceDetailSheet({
           ) : null}
 
           {dist != null ? (
-            <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2.5">
+            <div className="flex items-center gap-2 border-t border-neutral-100 py-3">
               <Navigation className="size-4 shrink-0 text-amber-500" />
-              <span className="text-[13px] font-bold text-amber-700">
+              <span className="text-[13px] font-semibold text-slate-700">
                 내 위치에서 {formatDistance(dist)} · 도보 {estimateWalkMinutes(dist)}분
               </span>
             </div>
@@ -470,11 +475,10 @@ export function PlaceDetailSheet({
             </div>
           ) : null}
 
-          {/*
-            리뷰 — 맨 아래. 길어질 수 있어서 영업시간 다음이다.
-            쓰기는 앱에만 둔다(웹은 읽기, 앱은 쓰기).
-          */}
-          <PlaceReviews googlePlaceId={detail?.placeId} />
+          </> : null}
+          {tab === "reviews" ? <PlaceReviews googlePlaceId={detail?.placeId} /> : null}
+          </div>
+
         </div>
       </div>
     </div>

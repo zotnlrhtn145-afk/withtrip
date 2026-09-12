@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Clock, Copy, Link2, Loader2, MapPin, PartyPopper, Sparkles, X } from "lucide-react"
 
+import { PlaceDetailSheet, type PlaceDetailInput } from "@/components/place-detail-sheet"
 import { DirectionsMenu } from "@/components/directions-menu"
 import { TripRouteMap, type RouteStop } from "@/components/trip-route-map"
-import { FALLBACK_TRIP_COVER, CITY_IMAGES, withUnsplashQuality } from "@/shared/city-images"
 import type { PublicTrip } from "@/lib/templates-api"
 import { cn } from "@/lib/utils"
 
@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils"
  */
 export function PublicTripViewer({ trip, mode }: { trip: PublicTrip; mode: "template" | "share" }) {
   const router = useRouter()
+  const [detailPlace, setDetailPlace] = useState<PlaceDetailInput | null>(null)
   const [day, setDay] = useState(trip.days[0]?.day ?? 1)
   const [forking, setForking] = useState(false)
   const [forked, setForked] = useState<string | null>(null)
@@ -67,8 +68,6 @@ export function PublicTripViewer({ trip, mode }: { trip: PublicTrip; mode: "temp
     for (const [row, pin] of pinIndexOf) m.set(pin, row)
     return m
   }, [pinIndexOf])
-  const cover =
-    trip.coverImage || (trip.city && CITY_IMAGES[trip.city] ? withUnsplashQuality(CITY_IMAGES[trip.city]) : FALLBACK_TRIP_COVER)
 
   async function fork() {
     if (forking) return
@@ -94,20 +93,11 @@ export function PublicTripViewer({ trip, mode }: { trip: PublicTrip; mode: "temp
   return (
     <div className="mx-auto min-h-dvh w-full max-w-lg bg-background pb-28 lg:grid lg:max-w-7xl lg:grid-cols-2 lg:gap-0 lg:pb-0">
       <div className="min-w-0 lg:max-h-dvh lg:overflow-y-auto lg:pb-28">
-      {/* 표지 — 도시 사진 위에 제목. 글씨는 그림자만, 상자 배경 금지(스토리와 같은 규칙) */}
-      <div className="relative h-44 w-full overflow-hidden sm:rounded-b-3xl">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={cover} alt="" className="h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-black/25" />
-        <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-          <p className="text-[11px] font-bold tracking-wide text-white/75 drop-shadow">
-            {mode === "template" ? "여행 템플릿" : "공유된 일정"}
-            {trip.city ? ` · ${trip.city}` : ""}
-            {trip.duration ? ` · ${trip.duration}` : ""}
-          </p>
-          <h1 className="mt-0.5 text-[22px] font-extrabold leading-tight tracking-tight drop-shadow-md">{trip.title}</h1>
-        </div>
-      </div>
+      <header className="px-5 pt-8 pb-3">
+        <p className="text-xs font-semibold text-muted-foreground">{mode === "template" ? "공개된 여행 일정" : "공유된 일정"}{trip.city ? ` · ${trip.city}` : ""}</p>
+        <h1 className="mt-2 text-[27px] leading-tight font-extrabold tracking-tight">{trip.title}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{[trip.duration, `${trip.stopCount}곳`].filter(Boolean).join(" · ")}</p>
+      </header>
 
       {mode === "share" ? (
         <div className="animate-in fade-in slide-in-from-top-2 mx-4 mt-3 flex items-center gap-2 rounded-2xl border border-primary/50 bg-accent px-3.5 py-2.5 text-xs font-bold text-accent-foreground duration-500">
@@ -141,10 +131,10 @@ export function PublicTripViewer({ trip, mode }: { trip: PublicTrip; mode: "temp
             key={d.day}
             onClick={() => setDay(d.day)}
             className={cn(
-              "shrink-0 rounded-full border px-4 py-1.5 text-[13px] font-extrabold transition-all active:scale-95",
+              "shrink-0 border-b-[3px] px-4 py-3 text-[13px] font-bold transition-colors",
               d.day === day
-                ? "border-foreground bg-foreground text-primary"
-                : "border-border bg-card text-muted-foreground hover:border-foreground/30"
+                ? "border-[#fbbf24] text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
             Day {d.day}
@@ -152,56 +142,26 @@ export function PublicTripViewer({ trip, mode }: { trip: PublicTrip; mode: "temp
         ))}
       </div>
 
-      {/* 타임라인 — Day 를 바꾸면 줄줄이 떠오른다 */}
-      <div key={day} className="px-4 pt-1">
-        {stops.map((s, i) => (
-          <div
-            key={`${s.placeName}-${i}`}
-            id={`viewer-stop-${day}-${i}`}
-            onClick={() => {
+      {!wide && mapStops.length > 0 ? <div className="mx-4 mt-4 h-40 overflow-hidden rounded-2xl"><TripRouteMap stops={mapStops} selectedIndex={selectedStop} onSelect={setSelectedStop} /></div> : null}
+      <div key={day} className="px-5 pt-5">
+        <h2 className="mb-5 text-lg font-bold">{day}일차 <span className="ml-2 text-xs font-normal text-muted-foreground">{stops.length}곳</span></h2>
+        {stops.map((s, i) => <div key={`${s.placeName}-${i}`} id={`viewer-stop-${day}-${i}`} className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 flex gap-3 duration-300" style={{ animationDelay: `${Math.min(i * 45, 225)}ms` }}>
+          <div className="w-12 shrink-0 pt-1 text-[16px] font-bold tabular-nums">{s.visitTime ? s.visitTime.slice(0, 5) : "—"}</div>
+          <div className="relative min-w-0 flex-1 border-l border-neutral-200 pb-7 pl-5">
+            <span className="absolute -left-[5px] top-2 size-[9px] rounded-full bg-[#fbbf24]" />
+            {s.category ? <p className="mb-1 text-xs text-muted-foreground">{s.category}</p> : null}
+            <button type="button" onClick={() => {
               const pin = pinIndexOf.get(i)
               if (pin != null) setSelectedStop(pin)
-            }}
-            className={cn(
-              "animate-in fade-in slide-in-from-bottom-2 fill-mode-both flex items-start gap-3 border-b border-secondary py-3 duration-500 last:border-b-0",
-              pinIndexOf.has(i) ? "lg:cursor-pointer lg:rounded-xl lg:px-2 lg:transition-colors lg:hover:bg-secondary/60" : "",
-              selectedStop != null && pinIndexOf.get(i) === selectedStop ? "lg:bg-accent" : ""
-            )}
-            style={{ animationDelay: `${Math.min(i * 60, 480)}ms` }}
-          >
-            <span
-              className={cn(
-                "mt-0.5 grid size-7 shrink-0 place-items-center rounded-full text-[12px] font-black transition-colors",
-                selectedStop != null && pinIndexOf.get(i) === selectedStop
-                  ? "bg-foreground text-primary"
-                  : "bg-primary/25 text-foreground"
-              )}
-            >
-              {i + 1}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[14.5px] font-bold leading-snug text-foreground">{s.placeName}</p>
-              <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                {[s.category, s.address].filter(Boolean).join(" · ")}
-              </p>
-            </div>
-            {s.visitTime ? (
-              <span className="mt-1 flex shrink-0 items-center gap-1 text-[11.5px] font-extrabold text-amber-700">
-                <Clock className="size-3" />
-                {s.visitTime.slice(0, 5)}
-              </span>
-            ) : null}
-            <DirectionsMenu
-              variant="icon"
-              destination={s.lat != null && s.lng != null ? { name: s.placeName, lat: s.lat, lng: s.lng } : null}
-              fallbackQuery={s.placeName}
-            />
+              setDetailPlace({ name: s.placeName, address: s.address, lat: s.lat, lng: s.lng, category: s.category })
+            }} className="min-h-11 w-full text-left text-[18px] leading-snug font-bold underline-offset-4 hover:underline">{s.placeName} <span className="whitespace-nowrap text-xs font-normal text-muted-foreground">상세 보기 ›</span></button>
+            {s.address ? <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{s.address}</p> : null}
+            <div className="mt-2 flex items-center justify-between gap-2"><button type="button" disabled={!pinIndexOf.has(i)} onClick={() => setSelectedStop(pinIndexOf.get(i) ?? null)} className="min-h-11 text-xs font-semibold disabled:opacity-40">지도에서 위치 보기</button><DirectionsMenu variant="icon" destination={s.lat != null && s.lng != null ? { name: s.placeName, lat: s.lat, lng: s.lng } : null} fallbackQuery={s.placeName} /></div>
           </div>
-        ))}
-        {stops.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">이 날은 일정이 비어 있어요</p>
-        ) : null}
+        </div>)}
+        {stops.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">이 날은 일정이 비어 있어요</p> : null}
       </div>
+      <PlaceDetailSheet place={detailPlace} onClose={() => setDetailPlace(null)} />
 
       {/* 하단 고정 CTA — 어느 Day 를 보다가도 한 번에 */}
       <div className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-lg bg-gradient-to-t from-background via-background/95 to-transparent px-4 pb-5 pt-8 lg:inset-x-auto lg:left-0 lg:right-1/2 lg:mx-0 lg:max-w-none lg:px-[max(1rem,calc((100vw/2)-40rem+1rem))]">
