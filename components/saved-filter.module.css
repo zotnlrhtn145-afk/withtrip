@@ -1,0 +1,11 @@
+.option { position: relative; display: flex; align-items: center; gap: 6px; max-width: 100%; min-height: 44px; padding: 8px 0 10px; color: #64748b; font-size: 15px; line-height: 1.5; text-align: left; background: white; border: 0; }
+.option::after { content: ''; position: absolute; left: 0; right: 0; bottom: 3px; height: 3px; border-radius: 2px; background: #fbbf24; transform: scaleX(0); transform-origin: left; transition: transform 200ms ease; }
+.option[aria-pressed=true] { color: #0f172a; font-weight: 700; }
+.option[aria-pressed=true]::after { transform: scaleX(1); }
+.quick { display: flex; flex-wrap: wrap; justify-content: flex-end; column-gap: 16px; }
+.quick > p { flex-basis: 100%; margin-bottom: 6px; }
+.quick > button { position: relative; display: flex; flex-direction: column; gap: 4px; width: auto; min-width: 48px; min-height: 55px; padding: 8px; border: 0; border-radius: 0; background: white; color: #64748b; font-size: 11px; }
+.quick > button::after { content: ''; position: absolute; left: 12px; right: 12px; bottom: 0; height: 3px; border-radius: 2px; background: #fbbf24; transform: scaleX(0); transition: transform 200ms ease; }
+.quick > button[aria-pressed=true]::after { transform: scaleX(1); }
+.quick > button[aria-pressed=true] { color: #0f172a; }
+@media (prefers-reduced-motion: reduce) { .option::after, .quick > button::after { transition: none; } }

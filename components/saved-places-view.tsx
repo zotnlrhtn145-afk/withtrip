@@ -1,6 +1,10 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import { PlaceChip, FilterSection } from "./saved-filter-controls"
+import { SavedMapSheet } from "./saved-map-sheet"
+import { PlaceFilterDrawer } from "./place-filter-drawer"
+import filterStyles from "./saved-filter.module.css"
 import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
@@ -1282,7 +1286,7 @@ export function SavedPlacesView() {
           >
             {it.label}
             {tab === it.k ? (
-              <span className="absolute -bottom-px left-1/2 h-0.5 w-10 -translate-x-1/2 rounded bg-slate-900" />
+              <span className="absolute -bottom-px left-1/2 h-[3px] w-10 -translate-x-1/2 rounded bg-amber-400" />
             ) : null}
           </button>
         ))}
@@ -1319,7 +1323,7 @@ export function SavedPlacesView() {
           </button>
         </div>
       ) : (
-        <div className="relative -mx-4 md:-mx-6">
+        <div className="relative -mx-4 h-[calc(100dvh-190px)] min-h-[400px] overflow-hidden md:-mx-6">
           {/*
             지도는 sticky로 화면에 고정되고, 리스트 카드는 지도 아래를 살짝 겹치도록
             음수 마진으로 끌어올려 둔다. 페이지를 아래로 스크롤하면 리스트가 지도를
@@ -1328,7 +1332,7 @@ export function SavedPlacesView() {
             데스크톱은 헤더(40px)·좌우 여백(24px)만 다르고 나머지는 동일하다.
           */}
           <div
-            className="sticky z-0 top-[62px] h-[calc(100dvh-258px)] md:top-[40px] md:h-[calc(100dvh-190px)]"
+            className="absolute inset-0 z-0"
           >
             <NearbyMap
               center={geo.position}
@@ -1346,14 +1350,11 @@ export function SavedPlacesView() {
             />
           </div>
 
-          <div className="relative z-10 -mt-[104px] min-h-[130vh] rounded-t-3xl bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.14)] md:-mt-[88px]">
-            <div className="flex justify-center pt-2.5 pb-1">
-              <span className="h-1.5 w-10 rounded-full bg-slate-300" />
-            </div>
+          <SavedMapSheet revealKey={selectedMapId} count={subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length}>
 
             {/* 소탭: 나의 찜 / 여행클립 찜 */}
             <div className="px-4 pb-1 md:px-6">
-              <div className="flex rounded-full bg-slate-100 p-1">
+              <div className="flex border-b border-slate-100 bg-white">
                 {(
                   [
                     { k: "wish", label: `나의 찜 ${places.length}` },
@@ -1369,8 +1370,8 @@ export function SavedPlacesView() {
                       setTripFilter("all")
                     }}
                     className={cn(
-                      "flex-1 rounded-full py-2 text-sm font-bold transition-colors",
-                      subTab === it.k ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                      "relative flex-1 border-b-[3px] py-3 text-sm font-bold transition-colors",
+                      subTab === it.k ? "border-amber-400 text-slate-900" : "border-transparent text-slate-500"
                     )}
                   >
                     {it.label}
@@ -1403,7 +1404,7 @@ export function SavedPlacesView() {
               </div>
             </div>
 
-            <div className="sticky z-10 top-[62px] flex items-center justify-between gap-2 bg-white/95 px-4 pb-2.5 backdrop-blur md:top-[40px] md:px-6">
+            <div className={cn(filterStyles.quick, "sticky z-10 top-0 bg-white px-4 pb-2.5 md:px-6")}>
               {/*
                 ⚠️ **min-w-0 flex-1 이 있어야 한다.** 없으면 justify-between 이 세 덩어리를
                    균등하게 벌려서 별표가 가운데로 밀려난다. 별표는 필터 **바로 왼쪽**에
@@ -1434,7 +1435,7 @@ export function SavedPlacesView() {
                       : "border-slate-200 text-slate-500 hover:bg-slate-50"
                   )}
                 >
-                  <Star className={cn("size-3.5", starredOnly && "fill-red-500")} />
+                  <Star className="size-5" /><span>별표</span>
                 </button>
               ) : null}
               {/*
@@ -1455,7 +1456,7 @@ export function SavedPlacesView() {
                       : "border-slate-200 text-slate-500 hover:bg-slate-50"
                   )}
                 >
-                  <Clock className="size-3.5" />
+                  <Clock className="size-5" /><span>지금 갈 곳</span>
                 </button>
               ) : null}
               <button
@@ -1510,7 +1511,7 @@ export function SavedPlacesView() {
               {/* 여기가 보이면 다음 묶음을 그린다 */}
               <div ref={sentinelRef} aria-hidden className="h-1" />
             </div>
-          </div>
+          </SavedMapSheet>
         </div>
       )}
 
@@ -1617,28 +1618,8 @@ export function SavedPlacesView() {
         ⚠️ 맨 아래 [초기화] [N곳 보기] 는 고정이다. 항목을 만지다 보면
            지금 몇 곳이 남았는지 안 보이는데, 그걸 계속 보여줘야 마음 놓고 고른다.
       */}
-      {filterOpen ? (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <button
-            type="button"
-            aria-label="필터 닫기"
-            onClick={() => setFilterOpen(false)}
-            className="absolute inset-0 bg-slate-900/45 animate-in fade-in-0"
-          />
-          <aside className="relative flex h-full w-[88%] max-w-[420px] flex-col bg-white shadow-2xl animate-in slide-in-from-right duration-300">
-            <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-              <h2 className="text-[17px] font-bold text-slate-900">필터</h2>
-              <button
-                type="button"
-                onClick={() => setFilterOpen(false)}
-                aria-label="닫기"
-                className="p-1 text-slate-400 transition-colors hover:text-slate-600"
-              >
-                <X className="size-5" />
-              </button>
-            </header>
-
-            <div className="flex-1 overflow-y-auto px-5 pb-6 pt-4">
+      <PlaceFilterDrawer open={filterOpen} onClose={() => setFilterOpen(false)}>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-6 pt-4">
               <FilterSection title="정렬">
                 {(["recent", "distance", "name", "rating"] as SortMode[]).map((o) => (
                   <PlaceChip key={o} label={SORT_LABELS[o]} on={sort === o} onClick={() => setSort(o)} />
@@ -1717,7 +1698,7 @@ export function SavedPlacesView() {
               ) : null}
             </div>
 
-            <footer className="flex gap-2 border-t border-slate-100 px-5 py-4">
+            <footer className="flex shrink-0 gap-3 bg-white px-6 pt-4 pb-[max(20px,env(safe-area-inset-bottom))] shadow-[0_-7px_16px_#20313d08]">
               <button
                 type="button"
                 onClick={() => {
@@ -1727,21 +1708,19 @@ export function SavedPlacesView() {
                   setSort("recent")
                   setTripFilter("all")
                 }}
-                className="rounded-full border border-slate-200 px-5 py-3 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-50"
+                className="min-h-12 px-3 py-3 text-sm font-semibold text-slate-500"
               >
                 초기화
               </button>
               <button
                 type="button"
                 onClick={() => setFilterOpen(false)}
-                className="flex-1 rounded-full bg-amber-400 py-3 text-[15px] font-bold text-slate-950 transition-colors hover:bg-amber-500"
+                className="min-h-12 flex-1 rounded-2xl bg-amber-400 px-3 py-3 text-[15px] font-bold text-slate-950 transition-colors hover:bg-amber-500"
               >
                 {(subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length).toLocaleString()}곳 보기
               </button>
             </footer>
-          </aside>
-        </div>
-      ) : null}
+      </PlaceFilterDrawer>
 
       {/* 삭제 확인 */}
       <Dialog open={Boolean(deleteConfirm)} onOpenChange={(next) => { if (!next) setDeleteConfirm(null) }}>
@@ -1912,49 +1891,3 @@ function FriendRecsList({
  * 나라·지역 칩.
  * 나라는 진하게, 지역은 한 단계 작게 — 위아래 두 줄이 같은 무게면 뭐가 상위인지 모른다.
  */
-function PlaceChip({
-  label,
-  count,
-  on,
-  onClick,
-  small,
-  icon,
-}: {
-  label: string
-  count?: number
-  on: boolean
-  onClick: () => void
-  small?: boolean
-  icon?: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={on}
-      className={cn(
-        "flex shrink-0 items-center gap-1 rounded-full border font-bold transition-colors",
-        small ? "px-3 py-1.5 text-xs" : "px-3.5 py-2 text-[13px]",
-        on
-          ? "border-amber-400 bg-amber-50 text-amber-900"
-          : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
-      )}
-    >
-      {icon}
-      {label}
-      {count != null ? (
-        <span className={cn("tabular-nums", on ? "text-amber-700" : "text-slate-400")}>{count}</span>
-      ) : null}
-    </button>
-  )
-}
-
-/** 필터 패널의 한 묶음 — 제목 + 줄바꿈 칩 */
-function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="mb-5">
-      <p className="mb-2 text-xs font-bold text-slate-400">{title}</p>
-      <div className="flex flex-wrap gap-2">{children}</div>
-    </div>
-  )
-}
