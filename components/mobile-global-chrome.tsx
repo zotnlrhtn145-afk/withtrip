@@ -125,9 +125,9 @@ export function MobileGlobalChrome() {
   // The trip detail page (/trips/[id]) renders its own header (with a "목록으로"
   // back button), so the global mobile header would stack a second bar on top of
   // it. Hide the global header there — but keep the bottom nav.
-  const hideHeader = hideChrome || pathname.startsWith("/trips/")
+  const hideHeader = hideChrome || pathname.startsWith("/trips/") || active === "mypage" || active === "saved" || pathname.startsWith("/saved/")
 
-  const hideBottomNav = hideChrome || pathname === "/saved" || pathname.startsWith("/saved/")
+  const hideBottomNav = hideChrome || active === "saved" || pathname.startsWith("/saved/")
 
   return (
     <>
@@ -138,7 +138,7 @@ export function MobileGlobalChrome() {
             <div className="flex items-center">
               <NotificationBellButton className="size-11" iconClassName="size-5" />
               <HeaderAuthControl />
-              <button type="button" aria-label="퀵 등록" onClick={() => window.dispatchEvent(new CustomEvent("withtrip:open-quick-menu"))} className="flex size-11 items-center justify-center rounded-full bg-amber-400"><Plus className="size-6 stroke-[1.5]" /></button>
+              <button type="button" aria-label="퀵 등록" onClick={() => window.dispatchEvent(new CustomEvent("withtrip:open-quick-menu"))} className="flex size-11 items-center justify-center rounded-full bg-[#fbbf24]"><Plus className="size-6 stroke-[1.5]" /></button>
             </div>
           </div> : (
           <div className="flex items-center justify-between px-4 py-3">

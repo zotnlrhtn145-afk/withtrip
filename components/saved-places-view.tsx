@@ -2,6 +2,8 @@
 
 import dynamic from "next/dynamic"
 import { PlaceChip, FilterSection } from "./saved-filter-controls"
+import { SavedPlaceCard, SavedCardAction, SavedMapTools, SavedDesignIcon } from "./saved-place-card"
+import savedStyles from "./saved-exact.module.css"
 import { SavedMapSheet } from "./saved-map-sheet"
 import { PlaceFilterDrawer } from "./place-filter-drawer"
 import filterStyles from "./saved-filter.module.css"
@@ -134,7 +136,7 @@ export function SavedPlacesView() {
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null)
   const [detailPlace, setDetailPlace] = useState<PlaceDetailInput | null>(null)
   const [detailAssign, setDetailAssign] = useState<SavedPlace | null>(null) // 상세에서 "담기" 대상
-  const [tab, setTab] = useState<"all" | "mine" | "friends">("mine")
+  const [tab, setTab] = useState<"all" | "mine" | "friends">("all")
   /*
     ⚠️ 주소로 탭을 정할 수 있어야 한다. 알림에서 "누가 맛집을 추천했어요" 를
        눌렀을 때 곧장 친구 추천찜으로 보내려면 여기로 링크를 걸어야 하는데,
@@ -155,6 +157,7 @@ export function SavedPlacesView() {
   const [savingRecId, setSavingRecId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
   const [recenterKey, setRecenterKey] = useState(0)
+  const [collapseKey, setCollapseKey] = useState(0)
   const didAutoCenter = useRef(false)
   const followNextFix = useRef(false)
   const cardRefs = useRef<Record<string, HTMLLIElement | null>>({})
@@ -424,7 +427,7 @@ export function SavedPlacesView() {
     if (!el) return
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries.some((e) => e.isIntersecting)) setVisible((v) => Math.min(v + PAGE, Math.max(PAGE, places.length, tripSpots.length, recs.length)))
+        if (entries.some((e) => e.isIntersecting)) setVisible((v) => Math.min(v + PAGE, Math.max(PAGE, places.length + tripSpots.length + recs.length)))
       },
       { rootMargin: "400px" }
     )
@@ -434,6 +437,7 @@ export function SavedPlacesView() {
 
   /** 꼭 가고 싶은 곳만 보기 — 켜면 목록도 지도도 별표만 남는다 */
   const [starredOnly, setStarredOnly] = useState(false)
+  const [visitedOnly, setVisitedOnly] = useState(false)
   /** 사진의 빠른(스토리지 직행) 주소 — 프록시 302 왕복을 없앤다 */
 
   const filteredPlaces = useMemo(() => {
@@ -465,7 +469,8 @@ export function SavedPlacesView() {
     const byRegion =
       region === "all" ? byCountry : byCountry.filter((p) => regionLabel(p.region) === region)
     const byCat = subFilter ? byRegion.filter((place) => place.subCategory.trim() === subFilter) : byRegion
-    const base = starredOnly ? byCat.filter((place) => place.starred) : byCat
+    const byVisit = visitedOnly ? byCat.filter(place => !!place.googlePlaceId && marks[place.googlePlaceId]?.visited) : byCat
+    const base = starredOnly ? byVisit.filter((place) => place.starred) : byVisit
     const arr = [...base]
     if (sort === "recent") return arr.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
     if (sort === "name") return arr.sort((a, b) => a.placeName.localeCompare(b.placeName, "ko"))
@@ -476,7 +481,7 @@ export function SavedPlacesView() {
       const db = b.lat != null && b.lng != null ? distanceMeters(geo.position, { lat: b.lat, lng: b.lng }) : Infinity
       return da - db
     })
-  }, [places, subFilter, geo.position, sort, search, starredOnly, country, region])
+  }, [places, subFilter, geo.position, sort, search, starredOnly, visitedOnly, marks, country, region])
 
   /*
     지금 갈 수 있는 곳만 남긴다.
@@ -636,8 +641,9 @@ export function SavedPlacesView() {
   const selectCategory = (key: "all" | "wish" | "trip" | "friends") => {
     setTab(key === "all" ? "all" : key === "friends" ? "friends" : "mine")
     if (key === "wish" || key === "trip") setSubTab(key)
-    if (key === "all") { setSubFilter(""); setCountry("all"); setRegion("all"); setTripFilter("all"); setStarredOnly(false); setOpenOnly(false) }
+    if (key === "all") { setSubFilter(""); setCountry("all"); setRegion("all"); setTripFilter("all"); setStarredOnly(false); setOpenOnly(false); setVisitedOnly(false) }
     setSelectedMapId(null)
+    setSearch("")
     setVisible(PAGE)
   }
 
@@ -663,6 +669,7 @@ export function SavedPlacesView() {
   // 리스트 카드 클릭 → 지도가 그 마커로 이동(팬) + 스티키 지도가 보이게 맨 위로 스크롤.
   const showOnMap = (id: string) => {
     selectSource.current = "list"
+    setCollapseKey(value => value + 1)
     setSelectedMapId(id)
     // 스티키 지도(상단)가 리스트에 가려져 있으므로 맨 위로 올려 지도를 노출한다.
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" })
@@ -839,457 +846,34 @@ export function SavedPlacesView() {
    *    **가게를 고르는 화면인데 정작 가게가 안 보였다.**
    *    사진을 위로 크게 빼고 글자를 아래에 뒀다.
    */
-  const renderPlaceCard = (place: SavedPlace) => (
-    <li
-      key={place.id}
-      ref={(node) => {
-        cardRefs.current[place.id] = node
-      }}
-      className="list-none"
-    >
+  const renderPlaceCard = (place: SavedPlace) => {
+    const mark = place.googlePlaceId ? marks[place.googlePlaceId] : undefined
+    const placeHours = place.googlePlaceId ? hours[place.googlePlaceId] : undefined
+    const tag = placeHours ? openLabel(openState(placeHours.periods, placeHours.utcOffsetMin, nowMs)) : null
+    return <li key={place.id} ref={node => { cardRefs.current[place.id] = node }} className="list-none">
       <SwipeToDelete onDelete={() => setDeleteConfirm({ id: place.id, name: place.placeName })}>
-        <div
-          onClick={() => showOnMap(place.id)}
-          className={cn(
-            "cursor-pointer overflow-hidden rounded-2xl border bg-white shadow-sm transition-colors",
-            selectedMapId === place.id
-              ? "border-amber-300 ring-2 ring-amber-200"
-              : "border-slate-100 hover:border-slate-200"
-          )}
-        >
-          {/*
-            사진.
-            ⚠️ 못 가져온 곳은 **사진칸 자체를 그리지 않는다.** 빈 회색 상자를 두면
-               목록이 구멍 뚫린 것처럼 보이고 높이만 잡아먹는다.
-          */}
-          {place.imageUrl?.trim() ? (
-          <div className="relative aspect-[1.92/1] w-full bg-slate-100">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photoUrlWith(fastPhotos, place.imageUrl, PHOTO_W.card)}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className="size-full object-cover"
-            />
-
-            {/* 별표는 사진 위에 — 누르기 쉽고 목록에서 바로 눈에 띈다 */}
-            <button
-              type="button"
-              aria-label={place.starred ? "꼭 가고 싶은 곳 해제" : "꼭 가고 싶은 곳으로 표시"}
-              aria-pressed={place.starred}
-              onClick={(e) => {
-                e.stopPropagation()
-                void toggleStar(place)
-              }}
-              className="absolute left-2.5 top-2.5 flex size-8 items-center justify-center rounded-full bg-slate-900/45 backdrop-blur-sm transition-transform active:scale-90"
-            >
-              <Star
-                className={cn(
-                  "size-4",
-                  place.starred ? "fill-red-500 text-red-500" : "text-white"
-                )}
-              />
-            </button>
-
-            {/*
-              다녀온 곳 표시 — **별표 바로 오른쪽**에 붙인다.
-              둘 다 "이 곳에 대한 내 표시"라서 한 줄로 모아 둬야 눈이 한 번만 간다.
-              (왼쪽 = 내 표시, 오른쪽 아래 = 추천한 친구. 앱과 같은 배치)
-              별표(size-8, left-2.5)가 x=10~42 를 쓰므로 46 부터 시작하고,
-              높이를 별표에 맞춰 세로 가운데가 어긋나지 않게 한다.
-            */}
-            {place.googlePlaceId && marks[place.googlePlaceId]?.visited ? (
-              <span className="absolute left-[46px] top-2.5 flex h-8 items-center gap-1 rounded-full bg-slate-900/60 px-2.5 backdrop-blur-sm">
-                <Check className="size-3 text-white" />
-                <span className="text-[11px] font-bold text-white">다녀옴</span>
-              </span>
-            ) : null}
-
-            {/*
-              어디서 보고 담았는지 — 눌러서 원본 게시물로 간다.
-              ⚠️ 왼쪽 위는 별표+다녀옴, 오른쪽 아래는 추천한 친구 자리라 오른쪽 위에 둔다.
-            */}
-            {place.sourceUrl ? (
-              <a
-                href={place.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                aria-label="가져온 인스타그램 게시물 보기"
-                className="absolute right-2.5 top-2.5 flex size-7 items-center justify-center rounded-full bg-slate-900/55 text-white backdrop-blur-sm transition-transform active:scale-90"
-              >
-                <InstagramIcon className="size-4" />
-              </a>
-            ) : null}
-
-            {/* 친구가 추천해 준 곳 */}
-            {place.recommendedBy && place.recommender ? (
-              <span className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 rounded-full bg-slate-900/55 py-0.5 pl-0.5 pr-2.5 backdrop-blur-sm">
-                <Avatar className="size-5">
-                  {place.recommender.avatarUrl ? (
-                    <AvatarImage src={place.recommender.avatarUrl} alt="" />
-                  ) : null}
-                  <AvatarFallback className="bg-amber-400 text-[9px] font-bold text-slate-950">
-                    {(place.recommender.nickname ?? "친구").slice(0, 1)}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-[11px] font-bold text-white">
-                  {place.recommender.nickname ?? "친구"}님 추천
-                </span>
-              </span>
-            ) : null}
-          </div>
-          ) : null}
-
-          {/* 글자 */}
-          <div className="px-3.5 pb-2 pt-3">
-            <div className="flex items-start gap-2">
-              <p className="line-clamp-2 flex-1 text-[15px] font-bold text-slate-900">
-                {place.placeName}
-              </p>
-              {/* 사진이 없으면 별표가 얹힐 곳이 없다 — 이름 옆에 둔다 */}
-              {!place.imageUrl?.trim() ? (
-                <button
-                  type="button"
-                  aria-label={place.starred ? "꼭 가고 싶은 곳 해제" : "꼭 가고 싶은 곳으로 표시"}
-                  aria-pressed={place.starred}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    void toggleStar(place)
-                  }}
-                  className="shrink-0 p-0.5 transition-transform active:scale-90"
-                >
-                  <Star
-                    className={cn(
-                      "size-4",
-                      place.starred ? "fill-red-500 text-red-500" : "text-slate-300"
-                    )}
-                  />
-                </button>
-              ) : null}
-            </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-slate-500">
-              {place.rating ? (
-                <span className="flex items-center gap-0.5 font-bold tabular-nums text-slate-700">
-                  <Star className="size-3 fill-amber-400 text-amber-400" />
-                  {place.rating}
-                  {place.reviewCount ? (
-                    <span className="font-medium text-slate-400">
-                      ({place.reviewCount.toLocaleString()})
-                    </span>
-                  ) : null}
-                </span>
-              ) : null}
-              {place.subCategory || place.category ? (
-                <>
-                  <span className="text-slate-300">·</span>
-                  <span>{place.subCategory || place.category}</span>
-                </>
-              ) : null}
-              {placeDistanceLabels.has(place.id) ? (
-                <>
-                  <span className="text-slate-300">·</span>
-                  <span className="font-bold text-amber-700">
-                    {placeDistanceLabels.get(place.id)}
-                  </span>
-                </>
-              ) : null}
-            </div>
-
-            {/*
-              영업 상태.
-
-              ⚠️ **평점보다 위에 둔다.** 급할 때 필요한 건 "지금 갈 수 있나" 이지
-                 별점이 아니다(신고: 브레이크타임인 걸 몰라 계획이 깨졌다).
-              ⚠️ 색이 셋이다 — 초록(간다) / 주황(기다리면 간다) / 회색(오늘은 끝).
-                 쉬는 시간을 회색으로 하면 후보에서 빼 버리게 된다.
-              ⚠️ 모르는 곳은 줄 자체를 안 그린다.
-            */}
-            {(() => {
-              const h = place.googlePlaceId ? hours[place.googlePlaceId] : undefined
-              if (!h) return null
-              const tag = openLabel(openState(h.periods, h.utcOffsetMin, nowMs))
-              if (tag.tone === "none") return null
-              return (
-                <span
-                  className={cn(
-                    "mt-1 inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-bold",
-                    tag.tone === "good"
-                      ? "bg-emerald-50 text-emerald-700"
-                      : tag.tone === "warn"
-                        ? "bg-amber-50 text-amber-700"
-                        : "bg-slate-100 text-slate-500"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "size-1.5 rounded-full",
-                      tag.tone === "good"
-                        ? "bg-emerald-500"
-                        : tag.tone === "warn"
-                          ? "bg-amber-500"
-                          : "bg-slate-400"
-                    )}
-                  />
-                  {tag.text}
-                </span>
-              )
-            })()}
-
-            {/*
-              내 평점 — 위 줄의 별점은 **구글** 것이다. 섞으면 둘 다 뜻을 잃으므로
-              한 칸 아래에 따로 둔다. 사진이 없어 배지를 못 그린 경우엔 다녀옴도 여기서 알린다.
-            */}
-            {(() => {
-              const mark = place.googlePlaceId ? marks[place.googlePlaceId] : undefined
-              if (!mark) return null
-              if (mark.myRating != null) {
-                return (
-                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5">
-                    <span className="inline-flex">
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <Star
-                          key={i}
-                          className={cn(
-                            "size-2.5",
-                            i <= (mark.myRating ?? 0) ? "fill-amber-400 text-amber-400" : "text-slate-300"
-                          )}
-                        />
-                      ))}
-                    </span>
-                    <span className="text-sm font-bold text-slate-600">내 평점 {mark.myRating}</span>
-                  </span>
-                )
-              }
-              if (mark.visited && !place.imageUrl?.trim()) {
-                return (
-                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5">
-                    <Check className="size-2.5 text-slate-500" />
-                    <span className="text-sm font-bold text-slate-600">다녀옴</span>
-                  </span>
-                )
-              }
-              return null
-            })()}
-
-            {place.address ? (
-              <p className="mt-0.5 truncate text-sm text-slate-600">{place.address}</p>
-            ) : null}
-          </div>
-
-          {/* 동작 — 아이콘만 두면 뭘 하는 건지 몰라서 글자를 같이 둔다 */}
-          <div className="flex gap-1.5 px-3 pb-3">
-            <div onClick={(event) => event.stopPropagation()} className="flex-1">
-              <DirectionsMenu
-                destination={{ name: place.placeName, lat: place.lat, lng: place.lng }}
-                fallbackQuery={place.address || place.placeName}
-                label="길찾기"
-                icon={MapIcon}
-                className="w-full justify-center rounded-full bg-slate-50 py-2 text-xs font-bold text-slate-600 hover:bg-amber-50"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation()
-                setSendTarget(place)
-              }}
-              className="flex flex-1 items-center justify-center gap-1 rounded-full bg-slate-50 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-amber-50"
-            >
-              <Plane className="size-3.5" />
-              여행담기
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation()
-                setRecTarget({
-                  label: place.placeName,
-                  sourceId: place.id,
-                  place: {
-                    place_name: place.placeName,
-                    category: place.category,
-                    sub_category: place.subCategory,
-                    local_name: place.localName,
-                    address: place.address,
-                    phone_number: place.phoneNumber,
-                    image_url: place.imageUrl,
-                    rating: place.rating,
-                    review_count: place.reviewCount,
-                    lat: place.lat,
-                    lng: place.lng,
-                  },
-                })
-              }}
-              className="flex flex-1 items-center justify-center gap-1 rounded-full bg-slate-50 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-amber-50"
-            >
-              <Send className="size-3.5" />
-              추천
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation()
-                openDetail(place)
-              }}
-              className="flex flex-1 items-center justify-center gap-1 rounded-full bg-slate-50 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-amber-50"
-            >
-              <Info className="size-3.5" />
-              상세
-            </button>
-          </div>
-        </div>
+        <SavedPlaceCard name={place.placeName} source="mine" photo={place.imageUrl ? photoUrlWith(fastPhotos, place.imageUrl, PHOTO_W.card) : null} selected={selectedMapId === place.id} starred={place.starred} onStar={() => void toggleStar(place)} onDetail={() => openDetail(place)}
+          badge={<>{mark?.visited ? <span>다녀옴</span> : null}{place.sourceUrl ? <a href={place.sourceUrl} target="_blank" rel="noreferrer" aria-label="가져온 게시물 보기"><InstagramIcon className="size-4" /></a> : null}</>}
+          metadata={<><span>{place.subCategory || place.category}</span>{placeDistanceLabels.has(place.id) ? <span>· {placeDistanceLabels.get(place.id)}</span> : null}{place.rating ? <b>· ★ {place.rating}{place.reviewCount ? ` (${place.reviewCount.toLocaleString()})` : ""}</b> : null}</>}
+          details={<>{place.recommendedBy && place.recommender ? <div className={savedStyles.person}>{place.recommender.avatarUrl ? <img src={place.recommender.avatarUrl} alt="" /> : <i />}<span>{place.recommender.nickname || "게스트"}님이 추천한 장소</span></div> : null}<button className={savedStyles.addressLink} onClick={() => showOnMap(place.id)} aria-label={`${place.placeName} 지도에서 보기`}><span>{place.address || "지도에서 보기"}</span><SavedDesignIcon name="locate-fixed" size={15} /></button>{tag && tag.tone !== "none" ? <p style={{ color: tag.tone === "good" ? "#087b5d" : tag.tone === "warn" ? "#a16a00" : "#65717c", fontWeight: 600 }}>{tag.text}</p> : null}{mark?.myRating != null ? <p>내 평점 {mark.myRating}</p> : null}</>}
+          actions={<><div><DirectionsMenu destination={{ name: place.placeName, lat: place.lat, lng: place.lng }} fallbackQuery={place.address || place.placeName} label="길찾기" /></div><SavedCardAction icon="plane" label="여행담기" highlight onClick={() => setSendTarget(place)} /><SavedCardAction icon="send" label="추천" onClick={() => setRecTarget({ label: place.placeName, sourceId: place.id, place: { place_name: place.placeName, category: place.category, sub_category: place.subCategory, local_name: place.localName, address: place.address, phone_number: place.phoneNumber, image_url: place.imageUrl, rating: place.rating, review_count: place.reviewCount, lat: place.lat, lng: place.lng } })} /><SavedCardAction icon="info" label="상세" onClick={() => openDetail(place)} /></>}
+        />
       </SwipeToDelete>
     </li>
-  )
-
-  /**
-   * 여행클립 찜 한 줄.
-   *
-   * 나의 찜 카드와 **같은 모양**으로 맞춘다. 같은 화면에서 탭만 바꿨는데
-   * 카드 생김새가 다르면 다른 앱처럼 느껴진다.
-   * 다른 점은 하나 — 누가 어느 여행에 담았는지 사진 위에 붙인다.
-   */
-  const renderTripSpotCard = (spot: NearbySpot) => (
-    <li key={spot.id} className="list-none">
-      <div
-        onClick={() => showOnMap(spot.id)}
-        className={cn(
-          "cursor-pointer overflow-hidden rounded-2xl border bg-white shadow-sm transition-colors",
-          selectedMapId === spot.id
-            ? "border-amber-300 ring-2 ring-amber-200"
-            : "border-slate-100 hover:border-slate-200"
-        )}
-      >
-        {/* 사진 — 못 가져온 곳은 칸 자체를 그리지 않는다 */}
-        {spot.image?.trim() ? (
-          <div className="relative aspect-[1.92/1] w-full bg-slate-100">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photoUrlWith(fastPhotos, spot.image, PHOTO_W.card)}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className="size-full object-cover"
-            />
-            {/* 누가 어느 여행에 담았는지 */}
-            <span className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 rounded-full bg-slate-900/55 py-0.5 pl-0.5 pr-2.5 backdrop-blur-sm">
-              <Avatar className="size-5">
-                {spot.authorAvatarUrl ? <AvatarImage src={spot.authorAvatarUrl} alt="" /> : null}
-                <AvatarFallback className="bg-amber-400 text-[9px] font-bold text-slate-950">
-                  {(spot.authorNickname ?? "친구").slice(0, 1)}
-                </AvatarFallback>
-              </Avatar>
-              <span className="max-w-[160px] truncate text-[11px] font-bold text-white">
-                {spot.tripTitle || "여행"}
-              </span>
-            </span>
-          </div>
-        ) : null}
-
-        {/* 글자 */}
-        <div className="px-3.5 pb-2 pt-3">
-          <p className="line-clamp-2 text-[15px] font-bold text-slate-900">{spot.name}</p>
-          <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-slate-500">
-            {spot.rating ? (
-              <span className="flex items-center gap-0.5 font-bold tabular-nums text-slate-700">
-                <Star className="size-3 fill-amber-400 text-amber-400" />
-                {spot.rating}
-              </span>
-            ) : null}
-            {spot.category ? (
-              <>
-                <span className="text-slate-300">·</span>
-                <span>{spot.category}</span>
-              </>
-            ) : null}
-            {tripDistanceLabels.has(spot.id) ? (
-              <>
-                <span className="text-slate-300">·</span>
-                <span className="font-bold text-amber-700">{tripDistanceLabels.get(spot.id)}</span>
-              </>
-            ) : null}
-          </div>
-          {spot.address ? (
-            <p className="mt-0.5 truncate text-sm text-slate-600">{spot.address}</p>
-          ) : null}
-          {/* 사진이 없으면 담은 사람을 여기에 */}
-          {!spot.image?.trim() ? (
-            <p className="mt-0.5 truncate text-sm text-slate-600">
-              {spot.tripTitle || "여행"}
-              {spot.authorNickname ? ` · ${spot.authorNickname}` : ""}
-            </p>
-          ) : null}
-        </div>
-
-        {/* 동작 */}
-        <div className="flex gap-1.5 px-3 pb-3">
-          <div onClick={(event) => event.stopPropagation()} className="flex-1">
-            <DirectionsMenu
-              destination={{ name: spot.name, lat: spot.lat, lng: spot.lng }}
-              fallbackQuery={spot.address || spot.name}
-              label="길찾기"
-              icon={MapIcon}
-              className="w-full justify-center rounded-full bg-slate-50 py-2 text-xs font-bold text-slate-600 hover:bg-amber-50"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation()
-              setDetailAssign(null)
-              setDetailPlace({
-                name: spot.name,
-                address: spot.address,
-                lat: spot.lat,
-                lng: spot.lng,
-                imageUrl: spot.image,
-                category: spot.category,
-                rating: spot.rating ?? null,
-                reviewCount: null,
-              })
-            }}
-            className="flex flex-1 items-center justify-center gap-1 rounded-full bg-slate-50 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-amber-50"
-          >
-            <Info className="size-3.5" />
-            상세
-          </button>
-        </div>
-      </div>
-    </li>
-  )
+  }
+  const openSpotDetail = (spot: NearbySpot) => { setDetailAssign(null); setDetailPlace({ name: spot.name, address: spot.address, lat: spot.lat, lng: spot.lng, imageUrl: spot.image, category: spot.category, rating: spot.rating ?? null, reviewCount: null }) }
+  const openRecDetail = (rec: IncomingRec) => { setDetailAssign(null); setDetailPlace({ name: rec.placeName, address: rec.address ?? "", lat: rec.lat, lng: rec.lng, imageUrl: rec.imageUrl, category: rec.subCategory || rec.category, rating: rec.rating, reviewCount: rec.reviewCount }) }
+  const renderTripSpotCard = (spot: NearbySpot) => <li key={spot.id} ref={node => { cardRefs.current[spot.id] = node }} className="list-none"><SavedPlaceCard name={spot.name} source="trip" photo={spot.image ? photoUrlWith(fastPhotos, spot.image, PHOTO_W.card) : null} selected={selectedMapId === spot.id} onDetail={() => openSpotDetail(spot)} metadata={<><span>{spot.category}</span>{tripDistanceLabels.has(spot.id) ? <span>· {tripDistanceLabels.get(spot.id)}</span> : null}{spot.rating ? <b>· ★ {spot.rating}</b> : null}</>} details={<><div className={savedStyles.person}>{spot.authorAvatarUrl ? <img src={spot.authorAvatarUrl} alt="" /> : <i />}<span>{spot.tripTitle || "여행"}{spot.authorNickname ? ` · ${spot.authorNickname}` : ""}</span></div>{spot.address ? <p>{spot.address}</p> : null}</>} actions={<><div><DirectionsMenu destination={{ name: spot.name, lat: spot.lat, lng: spot.lng }} fallbackQuery={spot.address || spot.name} label="길찾기" /></div><SavedCardAction icon="locate-fixed" label="지도에서 보기" onClick={() => showOnMap(spot.id)} /><SavedCardAction icon="info" label="상세" onClick={() => openSpotDetail(spot)} /></>} /></li>
+  const allRows = [
+    ...visiblePlaces.map(place => ({ key: `mine:${place.id}`, type: "mine" as const, place, name: place.placeName, created: place.createdAt, rating: place.rating ?? 0, distance: place.lat != null && place.lng != null ? distanceMeters(geo.position, { lat: place.lat, lng: place.lng }) : Infinity })),
+    ...filteredTripSpots.map(spot => ({ key: `trip:${spot.id}`, type: "trip" as const, spot, name: spot.name, created: undefined, rating: spot.rating ?? 0, distance: distanceMeters(geo.position, { lat: spot.lat, lng: spot.lng }) })),
+    ...searchedRecs.map(rec => ({ key: `friend:${rec.id}`, type: "friend" as const, rec, name: rec.placeName, created: rec.createdAt, rating: rec.rating ?? 0, distance: rec.lat != null && rec.lng != null ? distanceMeters(geo.position, { lat: rec.lat, lng: rec.lng }) : Infinity })),
+  ].sort((a,b) => sort === "name" ? a.name.localeCompare(b.name, "ko") : sort === "rating" ? b.rating-a.rating : sort === "distance" ? a.distance-b.distance : (b.created ?? "").localeCompare(a.created ?? ""))
+  const openSelectedPopup = (id: string) => { const place = places.find(p => p.id === id); if (place) { openDetail(place); return } const spot = tripSpots.find(p => p.id === id); if (spot) { openSpotDetail(spot); return } const rec = recs.find(p => p.id === id); if (rec) openRecDetail(rec) }
 
   return (
-    <div className="flex w-full flex-col gap-5 bg-white">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex flex-col gap-1">
-          <p className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Saved</p>
-          <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-            저장한 장소
-          </h2>
-        </div>
-        {tab === "mine" ? (
-          <button
-            type="button"
-            onClick={() => setAddOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-400 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 active:scale-95"
-          >
-            <Plus className="size-3.5" />
-            장소 추가
-          </button>
-        ) : null}
-      </div>
-
-      {loading ? <div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="size-7 animate-spin text-amber-500" /></div> : (
-        <div className="relative -mx-4 h-[calc(100dvh-190px)] min-h-[400px] overflow-hidden md:-mx-6">
-          {/*
-            지도는 sticky로 화면에 고정되고, 리스트 카드는 지도 아래를 살짝 겹치도록
-            음수 마진으로 끌어올려 둔다. 페이지를 아래로 스크롤하면 리스트가 지도를
-            덮으며 올라오고, 맨 위로 스크롤하면 다시 지도 전체 + 타이틀이 보인다 —
-            모바일/데스크톱 둘 다 동일하게, 핸들 없이 일반 스크롤만으로 동작한다.
-            데스크톱은 헤더(40px)·좌우 여백(24px)만 다르고 나머지는 동일하다.
-          */}
+    <div className={savedStyles.screen}>
+        <div className="absolute inset-0 overflow-hidden">
           <div
             className="absolute inset-0 z-0"
           >
@@ -1306,137 +890,26 @@ export function SavedPlacesView() {
               gestureHandling="cooperative"
               recenterBottomClass="bottom-28 md:bottom-24"
               fill
+              savedDesign
+              onSavedDetail={openSelectedPopup}
             />
           </div>
 
-          <div className="absolute right-3 top-4 z-20 flex flex-col gap-2">
-            {([{ key: "all", icon: Grid2X2, label: "전체보기" }, { key: "wish", icon: Heart, label: "나의 찜" }, { key: "trip", icon: Layers, label: "여행클립" }, { key: "friends", icon: Users, label: "친구찜" }] as const).map(item => {
-              const active = tab === item.key || (tab === "mine" && subTab === item.key)
-              return <button key={item.key} type="button" aria-label={item.label} aria-pressed={active} onClick={() => selectCategory(item.key)} className="flex size-12 flex-col items-center justify-center gap-0.5 rounded-full bg-white/95 shadow-md transition-transform active:scale-90"><item.icon className="size-5" fill={active ? "#fbbf24" : "none"} stroke={active ? "#a16a00" : "#0f172a"} /><span className="text-[8px] font-semibold text-slate-700">{item.label}</span></button>
-            })}
-          </div>
-          <SavedMapSheet revealKey={selectedMapId} count={tab === "all" ? visiblePlaces.length + filteredTripSpots.length + searchedRecs.length : tab === "friends" ? searchedRecs.length : subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length}>
+          <div className={savedStyles.top}><button className={savedStyles.round} onClick={() => window.history.length > 1 ? router.back() : router.push("/")} aria-label="뒤로"><SavedDesignIcon name="arrow-left" /></button><span /><button className={savedStyles.round} onClick={() => setAddOpen(true)} aria-label="장소 추가"><Plus size={22} /></button></div>
+          <SavedMapTools value={tab === "all" ? "all" : tab === "friends" ? "friends" : subTab} onChange={selectCategory} onLocate={handleRecenter} locating={geo.status === "locating"} />
+          <SavedMapSheet collapseKey={collapseKey} resetKey={`${tab}:${subTab}`} title={tab === "all" ? "전체보기" : tab === "friends" ? "친구 찜" : subTab === "wish" ? "나의 찜" : "여행클립 찜"} subtitle={tab === "all" ? `나의 찜 ${visiblePlaces.length} · 여행클립 ${filteredTripSpots.length} · 친구 찜 ${searchedRecs.length}` : undefined} count={tab === "all" ? allRows.length : tab === "friends" ? searchedRecs.length : subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length}>
 
-            {/* 저장 전용 검색 — 이름·지역·주소로 실시간 필터 (현재 탭에 적용) */}
-            <div className="px-4 pt-2 pb-1 md:px-6">
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 transition-colors focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-100">
-                <Search className="size-4 shrink-0 text-slate-400" />
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="지역·이름으로 검색"
-                  aria-label="저장 장소 검색"
-                  className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
-                />
-                {search ? (
-                  <button
-                    type="button"
-                    onClick={() => setSearch("")}
-                    aria-label="검색어 지우기"
-                    className="flex size-5 shrink-0 items-center justify-center rounded-full bg-slate-200 text-white transition-colors hover:bg-slate-300"
-                  >
-                    <X className="size-3" />
-                  </button>
-                ) : null}
-              </div>
-            </div>
+            <div className={savedStyles.search}><SavedDesignIcon name="search" size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="지역·이름으로 검색" aria-label="저장 장소 검색" />{search ? <button onClick={() => setSearch("")} aria-label="검색어 지우기"><X size={18} /></button> : null}</div>
+            {tab !== "friends" ? <div className={savedStyles.filters}><p className={savedStyles.summary}>{tab === "all" ? allRows.length : subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length}곳 · {SORT_LABELS[sort]}{subFilter ? ` · ${subFilter}` : ""}</p><div className={savedStyles.filterButtons}>{subTab === "wish" || tab === "all" ? <><button aria-pressed={starredOnly} onClick={() => setStarredOnly(v => !v)}><SavedDesignIcon name="quick-star" size={19} /><span>별표</span></button><button aria-pressed={visitedOnly} onClick={() => setVisitedOnly(v => !v)}><SavedDesignIcon name="quick-visited" size={19} /><span>다녀온 곳</span></button><button aria-pressed={openOnly} onClick={() => setOpenOnly(v => !v)}><SavedDesignIcon name="quick-open" size={19} /><span>지금 갈 곳</span></button></> : null}<button aria-label="필터" aria-pressed={!!subFilter || sort !== "recent" || country !== "all" || region !== "all" || tripFilter !== "all"} onClick={() => setFilterOpen(true)}><SavedDesignIcon name="quick-filter" size={19} /><span>필터</span></button></div></div> : null}
 
-            {tab === "mine" ? <>
-            <div className={cn(filterStyles.quick, "sticky z-10 top-0 bg-white px-4 pb-2.5 md:px-6")}>
-              {/*
-                ⚠️ **min-w-0 flex-1 이 있어야 한다.** 없으면 justify-between 이 세 덩어리를
-                   균등하게 벌려서 별표가 가운데로 밀려난다. 별표는 필터 **바로 왼쪽**에
-                   붙어 있어야 한다(앱과 같은 배치).
-              */}
-              <p className="min-w-0 flex-1 truncate text-sm font-bold text-slate-600">
-                {(subTab === "wish" ? "나의 찜 " : "여행클립 찜 ") +
-                  (subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length)}
-                {subTab === "trip" && tripFilter !== "all"
-                  ? ` · ${tripOptions.find((t) => t.id === tripFilter)?.title ?? ""}`
-                  : ""}
-                {country !== "all"
-                  ? ` · ${flagNameOf(country, countryChips.find((c) => c.code === country)?.name)}`
-                  : ""}
-                {region !== "all" ? ` · ${region}` : ""}
-                {subFilter ? ` · ${subFilter}` : ""} · {SORT_LABELS[sort]}
-              </p>
-              {/* 별표만 보기 — 나의 찜에서만 의미가 있다 */}
-              {subTab === "wish" ? (
-                <button
-                  type="button"
-                  onClick={() => setStarredOnly((v) => !v)}
-                  aria-pressed={starredOnly}
-                  className={cn(
-                    "flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors",
-                    starredOnly
-                      ? "border-red-500 bg-red-50 text-red-600"
-                      : "border-slate-200 text-slate-500 hover:bg-slate-50"
-                  )}
-                >
-                  <Star className="size-5" /><span>별표</span>
-                </button>
-              ) : null}
-              {/*
-                지금 갈 수 있는 곳만 보기.
-                ⚠️ 문 닫은 곳만 지운다 — 쉬는 시간은 기다리면 되고, 영업시간을
-                   모르는 곳은 지울 근거가 없다.
-              */}
-              {subTab === "wish" ? (
-                <button
-                  type="button"
-                  onClick={() => setOpenOnly((v) => !v)}
-                  aria-pressed={openOnly}
-                  title="지금 갈 수 있는 곳만"
-                  className={cn(
-                    "flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors",
-                    openOnly
-                      ? "border-emerald-500 bg-emerald-50 text-emerald-600"
-                      : "border-slate-200 text-slate-500 hover:bg-slate-50"
-                  )}
-                >
-                  <Clock className="size-5" /><span>지금 갈 곳</span>
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => setFilterOpen(true)}
-                className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",
-                  subFilter ||
-                    sort !== "distance" ||
-                    country !== "all" ||
-                    region !== "all" ||
-                    (subTab === "trip" && tripFilter !== "all")
-                    ? "border-amber-400 bg-amber-50 text-amber-700"
-                    : "border-slate-200 text-slate-500 hover:bg-slate-50"
-                )}
-              >
-                <SlidersHorizontal className="size-3.5" />
-                필터
-                {/* 뭔가 걸려 있으면 점 하나 — 시트를 안 열어도 안다 */}
-                {subFilter ||
-                sort !== "distance" ||
-                country !== "all" ||
-                region !== "all" ||
-                (subTab === "trip" && tripFilter !== "all") ? (
-                  <span className="size-1.5 rounded-full bg-amber-400" />
-                ) : null}
-              </button>
-            </div>
-
-            </> : <div className="px-4 pt-2"><h3 className="text-lg font-bold">{tab === "all" ? "전체 찜" : "친구찜"}</h3></div>}
-            <div className="px-4 pt-3 pb-6 md:px-6">
-              {tab === "all" ? <div className="space-y-6">
-                <section><button className="mb-3 min-h-11 text-base font-bold" onClick={() => selectCategory("wish")}>나의 찜 {visiblePlaces.length} · 필터/관리 ›</button><ul className="flex flex-col gap-2.5">{visiblePlaces.slice(0, visible).map(renderPlaceCard)}</ul></section>
-                <section><button className="mb-3 min-h-11 text-base font-bold" onClick={() => selectCategory("trip")}>여행클립 {filteredTripSpots.length} · 필터/관리 ›</button><ul className="flex flex-col gap-2.5">{filteredTripSpots.slice(0, visible).map(renderTripSpotCard)}</ul></section>
-                <section><h4 className="mb-3 text-base font-bold">친구찜 {searchedRecs.length}</h4><FriendRecsList recs={searchedRecs.slice(0,visible)} savingId={savingRecId} onRegister={handleRegisterRec} onSave={handleSaveRec} onDismiss={handleDismissRec} /></section>
-              </div> : tab === "friends" ? <FriendRecsList recs={searchedRecs.slice(0,visible)} savingId={savingRecId} onRegister={handleRegisterRec} onSave={handleSaveRec} onDismiss={handleDismissRec} /> : subTab === "wish" ? (
+            <div>
+              {loading ? <div className="py-8"><Loader2 className="mx-auto size-6 animate-spin" /></div> : tab === "all" ? <ul className="m-0 list-none p-0">{allRows.slice(0, visible).map(row => row.type === "mine" ? renderPlaceCard(row.place) : row.type === "trip" ? renderTripSpotCard(row.spot) : <li key={row.key}><FriendRecsList recs={[row.rec]} savingId={savingRecId} onRegister={handleRegisterRec} onSave={handleSaveRec} onDismiss={handleDismissRec} onDetail={openRecDetail} /></li>)}</ul> : tab === "friends" ? <FriendRecsList recs={searchedRecs.slice(0,visible)} savingId={savingRecId} onRegister={handleRegisterRec} onSave={handleSaveRec} onDismiss={handleDismissRec} onDetail={openRecDetail} /> : subTab === "wish" ? (
                 visiblePlaces.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
                     {search.trim() ? `'${search.trim()}' 검색 결과가 없어요.` : "이 카테고리에 저장된 장소가 없어요."}
                   </div>
                 ) : (
-                  <ul className="flex flex-col gap-2.5 md:grid md:grid-cols-2 xl:grid-cols-3">
+                  <ul className="m-0 flex list-none flex-col p-0">
                     {visiblePlaces.slice(0, visible).map((place) => renderPlaceCard(place))}
                   </ul>
                 )
@@ -1447,7 +920,7 @@ export function SavedPlacesView() {
                     : "여행에 담은 장소가 없어요. 여행에서 가고 싶은 곳을 담으면 멤버들과 함께 여기에 모여요."}
                 </div>
               ) : (
-                <ul className="flex flex-col gap-2.5 md:grid md:grid-cols-2 xl:grid-cols-3">
+                <ul className="m-0 flex list-none flex-col p-0">
                   {filteredTripSpots.slice(0, visible).map((spot) => renderTripSpotCard(spot))}
                 </ul>
               )}
@@ -1456,7 +929,6 @@ export function SavedPlacesView() {
             </div>
           </SavedMapSheet>
         </div>
-      )}
 
       <AddSavedPlaceModal
         tripId={null}
@@ -1702,135 +1174,7 @@ export function SavedPlacesView() {
  *    추천찜)에만 남고, 나의 찜에는 이 버튼을 눌러야 간다. 예전엔 받는 즉시
  *    나의 찜에 복사돼서 남이 보낸 곳이 내가 담은 곳들 사이에 섞여 들어갔다.
  */
-function FriendRecsList({
-  recs,
-  savingId,
-  onRegister,
-  onSave,
-  onDismiss,
-}: {
-  recs: IncomingRec[]
-  savingId: string | null
-  /** 친구 추천찜에 정식 등록 (나의 찜에는 넣지 않는다) */
-  onRegister: (rec: IncomingRec) => void
-  onSave: (rec: IncomingRec) => void
-  onDismiss: (rec: IncomingRec) => void
-}) {
-  if (recs.length === 0) {
-    return (
-      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-amber-300/70 bg-amber-50/20 p-8 text-center">
-        <span className="flex size-12 items-center justify-center rounded-full bg-amber-400 text-slate-950">
-          <Send className="size-5" />
-        </span>
-        <h3 className="text-lg font-bold text-slate-900">받은 추천이 없어요</h3>
-        <p className="max-w-xs text-sm text-slate-500">
-          친구가 맛집을 추천하면 여기에 모여요. 저장한 장소의 “추천” 버튼으로 친구에게 보낼 수 있어요.
-        </p>
-      </div>
-    )
-  }
-  return (
-    <ul className="flex flex-col gap-3 md:grid md:grid-cols-2">
-      {recs.map((rec) => (
-        <li key={rec.id} className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
-          {/* 보낸 사람 */}
-          <div className="flex items-center gap-2">
-            <Avatar className="size-7 shrink-0">
-              {rec.sender.avatarUrl ? <AvatarImage src={rec.sender.avatarUrl} alt="" /> : null}
-              <AvatarFallback className="text-[10px] font-semibold">
-                {rec.sender.nickname.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <p className="text-sm text-slate-600">
-              <span className="font-bold text-slate-900">{rec.sender.nickname}</span>님의 추천
-            </p>
-          </div>
-          {/*
-            장소 — ⚠️ 사진을 **크게** 뺀다. 예전엔 64px 썸네일이라 어떤 가게인지
-            알아볼 수 없었다. 나의 찜에서 이미 겪고 고친 문제를 여기서 반복하고 있었다.
-          */}
-          <div className="flex flex-col gap-2">
-            <div className="relative aspect-[2/1] w-full overflow-hidden rounded-xl bg-slate-100">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={resizePlacePhotoUrl(rec.imageUrl, PHOTO_W.card)} alt="" loading="lazy" className="size-full object-cover" />
-              {/* 누가 추천했는지 — 등록한 뒤에도 계속 보인다 */}
-              <span className="absolute bottom-2 right-2 flex items-center gap-1.5 rounded-full bg-slate-900/60 py-1 pl-1 pr-2.5 text-xs font-semibold text-white">
-                <Avatar className="size-5 shrink-0">
-                  {rec.sender.avatarUrl ? <AvatarImage src={rec.sender.avatarUrl} alt="" /> : null}
-                  <AvatarFallback className="text-[9px] font-semibold">
-                    {rec.sender.nickname.slice(0, 1)}
-                  </AvatarFallback>
-                </Avatar>
-                {rec.sender.nickname}님 추천
-              </span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold text-slate-900">{rec.placeName}</p>
-              <p className="truncate text-sm text-slate-600">
-                {rec.subCategory || rec.category || "추천 장소"}
-                {rec.address ? ` · ${rec.address}` : ""}
-              </p>
-              {rec.rating ? (
-                <span className="mt-0.5 inline-flex items-center gap-0.5 text-sm font-medium tabular-nums text-slate-600">
-                  <Star className="size-3 fill-amber-400 text-amber-400" />
-                  {rec.rating}
-                </span>
-              ) : null}
-            </div>
-          </div>
-          {/* 액션 */}
-          <div className="flex gap-2">
-            {rec.status === "pending" ? (
-              /*
-                ⚠️ **"나의 찜 등록"이 아니라 "친구 추천찜 등록"이다.**
-                   받는 것과 내 찜으로 옮기는 것은 다른 일이라 버튼도 아이콘도 갈라 둔다.
-              */
-              <button
-                type="button"
-                disabled={savingId === rec.id}
-                onClick={() => onRegister(rec)}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-sm font-bold text-slate-950 transition-colors hover:bg-amber-500 disabled:opacity-60"
-              >
-                <Users className="size-4" />
-                추천찜 등록
-              </button>
-            ) : rec.status === "saved" ? (
-              <span className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 py-2.5 text-sm font-bold text-slate-500">
-                <Check className="size-4 text-emerald-600" />
-                나의 찜에 있음
-              </span>
-            ) : (
-              <button
-                type="button"
-                disabled={savingId === rec.id}
-                onClick={() => onSave(rec)}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-sm font-bold text-slate-950 transition-colors hover:bg-amber-500 disabled:opacity-60"
-              >
-                {savingId === rec.id ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <>
-                    <Bookmark className="size-4" />
-                    나의 찜으로 담기
-                  </>
-                )}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => onDismiss(rec)}
-              className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50"
-            >
-              숨기기
-            </button>
-          </div>
-        </li>
-      ))}
-    </ul>
-  )
+function FriendRecsList({ recs, savingId, onRegister, onSave, onDismiss, onDetail }: { recs: IncomingRec[]; savingId: string | null; onRegister: (rec: IncomingRec) => void; onSave: (rec: IncomingRec) => void; onDismiss: (rec: IncomingRec) => void; onDetail: (rec: IncomingRec) => void }) {
+  if (!recs.length) return <div className="py-12 text-center text-sm text-slate-500">받은 추천이 없어요.<br />친구가 추천한 장소가 여기에 모여요.</div>
+  return <ul className="m-0 list-none p-0">{recs.map(rec => <li key={rec.id}><SavedPlaceCard name={rec.placeName} source="friend" photo={rec.imageUrl ? resizePlacePhotoUrl(rec.imageUrl, PHOTO_W.card) : null} onDetail={() => onDetail(rec)} metadata={<><span>{rec.subCategory || rec.category}</span>{rec.rating ? <b>· ★ {rec.rating}</b> : null}</>} details={<><div className={savedStyles.person}>{rec.sender.avatarUrl ? <img src={rec.sender.avatarUrl} alt="" /> : <i />}<span>{rec.sender.nickname || "게스트"}님이 추천한 장소</span></div>{rec.address ? <p>{rec.address}</p> : null}{rec.status !== "pending" ? <p>추천찜 등록</p> : null}</>} actions={<><div><DirectionsMenu destination={{ name: rec.placeName, lat: rec.lat, lng: rec.lng }} fallbackQuery={rec.address || rec.placeName} /></div><SavedCardAction icon="heart" label={rec.status === "pending" ? "추천찜 등록" : rec.status === "saved" ? "나의 찜에 있음" : "나의 찜으로"} highlight={rec.status !== "saved"} disabled={savingId === rec.id || rec.status === "saved"} onClick={() => rec.status === "pending" ? onRegister(rec) : onSave(rec)} /><SavedCardAction icon="info" label="상세" onClick={() => onDetail(rec)} /><SavedCardAction icon="x" label="숨기기" onClick={() => onDismiss(rec)} /></>} /></li>)}</ul>
 }
-
-/**
- * 나라·지역 칩.
- * 나라는 진하게, 지역은 한 단계 작게 — 위아래 두 줄이 같은 무게면 뭐가 상위인지 모른다.
- */

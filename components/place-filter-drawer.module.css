@@ -1,6 +1,6 @@
 .backdrop { position: fixed; inset: 0; z-index: 60; background: #0f172a66; opacity: 1; transition: opacity 220ms ease; }
 .backdrop[data-starting-style], .backdrop[data-ending-style] { opacity: 0; }
-.panel { position: fixed; z-index: 61; right: 0; top: 0; width: min(92vw, 420px); height: 100dvh; display: flex; flex-direction: column; background: white; border-radius: 28px 0 0 28px; overflow: hidden; box-shadow: -12px 0 48px #0f172a14; outline: none; transform: translateX(0); transition: transform 330ms cubic-bezier(.22,1,.36,1); }
+.panel { position: fixed; z-index: 61; right: 0; top: 0; width: min(100vw, 420px); height: 100dvh; display: flex; flex-direction: column; background: white; border-radius: 0; overflow: hidden; box-shadow: -12px 0 48px #0f172a14; outline: none; transform: translateX(0); transition: transform 330ms cubic-bezier(.22,1,.36,1); }
 .panel[data-starting-style], .panel[data-ending-style] { transform: translateX(100%); }
 .panel[data-ending-style] { transition-duration: 250ms; }
 .header { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; padding: max(20px, env(safe-area-inset-top)) 24px 10px; }

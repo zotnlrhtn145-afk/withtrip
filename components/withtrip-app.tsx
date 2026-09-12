@@ -418,13 +418,13 @@ function WithtripShell() {
   if (view === "mobile") {
     return (
       <div className="min-h-screen overflow-x-hidden bg-background">
-        <div className="relative mx-auto flex w-full max-w-md flex-col overflow-x-hidden pb-28">
+        <div className={`relative mx-auto flex w-full max-w-md flex-col overflow-x-hidden ${currentView === "saved" ? "" : "pb-28"}`}>
           <main
             key={currentView}
             className={
               (currentView === "friends"
                 ? "flex min-h-0 flex-1 flex-col p-2 sm:p-3"
-                : currentView === "home" ? "flex flex-col gap-4 px-[26px] pt-6 pb-4" : "flex flex-col gap-4 p-4") + " animate-view-in"
+                : currentView === "saved" ? "flex flex-col" : currentView === "home" ? "flex flex-col gap-4 px-[26px] pt-6 pb-4" : "flex flex-col gap-4 p-4") + " animate-view-in"
             }
           >
             {mainContent}

@@ -18,6 +18,7 @@ import {
   type NearbySpot,
 } from "@/lib/spots-data"
 import { cn } from "@/lib/utils"
+import { SavedMapPins } from "./saved-map-pins"
 
 export type MapSpot = NearbySpot & {
   distanceMeters: number
@@ -118,20 +119,22 @@ function SpotAvatarPin({
   spot,
   active,
   onSelect,
+  savedDesign = false,
 }: {
+  savedDesign?: boolean
   spot: MapSpot
   active: boolean
   onSelect: (id: string) => void
 }) {
   const [imgSrc, setImgSrc] = useState(
-    spot.authorAvatarUrl?.trim() || DEFAULT_SPOT_AVATAR
+    (savedDesign ? spot.image?.trim() : spot.authorAvatarUrl?.trim()) || DEFAULT_SPOT_AVATAR
   )
   const label =
     spot.authorNickname?.trim() || spot.name
 
   useEffect(() => {
-    setImgSrc(spot.authorAvatarUrl?.trim() || DEFAULT_SPOT_AVATAR)
-  }, [spot.authorAvatarUrl])
+    setImgSrc((savedDesign ? spot.image?.trim() : spot.authorAvatarUrl?.trim()) || DEFAULT_SPOT_AVATAR)
+  }, [spot.authorAvatarUrl, spot.image, savedDesign])
 
   return (
     <AdvancedMarker
@@ -139,7 +142,7 @@ function SpotAvatarPin({
       zIndex={active ? 900 : 400}
       title={label}
       onClick={() => onSelect(spot.id)}
-      anchorPoint={AdvancedMarkerAnchorPoint.BOTTOM}
+      anchorPoint={savedDesign ? AdvancedMarkerAnchorPoint.CENTER : AdvancedMarkerAnchorPoint.BOTTOM}
     >
       <div
         aria-label={`${spot.name} — ${label}`}
@@ -152,10 +155,10 @@ function SpotAvatarPin({
         {/* Pin bubble: circular avatar + speech-pin tip */}
         <span
           className={cn(
-            "relative flex size-11 items-center justify-center overflow-hidden rounded-full border-[3px] bg-white transition-[border-color,box-shadow] duration-150",
+            savedDesign ? "relative flex size-[35px] items-center justify-center overflow-hidden rounded-full border-2 border-white bg-white transition-[border-color,box-shadow] duration-150" : "relative flex size-11 items-center justify-center overflow-hidden rounded-full border-[3px] bg-white transition-[border-color,box-shadow] duration-150",
             active
               ? "border-amber-400 shadow-[0_0_0_3px_rgba(255,193,7,0.45)]"
-              : // ⚠️ 별표가 관심보다 먼저다 — 꼭 가고 싶은 곳이 지도에서 바로 보여야 한다
+              : savedDesign ? "border-white" : // ⚠️ 별표가 관심보다 먼저다 — 꼭 가고 싶은 곳이 지도에서 바로 보여야 한다
                 spot.starred
                 ? "border-red-500 group-hover:border-red-400"
                 : spot.isInterest
@@ -173,7 +176,7 @@ function SpotAvatarPin({
           />
         </span>
         {/* Pin tip */}
-        <span
+        {!savedDesign ? <span
           className={cn(
             "-mt-0.5 h-0 w-0 border-x-[7px] border-t-[10px] border-x-transparent transition-colors duration-150",
             active
@@ -185,7 +188,7 @@ function SpotAvatarPin({
                   : "border-t-white"
           )}
           aria-hidden
-        />
+        /> : null}
       </div>
     </AdvancedMarker>
   )
@@ -203,7 +206,11 @@ function NearbyMapInner({
   fill = false,
   gestureHandling = "greedy",
   recenterBottomClass = "bottom-3",
+  savedDesign = false,
+  onSavedDetail,
 }: {
+  onSavedDetail?: (id: string) => void
+  savedDesign?: boolean
   center: LatLng
   accuracy: number | null
   spots: MapSpot[]
@@ -235,7 +242,7 @@ function NearbyMapInner({
         className="absolute inset-0 h-full w-full"
         defaultCenter={{ lat: center.lat, lng: center.lng }}
         defaultZoom={15}
-        minZoom={11}
+        minZoom={savedDesign ? 3 : 11}
         maxZoom={20}
         mapId={mapId}
         gestureHandling={gestureHandling}
@@ -244,10 +251,10 @@ function NearbyMapInner({
       >
         <MapController
           center={center}
-          selected={selected}
+          selected={savedDesign ? null : selected}
           recenterKey={recenterKey}
         />
-        <ZoomButtons />
+        {!savedDesign ? <ZoomButtons /> : null}
 
         {accuracy && accuracy > 0 && accuracy < 800 ? (
           <Circle
@@ -263,16 +270,18 @@ function NearbyMapInner({
 
         <UserLocationMarker position={center} />
 
-        {spots.map((spot) => (
+        {savedDesign ? <SavedMapPins spots={spots} selectedId={selectedId} onSelect={onSelect} onDetail={onSavedDetail} /> : spots.map((spot) => (
           <SpotAvatarPin
             key={spot.id}
             spot={spot}
             active={spot.id === selectedId}
             onSelect={onSelect}
+            savedDesign={savedDesign}
           />
         ))}
       </Map>
 
+      {!savedDesign ? <>
       <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex justify-center p-3">
         <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-border bg-card/95 px-3 py-1.5 shadow-md backdrop-blur">
           <Crosshair className="size-3.5 text-primary" />
@@ -298,6 +307,7 @@ function NearbyMapInner({
           <span className="text-sm font-bold">{locating ? "찾는 중…" : "내 위치"}</span>
         </Button>
       </div>
+      </> : null}
     </div>
   )
 }
@@ -315,7 +325,11 @@ export function NearbyMap({
   fill = false,
   gestureHandling = "greedy",
   recenterBottomClass,
+  savedDesign = false,
+  onSavedDetail,
 }: {
+  onSavedDetail?: (id: string) => void
+  savedDesign?: boolean
   center: LatLng
   accuracy: number | null
   spots: MapSpot[]
@@ -391,11 +405,13 @@ export function NearbyMap({
             fill={fill}
             gestureHandling={gestureHandling}
             recenterBottomClass={recenterBottomClass}
+            savedDesign={savedDesign}
+            onSavedDetail={onSavedDetail}
           />
         </div>
       </APIProvider>
 
-      <div className="flex items-center justify-between gap-2 border-t border-border px-4 py-2.5">
+      {!savedDesign ? <div className="flex items-center justify-between gap-2 border-t border-border px-4 py-2.5">
         <p className="text-xs text-muted-foreground">
           프로필 핀 또는 카드를 눌러 연동해 보세요
         </p>
@@ -409,7 +425,7 @@ export function NearbyMap({
             내 위치
           </span>
         </div>
-      </div>
+      </div> : null}
     </div>
   )
 }
