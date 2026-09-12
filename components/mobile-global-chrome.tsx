@@ -133,8 +133,8 @@ export function MobileGlobalChrome() {
     <>
       {!hideHeader ? (
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md md:hidden">
-          {pathname === "/" && active === "home" ? <div className="flex min-h-[78px] items-center justify-between px-[26px]">
-            <div className="flex items-center gap-[9px]"><Image src="/withtrip-logo.png" alt="위드트립" width={34} height={34} className="rounded-[10px]" /><span className="text-lg font-medium tracking-[-.5px]">withtrip</span></div>
+          {pathname === "/" && active === "home" ? <div className="flex min-h-[78px] items-center justify-between px-4 min-[360px]:px-[26px]">
+            <div className="flex shrink-0 items-center gap-[9px]"><Image src="/withtrip-logo.png" alt="위드트립" width={34} height={34} className="rounded-[10px]" /><span className="text-[19px] font-extrabold tracking-[1px]">WITHTRIP</span></div>
             <div className="flex items-center">
               <NotificationBellButton className="size-11" iconClassName="size-5" />
               <HeaderAuthControl />

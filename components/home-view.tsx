@@ -7,9 +7,7 @@ import {
   Bookmark,
   ChevronRight,
   Compass,
-  History,
   Loader2,
-  Plane,
   Plus,
   SearchX,
   Users,
@@ -78,9 +76,6 @@ export function HomeView({
   const router = useRouter()
   const { trips, filteredTrips, query, setQuery, loading, error, refreshTrips } = useTrips()
   const isFiltered = query.trim().length > 0
-  // 홈 기본은 진행 중+예정, '지난 여행'은 필터로 선택.
-  const [homeFilter, setHomeFilter] = useState<"upcoming" | "past">("upcoming")
-
   // 진행 중(맨 위) → 예정(가까운 순).
   const upcomingList = useMemo(() => {
     const rank: Record<TripPhase, number> = { ongoing: 0, upcoming: 1, past: 9 }
@@ -94,14 +89,6 @@ export function HomeView({
       })
   }, [filteredTrips])
 
-  // 지난 여행: 최근 끝난 순.
-  const pastList = useMemo(
-    () =>
-      filteredTrips
-        .filter((trip) => tripPhase(trip) === "past")
-        .sort((a, b) => (parseYmd(b.endDate)?.getTime() ?? 0) - (parseYmd(a.endDate)?.getTime() ?? 0)),
-    [filteredTrips]
-  )
   // Keep SSR + first client paint identical (avoids hydration mismatch on subtitle / list).
   const [hasMounted, setHasMounted] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
@@ -142,7 +129,7 @@ export function HomeView({
 
   const showLoading = !hasMounted || loading
   const showTripList = !showLoading && filteredTrips.length > 0
-  const showEmpty = !showLoading && trips.length === 0 && !isFiltered
+  const showEmpty = !showLoading && upcomingList.length === 0 && !isFiltered
   const showNoSearchResults = !showLoading && !showEmpty && filteredTrips.length === 0
 
   return (
@@ -193,7 +180,7 @@ export function HomeView({
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="mt-5 mb-[6px] text-[34px] leading-[43px] font-medium tracking-[-1px] text-[#191919]">
-              {homeFilter === "past" ? <>함께한 여행을,<br />다시 펼쳐보세요.</> : upcomingList.some(trip => tripPhase(trip) === "ongoing") ? <>우리의 여행이<br />이어지고 있어요.</> : <>다음 여행이<br />기다리고 있어요.</>}
+              {upcomingList.some(trip => tripPhase(trip) === "ongoing") ? <>우리의 여행이<br />이어지고 있어요.</> : <>다음 여행이<br />기다리고 있어요.</>}
             </h2>
           </div>
           <button
@@ -208,7 +195,7 @@ export function HomeView({
         </div>
       ) : null}
 
-      {!showLoading && !showEmpty && homeFilter !== "past" && upcomingList.length > 1 ? <p className="text-[11px] text-gray-500">준비 중인 여행 {upcomingList.length}개</p> : null}
+      {!showLoading && !showEmpty && upcomingList.length > 1 ? <p className="text-[11px] text-gray-500">준비 중인 여행 {upcomingList.length}개</p> : null}
 
       {showLoading ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-6 py-16 text-center">
@@ -297,66 +284,26 @@ export function HomeView({
         </div>
       ) : showTripList ? (
         <div className="flex flex-col gap-4">
-          {!isFiltered && pastList.length > 0 ? (
-            <nav role="tablist" aria-label="여행 필터" className="flex items-stretch border-b border-slate-200/80">
-              {(
-                [
-                  { key: "upcoming" as const, label: "다가오는", Icon: Plane, count: upcomingList.length },
-                  { key: "past" as const, label: "지난 여행", Icon: History, count: pastList.length },
-                ]
-              ).map((tab) => {
-                const isActive = homeFilter === tab.key
-                const Icon = tab.Icon
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    onClick={() => setHomeFilter(tab.key)}
-                    className={cn(
-                      "relative flex flex-1 flex-col items-center justify-center gap-1 py-3 transition-colors",
-                      isActive ? "text-slate-900" : "text-slate-400"
-                    )}
-                  >
-                    <Icon className="size-5" strokeWidth={isActive ? 2.1 : 1.7} />
-                    <span className="text-[11px] font-semibold tracking-tight">
-                      {tab.label}
-                      {tab.count > 0 ? ` ${tab.count}` : ""}
-                    </span>
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "absolute inset-x-0 -bottom-px h-0.5 transition-colors",
-                        isActive ? "bg-amber-400" : "bg-transparent"
-                      )}
-                    />
-                  </button>
-                )
-              })}
-            </nav>
-          ) : null}
-
           {(() => {
-            const list = isFiltered ? filteredTrips : homeFilter === "past" ? pastList : upcomingList
-            const showAdd = !isFiltered && homeFilter === "upcoming"
+            const list = isFiltered ? filteredTrips : upcomingList
+            const showAdd = !isFiltered
             return (
               <div className={compact ? "flex flex-col gap-4" : "flex flex-col gap-5"}>
                 {list.length === 0 ? (
                   <p className="col-span-full rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-6 py-10 text-center text-sm text-slate-400">
-                    {homeFilter === "past" ? "지난 여행이 없어요." : "다가오는 여행이 없어요."}
+                    다가오는 여행이 없어요.
                   </p>
                 ) : (
                   list.map((trip, index) => (
                     <Fragment key={trip.id}>
-                    {homeFilter !== "past" && index === 1 ? <h3 className="mt-2.5 mb-0 text-lg font-semibold">그다음 여행 <span className="font-normal text-gray-500">{list.length - 1}</span></h3> : null}
+                    {index === 1 ? <h3 className="mt-2.5 mb-0 text-lg font-semibold">그다음 여행 <span className="font-normal text-gray-500">{list.length - 1}</span></h3> : null}
                     <TripBannerCard
                       approved
                       trip={trip}
                       onSelect={onSelectTrip}
-                      priority={index === 0 && homeFilter !== "past"}
+                      priority={index === 0}
                       muted={tripPhase(trip) === "past"}
-                      compact={homeFilter !== "past" && index > 0}
+                      compact={index > 0}
                     />
                     </Fragment>
                   ))
