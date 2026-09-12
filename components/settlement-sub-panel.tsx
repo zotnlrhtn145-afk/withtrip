@@ -128,7 +128,7 @@ export function SettlementSubPanel({
 
         <div className="-mx-1 overflow-x-auto px-1 pb-0.5">
           {inProgressTrips.length === 0 ? (
-            <p className="px-2 py-3 text-center text-[11px] text-muted-foreground">
+            <p className="px-2 py-3 text-center text-sm text-slate-600">
               진행 중인 정산이 없어요
             </p>
           ) : (
@@ -234,7 +234,7 @@ export function SettlementSubPanel({
                           정산 완료
                         </Badge>
                       </span>
-                      <span className="text-[11px] text-muted-foreground tabular-nums">
+                      <span className="text-sm text-slate-600 tabular-nums">
                         {trip.startDate} — {trip.endDate}
                       </span>
                       <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-700/90">

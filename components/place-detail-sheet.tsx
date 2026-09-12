@@ -327,12 +327,12 @@ function PlaceDetailContents({
                   {detail.openNow ? "영업 중" : "영업 종료"}
                 </span>
               ) : loading ? (
-                <span className="text-[11px] font-semibold text-slate-400">불러오는 중…</span>
+                <span className="text-sm font-semibold text-slate-600">불러오는 중…</span>
               ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {category ? (
-                <span className="text-xs font-medium text-slate-600">{category}</span>
+                <span className="text-sm font-medium text-slate-600">{category}</span>
               ) : null}
               {rating ? (
                 <span className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500">
@@ -386,7 +386,7 @@ function PlaceDetailContents({
           ) : null}
 
           {visited ? (
-            <p className="-mt-2 text-center text-[11px] text-slate-400">
+            <p className="-mt-2 text-center text-sm text-slate-600">
               {myRating != null ? `내 평점 ★ ${myRating}` : "리뷰는 앱에서 남길 수 있어요."}
             </p>
           ) : null}
@@ -453,7 +453,7 @@ function PlaceDetailContents({
           ) : null}
 
           {detail?.hours && detail.hours.length > 0 ? (
-            <div className="overflow-hidden rounded-xl border border-slate-100">
+            <div className="overflow-hidden rounded-xl border border-slate-200">
               <button
                 type="button"
                 onClick={() => setShowHours((v) => !v)}
@@ -461,7 +461,7 @@ function PlaceDetailContents({
               >
                 <Clock className="size-5 shrink-0 text-amber-500" />
                 <span className="flex-1 text-sm font-bold text-slate-800">{detail.hours[todayIdx] ?? "영업시간"}</span>
-                <span className="text-xs text-slate-400">{showHours ? "접기" : "전체"}</span>
+                <span className="text-sm text-slate-600">{showHours ? "접기" : "전체"}</span>
               </button>
               {showHours ? (
                 <div className="flex flex-col gap-1.5 px-4 pb-3">

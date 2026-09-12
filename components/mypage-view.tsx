@@ -390,7 +390,7 @@ export function MyPageView({
           </span>
           <div>
             <p className="text-sm font-bold text-slate-900">정산 수령 계좌 관리</p>
-            <p className="text-xs text-slate-400">
+            <p className="text-sm text-slate-600">
               은행 계좌와 코인 지갑을 등록하면 카카오톡 공유에 자동으로 포함돼요.
             </p>
           </div>
@@ -400,7 +400,7 @@ export function MyPageView({
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-1.5">
               <Building2 className="size-3.5 text-slate-400" />
-              <p className="text-xs font-bold text-slate-600">은행 계좌 정보</p>
+              <p className="text-sm font-bold text-slate-600">은행 계좌 정보</p>
             </div>
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
@@ -452,7 +452,7 @@ export function MyPageView({
           <div className="h-px bg-slate-100" />
 
           <div className="flex flex-col gap-3">
-            <p className="text-xs font-bold text-slate-600">암호화폐 지갑 정보</p>
+            <p className="text-sm font-bold text-slate-600">암호화폐 지갑 정보</p>
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className={labelClass}>네트워크 / 코인</label>
@@ -503,7 +503,7 @@ export function MyPageView({
                 "수령 정보 저장"
               )}
             </button>
-            <p className="text-xs text-slate-400">
+            <p className="text-sm text-slate-600">
               {payoutHint || "Supabase profiles에 저장돼요."}
             </p>
           </div>
@@ -539,7 +539,7 @@ export function MyPageView({
                       <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
                         {isOwner ? "내가 만든 여행" : "공유받은 여행"}
                       </span>
-                      <span className="text-xs text-slate-400 tabular-nums">
+                      <span className="text-sm text-slate-600 tabular-nums">
                         {trip.startDate} — {trip.endDate} · 멤버 {tripMembers.length}명
                       </span>
                     </span>
@@ -572,7 +572,7 @@ export function MyPageView({
           <BlockedUsersDialog />
           <div className="h-px bg-slate-100" />
           {profile?.deletionRequestedAt ? (
-            <p className="self-center text-xs text-slate-400">
+            <p className="self-center text-sm text-slate-600">
               탈퇴 요청이 접수됐어요 ({formatJoinedAt(profile.deletionRequestedAt)}) · 검토 후
               처리돼요.
             </p>

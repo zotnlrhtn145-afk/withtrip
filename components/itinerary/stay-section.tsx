@@ -59,8 +59,8 @@ function StayItem({ stay }: { stay: StayEntry }) {
 
       <div className="flex flex-col gap-3 p-4">
         <div className="grid grid-cols-2 gap-2">
-          <div className="flex flex-col gap-1 rounded-xl bg-secondary p-3">
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <div className="flex min-w-0 flex-col gap-1 rounded-xl border border-slate-200 bg-white p-3">
+            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600">
               <LogIn className="size-3.5" />
               체크인
             </span>
@@ -68,8 +68,8 @@ function StayItem({ stay }: { stay: StayEntry }) {
               {stampLabel(stay.checkInDate, stay.checkInTime)}
             </span>
           </div>
-          <div className="flex flex-col gap-1 rounded-xl bg-secondary p-3">
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <div className="flex min-w-0 flex-col gap-1 rounded-xl border border-slate-200 bg-white p-3">
+            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600">
               <LogOut className="size-3.5" />
               체크아웃
             </span>

@@ -1085,7 +1085,7 @@ export function SettlementView({
               <h2 className="truncate text-lg font-bold tracking-tight text-neutral-900">
                 정산 관리
               </h2>
-              <p className="truncate text-xs text-neutral-500">
+              <p className="truncate text-sm text-slate-600">
                 {tripTitle ? `「${tripTitle}」` : "선택한 여행"}
               </p>
             </div>
@@ -1100,7 +1100,7 @@ export function SettlementView({
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <p className="text-[11px] text-neutral-400 tabular-nums">
+                  <p className="text-sm text-slate-600 tabular-nums">
                     {expenses.length}건 · {memberCount}명
                   </p>
                   <button
@@ -1135,7 +1135,7 @@ export function SettlementView({
                           : "공동 자금(이월) 추가"}
                       </span>
                     </span>
-                    <span className="shrink-0 text-[11px] font-bold text-neutral-400">
+                    <span className="shrink-0 text-sm font-bold text-slate-600">
                       {carryover > 0 ? "수정" : "＋"}
                     </span>
                   </button>
@@ -1228,18 +1228,18 @@ export function SettlementView({
                       <p className="tabular-nums text-neutral-700">
                         {payoutAccount.bank.accountNumber}
                       </p>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-sm text-slate-600">
                         예금주 {payoutAccount.bank.accountHolder}
                       </p>
                     </div>
                   ) : null}
                   {hasCryptoPayout(payoutAccount) ? (
                     <div className="rounded-xl bg-neutral-50/90 px-3 py-2.5 ring-1 ring-neutral-100">
-                      <p className="mb-1 text-[11px] font-medium text-neutral-500">코인 지갑</p>
+                      <p className="mb-1 text-sm font-medium text-slate-600">코인 지갑</p>
                       <p className="font-semibold text-neutral-900">
                         {payoutAccount.crypto.network}
                       </p>
-                      <p className="break-all font-mono text-[11px] leading-relaxed text-neutral-600">
+                      <p className="break-all font-mono text-sm leading-relaxed text-slate-600">
                         {payoutAccount.crypto.walletAddress}
                       </p>
                     </div>
@@ -1258,7 +1258,7 @@ export function SettlementView({
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="text-sm font-semibold text-neutral-900">내 수령 계좌</span>
-                    <span className="text-xs text-neutral-400">등록하면 멤버가 바로 송금할 수 있어요</span>
+                    <span className="text-sm text-slate-600">등록하면 멤버가 바로 송금할 수 있어요</span>
                   </span>
                   <span className="shrink-0 text-xs font-bold text-amber-600">등록 →</span>
                 </button>
@@ -1339,7 +1339,7 @@ export function SettlementView({
                     <div className="flex flex-wrap items-end justify-between gap-3">
                       <div>
                         <h3 className="text-[15px] font-semibold text-neutral-900">송금 현황</h3>
-                        <p className="mt-0.5 text-xs text-neutral-500">
+                        <p className="mt-0.5 text-sm text-slate-600">
                           누가 누구에게 보내야 하는지 자동으로 계산돼요
                         </p>
                       </div>
@@ -1466,7 +1466,7 @@ export function SettlementView({
                                 {membersById.get(p.payerId)?.nickname ?? "멤버"}이(가){" "}
                                 {membersById.get(p.debtorId)?.nickname ?? "멤버"} 몫을 대신 냈어요
                               </p>
-                              <p className="mt-0.5 text-xs text-neutral-500">
+                              <p className="mt-0.5 text-sm text-slate-600">
                                 받은 사람 · {membersById.get(p.toUserId)?.nickname ?? "멤버"} ·{" "}
                                 <span className="font-bold tabular-nums text-neutral-700">
                                   {formatWon(p.amount)}
@@ -1484,7 +1484,7 @@ export function SettlementView({
                         </li>
                       ))}
                     </ul>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-sm text-slate-600">
                       갚을 상대가 바뀌었어요 — 위 송금 현황에 새로 나옵니다.
                     </p>
                   </div>
@@ -1499,9 +1499,9 @@ export function SettlementView({
                     <div className="flex flex-wrap items-end justify-between gap-3">
                       <div>
                         <h3 className="text-[15px] font-semibold text-neutral-900">지출 내역</h3>
-                        <p className="mt-0.5 text-xs text-neutral-500">최신 등록순으로 표시됩니다</p>
+                        <p className="mt-0.5 text-sm text-slate-600">최신 등록순으로 표시됩니다</p>
                       </div>
-                      <span className="text-xs font-medium tabular-nums text-neutral-500">
+                      <span className="text-sm font-medium tabular-nums text-slate-600">
                         총 {expenses.length}건
                       </span>
                     </div>
@@ -1550,7 +1550,7 @@ export function SettlementView({
                                 <p className="mt-1 truncate text-sm text-neutral-700">
                                   {expense.title}
                                 </p>
-                                <p className="mt-0.5 text-xs text-neutral-500">
+                                <p className="mt-0.5 text-sm text-slate-600">
                                   {expense.payerNickname} 결제 ·{" "}
                                   {formatExpenseSplitLabel(
                                     expense.participantIds.length > 0
@@ -1774,7 +1774,7 @@ export function SettlementView({
                     <p className="text-xs font-bold text-gray-900">
                       {reviewItems.length}건의 지출을 찾았어요
                     </p>
-                    <span className="shrink-0 text-[11px] font-semibold text-gray-500">
+                    <span className="shrink-0 text-sm font-semibold text-slate-600">
                       선택 {selectedReviewItems.length}건 · {formatWon(reviewItemsTotal)}
                     </span>
                   </div>
@@ -1867,7 +1867,7 @@ export function SettlementView({
                         </div>
                         {/* 내역별 정산 대상자 */}
                         <div className="flex flex-wrap items-center gap-1 border-t border-gray-100 pt-2 pl-7">
-                          <span className="mr-0.5 text-[10px] font-bold text-gray-400">나눠낼 사람</span>
+                          <span className="mr-0.5 text-sm font-bold text-slate-600">나눠낼 사람</span>
                           {members.map((member) => {
                             const on = item.participantIds.includes(member.userId)
                             return (
@@ -2091,7 +2091,7 @@ export function SettlementView({
                              더 그렇다. 눌러서 도로 넣을 수 있다.
                         */}
                         {!checked && !presentOn(member.userId, expenseDate) ? (
-                          <span className="text-[10px] font-bold text-gray-400">
+                          <span className="text-sm font-bold text-slate-600">
                             {(() => {
                               const p = presence.get(member.userId)
                               return p?.joinsAt && expenseDate < p.joinsAt.date ? "합류 전" : "출발 후"
@@ -2135,7 +2135,7 @@ export function SettlementView({
                       <p className="truncate text-xs font-semibold text-gray-900">
                         {scanningReceipt ? "영수증 분석 중... ⏳" : "영수증 첨부됨 ✓"}
                       </p>
-                      <p className="truncate text-[11px] text-gray-500">
+                      <p className="truncate text-sm text-slate-600">
                         {scanningReceipt
                           ? "AI가 금액·상호·날짜를 읽고 있어요"
                           : (receiptFile?.name ?? "receipt.jpg")}
@@ -2260,7 +2260,7 @@ export function SettlementView({
                   )
                 })}
               </div>
-              <p className="mt-2 text-[11px] text-gray-400">
+              <p className="mt-2 text-sm text-slate-600">
                 아무도 안 고르면 전원에게 균등 적용돼요. 멤버가 바뀌면 여기서 조절하세요.
               </p>
             </div>

@@ -124,7 +124,7 @@ function TimelineRow({ item, isLast }: { item: ScheduleItem; isLast: boolean }) 
           </p>
           <CategoryPill category={item.category} />
         </div>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground text-pretty">
+        <p className="mt-1 text-sm leading-relaxed text-slate-600 text-pretty">
           {item.activity}
         </p>
       </div>

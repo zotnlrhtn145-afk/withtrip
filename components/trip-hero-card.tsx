@@ -380,12 +380,12 @@ export function TripHeroCard({
           <button type="button" aria-label="여행 공유" onClick={() => void handleCopyText(shareUrl, "링크가 복사되었습니다")} className="flex size-10 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md"><Share2 size={18} /></button>
         </div>
         <div className="absolute right-[26px] bottom-[26px] left-[26px] z-10 flex flex-col gap-2.5 text-white">
-          <p className="text-[11px] tracking-[1.5px]">{trip.region} · {durationLabel} · {trip.dDay > 0 ? `D-${trip.dDay}` : trip.dDay === 0 ? "D-DAY" : `D+${Math.abs(trip.dDay)}`}</p>
+          <p className="text-[13px] tracking-[.5px]">{trip.region} · {durationLabel} · {trip.dDay > 0 ? `D-${trip.dDay}` : trip.dDay === 0 ? "D-DAY" : `D+${Math.abs(trip.dDay)}`}</p>
           <h2 className="text-[28px] leading-[35px] font-medium tracking-[-1px]">{trip.title}</h2>
           <p className="text-[13px] text-white/85">{trip.startDate} — {trip.endDate}</p>
         </div>
       </div>
-      <div className={cn("flex items-center gap-2.5 py-[21px]", compact ? "px-2.5" : "px-[26px]")}>
+      <div className={cn("flex items-center gap-2.5 pt-3.5 pb-2", compact ? "px-2.5" : "px-[26px]")}>
         <button type="button" onClick={() => setInviteOpen(true)} aria-label="함께하는 멤버 확인·초대" className="flex min-w-0 flex-1 items-center gap-[11px] text-left">
           <span className="relative block size-[42px] shrink-0">
             {visibleMembers.slice(0,3).map((member,i) => <Avatar key={member.id} style={{left:i===0?0:i===1?16:8,top:i===2?16:0}} className="absolute size-[26px] ring-2 ring-white">
@@ -393,11 +393,11 @@ export function TripHeroCard({
               <AvatarFallback className="border border-slate-200 bg-white" />
             </Avatar>)}
           </span>
-          <span className="min-w-0 flex-1"><span className="block text-xs leading-5 font-medium text-[#191919]">{memberHeadline}</span><span className="mt-1 block text-[11px] text-[#73736d]">함께하는 여행 · {memberCount}명</span></span>
+          <span className="min-w-0 flex-1"><span className="block break-keep text-[15px] leading-[22px] font-semibold text-[#191919]">{memberHeadline}</span><span className="mt-1 block text-sm text-slate-600">함께하는 여행 · {memberCount}명</span></span>
         </button>
         <Link href={`/settlement/${trip.id}`} aria-label="여행 정산" className="flex size-11 shrink-0 items-center justify-center rounded-full text-[#191919] transition-transform active:scale-95"><Wallet size={21} strokeWidth={1.6} /></Link>
       </div>
-      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 px-2.5 text-xs text-slate-500">
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 px-2.5 pb-3.5 text-sm text-slate-600">
         {weather ? <span className="inline-flex items-center gap-1"><WeatherIcon size={14} />{weather.label}</span> : null}
         <span className="inline-flex min-w-0 items-center gap-1" title={transportLabel}>{(() => {const Icon=transportIcon;return <Icon size={14} className="shrink-0" />})()}<span>{transportLabel}</span></span>
       </div>
@@ -412,7 +412,7 @@ export function TripHeroCard({
           </DialogHeader>
 
           <div className="flex flex-col gap-3">
-            <p className="text-xs font-semibold text-muted-foreground">내 친구 목록</p>
+            <p className="text-sm font-semibold text-slate-600">내 친구 목록</p>
             {inviteLoading ? (
               <p className="text-sm text-muted-foreground">친구 목록을 불러오는 중…</p>
             ) : acceptedFriends.length === 0 ? (
@@ -440,7 +440,7 @@ export function TripHeroCard({
                         </Avatar>
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold">{member.name}</p>
-                          <p className="truncate text-xs text-muted-foreground">
+                          <p className="truncate text-sm text-slate-600">
                             {member.email || member.userId}
                           </p>
                         </div>
@@ -473,10 +473,10 @@ export function TripHeroCard({
           <Separator />
 
           <div className="flex flex-col gap-3">
-            <p className="text-xs font-semibold text-muted-foreground">초대 링크</p>
+            <p className="text-sm font-semibold text-slate-600">초대 링크</p>
             <Input readOnly value={inviteUrl || "초대 코드를 불러오는 중..."} />
             {inviteCode ? (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-slate-600">
                 초대 코드: <span className="font-mono">{inviteCode}</span>
               </p>
             ) : null}

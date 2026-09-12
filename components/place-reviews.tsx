@@ -91,11 +91,11 @@ export function PlaceReviews({ googlePlaceId }: { googlePlaceId?: string | null 
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs font-extrabold text-slate-400">리뷰 {rows.length}</span>
+      <span className="text-sm font-extrabold text-slate-600">리뷰 {rows.length}</span>
       <div className="flex items-center gap-2">
         <Stars value={avg} className="[&>svg]:size-4" />
         <span className="text-[15px] font-extrabold text-slate-900">{avg.toFixed(1)}</span>
-        <span className="text-xs text-slate-400">위드트립 평점</span>
+        <span className="text-sm text-slate-600">위드트립 평점</span>
       </div>
 
       {rows.map((r) => {
@@ -114,7 +114,7 @@ export function PlaceReviews({ googlePlaceId }: { googlePlaceId?: string | null 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="truncate text-[13px] font-extrabold text-slate-900">{nick}</span>
-                <span className="text-[11px] text-slate-400">· {ymd(r.visited_on ?? r.created_at)}</span>
+                <span className="text-sm text-slate-600">· {ymd(r.visited_on ?? r.created_at)}</span>
               </div>
               <Stars value={r.rating} className="mt-0.5 [&>svg]:size-[13px]" />
               {r.body ? <p className="mt-1.5 text-[13.5px] leading-relaxed text-slate-500">{r.body}</p> : null}
@@ -137,7 +137,7 @@ export function PlaceReviews({ googlePlaceId }: { googlePlaceId?: string | null 
         )
       })}
 
-      <p className="pt-1 text-[11px] text-slate-400">리뷰는 앱에서 남길 수 있어요.</p>
+      <p className="pt-1 text-sm text-slate-600">리뷰는 앱에서 남길 수 있어요.</p>
     </div>
   )
 }

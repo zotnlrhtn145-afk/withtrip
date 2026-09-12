@@ -1058,7 +1058,7 @@ export function SavedPlacesView() {
                         />
                       ))}
                     </span>
-                    <span className="text-[11px] font-bold text-slate-500">내 평점 {mark.myRating}</span>
+                    <span className="text-sm font-bold text-slate-600">내 평점 {mark.myRating}</span>
                   </span>
                 )
               }
@@ -1066,7 +1066,7 @@ export function SavedPlacesView() {
                 return (
                   <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5">
                     <Check className="size-2.5 text-slate-500" />
-                    <span className="text-[11px] font-bold text-slate-500">다녀옴</span>
+                    <span className="text-sm font-bold text-slate-600">다녀옴</span>
                   </span>
                 )
               }
@@ -1074,7 +1074,7 @@ export function SavedPlacesView() {
             })()}
 
             {place.address ? (
-              <p className="mt-0.5 truncate text-xs text-slate-400">{place.address}</p>
+              <p className="mt-0.5 truncate text-sm text-slate-600">{place.address}</p>
             ) : null}
           </div>
 
@@ -1212,11 +1212,11 @@ export function SavedPlacesView() {
             ) : null}
           </div>
           {spot.address ? (
-            <p className="mt-0.5 truncate text-xs text-slate-400">{spot.address}</p>
+            <p className="mt-0.5 truncate text-sm text-slate-600">{spot.address}</p>
           ) : null}
           {/* 사진이 없으면 담은 사람을 여기에 */}
           {!spot.image?.trim() ? (
-            <p className="mt-0.5 truncate text-[11px] text-slate-400">
+            <p className="mt-0.5 truncate text-sm text-slate-600">
               {spot.tripTitle || "여행"}
               {spot.authorNickname ? ` · ${spot.authorNickname}` : ""}
             </p>
@@ -1348,7 +1348,7 @@ export function SavedPlacesView() {
                    균등하게 벌려서 별표가 가운데로 밀려난다. 별표는 필터 **바로 왼쪽**에
                    붙어 있어야 한다(앱과 같은 배치).
               */}
-              <p className="min-w-0 flex-1 truncate text-xs font-bold text-slate-400">
+              <p className="min-w-0 flex-1 truncate text-sm font-bold text-slate-600">
                 {(subTab === "wish" ? "나의 찜 " : "여행클립 찜 ") +
                   (subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length)}
                 {subTab === "trip" && tripFilter !== "all"
@@ -1741,7 +1741,7 @@ function FriendRecsList({
                 {rec.sender.nickname.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <p className="text-xs text-slate-500">
+            <p className="text-sm text-slate-600">
               <span className="font-bold text-slate-900">{rec.sender.nickname}</span>님의 추천
             </p>
           </div>
@@ -1766,12 +1766,12 @@ function FriendRecsList({
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-bold text-slate-900">{rec.placeName}</p>
-              <p className="truncate text-xs text-slate-400">
+              <p className="truncate text-sm text-slate-600">
                 {rec.subCategory || rec.category || "추천 장소"}
                 {rec.address ? ` · ${rec.address}` : ""}
               </p>
               {rec.rating ? (
-                <span className="mt-0.5 inline-flex items-center gap-0.5 text-xs font-medium tabular-nums text-slate-400">
+                <span className="mt-0.5 inline-flex items-center gap-0.5 text-sm font-medium tabular-nums text-slate-600">
                   <Star className="size-3 fill-amber-400 text-amber-400" />
                   {rec.rating}
                 </span>

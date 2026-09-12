@@ -668,7 +668,7 @@ export function FriendsView() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold tracking-tight">친구</h2>
-          <p className="text-xs text-muted-foreground">친구 목록과 요청 현황을 한눈에 확인하세요</p>
+          <p className="text-sm text-slate-600">친구 목록과 요청 현황을 한눈에 확인하세요</p>
         </div>
         <Button
           variant="ghost"
@@ -763,7 +763,7 @@ export function FriendsView() {
                       </span>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-bold">{user.nickname}</p>
-                        <p className="truncate text-xs text-muted-foreground">{user.email || user.userId}</p>
+                        <p className="truncate text-sm text-slate-600">{user.email || user.userId}</p>
                       </div>
                     </button>
                     {renderSearchAction(user)}
@@ -800,7 +800,7 @@ export function FriendsView() {
                     </Avatar>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-bold">{item.nickname}</p>
-                      <p className="truncate text-xs text-muted-foreground">{item.email || item.id}</p>
+                      <p className="truncate text-sm text-slate-600">{item.email || item.id}</p>
                     </div>
                   </button>
                   <button
@@ -860,9 +860,9 @@ export function FriendsView() {
               <div className="flex items-end justify-between gap-3 border-b border-border px-4 py-3">
                 <div>
                   <h3 className="text-sm font-bold">추천 · 같이 여행 중인 친구</h3>
-                  <p className="text-xs text-muted-foreground">같은 여행 그룹에 속한 멤버예요</p>
+                  <p className="text-sm text-slate-600">같은 여행 그룹에 속한 멤버예요</p>
                 </div>
-                <span className="text-xs font-medium tabular-nums text-muted-foreground">
+                <span className="text-sm font-medium tabular-nums text-slate-600">
                   {suggestedCoTravelers.length}명
                 </span>
               </div>
@@ -882,7 +882,7 @@ export function FriendsView() {
                           {traveler.groupTag}
                         </span>
                       </div>
-                      <p className="truncate text-xs text-muted-foreground">
+                      <p className="truncate text-sm text-slate-600">
                         {traveler.tripTitle}
                         {traveler.email ? ` · ${traveler.email}` : ""}
                       </p>
@@ -898,7 +898,7 @@ export function FriendsView() {
           <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
             <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
               <h3 className="text-sm font-bold">전체 친구</h3>
-              <span className="text-xs font-medium tabular-nums text-muted-foreground">
+              <span className="text-sm font-medium tabular-nums text-slate-600">
                 {acceptedFriends.length}명
               </span>
             </div>
@@ -917,7 +917,7 @@ export function FriendsView() {
                   <Users className="size-7 stroke-[1.25]" />
                 </span>
                 <p className="text-sm font-semibold">아직 친구가 없어요</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-slate-600">
                   위에서 검색해 친구를 추가해보세요.
                 </p>
               </div>
@@ -925,7 +925,7 @@ export function FriendsView() {
               <div className="flex flex-col">
                 {groupedFriends.map((group) => (
                   <div key={group.key}>
-                    <p className="px-4 pt-3 pb-1 text-xs font-bold text-muted-foreground">
+                    <p className="px-4 pt-3 pb-1 text-sm font-bold text-slate-600">
                       {group.key}
                     </p>
                     <ul>
@@ -946,7 +946,7 @@ export function FriendsView() {
                           </Avatar>
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-bold">{user.nickname}</p>
-                            <p className="truncate text-xs text-muted-foreground">
+                            <p className="truncate text-sm text-slate-600">
                               {user.email || user.userId}
                             </p>
                           </div>
@@ -992,7 +992,7 @@ export function FriendsView() {
           <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
             <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
               <h3 className="text-sm font-bold">받은 요청</h3>
-              <span className="text-xs font-medium tabular-nums text-muted-foreground">
+              <span className="text-sm font-medium tabular-nums text-slate-600">
                 {receivedRequests.length}건
               </span>
             </div>
@@ -1032,7 +1032,7 @@ export function FriendsView() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-bold">{user.nickname}</p>
-                        <p className="truncate text-xs text-muted-foreground">
+                        <p className="truncate text-sm text-slate-600">
                           {formatRelativeKo(parseCreatedAt(row.created_at))}
                         </p>
                       </div>
@@ -1071,7 +1071,7 @@ export function FriendsView() {
           <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
             <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
               <h3 className="text-sm font-bold">보낸 요청</h3>
-              <span className="text-xs font-medium tabular-nums text-muted-foreground">
+              <span className="text-sm font-medium tabular-nums text-slate-600">
                 {sentRequests.length}건
               </span>
             </div>
@@ -1108,7 +1108,7 @@ export function FriendsView() {
                       </Avatar>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-bold">{user.nickname}</p>
-                        <p className="truncate text-xs text-muted-foreground">
+                        <p className="truncate text-sm text-slate-600">
                           대기 중 · {formatRelativeKo(parseCreatedAt(row.created_at))}
                         </p>
                       </div>
