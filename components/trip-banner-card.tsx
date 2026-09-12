@@ -118,12 +118,13 @@ export function TripBannerCard({
     <>
       {approved ? <article className={cn(styles.approved, compact && styles.approvedCompact)}>
         <button type="button" onClick={() => onSelect(trip)} aria-label={`${trip.title} 상세 보기`} className={compact ? styles.rowLink : styles.heroLink}>
-          {compact ? <span className={styles.city}><MapPin size={24} fill="#fbbf24" strokeWidth={1.5} /><small>{trip.region || trip.country}</small></span> : <>
+          {compact ? <span className={styles.rowPhoto}><Image src={coverSrc} alt={trip.heroImageAlt || `${trip.region || trip.country} 여행 사진`} fill sizes="80px" className="object-cover" onError={() => setCoverSrc(FALLBACK_TRIP_COVER)} /></span> : <>
             <Image src={coverSrc} alt={trip.heroImageAlt} fill priority={priority} sizes="(min-width: 768px) 640px, 100vw" className="object-cover" onError={() => setCoverSrc(FALLBACK_TRIP_COVER)} />
             <span className={styles.scrim} />
           </>}
           <span className={styles.copy}>
             {!compact ? <span className={styles.eyebrow}>{trip.region} · {formatTripDuration(trip.nights, trip.days)}</span> : null}
+            {compact ? <span className={styles.dates}>{trip.region || trip.country}</span> : null}
             <strong>{trip.title}</strong>
             <span className={styles.dates}>{trip.startDate} — {trip.endDate}{compact ? ` · ${formatTripDuration(trip.nights, trip.days)}` : ""}</span>
             {compact ? <span className={styles.dates}>{muted ? "함께 다녀온 여행" : trip.dDay <= 0 ? "함께 여행 중" : "함께 준비 중"} · {tripMembers.length}명</span> : null}

@@ -1,3 +1,7 @@
+## 2026-09-13 Codex · 그다음 여행 커버 사진
+
+앱127 사용자 이미지 누락 피드백 공통 반영. 승인 compact 카드 지도핀 박스→80×88 커버사진(heroImage/기존 폴백), 지역명 본문으로 유지. 하단 메타94px 정렬. 앱 동일 tripCover 사용. 양쪽 타입 통과, 빌드/웹push 없음. 사용자 eas.json/tsconfig.tsbuildinfo/AGENTS.md/app.json 보전.
+
 ## 2026-09-13 Codex · 위디 개인화 운영 권한 적용
 
 사용자가 여행 멤버간 위디 질문/답 공유를 중지하고 본인만 보도록 명시 요청. 운영 migration20260912161605 적용: trip_messages에 restrictive SELECT(위디 prefix면 auth.uid=user_id)를 추가하여 기존 참여자/숨김 정책과 함께 적용. 기존53개 위디 모두 user_id 존재, 기록 삭제/갱신 없음. 일반 메시지 권한 변경 없음. 본인 조회 복합 인덱스 추가.

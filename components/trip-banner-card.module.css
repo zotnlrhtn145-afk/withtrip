@@ -50,3 +50,8 @@
 .rowLink .dates { font-size: 14px; line-height: 21px; color: #475569; }
 .approvedCompact .details { margin-top: 6px; }
 .approvedCompact .details > span:first-child { background: none; padding: 0; font-size: 14px; }
+
+/* 다음 여행에도 대표 여행과 같은 커버 사진을 사용한다. */
+.rowPhoto { position: relative; display: block; flex: none; width: 80px; height: 88px; border-radius: 14px; overflow: hidden; background: #f8fafc; }
+.rowLink .copy { min-width: 0; }
+.approvedCompact .details { margin-left: 94px; }
