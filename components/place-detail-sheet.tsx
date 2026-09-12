@@ -318,7 +318,6 @@ function PlaceDetailContents({
 
         {/* 본문 */}
         <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-6">
-          {photos.length ? <button type="button" onClick={() => { setPhotoIndex(0); setPhotoOpen(true) }} aria-label="장소 사진 확대" className="-mx-2 shrink-0 overflow-hidden rounded-3xl"><img src={photos[0]} alt={name} className="h-[236px] w-full object-cover" /></button> : null}
           {category ? <p className="mt-1 text-sm text-slate-500">{category}</p> : null}
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">

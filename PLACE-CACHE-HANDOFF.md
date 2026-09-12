@@ -1,3 +1,7 @@
+## 2026-09-12 Codex · 찜 경량화·상세 대표사진 제거
+
+앱 사용자 요청 공통 반영: place-detail-sheet 상단236px 사진 블록 제거, 사진 탭/확대/리뷰/정보 그대로. saved-places-view 전체보기 합치기/정렬은 입력 변경 때만 useMemo 계산. 앱은 접힌 첫 진입 사진 카드 마운트 지연/친구 추천 점진 렌더도 반영(웹은 기존 lazy 이미지/visible 사용). 실기기 성능 수치는 미측정. 배포 없음, 사용자 eas.json/tsconfig.tsbuildinfo/AGENTS.md/app.json 보존.
+
 ## 2026-09-12 Codex · 일정 시간축 가독성 재수정
 
 앱125 사용자 피드백 공통 반영. ScheduleSection 시간 앞 점·세로선, 14px 시간, 이동 표시를 absolute에서 본문 아래 정상 흐름으로 옮겨 겹침 방지. 실제 조회 mode에 맞춰 차/버스/도보 아이콘 표시. 조회/편집/연락처/길찾기/권한은 유지. 웹에 없는 위디·빈시간 추천 작성 기능 신설 없음. npm run typecheck:web 통과. 앱 JSX 예시320/390px 검사는 네이티브 검수와 다름. push/배포 없음. 기존 사용자 eas.json/tsconfig.tsbuildinfo/AGENTS.md/app.json 변경 보존.
