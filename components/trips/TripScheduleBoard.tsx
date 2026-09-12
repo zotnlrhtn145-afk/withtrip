@@ -63,7 +63,7 @@ export function TripScheduleBoard({
           />
         </div>
         <div className="min-w-0 lg:col-span-7">
-          <div className="h-full rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md sm:p-6">
+          <div className="h-full bg-white px-[26px] py-6">
             <ScheduleSection
               tripId={trip.id}
               tripStartDate={trip.startDate}

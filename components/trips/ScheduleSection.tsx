@@ -2,12 +2,12 @@
 
 import { ContactLine } from "@/components/contact-line"
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react"
-import { BedDouble, Calendar, Camera, AlertCircle, Check, ChevronDown, ChevronRight, Coffee, Footprints, Crown, Loader2, LogOut, MapPin, Pencil, Plane, Plus, Search, Trash2, UserRound, Utensils, type LucideIcon } from "lucide-react"
+import { Calendar, AlertCircle, Check, ChevronDown, ChevronRight, MoreHorizontal, Footprints, Crown, Loader2, LogOut, MapPin, Pencil, Plane, Plus, Search, Trash2, UserRound } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { DirectionsMenu } from "@/components/directions-menu"
 import { TimeSelect24 } from "@/components/ui/time-select-24"
-import { AddSectionButton } from "@/components/trips/AddSectionButton"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { searchGooglePlaces, type PlaceSearchResult } from "@/lib/places-search"
 import {
   Dialog,
@@ -62,22 +62,6 @@ import {
 import { PlaceDetailSheet, type PlaceDetailInput } from "@/components/place-detail-sheet"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/utils/supabase/client"
-
-const CATEGORY_BADGE: Record<ScheduleCategory, string> = {
-  이동: "bg-amber-100 text-amber-800",
-  숙소: "bg-indigo-100 text-indigo-800",
-  관광: "bg-emerald-100 text-emerald-800",
-  식사: "bg-orange-100 text-orange-800",
-  카페: "bg-amber-50 text-amber-900",
-}
-
-const CATEGORY_ICON: Record<ScheduleCategory, LucideIcon> = {
-  이동: Plane,
-  숙소: BedDouble,
-  관광: Camera,
-  식사: Utensils,
-  카페: Coffee,
-}
 
 // 구글 장소 종류(kind) → 일정 카테고리 자동 선택
 const SCHEDULE_CATEGORY_OF_KIND: Record<WishlistKind, ScheduleCategory> = {
@@ -453,7 +437,7 @@ function ScheduleRegisterModal({
                       className={cn(
                         "rounded-full px-3.5 py-1.5 text-sm transition-colors",
                         active
-                          ? "bg-amber-400 font-semibold text-zinc-900 shadow-sm"
+                          ? "bg-[#fbbf24] font-medium text-zinc-900"
                           : "bg-zinc-100 font-medium text-zinc-600 hover:bg-zinc-200"
                       )}
                     >
@@ -637,7 +621,7 @@ function ScheduleRegisterModal({
             type="submit"
             form="schedule-register-form"
             disabled={saving}
-            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-amber-400 px-6 py-2.5 text-xs font-semibold text-zinc-900 transition-colors hover:bg-amber-500 disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[#fbbf24] px-6 py-2.5 text-xs font-semibold text-zinc-900 transition-colors hover:bg-amber-500 disabled:opacity-60"
           >
             {saving ? (
               <Loader2 className="size-3.5 animate-spin" />
@@ -652,12 +636,6 @@ function ScheduleRegisterModal({
       </DialogContent>
     </Dialog>
   )
-}
-
-function profileInitials(name: string) {
-  const compact = name.replace(/\s+/g, "").trim()
-  if (!compact) return "?"
-  return compact.slice(0, 1).toUpperCase()
 }
 
 function CreatorBadge({
@@ -684,13 +662,7 @@ function CreatorBadge({
             onError={() => setImgFailed(true)}
           />
         ) : (
-          <span className="flex size-full items-center justify-center bg-zinc-200 text-[9px] font-semibold text-zinc-600">
-            {name && name !== "멤버" ? (
-              profileInitials(name)
-            ) : (
-              <UserRound className="size-3 text-zinc-500" aria-hidden="true" />
-            )}
-          </span>
+          <span className="size-full rounded-full border border-zinc-200 bg-white" />
         )}
       </span>
       <span className="truncate font-medium">{name}</span>
@@ -725,39 +697,9 @@ function MemberAvatars({
       <div className="flex -space-x-1.5">
         {shown.map((member) => {
           const showImage = Boolean(member.avatarUrl) && !failed[member.userId]
-          const isHost = Boolean(ownerId) && member.userId === ownerId
           return (
-            <span
-              key={member.userId}
-              title={isHost ? `${member.name} (방장)` : member.name}
-              className={cn(
-                "relative flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100 ring-2 ring-white",
-                isHost && "ring-amber-300"
-              )}
-            >
-              {showImage ? (
-                <img
-                  src={member.avatarUrl}
-                  alt=""
-                  className="size-full object-cover"
-                  referrerPolicy="no-referrer"
-                  onError={() => setFailed((prev) => ({ ...prev, [member.userId]: true }))}
-                />
-              ) : (
-                <span className="flex size-full items-center justify-center bg-zinc-200 text-[9px] font-semibold text-zinc-600">
-                  {member.name && member.name !== "멤버" ? (
-                    profileInitials(member.name)
-                  ) : (
-                    <UserRound className="size-3 text-zinc-500" aria-hidden="true" />
-                  )}
-                </span>
-              )}
-              {isHost ? (
-                <Crown
-                  className="absolute -top-1 -right-0.5 size-3 fill-amber-400 text-amber-500 drop-shadow-sm"
-                  aria-hidden="true"
-                />
-              ) : null}
+            <span key={member.userId} title={member.name} className="relative flex size-6 shrink-0 overflow-hidden rounded-full border border-zinc-200 bg-white ring-2 ring-white">
+              {showImage ? <img src={member.avatarUrl} alt="" className="size-full object-cover" referrerPolicy="no-referrer" onError={() => setFailed((prev) => ({ ...prev, [member.userId]: true }))} /> : null}
             </span>
           )
         })}
@@ -767,14 +709,14 @@ function MemberAvatars({
           </span>
         ) : null}
       </div>
-      <span className="min-w-0 truncate text-xs text-zinc-500">
+      <span className="min-w-0 text-xs leading-5 text-zinc-500">
         {(names ? `함께 · ${names}` : `함께 · ${members.length}명`) + (suffix ? ` · ${suffix}` : "")}
       </span>
     </div>
   )
 }
 
-function TimelineItem({
+export function TimelineItem({
   item,
   nextItem,
   realLeg,
@@ -815,7 +757,7 @@ function TimelineItem({
   /** 가게 상세를 연다. 가게가 아닌 일정(조식 등)에는 안 준다 */
   onOpenPlace?: (item: TripSchedule) => void
 }) {
-  const Icon = CATEGORY_ICON[item.category] ?? MapPin
+  const [menuOpen, setMenuOpen] = useState(false)
   const timeLabel = item.visitTime || "--:--"
 
   /*
@@ -846,26 +788,10 @@ function TimelineItem({
   const showAuthor = !isAuto && Boolean(item.createdBy || item.userId)
 
   return (
-    <li className="relative flex gap-3 pb-6 last:pb-0 sm:gap-4">
-      {/* Left: time + axis */}
-      <div className="flex w-[3.25rem] shrink-0 flex-col items-end pt-2 sm:w-14">
-        <span className="text-sm leading-none font-bold tabular-nums text-foreground sm:text-base">
-          {timeLabel}
-        </span>
+    <li className="relative flex gap-[14px] pb-5 last:pb-0">
+      <div className="w-[38px] shrink-0 pt-1">
+        <span className="text-[13px] leading-5 font-normal tabular-nums text-slate-500">{timeLabel}</span>
       </div>
-
-      <div className="relative flex w-10 shrink-0 flex-col items-center">
-        <span className="relative z-10 flex size-10 items-center justify-center rounded-full bg-amber-50 text-amber-500 shadow-sm ring-1 ring-amber-100">
-          <Icon className="size-5" strokeWidth={2.25} />
-        </span>
-        {!isLast ? (
-          <span
-            aria-hidden="true"
-            className="absolute top-10 bottom-0 w-0.5 rounded-full bg-slate-200"
-          />
-        ) : null}
-      </div>
-
       {/* Right: content card */}
       {/*
         ⚠️ 지우지 않고 **흐리게** 둔다. 늦게 합류하는 사람 화면에서 앞 일정을
@@ -873,7 +799,7 @@ function TimelineItem({
       */}
       <div
         className={cn(
-          "media-card min-w-0 flex-1 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:shadow-md",
+          "min-w-0 flex-1 border-b border-slate-200 bg-white pb-5",
           notMine && "opacity-45"
         )}
       >
@@ -881,7 +807,7 @@ function TimelineItem({
           <div className="min-w-0 flex-1">
             {/* 좁은 모바일 폭에서 제목이 뱃지와 폭 경쟁하다 글자 단위로 줄바꿈되던 문제 →
                 flex-wrap 으로 좁으면 뱃지를 아래 줄로, break-keep 으로 한글은 단어 단위로만 줄바꿈 */}
-            <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+            <div className="flex flex-col items-start gap-2">
               {/*
                 ⚠️ **가게면 눌러서 상세로 간다.** 사진·별점·영업시간·리뷰가
                    거기 다 있는데, 일정에서는 갈 길이 없었다(앱에서 신고받음).
@@ -896,70 +822,30 @@ function TimelineItem({
                   onClick={() => onOpenPlace(item)}
                   className="group -m-1 flex min-w-0 items-center gap-1 rounded-lg p-1 text-left transition-colors hover:bg-amber-50"
                 >
-                  <span className="min-w-0 text-base leading-snug font-bold break-keep text-slate-900 group-hover:text-amber-700">
+                  <span className="min-w-0 text-[18px] leading-[25px] font-medium tracking-[-.4px] break-keep text-slate-900 group-hover:text-amber-700">
                     {item.placeName}
                   </span>
                   <ChevronRight className="size-4 shrink-0 text-slate-300 transition-colors group-hover:text-amber-500" />
                 </button>
               ) : (
-                <p className="min-w-0 text-base leading-snug font-bold break-keep text-slate-900">
+                <p className="min-w-0 text-[18px] leading-[25px] font-medium tracking-[-.4px] break-keep text-slate-900">
                   {item.placeName}
                 </p>
               )}
-              <span className="flex shrink-0 items-center gap-1">
-                {isAuto ? (
-                  <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500">
-                    자동
-                  </span>
-                ) : null}
-                <span
-                  className={cn(
-                    "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold",
-                    CATEGORY_BADGE[item.category]
-                  )}
-                >
-                  {item.category}
-                </span>
-              </span>
+              <span className="text-xs leading-5 text-slate-500">{item.category}{isAuto ? " · 자동" : ""}</span>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-0.5">
-            {/* 길찾기 — 좌표가 없어도 이름/주소로 검색(3모드 피커). 모두에게 노출. */}
-            {item.placeName || item.address ? (
-              <DirectionsMenu
-                destination={null}
-                fallbackQuery={item.address || item.placeName}
-                variant="icon"
-                className="size-8 text-amber-600"
-              />
-            ) : null}
-            {isAuthor && !isAuto ? (
-              <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="일정 수정"
-                  disabled={deleting}
-                  onClick={() => onEdit(item)}
-                  className="text-gray-400 hover:text-amber-600"
-                >
-                  <Pencil />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="일정 삭제"
-                  disabled={deleting}
-                  onClick={() => onDelete(item.id)}
-                  className="text-gray-400 hover:text-destructive"
-                >
-                  {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
-                </Button>
-              </>
-            ) : null}
-          </div>
+          {isAuthor && !isAuto ? (
+            <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+              <PopoverTrigger aria-label={`${item.placeName} 일정 메뉴`} className="-mt-2 -mr-2 grid size-11 shrink-0 place-items-center rounded-full text-slate-500 transition-colors hover:bg-zinc-100" disabled={deleting}>
+                {deleting ? <Loader2 className="size-5 animate-spin" /> : <MoreHorizontal className="size-5" />}
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-44 rounded-2xl p-2">
+                <button type="button" onClick={() => { setMenuOpen(false); onEdit(item) }} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm hover:bg-zinc-100"><Pencil className="size-4" />수정</button>
+                <button type="button" onClick={() => { setMenuOpen(false); onDelete(item.id) }} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm text-red-600 hover:bg-red-50"><Trash2 className="size-4" />삭제</button>
+              </PopoverContent>
+            </Popover>
+          ) : null}
         </div>
 
         {/* 작성자·메모·주소·전화는 제목 행 **밖**에 둔다.
@@ -980,7 +866,9 @@ function TimelineItem({
             ownerId={ownerId}
             suffix={`${totalPeople}명 중 ${partialMembers.length}명`}
           />
-        ) : null}
+        ) : (
+          <MemberAvatars members={memberProfiles} ownerId={ownerId} />
+        )}
         {notMine && notMineReason ? (
           <p className="mt-1.5 text-[11px] font-bold text-slate-400">{notMineReason}</p>
         ) : null}
@@ -993,18 +881,19 @@ function TimelineItem({
             {item.phoneNumber ? <ContactLine kind="phone" value={item.phoneNumber} /> : null}
           </div>
         ) : null}
+        {item.placeName || item.address ? <DirectionsMenu destination={item.lat != null && item.lng != null ? { name: item.placeName, lat: item.lat, lng: item.lng } : null} fallbackQuery={item.address || item.placeName} className="mt-3 h-11 rounded-[13px] px-3 text-[13px] font-medium text-slate-900" /> : null}
       </div>
 
       {/*
         일정과 일정 사이 — 얼마나 떨어져 있는지.
         ⚠️ `li` 아래쪽 여백(pb-6) 자리에 얹는다. 카드 안에 넣으면 카드가 복잡해지고,
            새 줄을 만들면 연결선이 끊긴다.
-        ⚠️ 왼쪽 여백은 시간칸(3.25rem)+간격+축(2.5rem)+간격 을 더한 값이다.
+        왼쪽 여백은 확정 시안의 시간칸38px + 간격14px이다.
       */}
       {leg ? (
         <span
           className={cn(
-            "absolute bottom-0.5 left-[7.25rem] flex items-center gap-1 text-xs font-semibold sm:left-[8rem]",
+            "absolute bottom-0.5 left-[52px] flex items-center gap-1 text-xs font-normal",
             leg.far ? "text-amber-700" : "text-slate-400"
           )}
         >
@@ -1048,22 +937,13 @@ function JoinBand({
   if (names.length === 0) return null
   const who = names.join("·")
   const join = band.kind === "join"
-  const text = join
-    ? band.everyoneNow
-      ? `${who} 합류 — 이제 ${band.countAfter}명 모두 모였어요`
-      : `${who} 합류 (${band.countAfter}명)`
-    : `${who} 먼저 출발 (남은 ${band.countAfter}명)`
-
   return (
-    <li className="flex items-center gap-3 pb-3 text-xs">
-      <span className="w-12 shrink-0 text-right font-semibold text-slate-400 tabular-nums">
-        {band.at.time}
-      </span>
-      <span className={cn("shrink-0", join ? "text-amber-500" : "text-slate-400")}>
-        {join ? <Plane className="size-4" /> : <LogOut className="size-4" />}
-      </span>
-      <span className={cn("font-extrabold", join ? "text-amber-700" : "text-slate-500")}>{text}</span>
-      <span className={cn("h-px flex-1", join ? "bg-amber-200" : "bg-slate-200")} />
+    <li className="flex gap-[14px] py-4">
+      <span className="w-[38px] shrink-0 pt-1 text-xs font-normal text-slate-500 tabular-nums">{band.at.time}</span>
+      <div className="flex min-w-0 flex-1 items-start gap-2">
+        {join ? <Plane className="mt-1 size-4 shrink-0 text-amber-500" /> : <LogOut className="mt-1 size-4 shrink-0 text-slate-400" />}
+        <div className="min-w-0"><p className="text-sm font-medium text-slate-900">{who} {join ? "합류" : "먼저 출발"}</p><p className="mt-1 text-[13px] text-slate-500">{join ? (band.everyoneNow ? `이제 ${band.countAfter}명 모두 모였어요` : `현재 ${band.countAfter}명이 함께해요`) : `${band.countAfter}명이 여행 중이에요`}</p></div>
+      </div>
     </li>
   )
 }
@@ -1415,20 +1295,16 @@ export function ScheduleSection({
     <section className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <p className="mb-1 text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-            Itinerary
-          </p>
-          <h2 className="text-lg font-bold tracking-tight text-slate-900">여행 일정</h2>
+          <h2 className="text-[22px] font-medium tracking-tight text-slate-900">{selectedDay}일차 일정</h2>
           <p className="text-sm text-slate-500">{subtitleParts.join(" · ")}</p>
         </div>
+        <button type="button" aria-label="일정 추가" onClick={openAdd} className="grid size-11 shrink-0 place-items-center rounded-full bg-[#fbbf24] text-slate-900 transition-transform active:scale-95"><Plus className="size-6" /></button>
       </div>
-
-      <AddSectionButton label="일정 추가" onClick={openAdd} />
 
       <div
         role="tablist"
         aria-label="일차 선택"
-        className="no-scrollbar flex gap-2 overflow-x-auto pb-1"
+        className="no-scrollbar order-first flex gap-[10px] overflow-x-auto pb-5"
       >
         {dayOptions.map((day) => {
           const meta = getScheduleDayMeta(tripStartDate, day)
@@ -1441,10 +1317,10 @@ export function ScheduleSection({
               aria-selected={active}
               onClick={() => setSelectedDay(day)}
               className={cn(
-                "touch-press inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs transition-all",
+                "touch-press inline-flex min-h-16 min-w-[94px] flex-1 shrink-0 flex-col items-center justify-center gap-[5px] rounded-[14px] px-4 py-2 text-sm transition-all",
                 active
-                  ? "bg-amber-400 font-semibold text-zinc-900 shadow-sm"
-                  : "bg-slate-100 font-medium text-slate-500 hover:bg-slate-200/70"
+                  ? "bg-[#fbbf24] font-medium text-zinc-900"
+                  : "bg-zinc-100 font-normal text-slate-600 hover:bg-zinc-200/70"
               )}
             >
               <span>{day}일차</span>
