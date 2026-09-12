@@ -20,7 +20,7 @@ export type RouteStop = {
 }
 
 /** 그 날의 동선을 담도록 맞춘다 — Day 를 바꿀 때마다 */
-function DayFitter({ stops }: { stops: RouteStop[] }) {
+function DayFitter({ stops, compact = false }: { stops: RouteStop[]; compact?: boolean }) {
   const map = useMap()
   useEffect(() => {
     if (!map || stops.length === 0) return
@@ -36,9 +36,9 @@ function DayFitter({ stops }: { stops: RouteStop[] }) {
         east: Math.max(...stops.map((s) => s.lng)),
         west: Math.min(...stops.map((s) => s.lng)),
       },
-      72
+      compact ? 18 : 72
     )
-  }, [map, stops])
+  }, [map, stops, compact])
   return null
 }
 
@@ -57,7 +57,7 @@ function SelectPan({ stop }: { stop: RouteStop | null }) {
  * 동선 선 — @vis.gl 에는 Polyline 컴포넌트가 없어 직접 얹는다.
  * 앱과 같은 문법: 흰 밑선 + 앰버 선 두 겹(도로·강과 안 섞이게).
  */
-function RouteLine({ stops }: { stops: RouteStop[] }) {
+function RouteLine({ stops, animate = true }: { stops: RouteStop[]; animate?: boolean }) {
   const map = useMap()
   useEffect(() => {
     if (!map || stops.length < 2) return
@@ -94,7 +94,7 @@ function RouteLine({ stops }: { stops: RouteStop[] }) {
       casing.setPath(partial); line.setPath(partial)
       if (progress < 1) frame = requestAnimationFrame(draw)
     }
-    if (!media.matches && !document.hidden) frame = requestAnimationFrame(draw)
+    if (animate && !media.matches && !document.hidden) frame = requestAnimationFrame(draw)
     document.addEventListener("visibilitychange", finish)
     media.addEventListener("change", finish)
     return () => {
@@ -104,7 +104,7 @@ function RouteLine({ stops }: { stops: RouteStop[] }) {
       casing.setMap(null)
       line.setMap(null)
     }
-  }, [map, stops])
+  }, [map, stops, animate])
   return null
 }
 
@@ -118,7 +118,11 @@ export function TripRouteMap({
   stops,
   selectedIndex,
   onSelect,
+  animateRoute = true,
+  compact = false,
 }: {
+  animateRoute?: boolean
+  compact?: boolean
   stops: RouteStop[]
   selectedIndex: number | null
   onSelect: (index: number) => void
@@ -131,17 +135,17 @@ export function TripRouteMap({
         defaultCenter={{ lat: stops[0].lat, lng: stops[0].lng }}
         defaultZoom={13}
         mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID?.trim() || "DEMO_MAP_ID"}
-        zoomControl
+        zoomControl={!compact}
         mapTypeControl={false}
         streetViewControl={false}
         fullscreenControl={false}
         clickableIcons={false}
-        gestureHandling="greedy"
+        gestureHandling={compact ? "none" : "greedy"}
         className="h-full w-full"
       >
-        <DayFitter stops={stops} />
+        <DayFitter stops={stops} compact={compact} />
         <SelectPan stop={selectedIndex != null ? (stops[selectedIndex] ?? null) : null} />
-        <RouteLine stops={stops} />
+        <RouteLine stops={stops} animate={animateRoute} />
         {stops.map((s, i) => (
           <AdvancedMarker key={`${s.lat},${s.lng},${i}`} position={{ lat: s.lat, lng: s.lng }} onClick={() => onSelect(i)}>
             {/* 번호 핀 — 앱의 NumberPin 과 같은 문법(앰버 원+흰 테두리+꼬리) */}

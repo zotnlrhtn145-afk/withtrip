@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   Building2,
   Check,
@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { ProfileOverview } from "@/components/profile-overview"
 import { BlockedUsersDialog } from "@/components/blocked-users-dialog"
 import { useTrips } from "@/components/trips-store"
 import {
@@ -87,6 +88,7 @@ export function MyPageView({
   onLogout: () => void
 }) {
   const { trips, members } = useTrips()
+  const settings = useRef<HTMLDetailsElement>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileLoading, setProfileLoading] = useState(true)
   const [profileError, setProfileError] = useState<string | null>(null)
@@ -221,6 +223,10 @@ export function MyPageView({
 
   return (
     <div className="flex w-full flex-col gap-5">
+      <ProfileOverview profile={profile} trips={trips} onSelectTrip={onSelectTrip} onSettings={() => { if (settings.current) { settings.current.open = true; settings.current.scrollIntoView({ behavior: "smooth", block: "start" }) } }} />
+      <details ref={settings} className="mt-6 border-t border-slate-200 pt-4">
+        <summary className="min-h-12 cursor-pointer py-3 text-base font-semibold text-slate-900">프로필 수정 및 설정</summary>
+        <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
 
         <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
@@ -239,8 +245,8 @@ export function MyPageView({
         <div className="flex flex-col gap-6 px-1 pb-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="flex items-end gap-4">
-              <span className="shrink-0 rounded-full border border-slate-200 p-[3px]">
-                <span className="flex size-[5rem] items-center justify-center overflow-hidden rounded-full bg-white p-[3px]">
+              <span className="shrink-0 rounded-full border border-slate-200">
+                <span className="flex size-[76px] items-center justify-center overflow-hidden rounded-full bg-white">
                   {profile?.avatarUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -249,9 +255,7 @@ export function MyPageView({
                       className="size-full rounded-full object-cover"
                     />
                   ) : (
-                    <span className="flex size-full items-center justify-center rounded-full bg-slate-100 text-lg font-bold text-slate-500">
-                      {initialsFromName(displayName)}
-                    </span>
+                    <span aria-label="프로필 사진 없음" className="size-full rounded-full bg-white" />
                   )}
                 </span>
               </span>
@@ -261,7 +265,7 @@ export function MyPageView({
                     {profileLoading ? "불러오는 중…" : `${displayName} 님`}
                   </span>
                   {providerLabel ? (
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
+                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">
                       {providerLabel}
                     </span>
                   ) : null}
@@ -319,7 +323,7 @@ export function MyPageView({
                 event.preventDefault()
                 handleSaveProfile()
               }}
-              className="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4"
+              className="flex flex-col gap-4 border-t border-slate-200 bg-white py-5"
             >
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="profile-name" className={labelClass}>
@@ -382,13 +386,13 @@ export function MyPageView({
       </div>
 
       {/* Payout account card */}
-      <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
+      <details className="border-b border-slate-200 bg-white py-4"><summary className="cursor-pointer text-base font-semibold text-slate-900">수령 계좌</summary><div className="pt-5">
         <div className="mb-4 flex items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-full bg-amber-50 text-amber-500">
+          <span className="flex size-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900">
             <Wallet className="size-4" />
           </span>
           <div>
-            <p className="text-sm font-bold text-slate-900">정산 수령 계좌 관리</p>
+            <p className="text-sm font-bold text-slate-900">정산 받을 계좌</p>
             <p className="text-sm text-slate-600">
               은행 계좌와 코인 지갑을 등록하면 카카오톡 공유에 자동으로 포함돼요.
             </p>
@@ -503,14 +507,14 @@ export function MyPageView({
               )}
             </button>
             <p className="text-sm text-slate-600">
-              {payoutHint || "Supabase profiles에 저장돼요."}
+              {payoutHint || "정산을 공유할 때 함께 전달할 수령 정보예요."}
             </p>
           </div>
         </div>
-      </div>
+      </div></details>
 
       {/* Trip list card */}
-      <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
+      <div className="border-b border-slate-200 bg-white py-5">
         <p className="mb-3 text-sm font-bold text-slate-900">내 여행 관리</p>
         <div className="flex flex-col gap-2">
           {trips.length === 0 ? (
@@ -526,10 +530,10 @@ export function MyPageView({
                 key={trip.id}
                 type="button"
                 onClick={() => onSelectTrip(trip)}
-                className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 px-4 py-3 text-left transition-all hover:bg-slate-50 active:scale-[0.99]"
+                className="flex items-center justify-between gap-3 border-b border-slate-100 px-0 py-4 text-left transition-all hover:bg-slate-50 active:scale-[0.99]"
               >
                 <span className="flex min-w-0 items-center gap-3">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-500">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900">
                     <Plane className="size-4" />
                   </span>
                   <span className="flex min-w-0 flex-col gap-1">
@@ -557,7 +561,7 @@ export function MyPageView({
       </div>
 
       {/* Account settings card */}
-      <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
+      <div className="border-b border-slate-200 bg-white py-5">
         <p className="mb-3 text-sm font-bold text-slate-900">계정 설정</p>
         <div className="flex flex-col gap-4">
           <button
@@ -592,6 +596,8 @@ export function MyPageView({
         </div>
       </div>
 
+        </div>
+      </details>
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent
           showCloseButton={false}

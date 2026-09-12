@@ -95,7 +95,12 @@ async function fetchMemberTripIds(userId: string): Promise<string[]> {
 
 async function enrichTripsWithGroupMembers(trips: Trip[]): Promise<Trip[]> {
   if (trips.length === 0) return trips
-  const byTrip = await fetchGroupMembersByTripIds(trips.map((trip) => trip.id))
+  const byTrip: Awaited<ReturnType<typeof fetchGroupMembersByTripIds>> = {}
+  for (let start = 0; start < trips.length; start += 320) {
+    const queries = []
+    for (let offset = start; offset < Math.min(start + 320, trips.length); offset += 80) queries.push(fetchGroupMembersByTripIds(trips.slice(offset, offset + 80).map(trip => trip.id)))
+    for (const group of await Promise.all(queries)) Object.assign(byTrip, group)
+  }
   return trips.map((trip) => {
     const groupMembers = byTrip[trip.id] ?? []
     if (groupMembers.length === 0) return trip
@@ -221,13 +226,16 @@ export async function fetchTripsFromSupabase(): Promise<Trip[]> {
   const memberTripIds = await fetchMemberTripIds(userId)
   const missingIds = memberTripIds.filter((id) => !ownedRows.some((row) => row.id === id))
 
-  let memberRows: TripRow[] = []
-  if (missingIds.length > 0) {
-    const memberTrips = await client.from("trips").select("*").eq("kind", "trip").in("id", missingIds)
-    if (memberTrips.error) {
-      console.error("[fetchTripsFromSupabase] member trips:", memberTrips.error.message)
-    } else {
-      memberRows = (memberTrips.data as TripRow[] | null) ?? []
+  const memberRows: TripRow[] = []
+  // 많은 참여 여행도 URL 길이 제한에 걸리지 않도록 80개씩, 동시 네 조회로 읽습니다.
+  for (let start = 0; start < missingIds.length; start += 320) {
+    const queries = []
+    for (let offset = start; offset < Math.min(start + 320, missingIds.length); offset += 80) {
+      queries.push(client.from("trips").select("*").eq("kind", "trip").in("id", missingIds.slice(offset, offset + 80)))
+    }
+    for (const memberTrips of await Promise.all(queries)) {
+      if (memberTrips.error) console.error("[fetchTripsFromSupabase] member trips:", memberTrips.error.message)
+      else memberRows.push(...((memberTrips.data as TripRow[] | null) ?? []))
     }
   }
 

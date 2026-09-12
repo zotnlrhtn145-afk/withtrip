@@ -172,16 +172,14 @@ export async function fetchTripByToken(token: string): Promise<PublicTrip | null
 }
 
 /** 허브 목록 — 복제 수 순. 일정 수는 한 번에 세어 온다 */
-export async function fetchTemplateCards(limit = 60): Promise<TemplateCard[]> {
+export async function fetchTemplateCards(limit = 60, options?: { ownerId: string; offset: number }): Promise<TemplateCard[]> {
   const db = getSupabaseAdmin()
   if (!db) return []
-  const { data } = await db
-    .from("trips")
-    .select(TRIP_COLS)
-    .eq("is_public", true)
-    .order("fork_count", { ascending: false })
-    .order("published_at", { ascending: false })
-    .limit(limit)
+  let query = db.from("trips").select(TRIP_COLS).eq("is_public", true)
+    .order("fork_count", { ascending: false }).order("published_at", { ascending: false })
+  if (options) query = query.eq("user_id", options.ownerId).not("slug", "is", null).order("id").range(options.offset, options.offset + limit - 1)
+  else query = query.limit(limit)
+  const { data } = await query
   if (!data || data.length === 0) return []
 
   const ids = data.map((r) => String(r.id))
@@ -215,4 +213,17 @@ export async function fetchTemplateCards(limit = 60): Promise<TemplateCard[]> {
 export async function fetchCityCards(city: string): Promise<TemplateCard[]> {
   const all = await fetchTemplateCards(120)
   return all.filter((c) => c.city === city)
+}
+
+/** 프로필 목록만 사용자별로 페이지 조회. 공개 필드 매핑은 허브와 같은 함수 하나를 사용합니다. */
+export async function fetchProfileTemplatePage(ownerId: string, page: number) {
+  const db = getSupabaseAdmin()
+  if (!db) return { cards: [], total: 0, hasMore: false }
+  const size = 12
+  const [cards, count] = await Promise.all([
+    fetchTemplateCards(size, { ownerId, offset: page * size }),
+    db.from("trips").select("id", { head: true, count: "exact" }).eq("is_public", true).eq("user_id", ownerId).not("slug", "is", null),
+  ])
+  const total = count.count ?? 0
+  return { cards, total, hasMore: (page + 1) * size < total }
 }
