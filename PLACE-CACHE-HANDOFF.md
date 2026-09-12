@@ -1,3 +1,7 @@
+## 2026-09-13 Codex · 미쉐린 아이콘 통일
+
+quick-michelin 필터를 기존 미쉐린 얼굴 PNG로 교체. 정적 SVG도 동일 얼굴로 갱신. flower-2/white의 일반 꽃을 실제 MichelinStar 경로로 교체, 출처·라이선스 기록 추가. 앱에도 동일 자산/스타 지도 아이콘 반영. 양쪽 타입 및 앱 지도 검사 통과. 웹 push 없음. staged eas.json 및 tsconfig.tsbuildinfo/AGENTS.md/app.json 등 무관 변경 유지.
+
 ## 2026-09-13 Codex · 장소 사진 확대 레이어 수정
 
 앱 사진 확대 신고 공통 점검. 웹 상세 패널z80 대비 사진 Dialog z50으로 뒤에 가려짐. 해당 사진 Popup100/Backdrop99, DialogContent optional overlayClassName 전달 추가(기본 다른모달 유지), 데스크톱 확대 폭 확대. 앱은 horizontal ScrollView의 flex1/grow0 높이 접힘을 명시 viewport 높이로 수정. 양쪽 타입 통과, 웹push 없음. 사용자 무관 파일 변경 유지.

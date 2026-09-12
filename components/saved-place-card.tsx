@@ -4,6 +4,7 @@ import styles from "./saved-exact.module.css"
 
 export function SavedDesignIcon({ name, size = 22 }: { name: string; size?: number }) {
   // Original saved.html SVG bytes; no substitute icon family.
+  if (name === "quick-michelin") return <img src="/design/saved/michelin-face.png" alt="" aria-hidden width={size} height={size} style={{ width: size, height: size, borderRadius: "50%", flexShrink: 0 }} />
   return <img src={`/design/saved/${name}.svg`} alt="" aria-hidden width={size} height={size} style={{ width: size, height: size, flexShrink: 0 }} />
 }
 export function SavedPlaceCard({ name, source, photo, selected, starred, onStar, onDetail, metadata, details, actions, badge }: {
