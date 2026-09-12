@@ -39,7 +39,7 @@
 @media (prefers-reduced-motion: reduce) { .approved { animation: none; } }
 
 /* 123 실기기 피드백: 표지와 정보를 한 카드로 묶고 메타 대비를 높인다. */
-.approved:not(.approvedCompact) { border: 1px solid #d5dadf; border-radius: 22px; background: white; }
+.approved:not(.approvedCompact) { border-radius: 22px; background: white; }
 .heroLink { border-radius: 21px 21px 0 0; }
 .info { padding: 8px 16px 16px; }
 .memberRow { display: flex; align-items: center; min-height: 44px; padding: 0; gap: 6px; }
