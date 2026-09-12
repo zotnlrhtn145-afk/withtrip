@@ -1,20 +1,22 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ArrowLeft, Loader2, MailCheck } from "lucide-react"
 
+import styles from "./login-quiet.module.css"
 import { AuthShell } from "@/components/auth/auth-shell"
 import { mapAuthError, resetPasswordForEmail } from "@/lib/auth-api"
 
-const inputClass =
-  "h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/15 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-70"
-const labelClass = "mb-1.5 block text-xs font-bold text-slate-700"
+const inputClass = styles.input
+const labelClass = styles.label
 
-export function ForgotPasswordView({ onBackToLogin }: { onBackToLogin: () => void }) {
+export function ForgotPasswordView({ onBackToLogin, embedded = false, onSubmittingChange }: { onBackToLogin: () => void; embedded?: boolean; onSubmittingChange?: (pending: boolean) => void }) {
   const [email, setEmail] = useState("")
   const [sent, setSent] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  useEffect(() => { onSubmittingChange?.(isSubmitting); return () => onSubmittingChange?.(false) }, [isSubmitting, onSubmittingChange])
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -41,12 +43,13 @@ export function ForgotPasswordView({ onBackToLogin }: { onBackToLogin: () => voi
 
   return (
     <AuthShell
+      embedded={embedded}
       title="비밀번호 찾기"
       description="가입하신 이메일을 입력하시면 비밀번호 재설정 링크를 보내드립니다."
     >
       {sent ? (
-        <div className="flex flex-col items-center gap-3 rounded-2xl bg-amber-50/70 px-4 py-8 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 via-amber-300 to-amber-200 text-slate-950 shadow-[0_8px_20px_rgba(255,193,7,0.35)]">
+        <div className="flex flex-col items-center gap-3 bg-white py-6 text-center">
+          <span className={styles.successIcon}>
             <MailCheck className="size-6" />
           </span>
           <p className="text-sm font-bold text-slate-900">재설정 링크를 보냈어요</p>
@@ -62,7 +65,7 @@ export function ForgotPasswordView({ onBackToLogin }: { onBackToLogin: () => voi
           </button>
         </div>
       ) : (
-        <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-4">
+        <form onSubmit={(event) => void handleSubmit(event)} className={styles.form}>
           <div>
             <label htmlFor="reset-email" className={labelClass}>
               이메일
@@ -86,7 +89,7 @@ export function ForgotPasswordView({ onBackToLogin }: { onBackToLogin: () => voi
           {errorMessage ? (
             <div
               role="alert"
-              className="rounded-2xl border border-red-100 bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-500"
+              className={styles.error}
             >
               {errorMessage}
             </div>
@@ -95,7 +98,7 @@ export function ForgotPasswordView({ onBackToLogin }: { onBackToLogin: () => voi
           <button
             type="submit"
             disabled={isSubmitting}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-amber-400 text-sm font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+            className={styles.primary}
           >
             {isSubmitting ? (
               <>

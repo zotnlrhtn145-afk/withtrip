@@ -1,33 +1,49 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
+import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Eye, EyeOff, Loader2 } from "lucide-react"
+import { Dialog } from "@base-ui/react/dialog"
+import { Eye, EyeOff, Loader2, Mail, X } from "lucide-react"
 
 import { SocialLoginButtons } from "@/components/auth/social-login-buttons"
-import { AuthShell } from "@/components/auth/auth-shell"
+import { SignupView } from "@/components/auth/signup-view"
+import { ForgotPasswordView } from "@/components/auth/forgot-password-view"
+import { LoginMotionArt } from "@/components/auth/login-motion-art"
 import { mapAuthError, signInWithEmailPassword } from "@/lib/auth-api"
-
-const inputClass =
-  "h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/15 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-70"
-const labelClass = "mb-1.5 block text-xs font-bold text-slate-700"
+import styles from "./login-quiet.module.css"
 
 export function LoginView({
+  view = "login",
   onLogin,
   onSignup,
   onForgotPassword,
+  onBackToLogin,
 }: {
+  view?: "login" | "signup" | "forgot-password"
   onLogin: () => void
   onSignup: () => void
   onForgotPassword: () => void
+  onBackToLogin: () => void
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const emailTrigger = useRef<HTMLButtonElement>(null)
+  const signupTrigger = useRef<HTMLButtonElement>(null)
+  const closeButton = useRef<HTMLButtonElement>(null)
+  const restoreFocus = useRef<HTMLButtonElement | null>(null)
+  const [emailOpen, setEmailOpen] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [childSubmitting, setChildSubmitting] = useState(false)
+  const [socialPending, setSocialPending] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const open = emailOpen || view !== "login"
+  const busy = isSubmitting || childSubmitting
+  const backToLogin = () => { setEmailOpen(true); onBackToLogin() }
+  const title = view === "signup" ? "회원가입" : view === "forgot-password" ? "비밀번호 찾기" : "이메일 로그인"
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -60,112 +76,55 @@ export function LoginView({
     }
   }
 
-  return (
-    <AuthShell
-      title="로그인"
-      description="여행 일정과 멤버를 한 곳에서 관리해 보세요."
-      footer={
-        <p className="text-sm text-slate-400">
-          아직 계정이 없으신가요?{" "}
-          <button
-            type="button"
-            disabled={isSubmitting}
-            onClick={onSignup}
-            className="font-bold text-slate-900 underline-offset-2 hover:underline disabled:opacity-60"
-          >
-            회원가입
-          </button>
-        </p>
-      }
-    >
-      <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-4">
-        <div>
-          <label htmlFor="login-email" className={labelClass}>
-            이메일
-          </label>
-          <input
-            id="login-email"
-            type="email"
-            autoComplete="email"
-            placeholder="you@withtrip.app"
-            value={email}
-            onChange={(event) => {
-              setEmail(event.target.value)
-              if (errorMessage) setErrorMessage(null)
-            }}
-            disabled={isSubmitting}
-            required
-            className={inputClass}
-          />
-        </div>
 
-        <div>
-          <label htmlFor="login-password" className={labelClass}>
-            비밀번호
-          </label>
-          <div className="relative">
-            <input
-              id="login-password"
-              type={showPassword ? "text" : "password"}
-              autoComplete="current-password"
-              placeholder="비밀번호를 입력하세요"
-              value={password}
-              onChange={(event) => {
-                setPassword(event.target.value)
-                if (errorMessage) setErrorMessage(null)
-              }}
-              disabled={isSubmitting}
-              required
-              className={`${inputClass} pr-11`}
-            />
-            <button
-              type="button"
-              aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
-              disabled={isSubmitting}
-              onClick={() => setShowPassword((current) => !current)}
-              className="absolute top-1/2 right-3 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
-            >
-              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            </button>
+  return <div className={styles.page}>
+    <main className={`${styles.entry} ${open ? styles.entryOpen : ""}`}>
+      <div className={styles.wordmark}><Image className={styles.smallMark} src="/withtrip-logo.png" width={27} height={27} alt="" priority />WITHTRIP</div>
+      <section className={styles.hero} aria-label="위드트립 브랜드 움직임">
+        <LoginMotionArt paused={open || socialPending} />
+        <h1>함께 떠나요.</h1>
+      </section>
+      <button ref={emailTrigger} type="button" className={styles.primary} disabled={socialPending} onClick={() => { restoreFocus.current = emailTrigger.current; setEmailOpen(true) }}><Mail aria-hidden="true" />이메일로 시작하기</button>
+      <SocialLoginButtons quiet disabled={busy || open} onPendingChange={setSocialPending} />
+      <div className={styles.signupLine}><span>처음 오셨나요?</span><button ref={signupTrigger} type="button" className={styles.textAction} disabled={socialPending} onClick={() => { restoreFocus.current = signupTrigger.current; onSignup() }}>회원가입</button></div>
+    </main>
+    <Dialog.Root open={open} onOpenChange={(next) => {
+      if (busy) return
+      setEmailOpen(next)
+      if (!next && view !== "login") onBackToLogin()
+    }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className={styles.backdrop} />
+        <Dialog.Popup className={styles.sheet} initialFocus={closeButton} finalFocus={() => restoreFocus.current || emailTrigger.current}>
+          <div className={styles.handle} aria-hidden="true" />
+          <header className={styles.sheetHead}>
+            <Dialog.Title className={styles.sheetTitle}>{title}</Dialog.Title>
+            <Dialog.Close ref={closeButton} className={styles.iconButton} disabled={busy} aria-label="닫기"><X aria-hidden="true" /></Dialog.Close>
+          </header>
+          <div className={styles.sheetBody} key={view}>
+            {view === "signup" ? <SignupView embedded onSubmittingChange={setChildSubmitting} onSignupComplete={onLogin} onLogin={backToLogin} /> : view === "forgot-password" ? <ForgotPasswordView embedded onSubmittingChange={setChildSubmitting} onBackToLogin={backToLogin} /> : <div className={styles.pane}>
+              <h2 className={styles.paneTitle}>다시 만나 반가워요.</h2>
+              <form onSubmit={event => void handleSubmit(event)} className={styles.form} aria-busy={isSubmitting}>
+                <div>
+                  <label htmlFor="login-email" className={styles.label}>이메일</label>
+                  <input id="login-email" type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} placeholder="이메일 주소" value={email} onChange={event => { setEmail(event.target.value); if (errorMessage) setErrorMessage(null) }} disabled={isSubmitting} required className={styles.input} />
+                </div>
+                <div>
+                  <label htmlFor="login-password" className={styles.label}>비밀번호</label>
+                  <div className={styles.passwordWrap}>
+                    <input id="login-password" type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder="비밀번호" value={password} onChange={event => { setPassword(event.target.value); if (errorMessage) setErrorMessage(null) }} disabled={isSubmitting} required className={styles.input} />
+                    <button type="button" className={styles.iconButton} aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"} aria-pressed={showPassword} disabled={isSubmitting} onClick={() => setShowPassword(current => !current)}>{showPassword ? <EyeOff /> : <Eye />}</button>
+                  </div>
+                </div>
+                {errorMessage ? <p role="alert" className={styles.error}>{errorMessage}</p> : null}
+                <button type="submit" disabled={isSubmitting} className={styles.primary}>{isSubmitting ? <><Loader2 className="animate-spin" />로그인 중…</> : "로그인"}</button>
+              </form>
+              <div className={styles.alternatives}><button type="button" disabled={isSubmitting} onClick={onForgotPassword} className={styles.textAction}>비밀번호 찾기</button></div>
+              <div className={styles.footer}>아직 계정이 없으신가요?{" "}<button type="button" disabled={isSubmitting} onClick={onSignup} className={styles.textAction}>회원가입</button></div>
+            </div>}
           </div>
-        </div>
-
-        {errorMessage ? (
-          <div
-            role="alert"
-            className="rounded-2xl border border-red-100 bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-500"
-          >
-            {errorMessage}
-          </div>
-        ) : null}
-
-        <div className="flex flex-col gap-3 pt-1">
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-amber-400 text-sm font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                로그인 중…
-              </>
-            ) : (
-              "로그인"
-            )}
-          </button>
-          <button
-            type="button"
-            disabled={isSubmitting}
-            onClick={onForgotPassword}
-            className="self-center text-sm font-semibold text-slate-400 transition-colors hover:text-slate-700 disabled:opacity-60"
-          >
-            비밀번호 찾기
-          </button>
-        </div>
-      </form>
-
-      <SocialLoginButtons disabled={isSubmitting} />
-    </AuthShell>
-  )
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
+  </div>
 }

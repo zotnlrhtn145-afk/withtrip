@@ -1,20 +1,25 @@
+import Image from "next/image"
+import styles from "./login-quiet.module.css"
 
 export function AuthShell({
+  embedded = false,
   title,
   description,
   children,
   footer,
 }: {
+  embedded?: boolean
   title: string
   description: string
   children: React.ReactNode
   footer?: React.ReactNode
 }) {
+  if (embedded) return <div className={styles.pane}><h2 className={styles.paneTitle}>{title}</h2><p className={styles.paneDescription}>{description}</p><div className="flex flex-col gap-5">{children}</div>{footer ? <div className={styles.footer}>{footer}</div> : null}</div>
   return (
     <div className="flex w-full flex-1 items-start justify-center bg-white px-6 py-8 sm:py-12">
       <div className="flex w-full max-w-sm flex-col gap-7">
         <div className="flex flex-col items-start gap-4 text-left">
-          <img src="/withtrip-logo.png" alt="" className="size-[66px] rounded-[20px]" />
+          <Image src="/withtrip-logo.png" alt="" width={27} height={27} className={styles.smallMark} />
           <div className="flex flex-col gap-1">
             <span className="text-[25px] leading-none font-extrabold tracking-[1px] text-slate-900">
               WITHTRIP

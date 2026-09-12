@@ -5,9 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Plus, Search } from "lucide-react"
 
 import { AccountMenu } from "@/components/account-menu"
-import { ForgotPasswordView } from "@/components/auth/forgot-password-view"
 import { LoginView } from "@/components/auth/login-view"
-import { SignupView } from "@/components/auth/signup-view"
 import { type NavKey } from "@/components/bottom-nav"
 import { FriendsView } from "@/components/friends-view"
 import { HomeView } from "@/components/home-view"
@@ -398,19 +396,13 @@ function WithtripShell() {
   if (currentView === "login" || currentView === "signup" || currentView === "forgot-password") {
     return (
       <div className="flex min-h-screen flex-col bg-background">
-        {currentView === "login" ? (
-          <LoginView
-            onLogin={handleLogin}
-            onSignup={() => goTo("signup")}
-            onForgotPassword={() => goTo("forgot-password")}
-          />
-        ) : null}
-        {currentView === "signup" ? (
-          <SignupView onSignupComplete={handleLogin} onLogin={() => goTo("login")} />
-        ) : null}
-        {currentView === "forgot-password" ? (
-          <ForgotPasswordView onBackToLogin={() => goTo("login")} />
-        ) : null}
+        <LoginView
+          view={currentView}
+          onLogin={handleLogin}
+          onSignup={() => goTo("signup")}
+          onForgotPassword={() => goTo("forgot-password")}
+          onBackToLogin={() => goTo("login")}
+        />
       </div>
     )
   }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
 
 import {
@@ -8,6 +8,7 @@ import {
   signInWithOAuthProvider,
   type AuthProviderId,
 } from "@/lib/auth-api"
+import styles from "./login-quiet.module.css"
 import { cn } from "@/lib/utils"
 
 const providers: {
@@ -30,9 +31,11 @@ const providers: {
   },
 ]
 
-export function SocialLoginButtons({ disabled = false }: { disabled?: boolean }) {
+export function SocialLoginButtons({ disabled = false, quiet = false, onPendingChange }: { disabled?: boolean; quiet?: boolean; onPendingChange?: (pending: boolean) => void }) {
   const [pending, setPending] = useState<AuthProviderId | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  useEffect(() => { onPendingChange?.(pending !== null); return () => onPendingChange?.(false) }, [pending, onPendingChange])
 
   const handleOAuth = async (provider: AuthProviderId) => {
     if (disabled || pending) return
@@ -54,16 +57,16 @@ export function SocialLoginButtons({ disabled = false }: { disabled?: boolean })
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
+    <div className={quiet ? styles.providers : "flex flex-col gap-4"}>
+      {!quiet ? <div className="flex items-center gap-3">
         <span className="h-px flex-1 bg-slate-100" />
         <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
           또는
         </span>
         <span className="h-px flex-1 bg-slate-100" />
-      </div>
+      </div> : null}
 
-      <div className="flex flex-col gap-2.5">
+      <div className={quiet ? "" : "flex flex-col gap-2.5"}>
         {providers.map((provider) => {
           const loading = pending === provider.id
           return (
@@ -72,7 +75,7 @@ export function SocialLoginButtons({ disabled = false }: { disabled?: boolean })
               type="button"
               disabled={disabled || pending !== null}
               onClick={() => void handleOAuth(provider.id)}
-              className={cn(
+              className={quiet ? styles.provider : cn(
                 "flex h-12 w-full items-center justify-center gap-2.5 rounded-full border text-sm font-bold shadow-sm transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60",
                 provider.className
               )}

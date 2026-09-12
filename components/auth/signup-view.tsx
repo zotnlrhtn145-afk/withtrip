@@ -1,20 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Check, Eye, EyeOff, Loader2, MailCheck } from "lucide-react"
 
+import styles from "./login-quiet.module.css"
 import { AuthShell } from "@/components/auth/auth-shell"
 import { mapAuthError, signUpWithEmailPassword } from "@/lib/auth-api"
 import { cn } from "@/lib/utils"
 
-const inputClass =
-  "h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/15 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-70"
-const labelClass = "mb-1.5 block text-xs font-bold text-slate-700"
+const inputClass = styles.input
+const labelClass = styles.label
 
 export function SignupView({
+  embedded = false,
+  onSubmittingChange,
   onSignupComplete,
   onLogin,
 }: {
+  embedded?: boolean
+  onSubmittingChange?: (pending: boolean) => void
   /** Called when signup yields an immediate session (email confirm off). */
   onSignupComplete: () => void
   onLogin: () => void
@@ -34,6 +38,8 @@ export function SignupView({
 
   const passwordMismatch = submitted && password !== passwordConfirm
   const agreementMissing = submitted && (!agreeTerms || !agreePrivacy)
+
+  useEffect(() => { onSubmittingChange?.(isSubmitting); return () => onSubmittingChange?.(false) }, [isSubmitting, onSubmittingChange])
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -72,6 +78,7 @@ export function SignupView({
     const needsConfirm = successMode === "confirm"
     return (
       <AuthShell
+        embedded={embedded}
         title={needsConfirm ? "이메일을 확인해 주세요" : "회원가입 완료"}
         description={
           needsConfirm
@@ -90,8 +97,8 @@ export function SignupView({
           ) : null
         }
       >
-        <div className="flex flex-col items-center gap-3 rounded-2xl bg-amber-50/70 px-4 py-8 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 via-amber-300 to-amber-200 text-slate-950 shadow-[0_8px_20px_rgba(255,193,7,0.35)]">
+        <div className="flex flex-col items-center gap-3 bg-white py-6 text-center">
+          <span className={styles.successIcon}>
             <MailCheck className="size-6" />
           </span>
           <p className="text-sm font-bold text-slate-900">
@@ -109,6 +116,7 @@ export function SignupView({
 
   return (
     <AuthShell
+      embedded={embedded}
       title="회원가입"
       description="이메일로 가입하고 친구들과 여행을 계획해 보세요."
       footer={
@@ -125,7 +133,7 @@ export function SignupView({
         </p>
       }
     >
-      <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-4">
+      <form onSubmit={(event) => void handleSubmit(event)} className={styles.form}>
         <div>
           <label htmlFor="signup-name" className={labelClass}>
             이름
@@ -187,7 +195,7 @@ export function SignupView({
               aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
               disabled={isSubmitting}
               onClick={() => setShowPassword((current) => !current)}
-              className="absolute top-1/2 right-3 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              className="absolute top-1/2 right-0 flex size-11 -translate-y-1/2 items-center justify-center text-slate-500"
             >
               {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
@@ -221,7 +229,7 @@ export function SignupView({
               aria-label={showPasswordConfirm ? "비밀번호 숨기기" : "비밀번호 보기"}
               disabled={isSubmitting}
               onClick={() => setShowPasswordConfirm((current) => !current)}
-              className="absolute top-1/2 right-3 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              className="absolute top-1/2 right-0 flex size-11 -translate-y-1/2 items-center justify-center text-slate-500"
             >
               {showPasswordConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
@@ -231,7 +239,7 @@ export function SignupView({
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-2.5 rounded-2xl bg-slate-50 p-4">
+        <div className={styles.agreements}>
           <p className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">약관 동의</p>
           <label className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-700">
             <button
@@ -277,7 +285,7 @@ export function SignupView({
         {errorMessage ? (
           <div
             role="alert"
-            className="rounded-2xl border border-red-100 bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-500"
+            className={styles.error}
           >
             {errorMessage}
           </div>
@@ -286,7 +294,7 @@ export function SignupView({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-amber-400 text-sm font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+          className={styles.primary}
         >
           {isSubmitting ? (
             <>
