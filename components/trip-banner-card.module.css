@@ -10,3 +10,30 @@
 .compact > div:last-of-type span, .compact > div:last-of-type div { color: #475569; }
 .compact > div:last-of-type h3 + span { display: none; }
 @media (min-width: 640px) { .compact { height: 180px; } }
+
+/* Approved home.html: photo, people, then quiet live metadata. Not shared with settlement. */
+.approved { position: relative; width: 100%; color: #191919; animation: home-arrive 340ms cubic-bezier(.22,1,.36,1) both; }
+.heroLink { display: block; position: relative; width: 100%; height: 285px; overflow: hidden; border-radius: 22px; text-align: left; color: white; cursor: pointer; }
+.scrim { position: absolute; inset: 0; background: linear-gradient(transparent, #0009); }
+.copy { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.heroLink .copy { position: absolute; left: 26px; right: 26px; bottom: 26px; }
+.copy strong { font-size: 28px; line-height: 1.25; font-weight: 500; letter-spacing: -1px; overflow-wrap: anywhere; }
+.eyebrow { font-size: 11px; letter-spacing: 2px; }
+.dates { font-size: 13px; line-height: 1.65; opacity: .85; }
+.memberRow { display: flex; align-items: center; gap: 6px; padding: 16px 0; }
+.members { flex: 1; display: flex; align-items: center; gap: 10px; text-align: left; min-width: 0; font-size: 12px; color: #73736d; cursor: pointer; }
+.open { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.details { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: #73736d; line-height: 20px; }
+.details > span { display: inline-flex; align-items: center; gap: 5px; }
+.rowLink { display: flex; width: 100%; align-items: center; gap: 14px; text-align: left; cursor: pointer; }
+.city { flex: none; width: 60px; min-height: 74px; border: 1px solid #e5e8e9; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; padding: 6px; }
+.city small { font-size: 10px; text-align: center; }
+.rowLink .copy { flex: 1; gap: 5px; }
+.rowLink .copy strong { font-size: 16px; font-weight: 600; letter-spacing: 0; }
+.rowLink .dates { color: #737d83; font-size: 12px; }
+.approvedCompact { border-bottom: 1px solid #eceeef; padding: 18px 0; }
+.approvedCompact .memberRow { position: absolute; right: 0; bottom: 9px; padding: 0; }
+.approvedCompact .details { margin: 8px 44px 0 74px; }
+.approved button:active { opacity: .8; }
+@keyframes home-arrive { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .approved { animation: none; } }

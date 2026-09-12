@@ -424,7 +424,7 @@ function WithtripShell() {
             className={
               (currentView === "friends"
                 ? "flex min-h-0 flex-1 flex-col p-2 sm:p-3"
-                : "flex flex-col gap-4 p-4") + " animate-view-in"
+                : currentView === "home" ? "flex flex-col gap-4 px-[26px] pt-6 pb-4" : "flex flex-col gap-4 p-4") + " animate-view-in"
             }
           >
             {mainContent}

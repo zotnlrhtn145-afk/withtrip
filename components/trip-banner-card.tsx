@@ -4,6 +4,7 @@ import Image from "next/image"
 import styles from "./trip-banner-card.module.css"
 import { useEffect, useRef, useState } from "react"
 import {
+  ArrowUpRight,
   CalendarDays,
   ChevronRight,
   Cloud,
@@ -50,6 +51,7 @@ export function TripBannerCard({
   priority = false,
   muted = false,
   compact = false,
+  approved = false,
 }: {
   trip: Trip
   onSelect: (trip: Trip) => void
@@ -57,6 +59,7 @@ export function TripBannerCard({
   /** 지난 여행 — 흐리게+탈색 처리. */
   muted?: boolean
   compact?: boolean
+  approved?: boolean
 }) {
   const { members, refreshTrips } = useTrips()
   const { weather } = useWeather(trip.region)
@@ -113,6 +116,90 @@ export function TripBannerCard({
 
   return (
     <>
+      {approved ? <article className={cn(styles.approved, compact && styles.approvedCompact)}>
+        <button type="button" onClick={() => onSelect(trip)} aria-label={`${trip.title} 상세 보기`} className={compact ? styles.rowLink : styles.heroLink}>
+          {compact ? <span className={styles.city}><MapPin size={24} fill="#fbbf24" strokeWidth={1.5} /><small>{trip.region || trip.country}</small></span> : <>
+            <Image src={coverSrc} alt={trip.heroImageAlt} fill priority={priority} sizes="(min-width: 768px) 640px, 100vw" className="object-cover" onError={() => setCoverSrc(FALLBACK_TRIP_COVER)} />
+            <span className={styles.scrim} />
+          </>}
+          <span className={styles.copy}>
+            {!compact ? <span className={styles.eyebrow}>{trip.region} · {formatTripDuration(trip.nights, trip.days)}</span> : null}
+            <strong>{trip.title}</strong>
+            <span className={styles.dates}>{trip.startDate} — {trip.endDate}{compact ? ` · ${formatTripDuration(trip.nights, trip.days)}` : ""}</span>
+            {compact ? <span className={styles.dates}>{muted ? "함께 다녀온 여행" : trip.dDay <= 0 ? "함께 여행 중" : "함께 준비 중"} · {tripMembers.length}명</span> : null}
+          </span>
+          {compact ? <ChevronRight size={18} /> : null}
+        </button>
+        <div className={styles.memberRow}>
+          {!compact ? <button type="button" onClick={() => onSelect(trip)} aria-label={`${memberSummary}, 여행 열기`} className={styles.members}>
+            {!compact ? <AvatarGroup className="-space-x-2">
+              {tripMembers.slice(0, 3).map(member => <Avatar key={member.id} className="size-7 ring-2 ring-white">
+                {"avatarUrl" in member && typeof member.avatarUrl === "string" && member.avatarUrl ? <AvatarImage src={member.avatarUrl} alt="" /> : null}
+                <AvatarFallback className="border border-slate-200 bg-white" />
+              </Avatar>)}
+            </AvatarGroup> : null}
+            {!compact ? <span>{muted ? "함께 다녀온 여행" : trip.dDay <= 0 ? "함께 여행 중" : "함께 준비 중"} · {tripMembers.length}명</span> : null}
+          </button> : null}
+                    <div className="pointer-events-auto relative flex items-center gap-1.5" ref={menuRef}>
+            <button
+              type="button"
+              aria-label="여행 더보기"
+              aria-expanded={menuOpen}
+              className={cn(
+                "cursor-pointer rounded-full p-2 text-slate-700 transition-all",
+                "hover:bg-slate-100 z-10"
+              )}
+              onClick={(event) => {
+                event.stopPropagation()
+                setMenuOpen((open) => !open)
+              }}
+            >
+              <MoreHorizontal className="size-5" />
+            </button>
+
+            {menuOpen ? (
+              <div
+                className={cn(
+                  "absolute top-10 right-0 z-50 w-36 rounded-2xl border border-slate-100",
+                  "bg-white/95 p-1.5 text-xs font-medium text-slate-800 shadow-xl backdrop-blur-md"
+                )}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <EditTripDialog
+                  trip={trip}
+                  trigger={
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 transition-all hover:bg-slate-100"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <Pencil className="size-3.5 text-slate-500" />
+                      여행 편집
+                    </button>
+                  }
+                />
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 font-semibold text-red-500 transition-all hover:bg-red-50"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    setConfirmOpen(true)
+                  }}
+                >
+                  <Trash2 className="size-3.5" />
+                  여행 삭제
+                </button>
+              </div>
+            ) : null}
+          </div>
+          {!compact ? <button type="button" onClick={() => onSelect(trip)} aria-label="여행 열기" className={styles.open}><ArrowUpRight size={20} /></button> : null}
+        </div>
+        <div className={styles.details}>
+          <span>{muted ? "종료" : trip.dDay > 0 ? `D-${trip.dDay}` : trip.dDay === 0 ? "D-DAY" : `D+${Math.abs(trip.dDay)}`}</span>
+          {weather ? <span><WeatherIcon size={14} />{weather.label}</span> : null}
+          {trip.flight ? <span><Plane size={14} />{trip.flight}</span> : null}
+        </div>
+      </article> : (
       <article
         className={cn(
           "group media-card relative h-64 w-full overflow-hidden rounded-2xl border border-border text-left sm:h-72",
@@ -270,6 +357,7 @@ export function TripBannerCard({
           </button>
         </div>
       </article>
+      )}
 
       {confirmOpen ? (
         <div

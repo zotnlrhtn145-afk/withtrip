@@ -1,0 +1,5 @@
+.panels { padding-top: 24px; overflow-x: clip; --panel-from: 24px; }
+.panels[data-direction="back"] { --panel-from: -24px; }
+.panels > section:not([hidden]) { animation: panel-enter 300ms cubic-bezier(.22,1,.36,1) both; }
+@keyframes panel-enter { from { opacity: 0; transform: translateX(var(--panel-from)); } to { opacity: 1; transform: translateX(0); } }
+@media (prefers-reduced-motion: reduce) { .panels > section:not([hidden]) { animation: none; } }

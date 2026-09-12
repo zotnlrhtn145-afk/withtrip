@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import styles from "./trip-schedule-board.module.css"
 import { BedDouble, CalendarRange, Plane, type LucideIcon } from "lucide-react"
 
 import { AccommodationSection } from "@/components/trips/AccommodationSection"
@@ -37,6 +38,7 @@ export function TripScheduleBoard({
   view?: ViewMode
 }) {
   const [active, setActive] = useState<TabKey>("schedule")
+  const [direction, setDirection] = useState("forward")
   // 이동수단·숙소가 바뀌면 값을 올려 일정 섹션이 자동 동기화 결과를 다시 불러오게 한다.
   const [sourceRev, setSourceRev] = useState(0)
   const bumpSources = () => setSourceRev((rev) => rev + 1)
@@ -81,7 +83,7 @@ export function TripScheduleBoard({
       <nav
         role="tablist"
         aria-label="여행 상세 카테고리"
-        className="flex items-stretch border-y border-slate-200/80 bg-white"
+        className="flex items-stretch border-b border-slate-200/80 bg-white"
       >
         {TABS.map((tab) => {
           const isActive = active === tab.key
@@ -93,19 +95,20 @@ export function TripScheduleBoard({
               role="tab"
               aria-selected={isActive}
               aria-controls={`trip-panel-${tab.key}`}
-              onClick={() => setActive(tab.key)}
+              onClick={() => { setDirection(TABS.findIndex(t => t.key === tab.key) > TABS.findIndex(t => t.key === active) ? "forward" : "back"); setActive(tab.key) }}
+              aria-label={tab.label}
               className={cn(
-                "relative flex flex-1 flex-col items-center justify-center gap-1 py-3 transition-colors",
+                "relative flex h-[60px] flex-1 items-center justify-center transition-colors active:scale-95",
                 isActive ? "text-slate-900" : "text-slate-400"
               )}
             >
-              <Icon className="size-5" strokeWidth={isActive ? 2.1 : 1.7} />
-              <span className="text-[11px] font-semibold tracking-tight">{tab.label}</span>
+              <Icon className="size-[23px]" strokeWidth={1.7} />
+              <span className="sr-only">{tab.label}</span>
               <span
                 aria-hidden
                 className={cn(
-                  "absolute inset-x-0 -top-px h-0.5 transition-colors",
-                  isActive ? "bg-slate-900" : "bg-transparent"
+                  "absolute inset-x-[22%] -bottom-px h-[3px] rounded-full transition-colors",
+                  isActive ? "bg-amber-400" : "bg-transparent"
                 )}
               />
             </button>
@@ -113,14 +116,14 @@ export function TripScheduleBoard({
         })}
       </nav>
 
-      <div className="pt-5">
+      <div className={styles.panels} data-direction={direction}>
         <section
           id="trip-panel-schedule"
           role="tabpanel"
           aria-label="일정"
           hidden={active !== "schedule"}
         >
-          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
+          <div className="bg-white px-2.5">
             <ScheduleSection
               tripId={trip.id}
               tripStartDate={trip.startDate}

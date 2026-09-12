@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   CalendarDays,
@@ -22,6 +23,7 @@ import {
   TrainFront,
   User,
   UserPlus,
+  Wallet,
 } from "lucide-react"
 
 import { EditTripDialog } from "@/components/edit-trip-dialog"
@@ -369,138 +371,35 @@ export function TripHeroCard({
         flushBottom ? "" : "mb-8 border-b border-slate-200/70 pb-2"
       )}
     >
-      <div
-        className={cn(
-          "relative h-52 w-full overflow-hidden rounded-3xl shadow-sm sm:h-72",
-          compact && "sm:h-64"
-        )}
-      >
-        <Image
-          src={coverSrc}
-          alt={trip.heroImageAlt}
-          fill
-          priority
-          sizes="(min-width: 1024px) 900px, 100vw"
-          className="object-cover"
-          onError={() => setCoverSrc(FALLBACK_TRIP_COVER)}
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent"
-        />
-
-        <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-4 sm:p-5">
-          <span className="rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-slate-950 shadow-sm tabular-nums">
-            D-{trip.dDay}
-          </span>
-          {weather ? (
-            <span className="flex items-center gap-1 rounded-full border border-white/20 bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur-md">
-              <WeatherIcon className="size-3.5" />
-              {weather.label}
-            </span>
-          ) : null}
+      <div className={cn("relative h-[285px] overflow-hidden bg-slate-100", compact ? "-mx-4" : "rounded-[22px]")}>
+        <Image src={coverSrc} alt={trip.heroImageAlt} fill priority sizes="(min-width: 1024px) 900px, 100vw" className="object-cover" onError={() => setCoverSrc(FALLBACK_TRIP_COVER)} />
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+        <div className="absolute top-[15px] right-[14px] z-20 flex items-center gap-1">
+          <EditTripDialog trip={trip} trigger={<button type="button" aria-label="여행 편집" className="flex size-10 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md"><Pencil size={18} /></button>} />
+          <button type="button" aria-label="멤버 초대" onClick={() => setInviteOpen(true)} className="flex size-10 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md"><UserPlus size={18} /></button>
+          <button type="button" aria-label="여행 공유" onClick={() => void handleCopyText(shareUrl, "링크가 복사되었습니다")} className="flex size-10 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md"><Share2 size={18} /></button>
         </div>
-
-        <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col p-4 sm:p-5">
-          <p className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-200/90">
-            <MapPin className="size-3.5 shrink-0" />
-            <span>
-              {trip.region} · {trip.country}
-            </span>
-          </p>
-          <h2 className="text-xl font-extrabold tracking-tight text-balance text-white drop-shadow-sm sm:text-3xl">
-            {trip.title}
-          </h2>
-          <div className="mt-1.5 flex min-w-0 max-w-full items-center gap-3 overflow-x-auto text-xs font-medium text-slate-200/80">
-            <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap tabular-nums">
-              <CalendarDays className="size-3.5 shrink-0" />
-              {trip.startDate} — {trip.endDate}
-            </span>
-            <span
-              className="inline-flex min-w-0 items-center gap-1.5 truncate whitespace-nowrap"
-              title={transportLabel}
-            >
-              {(() => {
-                const TransportIcon = transportIcon
-                return <TransportIcon className="size-3.5 shrink-0" />
-              })()}
-              <span className="truncate">{transportLabel}</span>
-            </span>
-          </div>
+        <div className="absolute right-[26px] bottom-[26px] left-[26px] z-10 flex flex-col gap-2.5 text-white">
+          <p className="text-[11px] tracking-[1.5px]">{trip.region} · {durationLabel} · {trip.dDay > 0 ? `D-${trip.dDay}` : trip.dDay === 0 ? "D-DAY" : `D+${Math.abs(trip.dDay)}`}</p>
+          <h2 className="text-[28px] leading-[35px] font-medium tracking-[-1px]">{trip.title}</h2>
+          <p className="text-[13px] text-white/85">{trip.startDate} — {trip.endDate}</p>
         </div>
       </div>
-
-      <div className="flex flex-col items-start justify-between gap-4 pt-5 pb-6 sm:flex-row sm:items-center">
-        <div className="flex min-w-0 items-center gap-3">
-          <AvatarGroup className="-space-x-2">
-            {memberCount > 0 ? (
-              <>
-                {visibleMembers.map((member) => (
-                  <Avatar key={member.id} className="size-9 ring-2 ring-white">
-                    {member.avatarUrl ? <AvatarImage src={member.avatarUrl} alt="" /> : null}
-                    <AvatarFallback className="bg-slate-100 text-[11px] font-semibold text-slate-600">
-                      {initialsFromName(member.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                ))}
-                {hiddenCount > 0 ? (
-                  <AvatarGroupCount className="size-9 text-[11px] font-semibold ring-2 ring-white">
-                    +{hiddenCount}
-                  </AvatarGroupCount>
-                ) : null}
-              </>
-            ) : (
-              <>
-                <Avatar className="size-9 ring-2 ring-white">
-                  <AvatarFallback className="bg-slate-100 text-slate-400">
-                    <User className="size-4" />
-                  </AvatarFallback>
-                </Avatar>
-                <Avatar className="size-9 ring-2 ring-white">
-                  <AvatarFallback className="bg-slate-50 text-slate-300">
-                    <User className="size-4" />
-                  </AvatarFallback>
-                </Avatar>
-              </>
-            )}
-          </AvatarGroup>
-          <div className="min-w-0">
-            <p className="flex items-center gap-2 truncate text-sm font-bold text-slate-900">
-              {memberHeadline}
-            </p>
-            <p className="mt-0.5 text-xs font-medium text-slate-400">
-              {durationLabel} · 실시간 편집 가능
-            </p>
-          </div>
-        </div>
-
-        <div className="no-scrollbar flex w-full max-w-full items-center gap-2 overflow-x-auto sm:w-auto sm:justify-end">
-          <EditTripDialog
-            trip={trip}
-            trigger={
-              <button type="button" className={cn(actionBtnClass, "shrink-0")}>
-                <Pencil className="size-3.5" />
-                편집
-              </button>
-            }
-          />
-          <button
-            type="button"
-            className={cn(actionBtnClass, "shrink-0")}
-            onClick={() => void handleCopyText(shareUrl, "링크가 복사되었습니다")}
-          >
-            <Share2 className="size-3.5" />
-            공유
-          </button>
-          <button
-            type="button"
-            className={cn(primaryCtaClass, "shrink-0")}
-            onClick={() => setInviteOpen(true)}
-          >
-            <UserPlus className="size-3.5" />
-            멤버 초대하기
-          </button>
-        </div>
+      <div className={cn("flex items-center gap-2.5 py-[21px]", compact ? "px-2.5" : "px-[26px]")}>
+        <button type="button" onClick={() => setInviteOpen(true)} aria-label="함께하는 멤버 확인·초대" className="flex min-w-0 flex-1 items-center gap-[11px] text-left">
+          <span className="relative block size-[42px] shrink-0">
+            {visibleMembers.slice(0,3).map((member,i) => <Avatar key={member.id} style={{left:i===0?0:i===1?16:8,top:i===2?16:0}} className="absolute size-[26px] ring-2 ring-white">
+              {member.avatarUrl ? <AvatarImage src={member.avatarUrl} alt="" /> : null}
+              <AvatarFallback className="border border-slate-200 bg-white" />
+            </Avatar>)}
+          </span>
+          <span className="min-w-0 flex-1"><span className="block text-xs leading-5 font-medium text-[#191919]">{memberHeadline}</span><span className="mt-1 block text-[11px] text-[#73736d]">함께하는 여행 · {memberCount}명</span></span>
+        </button>
+        <Link href={`/settlement/${trip.id}`} aria-label="여행 정산" className="flex size-11 shrink-0 items-center justify-center rounded-full text-[#191919] transition-transform active:scale-95"><Wallet size={21} strokeWidth={1.6} /></Link>
+      </div>
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 px-2.5 text-xs text-slate-500">
+        {weather ? <span className="inline-flex items-center gap-1"><WeatherIcon size={14} />{weather.label}</span> : null}
+        <span className="inline-flex min-w-0 items-center gap-1" title={transportLabel}>{(() => {const Icon=transportIcon;return <Icon size={14} className="shrink-0" />})()}<span>{transportLabel}</span></span>
       </div>
 
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>

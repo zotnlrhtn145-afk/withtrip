@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
-import { LogIn, PlusSquare } from "lucide-react"
+import { LogIn, Plus, PlusSquare } from "lucide-react"
 
 import { AccountMenu } from "@/components/account-menu"
 import Image from "next/image"
@@ -133,6 +133,14 @@ export function MobileGlobalChrome() {
     <>
       {!hideHeader ? (
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md md:hidden">
+          {pathname === "/" && active === "home" ? <div className="flex min-h-[78px] items-center justify-between px-[26px]">
+            <div className="flex items-center gap-[9px]"><Image src="/withtrip-logo.png" alt="위드트립" width={34} height={34} className="rounded-[10px]" /><span className="text-lg font-medium tracking-[-.5px]">withtrip</span></div>
+            <div className="flex items-center">
+              <NotificationBellButton className="size-11" iconClassName="size-5" />
+              <HeaderAuthControl />
+              <button type="button" aria-label="퀵 등록" onClick={() => window.dispatchEvent(new CustomEvent("withtrip:open-quick-menu"))} className="flex size-11 items-center justify-center rounded-full bg-amber-400"><Plus className="size-6 stroke-[1.5]" /></button>
+            </div>
+          </div> : (
           <div className="flex items-center justify-between px-4 py-3">
             <button
               type="button"
@@ -151,6 +159,7 @@ export function MobileGlobalChrome() {
               <NotificationBellButton className="size-9" iconClassName="size-5" />
             </div>
           </div>
+          )}
         </header>
       ) : null}
 
