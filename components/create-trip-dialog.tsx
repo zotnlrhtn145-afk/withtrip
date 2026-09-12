@@ -1,5 +1,7 @@
 "use client"
 
+import approvedForm from "@/components/approved-form.module.css"
+
 import { useMemo, useState, type ReactNode } from "react"
 import { CalendarDays, Plus, UserRoundPlus, X } from "lucide-react"
 import type { DateRange } from "react-day-picker"
@@ -183,15 +185,24 @@ export function CreateTripDialog({
       }}
     >
       {trigger ? <DialogTrigger render={trigger as React.ReactElement} /> : null}
-      <DialogContent className="max-h-[90svh] gap-5 overflow-y-auto rounded-2xl sm:max-w-lg">
+      <DialogContent className={approvedForm.screen} showCloseButton={false} initialFocus={() => document.querySelector<HTMLElement>('[data-slot="dialog-title"]')}>
         <DialogHeader>
-          <DialogTitle className="text-lg font-bold">새 여행 만들기</DialogTitle>
+          <DialogTitle tabIndex={-1} className="text-lg font-bold">새 여행 만들기</DialogTitle>
           <DialogDescription>
             목적지와 일정을 입력하면 여행 카드가 바로 만들어져요.
           </DialogDescription>
+        <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setOpen(false)}
+            className={approvedForm.close}
+          >
+            닫기
+          </Button>
         </DialogHeader>
 
         <form id="create-trip-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <h2 className={approvedForm.intro}>새로운 여행의 시작</h2>
           <FieldGroup>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field>
@@ -337,14 +348,7 @@ export function CreateTripDialog({
         </form>
 
         <DialogFooter className="rounded-b-2xl">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setOpen(false)}
-            className="rounded-full font-semibold"
-          >
-            취소
-          </Button>
+
           <Button
             type="submit"
             form="create-trip-form"

@@ -1,5 +1,7 @@
 "use client"
 
+import approvedForm from "@/components/approved-form.module.css"
+
 import { useState, type ReactNode } from "react"
 import { BedDouble } from "lucide-react"
 
@@ -79,9 +81,9 @@ export function StayDialog({ trip, trigger }: { trip: Trip; trigger: ReactNode }
       }}
     >
       <DialogTrigger render={trigger as React.ReactElement} />
-      <DialogContent className="max-h-[90svh] gap-5 overflow-y-auto rounded-2xl sm:max-w-lg">
+      <DialogContent className={approvedForm.screen} showCloseButton={false} initialFocus={() => document.querySelector<HTMLElement>('[data-slot="dialog-title"]')}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+          <DialogTitle tabIndex={-1} className="flex items-center gap-2 text-lg font-bold">
             <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <BedDouble className="size-4" />
             </span>
@@ -90,9 +92,18 @@ export function StayDialog({ trip, trigger }: { trip: Trip; trigger: ReactNode }
           <DialogDescription>
             체크인·체크아웃 정보를 입력하면 숙소 카드로 정리해 드려요.
           </DialogDescription>
+        <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setOpen(false)}
+            className={approvedForm.close}
+          >
+            닫기
+          </Button>
         </DialogHeader>
 
         <form id="stay-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <h2 className={approvedForm.intro}>이번 여행의 쉼터</h2>
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="stay-name">숙소 · 호텔 이름</FieldLabel>
@@ -188,14 +199,7 @@ export function StayDialog({ trip, trigger }: { trip: Trip; trigger: ReactNode }
         </form>
 
         <DialogFooter className="rounded-b-2xl">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setOpen(false)}
-            className="rounded-full font-semibold"
-          >
-            취소
-          </Button>
+
           <Button
             type="submit"
             form="stay-form"

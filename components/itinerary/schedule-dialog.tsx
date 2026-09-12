@@ -1,5 +1,7 @@
 "use client"
 
+import approvedForm from "@/components/approved-form.module.css"
+
 import { useState } from "react"
 import { Calendar, Plus } from "lucide-react"
 
@@ -64,18 +66,26 @@ export function ScheduleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90svh] gap-0 overflow-y-auto rounded-2xl border-zinc-200 bg-white p-0 sm:max-w-lg">
+      <DialogContent className={approvedForm.screen} showCloseButton={false} initialFocus={() => document.querySelector<HTMLElement>('[data-slot="dialog-title"]')}>
         <DialogHeader className="gap-1.5 border-b border-zinc-100 px-5 pt-5 pr-12 pb-4 text-left">
-          <DialogTitle className="flex items-center gap-2 text-base font-semibold tracking-tight text-zinc-900">
+          <DialogTitle tabIndex={-1} className="flex items-center gap-2 text-base font-semibold tracking-tight text-zinc-900">
             <Calendar className="size-5 text-zinc-900" strokeWidth={1.75} />
             일정 등록
           </DialogTitle>
           <DialogDescription className="text-sm leading-relaxed text-zinc-500">
             {dayLabel}에 추가할 일정을 입력하면 타임라인에 정리해 드려요.
           </DialogDescription>
+        <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className={approvedForm.close}
+          >
+            닫기
+          </button>
         </DialogHeader>
 
         <form id="schedule-form" onSubmit={handleSubmit} className="flex flex-col gap-5 bg-white px-5 py-5">
+          <h2 className={approvedForm.intro}>어디로 가볼까요?</h2>
           <FieldGroup className="gap-5">
             <Field className="gap-1.5">
               <FieldLabel htmlFor="schedule-category" className={labelClassName}>
@@ -151,13 +161,7 @@ export function ScheduleDialog({
         </form>
 
         <DialogFooter className="mx-0 mb-0 gap-2 rounded-b-2xl border-t border-zinc-100 bg-white p-4 sm:justify-end">
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="rounded-full px-4 py-2.5 text-xs font-semibold text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
-          >
-            취소
-          </button>
+
           <button
             type="submit"
             form="schedule-form"

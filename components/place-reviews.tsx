@@ -85,18 +85,13 @@ export function PlaceReviews({ googlePlaceId }: { googlePlaceId?: string | null 
     }
   }, [googlePlaceId])
 
-  if (rows.length === 0) return null
 
-  const avg = rows.reduce((s, r) => s + r.rating, 0) / rows.length
+  const avg = rows.length ? rows.reduce((s, r) => s + r.rating, 0) / rows.length : 0
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-sm font-extrabold text-slate-600">리뷰 {rows.length}</span>
-      <div className="flex items-center gap-2">
-        <Stars value={avg} className="[&>svg]:size-4" />
-        <span className="text-[15px] font-extrabold text-slate-900">{avg.toFixed(1)}</span>
-        <span className="text-sm text-slate-600">위드트립 평점</span>
-      </div>
+      <div className="flex items-center justify-between"><h3 className="text-[19px] font-semibold">위드트립 리뷰</h3><span className="text-[13px] text-slate-500">{rows.length}개의 기록</span></div>
+      <div className="flex items-center gap-6 py-7"><span className="text-[40px] leading-[52px] font-semibold">{rows.length ? avg.toFixed(1) : "—"}</span><p className="text-[13px] leading-[21px] text-slate-500">{rows.length ? <>직접 다녀온<br />여행자들의 평가</> : <>아직 여행 기록이 없어요.<br />앱에서 첫 리뷰를 남겨주세요.</>}</p></div>
 
       {rows.map((r) => {
         const nick = r.author?.nickname?.trim() || "여행자"

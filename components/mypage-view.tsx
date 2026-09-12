@@ -222,9 +222,9 @@ export function MyPageView({
   return (
     <div className="flex w-full flex-col gap-5">
       <div className="flex flex-col gap-1">
-        <p className={labelClass}>My Page</p>
+
         <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-          마이페이지
+          프로필
         </h2>
       </div>
 
@@ -235,13 +235,12 @@ export function MyPageView({
       ) : null}
 
       {/* Profile card */}
-      <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
-        <div className="h-16 bg-gradient-to-r from-amber-400 via-amber-300 to-rose-300" aria-hidden="true" />
-        <div className="flex flex-col gap-5 px-5 pb-5">
+      <div className="overflow-hidden bg-white">
+        <div className="flex flex-col gap-6 px-1 pb-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="flex items-end gap-4">
-              <span className="-mt-10 rounded-full bg-gradient-to-tr from-amber-500 via-amber-300 to-amber-200 p-[3px] shadow-md">
-                <span className="flex size-[4.5rem] items-center justify-center overflow-hidden rounded-full bg-white p-[3px]">
+              <span className="shrink-0 rounded-full border border-slate-200 p-[3px]">
+                <span className="flex size-[5rem] items-center justify-center overflow-hidden rounded-full bg-white p-[3px]">
                   {profile?.avatarUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -258,7 +257,7 @@ export function MyPageView({
               </span>
               <div className="flex flex-col gap-1 pb-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-lg font-bold text-slate-900">
+                  <span className="text-[23px] font-semibold text-slate-900">
                     {profileLoading ? "불러오는 중…" : `${displayName} 님`}
                   </span>
                   {providerLabel ? (
@@ -294,17 +293,17 @@ export function MyPageView({
             <a href="/settlement" className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold">정산</a>
           </nav>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl bg-slate-50 px-4 py-3">
+            <div className="border-b border-slate-200 px-1 py-4">
               <p className={labelClass}>가입일</p>
               <p className="mt-1 text-sm font-bold tabular-nums text-slate-800">
                 {formatJoinedAt(profile?.joinedAt ?? null)}
               </p>
             </div>
-            <div className="rounded-2xl bg-slate-50 px-4 py-3">
+            <div className="border-b border-slate-200 px-1 py-4">
               <p className={labelClass}>함께한 여행</p>
               <p className="mt-1 text-sm font-bold tabular-nums text-slate-800">{trips.length}개</p>
             </div>
-            <div className="rounded-2xl bg-slate-50 px-4 py-3">
+            <div className="border-b border-slate-200 px-1 py-4">
               <p className={labelClass}>다음 출발</p>
               <p className="mt-1 text-sm font-bold tabular-nums text-slate-800">
                 {trips.length > 0

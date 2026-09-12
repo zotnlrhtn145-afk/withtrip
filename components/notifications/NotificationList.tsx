@@ -300,10 +300,10 @@ export function NotificationList({
               type="button"
               onClick={() => setFilter(chip.key)}
               className={cn(
-                "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all",
+                "min-h-11 border-b-[3px] px-3 py-2 text-sm font-medium transition-colors",
                 active
-                  ? "bg-amber-400 text-slate-950 shadow-sm"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "border-[#fbbf24] bg-white text-slate-950"
+                  : "border-transparent bg-white text-slate-600 hover:text-slate-950"
               )}
             >
               {chip.label}
@@ -363,8 +363,8 @@ export function NotificationList({
                                 : undefined
                           }
                           className={cn(
-                            "flex items-center gap-3 rounded-2xl px-2 py-2.5 transition-colors duration-300 hover:bg-slate-100/80",
-                            item.isRead ? "bg-slate-50" : "bg-white",
+                            "flex items-center gap-3 border-b border-slate-200 py-5 transition-colors duration-300 hover:bg-slate-50",
+                            "bg-white",
                             item.actionState !== "pending" && "opacity-80",
                             (isLoc || item.type === "place_recommendation") && "cursor-pointer"
                           )}

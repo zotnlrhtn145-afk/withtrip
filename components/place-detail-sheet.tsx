@@ -1,5 +1,7 @@
 "use client"
 
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+
 import { useEffect, useRef, useState, type ComponentProps } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { Check, CheckCircle2, ChevronLeft, Clock, ExternalLink, MapPin, Navigation, Phone, Plane, Star } from "lucide-react"
@@ -102,6 +104,7 @@ function PlaceDetailContents({
   /** 가게 열쇠를 방금 채웠을 때 — 목록의 그 행도 같이 맞춘다 */
   onGooglePlaceId?: (savedPlaceId: string, googlePlaceId: string) => void
 }) {
+  const [photoOpen, setPhotoOpen] = useState(false)
   const [detail, setDetail] = useState<ApiDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const [showHours, setShowHours] = useState(false)
@@ -241,14 +244,14 @@ function PlaceDetailContents({
 
   useEffect(() => {
     if (!place) return
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !photoOpen && onClose()
     window.addEventListener("keydown", onKey)
     document.body.style.overflow = "hidden"
     return () => {
       window.removeEventListener("keydown", onKey)
       document.body.style.overflow = ""
     }
-  }, [place, onClose])
+  }, [place, onClose, photoOpen])
 
   if (!place) return null
 
@@ -308,15 +311,17 @@ function PlaceDetailContents({
         className="fixed inset-0 hidden bg-slate-900/45 animate-in fade-in-0 md:left-20 md:block"
       />
       <div className="relative flex h-full w-full flex-col overflow-hidden bg-white md:w-[92%] md:max-w-[440px] md:shadow-2xl">
-        <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-neutral-100 px-4">
-          <button type="button" onClick={onClose} aria-label="뒤로" className="grid size-11 place-items-center rounded-full border border-neutral-200 text-slate-900"><ChevronLeft className="size-5" /></button><span className="text-sm font-semibold text-slate-800">장소 상세</span>
+        <header className="flex min-h-16 shrink-0 items-center gap-3 px-4">
+          <button type="button" onClick={onClose} aria-label="뒤로" className="grid size-11 place-items-center text-slate-900"><ChevronLeft className="size-5" /></button><span className="flex-1 text-center text-[15px] font-semibold text-slate-800">장소 상세</span><span className="size-11" />
         </header>
 
         {/* 본문 */}
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-6 pb-6">
+          {photos.length ? <button type="button" onClick={() => setPhotoOpen(true)} aria-label="장소 사진 확대" className="-mx-2 shrink-0 overflow-hidden rounded-3xl"><img src={photos[0]} alt={name} className="h-[236px] w-full object-cover" /></button> : null}
+          {category ? <p className="mt-1 text-sm text-slate-500">{category}</p> : null}
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-[26px] leading-tight font-extrabold text-slate-900">{name}</h2>
+              <h2 className="text-[26px] leading-9 font-semibold text-slate-900">{name}</h2>
               {detail?.openNow != null ? (
                 <span
                   className={cn(
@@ -331,9 +336,6 @@ function PlaceDetailContents({
               ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {category ? (
-                <span className="text-sm font-medium text-slate-600">{category}</span>
-              ) : null}
               {rating ? (
                 <span className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500">
                   <Star className="size-3.5 fill-amber-400 text-amber-400" />
@@ -344,59 +346,32 @@ function PlaceDetailContents({
             </div>
           </div>
 
-          {onAddToTrip ? (
-            <button
-              type="button"
-              onClick={onAddToTrip}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-amber-400 py-3 text-sm font-bold text-slate-950 transition-colors hover:bg-amber-500 active:scale-[0.99]"
-            >
-              <Plane className="size-4" />
-              여행에 담기
-            </button>
-          ) : null}
-
-          {/*
-            다녀왔어요 — 한 번 탭. 리뷰를 안 써도 된다.
-            ⚠️ **리뷰 쓰기는 여기 두지 않는다.** 별점·글·사진은 다녀온 직후 폰으로
-               쓰는 것이고, 사진 고르기·압축도 앱이 낫다. 두 곳에 폼을 두면
-               조용히 어긋난다(웹은 읽기, 앱은 쓰기).
-          */}
-          {gpid ? (
-            <button
-              type="button"
-              onClick={() => void toggleVisited()}
-              aria-pressed={visited}
-              className={cn(
-                "flex w-full items-center justify-center gap-2 rounded-full border py-3 text-sm font-bold transition-colors",
-                visited
-                  ? "border-amber-300 bg-amber-50 text-amber-800"
-                  : "border-slate-200 text-slate-500 hover:bg-slate-50"
-              )}
-            >
-              {visited ? (
-                <CheckCircle2 className="size-[18px] text-amber-500" />
-              ) : (
-                <Check className="size-[18px] text-slate-400" />
-              )}
-              다녀왔어요
-              {visited && visitedAt
-                ? ` · ${new Date(visitedAt).getMonth() + 1}월 ${new Date(visitedAt).getDate()}일`
-                : ""}
-            </button>
-          ) : null}
-
-          {visited ? (
-            <p className="-mt-2 text-center text-sm text-slate-600">
-              {myRating != null ? `내 평점 ★ ${myRating}` : "리뷰는 앱에서 남길 수 있어요."}
-            </p>
-          ) : null}
-
+          {address ? <p className="text-sm leading-[22px] text-slate-500">{address}</p> : null}
+          <div className="flex items-start justify-around gap-2 py-3">
+            <div className="flex flex-1 flex-col items-center gap-2"><DirectionsMenu destination={lat != null && lng != null ? { name, lat, lng } : null} fallbackQuery={address || name} variant="icon" className="size-11 rounded-full border border-slate-300 bg-white text-slate-900" /><span className="text-xs">길찾기</span></div>
+            {detail?.phone ? <a href={`tel:${detail.phone.replace(/[^+0-9]/g, "")}`} className="flex flex-1 flex-col items-center gap-2 text-xs"><span className="grid size-11 place-items-center rounded-full border border-slate-300"><img src="/design/place/action-2.svg" alt="" className="size-[22px]" /></span>전화</a> : null}
+            {onAddToTrip ? <button type="button" onClick={onAddToTrip} className="flex flex-1 flex-col items-center gap-2 text-xs"><span className="grid size-11 place-items-center rounded-full border border-[#fbbf24]"><img src="/design/place/action-3.svg" alt="" className="size-[22px]" /></span>여행에</button> : null}
+            {gpid ? <button type="button" onClick={() => void toggleVisited()} aria-pressed={visited} className="flex flex-1 flex-col items-center gap-2 text-xs"><span className={cn("grid size-11 place-items-center rounded-full border",visited ? "border-[#fbbf24]" : "border-slate-300")}><img src="/design/place/action-5.svg" alt="" className="size-[22px]" /></span>{visited ? "다녀옴 ✓" : "다녀옴"}</button> : null}
+          </div>
+          <Dialog open={photoOpen} onOpenChange={setPhotoOpen}><DialogContent className="border-0 bg-black p-0"><DialogTitle className="sr-only">{name} 사진</DialogTitle>{photos[0] ? <img src={photos[0]} alt={name} className="max-h-[85svh] w-full object-contain" /> : null}</DialogContent></Dialog>
           <div role="tablist" aria-label="장소 상세 보기" className="flex shrink-0 border-b border-neutral-200">
-            {([{ key: "photos", label: `사진 ${photos.length}` }, { key: "reviews", label: "리뷰" }, { key: "info", label: "정보" }] as const).map(t => <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)} className={cn("min-h-12 flex-1 border-b-[3px] text-sm font-bold transition-colors", tab === t.key ? "border-[#fbbf24] text-slate-900" : "border-transparent text-slate-500")}>{t.label}</button>)}
+            {([{ key: "photos", label: `사진 ${photos.length}` }, { key: "reviews", label: "리뷰" }, { key: "info", label: "정보" }] as const).map(t => <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)} className={cn("min-h-14 flex-1 border-b-[3px] text-[15px] font-semibold transition-colors", tab === t.key ? "border-[#fbbf24] text-slate-900" : "border-transparent text-slate-500")}>{t.label}</button>)}
           </div>
           <div key={tab} role="tabpanel" className="flex flex-col gap-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-2 duration-200">
           {tab === "photos" ? <><h3 className="text-lg font-bold">장소 사진</h3>{photos.length ? <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto">{photos.map((photo, i) => <img key={i} src={photo} alt={`${name} 사진 ${i + 1}`} className="aspect-[4/3] w-full shrink-0 snap-center rounded-2xl object-cover" loading="lazy" />)}</div> : <p className="py-8 text-center text-sm text-slate-500">아직 사진이 없어요</p>}</> : null}
           {tab === "info" ? <>
+          {address ? (
+            <div className="space-y-3 border-t border-neutral-100 pt-5">
+              <h3 className="text-lg font-bold text-slate-950">주소 및 위치</h3>
+              <p className="w-full select-text text-base leading-relaxed text-slate-800">{address}</p>
+              <DirectionsMenu
+                destination={lat != null && lng != null ? { name, lat, lng } : null}
+                fallbackQuery={address || name}
+                variant="pill"
+                className="h-9 shrink-0 border-amber-400 bg-amber-400 px-3.5 text-sm font-bold text-slate-950 hover:border-amber-500 hover:bg-amber-500"
+              />
+            </div>
+          ) : null}
           {/*
             어디서 보고 담았는지.
             ⚠️ 담아 놓고 "이거 어디서 봤더라" 하는 일이 잦다 — 원본으로 바로 갈 수 있게 한다.
@@ -419,18 +394,7 @@ function PlaceDetailContents({
 
           {summary ? <p className="text-sm leading-relaxed text-slate-500">{summary}</p> : null}
 
-          {address ? (
-            <div className="space-y-3 border-t border-neutral-100 pt-5">
-              <h3 className="text-lg font-bold text-slate-950">주소 및 위치</h3>
-              <p className="w-full select-text text-base leading-relaxed text-slate-800">{address}</p>
-              <DirectionsMenu
-                destination={lat != null && lng != null ? { name, lat, lng } : null}
-                fallbackQuery={address || name}
-                variant="pill"
-                className="h-9 shrink-0 border-amber-400 bg-amber-400 px-3.5 text-sm font-bold text-slate-950 hover:border-amber-500 hover:bg-amber-500"
-              />
-            </div>
-          ) : null}
+
 
           {dist != null ? (
             <div className="flex items-center gap-2 border-t border-neutral-100 py-3">

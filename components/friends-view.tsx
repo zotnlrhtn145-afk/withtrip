@@ -668,7 +668,7 @@ export function FriendsView() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold tracking-tight">친구</h2>
-          <p className="text-sm text-slate-600">친구 목록과 요청 현황을 한눈에 확인하세요</p>
+
         </div>
         <Button
           variant="ghost"
@@ -693,7 +693,7 @@ export function FriendsView() {
       ) : null}
 
       {/* Search */}
-      <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
+      <section className="overflow-hidden border-b border-slate-200 bg-white">
         <div className="relative border-b border-border px-3 py-2.5">
           <Search className="pointer-events-none absolute top-1/2 left-6 size-3.5 -translate-y-1/2 stroke-[1.5] text-muted-foreground" />
           <Input
@@ -753,7 +753,7 @@ export function FriendsView() {
                       className="flex min-w-0 flex-1 items-center gap-3 text-left transition-opacity duration-150 active:opacity-70"
                       onClick={() => addToRecentSearches(user)}
                     >
-                      <span className="rounded-full bg-gradient-to-tr from-primary via-primary to-amber-300 p-[1.5px]">
+                      <span className="rounded-full border border-slate-200 p-[1.5px]">
                         <Avatar className="size-11 border-2 border-card">
                           {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
                           <AvatarFallback className="text-xs font-semibold">
@@ -822,7 +822,7 @@ export function FriendsView() {
       {!isSearchMode ? (
         <nav
           aria-label="친구 보기 전환"
-          className="flex items-stretch overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm"
+          className="flex items-stretch overflow-hidden border-b border-slate-200 bg-white"
         >
           {CATEGORY_TABS.map((tab) => {
             const isActive = activeTab === tab.key
@@ -856,7 +856,7 @@ export function FriendsView() {
         <>
           {/* 소카테고리: 추천 (같이 여행 중인 친구) */}
           {suggestedCoTravelers.length > 0 ? (
-            <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
+            <section className="overflow-hidden border-b border-slate-200 bg-white">
               <div className="flex items-end justify-between gap-3 border-b border-border px-4 py-3">
                 <div>
                   <h3 className="text-sm font-bold">추천 · 같이 여행 중인 친구</h3>
@@ -895,7 +895,7 @@ export function FriendsView() {
           ) : null}
 
           {/* 소카테고리: 전체 친구 목록 (초성 그룹) */}
-          <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
+          <section className="overflow-hidden border-b border-slate-200 bg-white">
             <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
               <h3 className="text-sm font-bold">전체 친구</h3>
               <span className="text-sm font-medium tabular-nums text-slate-600">
@@ -989,7 +989,7 @@ export function FriendsView() {
       ) : (
         <>
           {/* 소카테고리: 받은 요청 */}
-          <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
+          <section className="overflow-hidden border-b border-slate-200 bg-white">
             <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
               <h3 className="text-sm font-bold">받은 요청</h3>
               <span className="text-sm font-medium tabular-nums text-slate-600">
@@ -1022,7 +1022,7 @@ export function FriendsView() {
                           "animate-in fade-in-50 slide-in-from-top-2 duration-300"
                       )}
                     >
-                      <span className="shrink-0 rounded-full bg-gradient-to-tr from-primary via-primary to-amber-300 p-[1.5px]">
+                      <span className="shrink-0 rounded-full border border-slate-200 p-[1.5px]">
                         <Avatar className="size-11 border-2 border-card">
                           {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
                           <AvatarFallback className="text-xs font-semibold">
@@ -1068,7 +1068,7 @@ export function FriendsView() {
           </section>
 
           {/* 소카테고리: 보낸 요청 */}
-          <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
+          <section className="overflow-hidden border-b border-slate-200 bg-white">
             <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
               <h3 className="text-sm font-bold">보낸 요청</h3>
               <span className="text-sm font-medium tabular-nums text-slate-600">

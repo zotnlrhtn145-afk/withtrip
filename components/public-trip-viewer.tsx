@@ -93,9 +93,9 @@ export function PublicTripViewer({ trip, mode }: { trip: PublicTrip; mode: "temp
   return (
     <div className="mx-auto min-h-dvh w-full max-w-lg bg-background pb-28 lg:grid lg:max-w-7xl lg:grid-cols-2 lg:gap-0 lg:pb-0">
       <div className="min-w-0 lg:max-h-dvh lg:overflow-y-auto lg:pb-28">
-      <header className="px-5 pt-8 pb-3">
+      <header className="px-6 pt-8 pb-3">
         <p className="text-sm font-semibold text-slate-600">{mode === "template" ? "공개된 여행 일정" : "공유된 일정"}{trip.city ? ` · ${trip.city}` : ""}</p>
-        <h1 className="mt-2 text-[27px] leading-tight font-extrabold tracking-tight">{trip.title}</h1>
+        <h1 className="mt-2 text-[27px] leading-[36px] font-semibold tracking-tight">{trip.title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{[trip.duration, `${trip.stopCount}곳`].filter(Boolean).join(" · ")}</p>
       </header>
 
@@ -107,7 +107,7 @@ export function PublicTripViewer({ trip, mode }: { trip: PublicTrip; mode: "temp
       ) : null}
 
       {/* 제목 아래 — 테마·복제 수·소개 */}
-      <div className="px-4 pt-3">
+      <div className="px-6 pt-3">
         <div className="flex flex-wrap items-center gap-1.5">
           {trip.themes.map((t) => (
             <span
@@ -125,7 +125,7 @@ export function PublicTripViewer({ trip, mode }: { trip: PublicTrip; mode: "temp
       </div>
 
       {/* Day 탭 */}
-      <div className="scrollbar-none mt-3 flex gap-1.5 overflow-x-auto px-4">
+      <div className="scrollbar-none mx-6 mt-5 flex gap-1.5 overflow-x-auto border-b border-slate-200">
         {trip.days.map((d) => (
           <button
             key={d.day}
@@ -142,11 +142,11 @@ export function PublicTripViewer({ trip, mode }: { trip: PublicTrip; mode: "temp
         ))}
       </div>
 
-      {!wide && mapStops.length > 0 ? <div className="mx-4 mt-4 h-40 overflow-hidden rounded-2xl"><TripRouteMap stops={mapStops} selectedIndex={selectedStop} onSelect={setSelectedStop} /></div> : null}
-      <div key={day} className="px-5 pt-5">
+      {!wide && mapStops.length > 0 ? <div className="mx-6 mt-5 h-28 overflow-hidden rounded-2xl"><TripRouteMap stops={mapStops} selectedIndex={selectedStop} onSelect={setSelectedStop} /></div> : null}
+      <div key={day} className="px-6 pt-6">
         <h2 className="mb-5 text-lg font-bold">{day}일차 <span className="ml-2 text-sm font-normal text-slate-600">{stops.length}곳</span></h2>
         {stops.map((s, i) => <div key={`${s.placeName}-${i}`} id={`viewer-stop-${day}-${i}`} className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 flex gap-3 duration-300" style={{ animationDelay: `${Math.min(i * 45, 225)}ms` }}>
-          <div className="w-12 shrink-0 pt-1 text-[16px] font-bold tabular-nums">{s.visitTime ? s.visitTime.slice(0, 5) : "—"}</div>
+          <div className="w-14 shrink-0 pt-1 text-[20px] font-semibold tabular-nums">{s.visitTime ? s.visitTime.slice(0, 5) : "—"}</div>
           <div className="relative min-w-0 flex-1 border-l border-neutral-200 pb-7 pl-5">
             <span className="absolute -left-[5px] top-2 size-[9px] rounded-full bg-[#fbbf24]" />
             {s.category ? <p className="mb-1 text-sm text-slate-600">{s.category}</p> : null}
@@ -154,7 +154,7 @@ export function PublicTripViewer({ trip, mode }: { trip: PublicTrip; mode: "temp
               const pin = pinIndexOf.get(i)
               if (pin != null) setSelectedStop(pin)
               setDetailPlace({ name: s.placeName, address: s.address, lat: s.lat, lng: s.lng, category: s.category })
-            }} className="min-h-11 w-full text-left text-[18px] leading-snug font-bold underline-offset-4 hover:underline">{s.placeName} <span className="whitespace-nowrap text-sm font-normal text-slate-600">상세 보기 ›</span></button>
+            }} className="min-h-11 w-full text-left text-[17px] leading-[25px] font-semibold underline-offset-4 hover:underline">{s.placeName} <span className="whitespace-nowrap text-sm font-normal text-slate-600">상세 보기 ›</span></button>
             {s.address ? <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{s.address}</p> : null}
             <div className="mt-2 flex items-center justify-between gap-2"><button type="button" disabled={!pinIndexOf.has(i)} onClick={() => setSelectedStop(pinIndexOf.get(i) ?? null)} className="min-h-11 text-xs font-semibold disabled:opacity-40">지도에서 위치 보기</button><DirectionsMenu variant="icon" destination={s.lat != null && s.lng != null ? { name: s.placeName, lat: s.lat, lng: s.lng } : null} fallbackQuery={s.placeName} /></div>
           </div>
@@ -171,10 +171,10 @@ export function PublicTripViewer({ trip, mode }: { trip: PublicTrip; mode: "temp
             onClick={fork}
             disabled={forking}
             className={cn(
-              "flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[15px] font-black transition-all active:scale-[0.98]",
+              "flex w-full items-center justify-center gap-2 min-h-14 rounded-full py-3.5 text-[17px] font-semibold transition-all active:scale-[0.98]",
               forking
                 ? "bg-secondary text-muted-foreground"
-                : "bg-primary text-primary-foreground shadow-lg shadow-primary/40 hover:brightness-105"
+                : "bg-primary text-primary-foreground hover:brightness-105"
             )}
           >
             {forking ? (
@@ -183,7 +183,7 @@ export function PublicTripViewer({ trip, mode }: { trip: PublicTrip; mode: "temp
               </>
             ) : (
               <>
-                <Sparkles className="size-4" /> 이 일정 복제하기
+                <Sparkles className="size-4" /> 이 코스로 여행 만들기
               </>
             )}
           </button>

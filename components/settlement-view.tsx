@@ -1053,7 +1053,7 @@ export function SettlementView({
       <div
         role="tablist"
         aria-label="정산 보기"
-        className="sticky top-0 z-30 mb-4 flex gap-1 overflow-x-auto rounded-2xl border border-neutral-100 bg-white/95 p-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] backdrop-blur-md"
+        className="sticky top-0 z-30 mb-[22px] flex border-b border-slate-200 bg-white"
       >
         {PANEL_TABS.map((tab) => {
           const isActive = activeTab === tab.key
@@ -1071,7 +1071,6 @@ export function SettlementView({
                   : "border-transparent text-neutral-500 hover:text-neutral-800"
               )}
             >
-              <tab.icon className="size-4 stroke-[1.75]" />
               {tab.label}
             </button>
           )
@@ -1094,8 +1093,8 @@ export function SettlementView({
             <div className="relative rounded-3xl border border-neutral-200 bg-white p-5 shadow-[0_6px_24px_rgba(0,0,0,0.05)] before:absolute before:left-0 before:top-5 before:h-8 before:w-1 before:rounded-r-full before:bg-[#fbbf24]">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[13px] font-semibold text-neutral-500">총지출</p>
-                  <p className="mt-1 break-all text-[38px] leading-tight font-extrabold tracking-[-1.5px] text-neutral-900 tabular-nums">
+                  <div className="flex items-center justify-between gap-4"><p className="text-sm text-slate-500">총 지출</p><span className="rounded-full border border-slate-200 px-2.5 py-1 text-xs text-slate-500">{tripSettled ? "정산 완료" : "정산 진행 중"}</span></div>
+                  <p className="mt-3 break-all text-[40px] leading-[52px] font-semibold tracking-[-1px] text-neutral-900 tabular-nums">
                     {loading ? "—" : formatWon(total)}
                   </p>
                 </div>
@@ -1121,10 +1120,10 @@ export function SettlementView({
                     type="button"
                     onClick={openCarryModal}
                     className={cn(
-                      "mt-2.5 flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left transition-colors",
+                      "mt-3 flex min-h-11 w-full items-center justify-between gap-2 border-t border-slate-200 px-0 pt-3 text-left transition-colors",
                       carryover > 0
                         ? "border-emerald-200 bg-emerald-50/70 hover:bg-emerald-50"
-                        : "border-dashed border-neutral-200 bg-neutral-50/60 hover:bg-neutral-50"
+                        : "border-neutral-200 bg-white hover:bg-neutral-50"
                     )}
                   >
                     <span className="flex min-w-0 items-center gap-1.5">
@@ -1149,63 +1148,9 @@ export function SettlementView({
                 ) : null
               ) : null}
 
-              {/* 지출마다 참여자가 달라질 수 있어 "1인당" 균등분할 대신, 실제 부담액을 인원별로 보여준다. */}
-              {!loading && memberBalances.length > 0 ? (
-                <ul className="mt-3 flex flex-col gap-2 border-t border-neutral-100/80 pt-3">
-                  {memberBalances.map(({ userId, balance, member }) => {
-                    const isSettled = Math.abs(balance) < 1
-                    const name = member?.nickname ?? "멤버"
-                    return (
-                      <li key={userId} className="flex items-center justify-between gap-2">
-                        <span className="flex min-w-0 items-center gap-1.5">
-                          <Avatar className="size-5 shrink-0">
-                            {member?.avatarUrl ? (
-                              <AvatarImage src={member.avatarUrl} alt="" />
-                            ) : null}
-                            <AvatarFallback className="border border-neutral-200 bg-white" />
-                          </Avatar>
-                          <span className="truncate text-xs font-medium text-neutral-700">
-                            {name}
-                          </span>
-                          {member?.isGuest ? (
-                            <span className="shrink-0 rounded-full bg-neutral-100 px-1.5 text-[9px] font-bold text-neutral-500">
-                              게스트
-                            </span>
-                          ) : null}
-                        </span>
-                        <span className="flex shrink-0 items-center gap-1.5">
-                          <span
-                            className={cn(
-                              "text-xs font-bold tabular-nums",
-                              isSettled
-                                ? "text-neutral-400"
-                                : balance > 0
-                                  ? "text-emerald-600"
-                                  : "text-red-500"
-                            )}
-                          >
-                            {isSettled
-                              ? "정산 완료"
-                              : `${balance > 0 ? "+" : "-"}${formatWon(Math.abs(balance))}`}
-                          </span>
-                          {member?.isGuest ? (
-                            <button
-                              type="button"
-                              onClick={() => void handleDeleteGuest(userId, name)}
-                              aria-label="게스트 삭제"
-                              className="text-neutral-300 transition-colors hover:text-red-500"
-                            >
-                              <X className="size-3.5" />
-                            </button>
-                          ) : null}
-                        </span>
-                      </li>
-                    )
-                  })}
-                </ul>
-              ) : null}
-            </div>
+              </div>
 
+            <details className="group rounded-xl border border-slate-200 p-3"><summary className="cursor-pointer text-sm font-medium">송금 계좌 · 정산 관리</summary><div className="mt-4 space-y-3">
             {/* 2. Payout account card — 계좌 있으면 헤더+상세, 없으면 한 줄 컴팩트 프롬프트 */}
             <div className="rounded-2xl border border-neutral-100 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
               {hasAnyPayout(payoutAccount) ? (
@@ -1321,12 +1266,13 @@ export function SettlementView({
                 <FieldError>{error}</FieldError>
               </div>
             ) : null}
+            </div></details>
           </div>
         </aside>
 
         {/* Right panel — detail */}
         <section className="md:col-span-8">
-          <div className="rounded-2xl border border-neutral-100 bg-white p-5 shadow-sm sm:p-6">
+          <div className="bg-white py-5 sm:px-6">
             {loading ? (
               <div className="flex items-center justify-center gap-2 py-20 text-sm text-neutral-500">
                 <Loader2 className="size-4 animate-spin" />
@@ -1364,12 +1310,12 @@ export function SettlementView({
                             <li
                               key={transfer.id}
                               className={cn(
-                                "flex items-center justify-between gap-3 py-4 transition-all duration-200",
+                                "flex flex-wrap items-center justify-between gap-3 py-4 transition-all duration-200",
                                 index < settlements.length - 1 && "border-b border-neutral-100"
                               )}
                             >
                               <div className="flex min-w-0 items-center gap-3">
-                                <div className="flex items-center gap-2 rounded-2xl bg-neutral-50 px-2.5 py-2 ring-1 ring-neutral-100">
+                                <div className="flex items-center gap-2">
                                   <Avatar className="size-9">
                                     {from?.avatarUrl ? (
                                       <AvatarImage src={from.avatarUrl} alt="" />
@@ -1494,7 +1440,63 @@ export function SettlementView({
                   <div className="h-px bg-neutral-100" />
                 ) : null}
 
-                {showExpenses ? (
+                {showTransfers ? <section className="space-y-3 py-3"><h3 className="text-[15px] font-semibold">멤버별 정산</h3>            {/* 지출마다 참여자가 달라질 수 있어 "1인당" 균등분할 대신, 실제 부담액을 인원별로 보여준다. */}
+              {!loading && memberBalances.length > 0 ? (
+                <ul className="flex flex-col gap-4">
+                  {memberBalances.map(({ userId, balance, member }) => {
+                    const isSettled = Math.abs(balance) < 1
+                    const name = member?.nickname ?? "멤버"
+                    return (
+                      <li key={userId} className="flex items-center justify-between gap-2">
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <Avatar className="size-8 shrink-0">
+                            {member?.avatarUrl ? (
+                              <AvatarImage src={member.avatarUrl} alt="" />
+                            ) : null}
+                            <AvatarFallback className="border border-neutral-200 bg-white" />
+                          </Avatar>
+                          <span className="truncate text-[15px] font-medium text-neutral-900">
+                            {name}
+                          </span>
+                          {member?.isGuest ? (
+                            <span className="shrink-0 rounded-full bg-neutral-100 px-1.5 text-[9px] font-bold text-neutral-500">
+                              게스트
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="flex shrink-0 items-center gap-1.5">
+                          <span
+                            className={cn(
+                              "text-xs font-bold tabular-nums",
+                              isSettled
+                                ? "text-neutral-400"
+                                : balance > 0
+                                  ? "text-emerald-600"
+                                  : "text-red-500"
+                            )}
+                          >
+                            {isSettled
+                              ? "정산 완료"
+                              : `${balance > 0 ? "+" : "-"}${formatWon(Math.abs(balance))}`}
+                          </span>
+                          {member?.isGuest ? (
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteGuest(userId, name)}
+                              aria-label="게스트 삭제"
+                              className="text-neutral-300 transition-colors hover:text-red-500"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          ) : null}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : null}
+</section> : null}
+            {showExpenses ? (
                   <div className="flex flex-col gap-4">
                     <div className="flex flex-wrap items-end justify-between gap-3">
                       <div>

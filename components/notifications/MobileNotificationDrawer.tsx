@@ -61,22 +61,10 @@ export function MobileNotificationDrawer({
             transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
             className="fixed top-0 right-0 z-[60] flex h-[100dvh] w-full max-w-md flex-col bg-white shadow-2xl lg:hidden"
           >
-            <header className="relative flex items-center justify-between border-b border-slate-100 px-2 py-3">
-              <button
-                type="button"
-                aria-label="뒤로가기"
-                onClick={closeMobileNotifications}
-                className="flex size-10 items-center justify-center rounded-full text-slate-800 transition-colors hover:bg-slate-100"
-              >
-                <ArrowLeft className="size-5" />
-              </button>
-              <h2 className="pointer-events-none absolute inset-x-0 text-center text-base font-bold text-slate-900">
-                알림
-              </h2>
-              <span className="size-10 shrink-0" aria-hidden />
-            </header>
+            <header className="flex min-h-20 items-center justify-between gap-4 px-6 pt-[env(safe-area-inset-top)]"><h2 className="text-xl font-semibold text-slate-900">알림</h2><button type="button" onClick={closeMobileNotifications} className="min-h-11 min-w-11 text-sm text-slate-500">닫기</button></header>
 
-            <div className="flex-1 overflow-y-auto px-4 py-4">
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <h1 className="mb-7 text-[29px] leading-[38px] font-semibold">새로운 소식</h1>
               <NotificationList
                 onSelectTrip={(trip) => {
                   closeMobileNotifications()
