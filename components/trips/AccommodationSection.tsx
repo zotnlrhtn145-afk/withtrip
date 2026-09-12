@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react"
 import { BedDouble, Crown, Loader2, LogIn, LogOut, Moon, Navigation, NotebookPen, Pencil, Plus, Phone, Trash2, UserRound } from "lucide-react"
 
 import { AccommodationRegisterModal } from "@/components/trips/AccommodationRegisterModal"
-import { AddSectionButton } from "@/components/trips/AddSectionButton"
+import detailStyles from "./travel-detail.module.css"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -54,7 +54,7 @@ function GuestChip({ member, isHost = false }: { member: TripMember; isHost?: bo
   const initials = (member.name || "?").slice(0, 1)
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 py-1 pr-2.5 pl-1 text-xs font-medium text-slate-700">
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-white py-1 pr-2.5 pl-1 text-xs font-medium text-slate-700">
       {member.avatarUrl && !imgFailed ? (
         <img
           src={member.avatarUrl}
@@ -104,7 +104,7 @@ function AccommodationCard({
   )}`
 
   return (
-    <li className="group media-card border-b border-slate-200 bg-white py-[23px]">
+    <li className={`${detailStyles.arrive} group media-card border-b border-slate-200 bg-white py-[23px]`}>
       {/* Banner — natural cool night tones, no sepia wash */}
       <div className="relative h-[135px] w-full overflow-hidden rounded-[15px] bg-white">
         <img
@@ -149,7 +149,7 @@ function AccommodationCard({
 
       </div>
         <div className="flex items-start justify-between gap-3 pt-[19px] pb-1">
-          <p className="min-w-0 flex-1 text-[19px] leading-[27px] font-medium text-slate-900">
+          <p className="min-w-0 flex-1 text-[22px] leading-[30px] font-semibold text-slate-900">
             {item.name}
           </p>
           {duration ? (
@@ -165,7 +165,7 @@ function AccommodationCard({
           <ContactLine kind="address" value={item.address} className="text-sm" textClassName="text-pretty" />
         ) : null}
 
-        <div className="grid grid-cols-2 gap-[18px]">
+        <div className="grid grid-cols-2 gap-5 border-y border-slate-100 py-[18px]">
           <div
             className="flex flex-col gap-[7px]"
             style={{ backgroundColor: "white" }}
@@ -175,7 +175,7 @@ function AccommodationCard({
               체크인
             </span>
             <span className="text-sm font-semibold tabular-nums" style={{ color: TEXT }}>
-              {item.checkInDate || "—"}{item.checkInTime ? <><br />{item.checkInTime.slice(0, 5)}</> : null}
+              {item.checkInDate || "—"}{item.checkInTime ? <span className="mt-[7px] block text-[26px] leading-8 font-semibold tracking-tight">{item.checkInTime.slice(0, 5)}</span> : null}
             </span>
           </div>
           <div
@@ -187,7 +187,7 @@ function AccommodationCard({
               체크아웃
             </span>
             <span className="text-sm font-semibold tabular-nums" style={{ color: TEXT }}>
-              {item.checkOutDate || "—"}{item.checkOutTime ? <><br />{item.checkOutTime.slice(0, 5)}</> : null}
+              {item.checkOutDate || "—"}{item.checkOutTime ? <span className="mt-[7px] block text-[26px] leading-8 font-semibold tracking-tight">{item.checkOutTime.slice(0, 5)}</span> : null}
             </span>
           </div>
         </div>
@@ -209,7 +209,7 @@ function AccommodationCard({
         {item.memo ? (
           <p
             className="flex items-start gap-1.5 rounded-xl px-3 py-2.5 text-sm ring-1 ring-[#E9ECEF]"
-            style={{ backgroundColor: PANEL, color: MUTED }}
+            style={{ backgroundColor: "white", color: MUTED }}
           >
             <NotebookPen className="mt-0.5 size-3.5 shrink-0" style={{ color: ICON }} />
             <span className="text-pretty">{item.memo}</span>
@@ -339,8 +339,8 @@ export function AccommodationSection({
   return (
     <Card className="gap-0 rounded-none border-0 bg-white py-0 shadow-none ring-0">
       <CardHeader className="flex flex-row items-center justify-between px-0 pb-4">
-        <CardTitle className="text-[22px] font-medium text-slate-900">숙소</CardTitle>
-        <button type="button" aria-label="숙소 추가" onClick={openCreate} className="grid size-11 place-items-center rounded-full bg-[#FBBF24] text-slate-900"><Plus className="size-6" /></button>
+        <CardTitle className="text-[23px] font-semibold text-slate-900">숙소</CardTitle>
+        <button type="button" aria-label="숙소 추가" onClick={openCreate} className="grid size-11 place-items-center rounded-full border border-slate-200 bg-white text-slate-900 transition-transform active:scale-95"><Plus className="size-6" /></button>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 px-0">
         {loading ? (

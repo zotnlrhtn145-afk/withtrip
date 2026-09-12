@@ -1,0 +1,3 @@
+.content li, .arrive { animation: arrive 320ms cubic-bezier(.22,1,.36,1) both; }
+@keyframes arrive { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .content li, .arrive { animation: none; } }

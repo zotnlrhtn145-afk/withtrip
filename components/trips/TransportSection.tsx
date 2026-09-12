@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { User } from "@supabase/supabase-js"
-import { Car, Crown, Loader2, Pencil, Plane, PlaneTakeoff, TrainFront, Trash2, UserRound } from "lucide-react"
+import { Car, Crown, Loader2, Pencil, Plane, PlaneTakeoff, Plus, TrainFront, Trash2, UserRound } from "lucide-react"
 
 import { dayShift, formatDuration, hasTimeGap, travelMinutes } from "@/shared/flight-time"
 import { loadAirportTz, tzOf } from "@/lib/airport-tz"
 import { TransportRegisterModal } from "@/components/trips/TransportRegisterModal"
-import { AddSectionButton } from "@/components/trips/AddSectionButton"
+import detailStyles from "./travel-detail.module.css"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -94,10 +94,10 @@ function PersonChip({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full items-center gap-1.5 rounded-full py-1 pr-2.5 pl-1 text-[11px] font-medium",
+        "inline-flex max-w-full items-center gap-1.5 rounded-full py-1 pr-2.5 pl-1 text-sm font-medium",
         tone === "amber"
-          ? "bg-amber-50 text-amber-900/80"
-          : "bg-zinc-100 text-zinc-700"
+          ? "bg-white text-slate-700"
+          : "bg-white text-slate-700"
       )}
     >
       <span className="relative flex size-5 shrink-0 overflow-hidden rounded-full bg-white ring-1 ring-black/5">
@@ -178,25 +178,7 @@ function TransportPeople({
 }
 
 function RoleBadge({ role, segmentOrder }: { role: TransportRole; segmentOrder: number }) {
-  if (role === "OUTBOUND") {
-    return (
-      <span className="inline-flex items-center rounded-full bg-sky-500/15 px-2.5 py-1 text-[11px] font-bold text-sky-700 ring-1 ring-sky-500/25 dark:text-sky-300">
-        🟦 가는 편
-      </span>
-    )
-  }
-  if (role === "RETURN") {
-    return (
-      <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-500/25 dark:text-emerald-300">
-        🟩 오는 편
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center rounded-full bg-orange-500/15 px-2.5 py-1 text-[11px] font-bold text-orange-700 ring-1 ring-orange-500/25 dark:text-orange-300">
-      🟧 경유 {segmentOrder}
-    </span>
-  )
+  return <span className="inline-flex items-center gap-[7px] text-sm font-semibold text-slate-900"><span aria-hidden="true" className="size-[7px] rounded-full bg-[#fbbf24]" />{role === "OUTBOUND" ? "가는 편" : role === "RETURN" ? "오는 편" : `경유 ${segmentOrder}`}</span>
 }
 
 function TicketRoute({ transport }: { transport: TripTransport }) {
@@ -224,20 +206,20 @@ function TicketRoute({ transport }: { transport: TripTransport }) {
   const shift = dayShift(from, to)
 
   return (
-    <div className="relative flex items-center gap-4">
+    <div className="relative grid grid-cols-[minmax(0,1fr)_48px_minmax(0,1fr)] items-center gap-3">
       <div className="flex min-w-0 flex-col gap-1">
-        <span className="truncate font-mono text-xl leading-none font-extrabold sm:text-2xl">
+        <span className="min-h-11 break-words text-base leading-[22px] font-medium">
           {transport.fromLabel}
         </span>
-        <span className="text-base leading-none font-bold tabular-nums">{transport.departTime}</span>
+        <span className="text-[30px] leading-[38px] font-semibold tracking-tight tabular-nums">{transport.departTime}</span>
         {transport.departDate ? (
-          <span className="text-xs text-muted-foreground tabular-nums">{transport.departDate}</span>
+          <span className="text-sm text-slate-600 tabular-nums">{transport.departDate}</span>
         ) : null}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
         {duration ? (
-          <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
+          <span className="text-[13px] text-center leading-5 font-medium text-slate-600 tabular-nums">
             {duration}
           </span>
         ) : null}
@@ -263,24 +245,24 @@ function TicketRoute({ transport }: { transport: TripTransport }) {
       </div>
 
       <div className="flex min-w-0 flex-col items-end gap-1">
-        <span className="truncate font-mono text-xl leading-none font-extrabold sm:text-2xl">
+        <span className="min-h-11 break-words text-base leading-[22px] font-medium">
           {transport.toLabel}
         </span>
-        <span className="flex items-center gap-1">
+        <span className="flex flex-wrap items-center justify-end gap-1">
           {gap ? (
-            <span className="rounded-full bg-muted px-1.5 py-px text-[10px] font-extrabold text-muted-foreground">
+            <span className="rounded-full bg-white px-1.5 py-px text-[10px] font-extrabold text-muted-foreground">
               현지
             </span>
           ) : null}
           {shift ? (
-            <span className="rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-extrabold text-primary">
+            <span className="rounded-full bg-[#fbbf24] px-1.5 py-px text-[10px] font-extrabold text-primary">
               {shift > 0 ? `+${shift}일` : `${shift}일`}
             </span>
           ) : null}
-          <span className="text-base leading-none font-bold tabular-nums">{transport.arriveTime}</span>
+          <span className="text-[30px] leading-[38px] font-semibold tracking-tight tabular-nums">{transport.arriveTime}</span>
         </span>
         {transport.arriveDate ? (
-          <span className="text-xs text-muted-foreground tabular-nums">{transport.arriveDate}</span>
+          <span className="text-sm text-slate-600 tabular-nums">{transport.arriveDate}</span>
         ) : null}
       </div>
     </div>
@@ -351,28 +333,15 @@ function TransportTicket({
   const badgeLabel = [transport.carrierName, transport.vehicleNo].filter(Boolean).join(" · ")
 
   return (
-    <li className="media-card relative overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm ring-0 transition-all hover:shadow-md">
-      {code ? (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-3 -bottom-6 scale-125 font-mono text-7xl leading-none font-black tracking-tighter text-foreground opacity-10 select-none"
-        >
-          {code}
-        </span>
-      ) : (
-        <Icon
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-5 -bottom-5 size-24 scale-125 text-foreground opacity-10"
-        />
-      )}
+    <li className="media-card relative border-b border-slate-200 bg-white py-6">
 
-      <div className="relative flex items-start justify-between gap-2 px-5 pt-4">
+      <div className="relative flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <RoleBadge role={transport.transportRole} segmentOrder={transport.segmentOrder} />
           {badgeLabel ? (
-            <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-card px-2.5 py-1 ring-1 ring-border">
+            <span className="inline-flex max-w-full items-center gap-1.5 py-1">
               <Icon aria-hidden="true" className="size-3.5 shrink-0" style={{ color: accent }} />
-              <span className="truncate text-xs font-bold">{badgeLabel}</span>
+              <span className="break-words text-sm font-medium">{badgeLabel}</span>
             </span>
           ) : null}
         </div>
@@ -385,7 +354,7 @@ function TransportTicket({
         ) : null}
       </div>
 
-      <div className="relative px-5 pt-3 pb-5">
+      <div className="relative pt-[22px]">
         <TicketRoute transport={transport} />
         <TransportPeople transport={transport} memberById={memberById} ownerId={ownerId} />
       </div>
@@ -415,8 +384,8 @@ function LayoverJourney({
   onDelete: (id: string) => void
 }) {
   return (
-    <li className="media-card overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm ring-0 transition-all hover:shadow-md">
-      <div className="flex flex-col gap-0 px-5 py-4">
+    <li className="media-card border-b border-slate-200 bg-white py-6">
+      <div className="flex flex-col gap-0">
         {transports.map((transport, index) => {
           const accent = carrierAccent(transport.transportType, transport.carrierName)
           const Icon = TRANSPORT_ICON[transport.transportType]
@@ -436,18 +405,18 @@ function LayoverJourney({
                 </div>
               ) : null}
 
-              <div className="rounded-xl bg-card/60 p-3 ring-1 ring-border/60">
+              <div className="bg-white py-4">
                 <div className="mb-3 flex items-start justify-between gap-2">
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <RoleBadge role="LAYOVER" segmentOrder={transport.segmentOrder} />
                     {badgeLabel ? (
-                      <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 ring-1 ring-border">
+                      <span className="inline-flex max-w-full items-center gap-1.5 py-1">
                         <Icon
                           aria-hidden="true"
                           className="size-3.5 shrink-0"
                           style={{ color: accent }}
                         />
-                        <span className="truncate text-xs font-bold">{badgeLabel}</span>
+                        <span className="break-words text-sm font-medium">{badgeLabel}</span>
                       </span>
                     ) : null}
                   </div>
@@ -692,19 +661,12 @@ export function TransportSection({
   }, [transports])
 
   return (
-    <Card className="rounded-2xl border border-slate-100 bg-white shadow-sm ring-0 transition-all hover:shadow-md">
-      <CardHeader>
-        <CardDescription className="mb-1 text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-          Transport
-        </CardDescription>
-        <CardTitle className="text-lg font-bold tracking-tight text-slate-900">
-          이동수단
-        </CardTitle>
+    <Card className="gap-0 rounded-none border-0 bg-white py-0 shadow-none ring-0">
+      <CardHeader className="flex flex-row items-center justify-between px-0 pb-5">
+        <CardTitle className="text-[23px] font-semibold text-slate-900">이동수단 <span className="ml-2 text-[15px] font-normal text-slate-500">{transports.length}</span></CardTitle>
+        <button type="button" aria-label="이동수단 추가" onClick={openCreateModal} className="grid size-11 place-items-center rounded-full border border-slate-200 bg-white text-slate-900 transition-transform active:scale-95"><Plus className="size-6" /></button>
       </CardHeader>
-
-      <CardContent className="flex flex-col gap-4">
-        <AddSectionButton label="이동수단 추가" onClick={openCreateModal} />
-
+      <CardContent className={`${detailStyles.content} flex flex-col gap-4 px-0`}>
         {loading ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 px-6 py-10 text-center">
             <Loader2 className="size-6 animate-spin text-amber-500" />
