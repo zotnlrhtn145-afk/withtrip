@@ -2,21 +2,18 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import {
-  Bookmark,
-  ChevronRight,
   Compass,
   Loader2,
   Plus,
   SearchX,
-  Users,
   X,
 } from "lucide-react"
 
 import { CreateTripDialog } from "@/components/create-trip-dialog"
 import { LoginRedirectOverlay } from "@/components/login-redirect-overlay"
 import { TravelStartArt } from "@/components/travel-start-art"
+import { JoinTripDialog } from "@/components/join-trip-dialog"
 import { TripBannerCard } from "@/components/trip-banner-card"
 import { useTrips } from "@/components/trips-store"
 import { Badge } from "@/components/ui/badge"
@@ -93,6 +90,7 @@ export function HomeView({
   const [hasMounted, setHasMounted] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [isRedirectingToLogin, setIsRedirectingToLogin] = useState(false)
+  const [joining, setJoining] = useState(false)
 
   useEffect(() => {
     setHasMounted(true)
@@ -203,61 +201,16 @@ export function HomeView({
           <p className="text-sm text-muted-foreground">여행을 불러오는 중…</p>
         </div>
       ) : showEmpty ? (
-        <div className="mx-auto flex min-h-[70vh] w-full max-w-2xl flex-col items-center justify-center bg-white px-6 py-8 text-center md:p-12">
+        <div className={cn("flex max-w-[440px] flex-col items-center bg-white px-[22px] pt-[22px] pb-4 text-center", compact ? "-mx-[26px] -mt-6 w-[calc(100%+52px)]" : "mx-auto w-full")}>
           <TravelStartArt />
-          <h3 className="mt-6 mb-3 text-[30px] leading-[1.3] font-bold tracking-tight text-slate-900">
-            우리의 다음 여행,<br />어디로 떠날까요?
-          </h3>
-          <p className="mx-auto mb-8 max-w-sm text-sm leading-relaxed text-gray-500">
-            새 여행을 만들면 일정·숙소·정산을 친구들과 함께 관리할 수 있어요.
-          </p>
-          <button
-            type="button"
-            onClick={() => void handleStartTrip()}
-            className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-7 py-3.5 text-sm font-semibold text-black shadow-lg shadow-amber-200/50 transition-all hover:scale-105 hover:bg-amber-500 active:scale-95"
-          >
-            <Plus className="size-4" />
-            새 여행 시작하기
+          <h3 className="mt-[13px] mb-[14px] text-[32px] leading-[1.35] font-[720] tracking-[-1.2px] text-[#182126]">어디로 떠나고<br />싶으세요?</h3>
+          <p className="mb-[27px] text-[14px] leading-[1.6] tracking-[-.45px] text-[#747c80]">함께할 사람과 여행을 만들어 보세요.</p>
+          <button type="button" onClick={() => void handleStartTrip()} className="flex min-h-[54px] w-full items-center justify-center gap-[9px] rounded-[29px] bg-[#fbbf24] px-5 text-[17px] font-[650] text-[#182126] transition-transform duration-150 active:scale-[.98]">
+            <img src="/design/empty/CirclePlus.svg" width={22} height={22} alt="" />첫 여행 만들기
           </button>
-
-          {/*
-            여행부터 만들 마음이 아닌 사람에게도 갈 곳을 준다.
-            버튼 하나뿐이면 거기서 막혀 되돌아 나간다.
-          */}
-          <div className="mt-10 w-full max-w-sm text-left">
-            <p className="mb-2 text-[11px] font-bold tracking-wider text-slate-400">
-              이런 것도 할 수 있어요
-            </p>
-            {[
-              {
-                href: "/friends",
-                Icon: Users,
-                label: "친구 추가하기",
-                desc: "친구와 여행을 함께 만들어요",
-              },
-              {
-                href: "/saved",
-                Icon: Bookmark,
-                label: "가고 싶은 곳 찜해두기",
-                desc: "인스타 게시물을 공유하면 장소를 찾아 담아줘요",
-              },
-            ].map((row) => (
-              <Link
-                key={row.href}
-                href={row.href}
-                className="flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-slate-50"
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-50">
-                  <row.Icon className="size-4 text-amber-500" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-bold text-slate-800">{row.label}</span>
-                  <span className="block text-xs text-slate-400">{row.desc}</span>
-                </span>
-                <ChevronRight className="size-4 shrink-0 text-slate-300" />
-              </Link>
-            ))}
-          </div>
+          <p className="mt-[23px] text-[12px] text-[#788084]">초대받은 여행이 있나요?</p>
+          <button type="button" onClick={() => setJoining(true)} className="flex min-h-11 items-center justify-center gap-[9px] text-sm font-semibold text-[#182126]">초대 링크로 참여<img src="/design/empty/ArrowRight.svg" width={18} height={18} alt="" /></button>
+          <JoinTripDialog open={joining} onOpenChange={setJoining} />
         </div>
       ) : showNoSearchResults ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-6 py-14 text-center">

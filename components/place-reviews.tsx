@@ -97,38 +97,14 @@ export function PlaceReviews({ googlePlaceId }: { googlePlaceId?: string | null 
         const nick = r.author?.nickname?.trim() || "여행자"
         const photos = Array.isArray(r.photos) ? r.photos : []
         return (
-          <div key={r.id} className="flex gap-2.5 border-t border-slate-100 py-3.5">
-            {r.author?.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={r.author.avatar_url} alt="" className="size-8 shrink-0 rounded-full object-cover" />
-            ) : (
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[13px] font-extrabold text-slate-400">
-                {nick.charAt(0)}
-              </span>
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="truncate text-[13px] font-extrabold text-slate-900">{nick}</span>
-                <span className="text-sm text-slate-600">· {ymd(r.visited_on ?? r.created_at)}</span>
-              </div>
-              <Stars value={r.rating} className="mt-0.5 [&>svg]:size-[13px]" />
-              {r.body ? <p className="mt-1.5 text-[13.5px] leading-relaxed text-slate-500">{r.body}</p> : null}
-              {photos.length > 0 ? (
-                <div className="mt-2 flex gap-1.5 overflow-x-auto">
-                  {photos.map((p, i) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <a key={p.path + i} href={photoUrl(p.path)} target="_blank" rel="noreferrer">
-                      <img
-                        src={photoUrl(p.thumb)}
-                        alt=""
-                        className="size-[66px] shrink-0 rounded-lg bg-slate-100 object-cover"
-                      />
-                    </a>
-                  ))}
-                </div>
-              ) : null}
+          <article key={r.id} className="space-y-3.5 border-t border-slate-200 py-5">
+            <div className="flex items-center gap-2.5">
+              {r.author?.avatar_url ? <img src={r.author.avatar_url} alt="" className="size-8 shrink-0 rounded-full object-cover" /> : <span className="size-8 shrink-0 rounded-full border border-slate-300 bg-white" />}
+              <div className="min-w-0 flex-1"><p className="text-sm font-semibold leading-[22px] text-slate-900">{nick}</p><p className="text-xs leading-[18px] text-slate-500">{ymd(r.visited_on ?? r.created_at)}</p></div><span className="text-sm">{r.rating.toFixed(1)} / 5</span>
             </div>
-          </div>
+            {r.body ? <p className="text-[15px] leading-[23px] text-slate-900">{r.body}</p> : null}
+            {photos.length > 0 ? <div className="flex gap-2 overflow-x-auto">{photos.map((p, i) => <a key={p.path + i} href={photoUrl(p.path)} target="_blank" rel="noreferrer" className="shrink-0" aria-label={`리뷰 사진 ${i + 1} 확대`}><img src={photoUrl(p.thumb)} alt="" className="size-[108px] rounded-2xl object-cover" /></a>)}</div> : null}
+          </article>
         )
       })}
 

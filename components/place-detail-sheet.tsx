@@ -105,6 +105,7 @@ function PlaceDetailContents({
   onGooglePlaceId?: (savedPlaceId: string, googlePlaceId: string) => void
 }) {
   const [photoOpen, setPhotoOpen] = useState(false)
+  const [photoIndex, setPhotoIndex] = useState(0)
   const [detail, setDetail] = useState<ApiDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const [showHours, setShowHours] = useState(false)
@@ -316,8 +317,8 @@ function PlaceDetailContents({
         </header>
 
         {/* 본문 */}
-        <div className="flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-6 pb-6">
-          {photos.length ? <button type="button" onClick={() => setPhotoOpen(true)} aria-label="장소 사진 확대" className="-mx-2 shrink-0 overflow-hidden rounded-3xl"><img src={photos[0]} alt={name} className="h-[236px] w-full object-cover" /></button> : null}
+        <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-6">
+          {photos.length ? <button type="button" onClick={() => { setPhotoIndex(0); setPhotoOpen(true) }} aria-label="장소 사진 확대" className="-mx-2 shrink-0 overflow-hidden rounded-3xl"><img src={photos[0]} alt={name} className="h-[236px] w-full object-cover" /></button> : null}
           {category ? <p className="mt-1 text-sm text-slate-500">{category}</p> : null}
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -353,22 +354,22 @@ function PlaceDetailContents({
             {onAddToTrip ? <button type="button" onClick={onAddToTrip} className="flex flex-1 flex-col items-center gap-2 text-xs"><span className="grid size-11 place-items-center rounded-full border border-[#fbbf24]"><img src="/design/place/action-3.svg" alt="" className="size-[22px]" /></span>여행에</button> : null}
             {gpid ? <button type="button" onClick={() => void toggleVisited()} aria-pressed={visited} className="flex flex-1 flex-col items-center gap-2 text-xs"><span className={cn("grid size-11 place-items-center rounded-full border",visited ? "border-[#fbbf24]" : "border-slate-300")}><img src="/design/place/action-5.svg" alt="" className="size-[22px]" /></span>{visited ? "다녀옴 ✓" : "다녀옴"}</button> : null}
           </div>
-          <Dialog open={photoOpen} onOpenChange={setPhotoOpen}><DialogContent className="border-0 bg-black p-0"><DialogTitle className="sr-only">{name} 사진</DialogTitle>{photos[0] ? <img src={photos[0]} alt={name} className="max-h-[85svh] w-full object-contain" /> : null}</DialogContent></Dialog>
+          <Dialog open={photoOpen} onOpenChange={setPhotoOpen}><DialogContent className="border-0 bg-black p-0"><DialogTitle className="sr-only">{name} 사진</DialogTitle>{photos[photoIndex] ? <img src={photos[photoIndex]} alt={`${name} 사진 ${photoIndex + 1}`} className="max-h-[78svh] w-full object-contain" /> : null}<div className="flex items-center justify-between px-5 pb-4 text-white"><button type="button" disabled={photoIndex === 0} onClick={() => setPhotoIndex(i => i - 1)} className="min-h-11 disabled:opacity-30">이전</button><span>{photoIndex + 1} / {photos.length}</span><button type="button" disabled={photoIndex >= photos.length - 1} onClick={() => setPhotoIndex(i => i + 1)} className="min-h-11 disabled:opacity-30">다음</button></div></DialogContent></Dialog>
           <div role="tablist" aria-label="장소 상세 보기" className="flex shrink-0 border-b border-neutral-200">
             {([{ key: "photos", label: `사진 ${photos.length}` }, { key: "reviews", label: "리뷰" }, { key: "info", label: "정보" }] as const).map(t => <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)} className={cn("min-h-14 flex-1 border-b-[3px] text-[15px] font-semibold transition-colors", tab === t.key ? "border-[#fbbf24] text-slate-900" : "border-transparent text-slate-500")}>{t.label}</button>)}
           </div>
           <div key={tab} role="tabpanel" className="flex flex-col gap-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-2 duration-200">
-          {tab === "photos" ? <><h3 className="text-lg font-bold">장소 사진</h3>{photos.length ? <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto">{photos.map((photo, i) => <img key={i} src={photo} alt={`${name} 사진 ${i + 1}`} className="aspect-[4/3] w-full shrink-0 snap-center rounded-2xl object-cover" loading="lazy" />)}</div> : <p className="py-8 text-center text-sm text-slate-500">아직 사진이 없어요</p>}</> : null}
+          {tab === "photos" ? <><div className="flex items-center justify-between"><h3 className="text-[17px] font-semibold">장소 사진</h3><span className="text-[13px] text-slate-500">{photos.length}장</span></div>{photos.length ? <div className="space-y-3"><button type="button" onClick={() => { setPhotoIndex(0); setPhotoOpen(true) }} aria-label="첫 번째 장소 사진 확대" className="block w-full"><img src={photos[0]} alt={name} className="aspect-[392/182] w-full rounded-[20px] object-cover" /></button><div className="grid grid-cols-3 gap-3">{photos.slice(1, 4).map((photo, i) => <button key={i} type="button" onClick={() => { setPhotoIndex(i + 1); setPhotoOpen(true) }} aria-label={`${i + 2}번째 장소 사진 확대`} className="relative overflow-hidden rounded-2xl"><img src={photo} alt="" className="aspect-[4/3] w-full object-cover" loading="lazy" />{i === 2 && photos.length > 4 ? <span className="absolute inset-0 grid place-items-center bg-black/40 text-lg font-semibold text-white">+{photos.length - 4}</span> : null}</button>)}</div></div> : <p className="py-8 text-center text-sm text-slate-500">아직 사진이 없어요</p>}</> : null}
           {tab === "info" ? <>
           {address ? (
-            <div className="space-y-3 border-t border-neutral-100 pt-5">
-              <h3 className="text-lg font-bold text-slate-950">주소 및 위치</h3>
-              <p className="w-full select-text text-base leading-relaxed text-slate-800">{address}</p>
+            <div className="space-y-5">
+              <h3 className="text-[19px] font-semibold text-slate-950">주소 및 위치</h3>
+              <div className="flex items-start gap-3.5"><MapPin className="size-6 shrink-0" /><div className="min-w-0 flex-1"><p className="w-full select-text text-base font-semibold leading-[25px] text-slate-800">{address}</p>{dist != null ? <p className="mt-1.5 text-[13px] text-slate-500">내 위치에서 {formatDistance(dist)} · 도보 {estimateWalkMinutes(dist)}분</p> : null}</div></div>
               <DirectionsMenu
                 destination={lat != null && lng != null ? { name, lat, lng } : null}
                 fallbackQuery={address || name}
                 variant="pill"
-                className="h-9 shrink-0 border-amber-400 bg-amber-400 px-3.5 text-sm font-bold text-slate-950 hover:border-amber-500 hover:bg-amber-500"
+                className="h-11 shrink-0 border-0 bg-white px-0 text-sm font-medium text-slate-950 hover:bg-white"
               />
             </div>
           ) : null}
@@ -377,33 +378,24 @@ function PlaceDetailContents({
             ⚠️ 담아 놓고 "이거 어디서 봤더라" 하는 일이 잦다 — 원본으로 바로 갈 수 있게 한다.
           */}
           {place.sourceUrl ? (
-            <a
+            <section className="space-y-4 border-t border-slate-200 pt-6"><h3 className="text-[19px] font-semibold">원본 게시물</h3><a
               href={place.sourceUrl}
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-3 text-left"
             >
               <InstagramIcon className="size-5 shrink-0 text-amber-500" />
-              <span className="min-w-0 flex-1 text-sm text-slate-800">인스타그램에서 담은 곳</span>
+              <span className="min-w-0 flex-1 text-sm text-slate-800">{/(youtube|youtu\.be)/i.test(place.sourceUrl) ? "YouTube" : "Instagram"}에서 저장한 장소</span>
               <span className="inline-flex shrink-0 items-center gap-1 text-[13px] font-bold text-slate-500">
                 게시물 보기
                 <ExternalLink className="size-3.5" />
               </span>
-            </a>
+            </a></section>
           ) : null}
 
           {summary ? <p className="text-sm leading-relaxed text-slate-500">{summary}</p> : null}
 
 
-
-          {dist != null ? (
-            <div className="flex items-center gap-2 border-t border-neutral-100 py-3">
-              <Navigation className="size-4 shrink-0 text-amber-500" />
-              <span className="text-[13px] font-semibold text-slate-700">
-                내 위치에서 {formatDistance(dist)} · 도보 {estimateWalkMinutes(dist)}분
-              </span>
-            </div>
-          ) : null}
 
           {lat != null && lng != null ? <MiniMap lat={lat} lng={lng} user={near ? userLoc : null} /> : null}
 

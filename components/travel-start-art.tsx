@@ -1,24 +1,26 @@
 "use client"
-import { motion, useReducedMotion } from "framer-motion"
-import { MapPin, Plane } from "lucide-react"
+import { useReducedMotion } from "framer-motion"
 import { useEffect, useState } from "react"
+import styles from "./travel-start-art.module.css"
 
+/** frozen empty.html의 SVG·CSS·키프레임을 그대로 사용합니다. */
 export function TravelStartArt() {
   const reduced = useReducedMotion()
   const [visible, setVisible] = useState(true)
+  const [replay, setReplay] = useState(0)
   useEffect(() => {
     const change = () => setVisible(!document.hidden)
     change()
     document.addEventListener("visibilitychange", change)
     return () => document.removeEventListener("visibilitychange", change)
   }, [])
-  const moving = !reduced && visible
-  return <div role="img" aria-label="펼쳐진 여행 지도와 비행기" className="relative h-[210px] w-[270px]">
-    <motion.div initial={false} animate={{ rotate: -8, scale: 1 }} className="absolute left-4 top-20 flex h-[120px] w-[228px] drop-shadow-xl">
-      {[0, 1, 2].map(i => <div key={i} className="flex-1 border border-slate-200 bg-white" style={{ transform: `skewY(${i === 1 ? 8 : -8}deg)` }} />)}
-      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 228 120" fill="none"><path d="M20 87 C54 8 102 115 142 45 S199 28 212 35" stroke="#fbbf24" strokeWidth="4" strokeDasharray="5 7" /></svg>
-      <MapPin className="absolute left-[110px] top-4 size-9 fill-amber-400 text-slate-900" />
-    </motion.div>
-    <motion.div className="absolute right-7 top-6" animate={{ x: moving ? [0, -18, 0] : 0, y: moving ? [0, -24, 0] : 0, rotate: -20 }} transition={{ duration: 4.6, repeat: moving ? Infinity : 0, ease: "easeInOut" }}><Plane className="size-12 fill-slate-900 text-slate-900" /></motion.div>
-  </div>
+  return <button key={replay} type="button" aria-label="여행 일러스트 애니메이션 다시 재생" className={styles.art} data-paused={!visible} data-reduced={!!reduced} onClick={() => setReplay(value => value + 1)}>
+    <div className={styles.map}>
+      <div className={`${styles.fold} ${styles.f1}`} /><div className={`${styles.fold} ${styles.f2}`} /><div className={`${styles.fold} ${styles.f3}`} />
+      <div className={`${styles.land} ${styles.l1}`} /><div className={`${styles.land} ${styles.l2}`} />
+      <div className={styles.route}><div /></div>
+      <div className={styles.pin}><img src="/design/empty/MapPin.svg" width={49} height={59} alt="" /></div>
+    </div>
+    <div className={styles.airtrail} /><div className={styles.flight}><div className={styles.plane}><img src="/design/empty/Send.svg" width={64} height={64} alt="" /></div></div>
+  </button>
 }

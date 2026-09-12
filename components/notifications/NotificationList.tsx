@@ -45,13 +45,7 @@ function NotificationAvatars({ item }: { item: FeedNotification }) {
     return (
       <Avatar className="size-11 shrink-0 ring-2 ring-white">
         {actor.avatarUrl ? <AvatarImage src={actor.avatarUrl} alt="" /> : null}
-        <AvatarFallback className="bg-amber-50 text-[11px] font-bold text-amber-700">
-          {actor.avatarUrl ? (
-            initialsFromName(actor.name)
-          ) : (
-            <UserRoundPlus className="size-4" />
-          )}
-        </AvatarFallback>
+        <AvatarFallback className="border border-slate-200 bg-white" />
       </Avatar>
     )
   }
@@ -67,9 +61,7 @@ function NotificationAvatars({ item }: { item: FeedNotification }) {
           )}
         >
           {actor.avatarUrl ? <AvatarImage src={actor.avatarUrl} alt="" /> : null}
-          <AvatarFallback className="bg-slate-100 text-[9px] font-bold text-slate-600">
-            {initialsFromName(actor.name)}
-          </AvatarFallback>
+          <AvatarFallback className="border border-slate-200 bg-white" />
         </Avatar>
       ))}
     </div>

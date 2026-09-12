@@ -1048,7 +1048,16 @@ export function SettlementView({
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="mx-auto w-full max-w-2xl">
+            <div className="min-w-0 px-0.5">
+              <h2 className="truncate text-[20px] font-semibold tracking-tight text-neutral-900">
+                여행 정산
+              </h2>
+              <p className="truncate text-sm text-slate-600">
+                {tripTitle ? `「${tripTitle}」` : "선택한 여행"}
+              </p>
+            </div>
+
       {/* 인스타그램식 상단 탭 — 정산 보기 전환(전체/송금/지출). 모바일·데스크톱 모두 최상단 고정. */}
       <div
         role="tablist"
@@ -1076,19 +1085,12 @@ export function SettlementView({
           )
         })}
       </div>
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-12 md:gap-8">
-        {/* Left panel — filters → payout → actions */}
-        <aside className="md:col-span-4">
-          <div className="flex flex-col gap-4 md:sticky md:top-4">
-            <div className="min-w-0 px-0.5">
-              <h2 className="truncate text-lg font-bold tracking-tight text-neutral-900">
-                정산 관리
-              </h2>
-              <p className="truncate text-sm text-slate-600">
-                {tripTitle ? `「${tripTitle}」` : "선택한 여행"}
-              </p>
-            </div>
 
+
+      <div className="flex flex-col gap-6">
+        {/* Left panel — filters → payout → actions */}
+        <aside className="w-full">
+          <div className="flex flex-col gap-4">
             {/* Compact totals */}
             <div className="relative rounded-3xl border border-neutral-200 bg-white p-5 shadow-[0_6px_24px_rgba(0,0,0,0.05)] before:absolute before:left-0 before:top-5 before:h-8 before:w-1 before:rounded-r-full before:bg-[#fbbf24]">
               <div className="flex flex-wrap items-end justify-between gap-3">
@@ -1105,7 +1107,7 @@ export function SettlementView({
                   <button
                     type="button"
                     onClick={() => void handleAddGuest()}
-                    className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 transition-colors hover:bg-amber-100"
+                    className="inline-flex items-center gap-0.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-amber-100"
                   >
                     <Plus className="size-3" />
                     게스트
@@ -1122,7 +1124,7 @@ export function SettlementView({
                     className={cn(
                       "mt-3 flex min-h-11 w-full items-center justify-between gap-2 border-t border-slate-200 px-0 pt-3 text-left transition-colors",
                       carryover > 0
-                        ? "border-emerald-200 bg-emerald-50/70 hover:bg-emerald-50"
+                        ? "border-slate-200 bg-white hover:bg-neutral-50"
                         : "border-neutral-200 bg-white hover:bg-neutral-50"
                     )}
                   >
@@ -1139,7 +1141,7 @@ export function SettlementView({
                     </span>
                   </button>
                 ) : carryover > 0 ? (
-                  <div className="mt-2.5 flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-2">
+                  <div className="mt-2.5 flex items-center gap-1.5 border-t border-slate-200 bg-white px-0 py-3">
                     <Wallet className="size-3.5 shrink-0 text-emerald-600" />
                     <span className="truncate text-xs font-semibold text-emerald-700">
                       공동 자금 −{carryover.toLocaleString()}원 (호스트 지정)
@@ -1150,129 +1152,13 @@ export function SettlementView({
 
               </div>
 
-            <details className="group rounded-xl border border-slate-200 p-3"><summary className="cursor-pointer text-sm font-medium">송금 계좌 · 정산 관리</summary><div className="mt-4 space-y-3">
-            {/* 2. Payout account card — 계좌 있으면 헤더+상세, 없으면 한 줄 컴팩트 프롬프트 */}
-            <div className="rounded-2xl border border-neutral-100 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-              {hasAnyPayout(payoutAccount) ? (
-                <div className="flex flex-col gap-2.5 text-sm">
-                  <div className="mb-0.5 flex items-center gap-2.5">
-                    <span className="flex size-8 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
-                      <Wallet className="size-4 stroke-[1.5]" />
-                    </span>
-                    <p className="text-sm font-semibold text-neutral-900">내 수령 계좌</p>
-                  </div>
-                  {hasBankPayout(payoutAccount) ? (
-                    <div className="rounded-xl bg-neutral-50/90 px-3 py-2.5 ring-1 ring-neutral-100">
-                      <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-neutral-500">
-                        <Building2 className="size-3.5 stroke-[1.5]" />
-                        은행 계좌
-                      </div>
-                      <p className="font-semibold text-neutral-900">
-                        {payoutAccount.bank.bankName}
-                      </p>
-                      <p className="tabular-nums text-neutral-700">
-                        {payoutAccount.bank.accountNumber}
-                      </p>
-                      <p className="text-sm text-slate-600">
-                        예금주 {payoutAccount.bank.accountHolder}
-                      </p>
-                    </div>
-                  ) : null}
-                  {hasCryptoPayout(payoutAccount) ? (
-                    <div className="rounded-xl bg-neutral-50/90 px-3 py-2.5 ring-1 ring-neutral-100">
-                      <p className="mb-1 text-sm font-medium text-slate-600">코인 지갑</p>
-                      <p className="font-semibold text-neutral-900">
-                        {payoutAccount.crypto.network}
-                      </p>
-                      <p className="break-all font-mono text-sm leading-relaxed text-slate-600">
-                        {payoutAccount.crypto.walletAddress}
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.location.href = "/?nav=mypage"
-                  }}
-                  className="flex w-full items-center gap-2.5 text-left"
-                >
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-500">
-                    <Wallet className="size-4 stroke-[1.5]" />
-                  </span>
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-sm font-semibold text-neutral-900">내 수령 계좌</span>
-                    <span className="text-sm text-slate-600">등록하면 멤버가 바로 송금할 수 있어요</span>
-                  </span>
-                  <span className="shrink-0 text-xs font-bold text-amber-600">등록 →</span>
-                </button>
-              )}
-            </div>
 
-            {/* 3. Action buttons — 데스크톱은 사이드바에 그대로, 모바일은 우하단 FAB로 대체 */}
-            <div className="hidden flex-col gap-2 md:flex">
-              <Button
-                type="button"
-                onClick={() => setOpen(true)}
-                disabled={tripSettled}
-                className="h-11 w-full rounded-xl bg-amber-400 font-semibold text-neutral-900 shadow-[0_2px_8px_rgba(251,191,36,0.25)] transition-all duration-200 hover:bg-amber-500 active:scale-[0.98] disabled:opacity-50"
-              >
-                <Plus data-icon="inline-start" className="size-4 stroke-[2]" />
-                지출 추가
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={settlingTrip || loading}
-                onClick={() => void handleToggleTripSettled()}
-                className={cn(
-                  "h-11 w-full rounded-xl font-semibold shadow-none transition-all duration-200 active:scale-[0.98]",
-                  tripSettled
-                    ? "border-emerald-200/80 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                    : "border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50"
-                )}
-              >
-                {settlingTrip ? (
-                  <Loader2 data-icon="inline-start" className="size-4 animate-spin stroke-[1.75]" />
-                ) : (
-                  <CheckCircle2 data-icon="inline-start" className="size-4 stroke-[1.75]" />
-                )}
-                {tripSettled ? "정산 재개하기" : "정산 완료하기"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={sharing || loading}
-                onClick={() => void handleShareSettlement()}
-                className="h-11 w-full rounded-xl border-[#F5E6A3] bg-[#FEE500]/90 font-semibold text-[#191600] shadow-none transition-all duration-200 hover:bg-[#FEE500] active:scale-[0.98]"
-              >
-                {sharing ? (
-                  <Loader2 data-icon="inline-start" className="size-4 animate-spin stroke-[1.75]" />
-                ) : (
-                  <MessageCircle data-icon="inline-start" className="size-4 stroke-[1.75]" />
-                )}
-                카카오톡으로 정산 공유하기
-              </Button>
-            </div>
-
-            {toast ? (
-              <div className="rounded-xl bg-neutral-900/90 px-4 py-2.5 text-sm font-medium text-white shadow-lg transition-all duration-200">
-                {toast}
-              </div>
-            ) : null}
-            {error ? (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-                <FieldError>{error}</FieldError>
-              </div>
-            ) : null}
-            </div></details>
           </div>
         </aside>
 
         {/* Right panel — detail */}
-        <section className="md:col-span-8">
-          <div className="bg-white py-5 sm:px-6">
+        <section className="w-full">
+          <div className="bg-white pb-5">
             {loading ? (
               <div className="flex items-center justify-center gap-2 py-20 text-sm text-neutral-500">
                 <Loader2 className="size-4 animate-spin" />
@@ -1604,6 +1490,123 @@ export function SettlementView({
             )}
           </div>
         </section>
+            <details className="group rounded-xl border border-slate-200 p-3"><summary className="cursor-pointer text-sm font-medium">송금 계좌 · 정산 관리</summary><div className="mt-4 space-y-3">
+            {/* 2. Payout account card — 계좌 있으면 헤더+상세, 없으면 한 줄 컴팩트 프롬프트 */}
+            <div className="rounded-2xl border border-neutral-100 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+              {hasAnyPayout(payoutAccount) ? (
+                <div className="flex flex-col gap-2.5 text-sm">
+                  <div className="mb-0.5 flex items-center gap-2.5">
+                    <span className="flex size-8 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
+                      <Wallet className="size-4 stroke-[1.5]" />
+                    </span>
+                    <p className="text-sm font-semibold text-neutral-900">내 수령 계좌</p>
+                  </div>
+                  {hasBankPayout(payoutAccount) ? (
+                    <div className="rounded-xl bg-neutral-50/90 px-3 py-2.5 ring-1 ring-neutral-100">
+                      <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-neutral-500">
+                        <Building2 className="size-3.5 stroke-[1.5]" />
+                        은행 계좌
+                      </div>
+                      <p className="font-semibold text-neutral-900">
+                        {payoutAccount.bank.bankName}
+                      </p>
+                      <p className="tabular-nums text-neutral-700">
+                        {payoutAccount.bank.accountNumber}
+                      </p>
+                      <p className="text-sm text-slate-600">
+                        예금주 {payoutAccount.bank.accountHolder}
+                      </p>
+                    </div>
+                  ) : null}
+                  {hasCryptoPayout(payoutAccount) ? (
+                    <div className="rounded-xl bg-neutral-50/90 px-3 py-2.5 ring-1 ring-neutral-100">
+                      <p className="mb-1 text-sm font-medium text-slate-600">코인 지갑</p>
+                      <p className="font-semibold text-neutral-900">
+                        {payoutAccount.crypto.network}
+                      </p>
+                      <p className="break-all font-mono text-sm leading-relaxed text-slate-600">
+                        {payoutAccount.crypto.walletAddress}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.location.href = "/?nav=mypage"
+                  }}
+                  className="flex w-full items-center gap-2.5 text-left"
+                >
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-500">
+                    <Wallet className="size-4 stroke-[1.5]" />
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-sm font-semibold text-neutral-900">내 수령 계좌</span>
+                    <span className="text-sm text-slate-600">등록하면 멤버가 바로 송금할 수 있어요</span>
+                  </span>
+                  <span className="shrink-0 text-xs font-bold text-amber-600">등록 →</span>
+                </button>
+              )}
+            </div>
+
+            {/* 3. Action buttons — 데스크톱은 사이드바에 그대로, 모바일은 우하단 FAB로 대체 */}
+            <div className="hidden flex-col gap-2 md:flex">
+              <Button
+                type="button"
+                onClick={() => setOpen(true)}
+                disabled={tripSettled}
+                className="h-11 w-full rounded-xl bg-amber-400 font-semibold text-neutral-900 shadow-[0_2px_8px_rgba(251,191,36,0.25)] transition-all duration-200 hover:bg-amber-500 active:scale-[0.98] disabled:opacity-50"
+              >
+                <Plus data-icon="inline-start" className="size-4 stroke-[2]" />
+                지출 추가
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={settlingTrip || loading}
+                onClick={() => void handleToggleTripSettled()}
+                className={cn(
+                  "h-11 w-full rounded-xl font-semibold shadow-none transition-all duration-200 active:scale-[0.98]",
+                  tripSettled
+                    ? "border-emerald-200/80 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                    : "border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50"
+                )}
+              >
+                {settlingTrip ? (
+                  <Loader2 data-icon="inline-start" className="size-4 animate-spin stroke-[1.75]" />
+                ) : (
+                  <CheckCircle2 data-icon="inline-start" className="size-4 stroke-[1.75]" />
+                )}
+                {tripSettled ? "정산 재개하기" : "정산 완료하기"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={sharing || loading}
+                onClick={() => void handleShareSettlement()}
+                className="h-11 w-full rounded-xl border-[#F5E6A3] bg-[#FEE500]/90 font-semibold text-[#191600] shadow-none transition-all duration-200 hover:bg-[#FEE500] active:scale-[0.98]"
+              >
+                {sharing ? (
+                  <Loader2 data-icon="inline-start" className="size-4 animate-spin stroke-[1.75]" />
+                ) : (
+                  <MessageCircle data-icon="inline-start" className="size-4 stroke-[1.75]" />
+                )}
+                카카오톡으로 정산 공유하기
+              </Button>
+            </div>
+
+            {toast ? (
+              <div className="rounded-xl bg-neutral-900/90 px-4 py-2.5 text-sm font-medium text-white shadow-lg transition-all duration-200">
+                {toast}
+              </div>
+            ) : null}
+            {error ? (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+                <FieldError>{error}</FieldError>
+              </div>
+            ) : null}
+            </div></details>
       </div>
 
       {/* 모바일 액션 FAB (speed-dial) — 데스크톱은 사이드바 버튼 사용 */}

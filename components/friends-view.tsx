@@ -683,7 +683,7 @@ export function FriendsView() {
       </div>
 
       {toast ? (
-        <div className="rounded-xl bg-primary/15 px-4 py-2.5 text-sm font-medium">{toast}</div>
+        <div className="border-l-[3px] border-[#fbbf24] bg-white px-4 py-2.5 text-sm font-medium">{toast}</div>
       ) : null}
 
       {!currentUserId && !loading ? (
@@ -694,17 +694,16 @@ export function FriendsView() {
 
       {/* Search */}
       <section className="overflow-hidden border-b border-slate-200 bg-white">
-        <div className="relative border-b border-border px-3 py-2.5">
-          <Search className="pointer-events-none absolute top-1/2 left-6 size-3.5 -translate-y-1/2 stroke-[1.5] text-muted-foreground" />
-          <Input
+        <div className="relative pt-4 pb-3"><label htmlFor="friend-query" className="text-xs leading-5 text-slate-500">친구 찾기</label>
+          <Input id="friend-query"
             value={searchQuery}
             onChange={(event) => {
               setSearchExiting(false)
               setSearchQuery(event.target.value)
             }}
             onFocus={() => setSearchFocused(true)}
-            placeholder="친구 검색"
-            className="h-10 rounded-xl border-0 bg-secondary/70 pr-10 pl-9 shadow-none transition-colors duration-200 focus-visible:ring-1 focus-visible:ring-primary/40"
+            placeholder="닉네임 · 이메일로 검색"
+            className="h-12 rounded-none border-0 border-b border-slate-200 bg-white px-0 pr-10 text-[17px] shadow-none focus-visible:ring-0"
             disabled={!currentUserId}
           />
           {searchQuery ? (
@@ -818,39 +817,7 @@ export function FriendsView() {
         ) : null}
       </section>
 
-      {/* 중카테고리: 친구 목록 / 친구 요청 — 인스타그램식 언더라인 탭 */}
-      {!isSearchMode ? (
-        <nav
-          aria-label="친구 보기 전환"
-          className="flex items-stretch overflow-hidden border-b border-slate-200 bg-white"
-        >
-          {CATEGORY_TABS.map((tab) => {
-            const isActive = activeTab === tab.key
-            const badge = tab.key === "requests" ? requestBadgeCount : 0
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setActiveTab(tab.key)}
-                className={cn(
-                  "relative flex flex-1 items-center justify-center gap-1.5 border-b-2 py-3.5 text-sm font-semibold transition-colors duration-150",
-                  isActive
-                    ? "border-foreground text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground/70"
-                )}
-              >
-                <tab.icon className={cn("size-4", isActive ? "stroke-[2]" : "stroke-[1.5]")} />
-                {tab.label}
-                {badge > 0 ? (
-                  <span className="ml-0.5 flex min-w-4.5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white">
-                    {badge}
-                  </span>
-                ) : null}
-              </button>
-            )
-          })}
-        </nav>
-      ) : null}
+      {!isSearchMode ? <button type="button" aria-expanded={activeTab === "requests"} onClick={() => setActiveTab(activeTab === "requests" ? "list" : "requests")} className="flex min-h-[62px] items-center gap-3 py-3 text-left text-[15px] text-slate-900"><span className="flex-1">받은 요청 {receivedRequests.length} · 보낸 요청 {sentRequests.length}</span><span aria-hidden="true">{activeTab === "requests" ? "⌃" : "⌄"}</span></button> : null}
 
       {isSearchMode ? null : activeTab === "list" ? (
         <>

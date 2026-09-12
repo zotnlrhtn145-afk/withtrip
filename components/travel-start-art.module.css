@@ -1,0 +1,32 @@
+.art{position:relative;display:block;width:100%;height:252px;flex-shrink:0;background:transparent;padding:0;border:0;margin:8px 0 0;perspective:650px;cursor:pointer}
+.art:active{transform:none}
+.map{position:absolute;width:228px;height:126px;left:50%;top:107px;margin-left:-114px;transform:rotate(-10deg);filter:drop-shadow(0 14px 9px #27210f18);transform-origin:50% 80%;animation:unfold 1200ms 1900ms both cubic-bezier(.16,1,.3,1);transform-style:preserve-3d}
+.fold{position:absolute;height:122px;width:78px;top:0;background:linear-gradient(120deg,#fff,#eae9e5);clip-path:polygon(0 10%,100% 0,100% 89%,0 100%)}
+.f1{left:0;transform-origin:right center;animation:foldLeft 1150ms 2100ms both cubic-bezier(.22,1,.36,1)}
+.f2{left:76px;transform:scaleY(-1);background:linear-gradient(95deg,#e5e4e0,#faf9f7)}
+.f3{left:152px;background:linear-gradient(115deg,#fff,#f0efeb);transform-origin:left center;animation:foldRight 1250ms 2300ms both cubic-bezier(.22,1,.36,1)}
+.land{position:absolute;background:#d8d7d04a;border-radius:46% 28% 48% 30%;transform:rotate(24deg)}
+.l1{width:36px;height:44px;left:23px;top:27px}.l2{width:40px;height:28px;left:101px;top:70px}
+.route{position:absolute;left:22px;top:37px;width:180px;height:63px;clip-path:inset(0);animation:reveal 1900ms 3700ms both linear}
+.route div{width:168px;height:51px;border:3px dashed #fbbf24;border-top:0;border-radius:0 0 70% 50%;transform:rotate(-15deg)}
+.pin{position:absolute;right:8px;top:-18px;animation:pinIn 750ms 3500ms both cubic-bezier(.16,1,.3,1);transform:rotate(10deg)}
+.pin img{width:49px;height:59px;filter:drop-shadow(0 4px 2px #68561518)}
+.pin::after{content:'';position:absolute;left:0;top:42px;width:46px;height:13px;border:1px solid #fbbf24;border-radius:50%;z-index:-1;animation:ring 1400ms 4100ms both ease-out}
+.flight{position:absolute;left:calc(50% - 114px);top:40px;animation:flightFull 3300ms 3200ms both cubic-bezier(.25,.1,.25,1)}
+.plane{animation:hover 4300ms 6500ms infinite ease-in-out}
+.plane img{width:64px;height:64px;filter:drop-shadow(0 4px 4px #66543110);transform:rotate(9deg)}
+.airtrail{position:absolute;left:calc(50% - 114px);top:70px;width:112px;height:97px;border-left:3px dashed #fbbf24;border-bottom:3px dashed #fbbf24;border-radius:55% 0 0 45%;transform:rotate(-12deg);animation:trailShow 3700ms 3200ms both}
+@keyframes unfold{from{opacity:0;transform:translateY(26px) rotate(-10deg) rotateX(55deg) scaleX(.8)}to{opacity:1;transform:rotate(-10deg)}}
+@keyframes pinIn{from{opacity:0;transform:translateY(-24px) rotate(10deg) scale(.8)}to{opacity:1;transform:rotate(10deg)}}
+@keyframes reveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0)}}
+@keyframes hover{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-6px) rotate(3deg)}}
+@keyframes foldLeft{from{transform:rotateY(78deg)}to{transform:rotateY(0)}}
+@keyframes foldRight{from{transform:rotateY(-85deg)}to{transform:rotateY(0)}}
+@keyframes ring{0%{opacity:0;transform:scale(.3)}25%{opacity:.55}100%{opacity:0;transform:scale(2)}}
+@keyframes flightFull{0%{opacity:0;transform:translate(6px,91px) rotate(-125deg) scale(.6)}12%{opacity:1}30%{transform:translate(-24px,78px) rotate(-90deg) scale(.82)}55%{transform:translate(-24px,15px) rotate(-25deg) scale(.95)}80%{transform:translate(23px,-7px) rotate(10deg)}100%{opacity:1;transform:translate(34px,0) rotate(0)}}
+@keyframes trailShow{0%{opacity:0;clip-path:inset(85% 0 0 0)}30%{opacity:.8}75%{opacity:.8;clip-path:inset(0)}100%{opacity:0;clip-path:inset(0)}}
+.art[data-paused=true] *,.art[data-paused=true] *::after{animation-play-state:paused}
+.art[data-reduced=true] *,.art[data-reduced=true] *::after{animation:none!important}
+.art[data-reduced=true] .flight{transform:translate(34px,0)}
+.art[data-reduced=true] .airtrail,.art[data-reduced=true] .pin::after{opacity:0}
+@media(prefers-reduced-motion:reduce){.art *,.art *::after{animation:none!important}.flight{transform:translate(34px,0)}.airtrail,.pin::after{opacity:0}}
