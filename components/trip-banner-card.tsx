@@ -250,7 +250,7 @@ export function TripBannerCard({
               <AvatarGroup className="-space-x-1.5">
                 {tripMembers.map((member) => (
                   <Avatar key={member.id} className="size-6 ring-2 ring-black/40">
-                    {"avatarUrl" in member && member.avatarUrl ? (
+                    {"avatarUrl" in member && typeof member.avatarUrl === "string" && member.avatarUrl ? (
                       <AvatarImage src={member.avatarUrl} alt="" />
                     ) : null}
                     <AvatarFallback className={`${member.color} text-[10px] font-semibold`}>

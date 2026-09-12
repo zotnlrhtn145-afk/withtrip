@@ -67,7 +67,7 @@ export function CreateTripDialog({
       travelCountries.map((item) => ({
         value: item.nameKo,
         label: item.nameKo,
-        description: item.nameEn,
+        description: `${item.nameEn} · ${item.code}`,
       })),
     []
   )

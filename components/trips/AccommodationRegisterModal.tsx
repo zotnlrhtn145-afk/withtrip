@@ -146,6 +146,7 @@ export function AccommodationRegisterModal({
   }, [open, tripId])
 
   useEffect(() => {
+    const seq = ++searchSeq.current
     if (!open) return
     const q = hotelQuery.trim()
     if (q.length < 1) {
@@ -155,7 +156,6 @@ export function AccommodationRegisterModal({
       return
     }
 
-    const seq = ++searchSeq.current
     setSearchingHotels(true)
     const timer = window.setTimeout(() => {
       void (async () => {
@@ -167,7 +167,7 @@ export function AccommodationRegisterModal({
       })()
     }, 300)
 
-    return () => window.clearTimeout(timer)
+    return () => { window.clearTimeout(timer); searchSeq.current++ }
   }, [hotelQuery, open])
 
   const handleHotelSelect = (option: SearchableOption) => {

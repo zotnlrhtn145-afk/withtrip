@@ -79,7 +79,7 @@ export function TripDetailHero({ trip }: { trip: Trip }) {
             <AvatarGroup className="-space-x-1.5">
               {tripMembers.map((member) => (
                 <Avatar key={member.id} className="size-8 ring-2 ring-black/40">
-                  {"avatarUrl" in member && member.avatarUrl ? (
+                  {"avatarUrl" in member && typeof member.avatarUrl === "string" && member.avatarUrl ? (
                     <AvatarImage src={member.avatarUrl} alt="" />
                   ) : null}
                   <AvatarFallback className={`${member.color} text-xs font-semibold`}>

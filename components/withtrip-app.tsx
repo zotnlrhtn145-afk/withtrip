@@ -283,7 +283,7 @@ function WithtripShell() {
     window.scrollTo({ top: 0 })
   }
 
-  const openTripDetail = (trip: Trip) => {
+  const openTripDetail = (trip: Pick<Trip, "id">) => {
     // Home planned-trip cards → trip schedule/detail page.
     setSelectedTripId(trip.id)
     router.push(`/trips/${trip.id}`)

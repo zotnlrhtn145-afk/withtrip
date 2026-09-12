@@ -108,7 +108,7 @@ function SettlementShellInner({ children }: { children: ReactNode }) {
     return () => query.removeEventListener("change", sync)
   }, [])
 
-  const openTrip = (trip: Trip) => {
+  const openTrip = (trip: Pick<Trip, "id">) => {
     // Soft navigation — layout (and sub-panel) stays mounted.
     router.push(`/settlement/${trip.id}`)
   }

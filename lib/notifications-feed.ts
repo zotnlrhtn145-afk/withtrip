@@ -247,7 +247,7 @@ async function fetchClipActivityFallback(): Promise<FeedNotification[]> {
         isRead: false,
       } satisfies FeedNotification
     })
-    .filter((item): item is FeedNotification => Boolean(item))
+    .filter((item): item is NonNullable<typeof item> => item !== null)
 }
 
 function mapDbNotification(row: Awaited<ReturnType<typeof fetchMyNotifications>>[number]): FeedNotification {

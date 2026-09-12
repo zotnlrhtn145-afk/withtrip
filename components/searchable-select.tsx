@@ -66,6 +66,7 @@ export function SearchableSelect({
   const listId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const safeValue = safeText(value)
+  const [activeIndex, setActiveIndex] = useState(-1)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState(safeValue)
   const optionList = useMemo(
@@ -86,12 +87,14 @@ export function SearchableSelect({
     const onPointerDown = (event: MouseEvent) => {
       if (!rootRef.current?.contains(event.target as Node)) {
         setOpen(false)
+        setActiveIndex(-1)
         setQuery(safeValue)
       }
     }
     const onKey = (event: KeyboardEvent) => {
       if ((event.key ?? "") === "Escape") {
         setOpen(false)
+        setActiveIndex(-1)
         setQuery(safeValue)
       }
     }
@@ -135,6 +138,7 @@ export function SearchableSelect({
     onChange(next)
     onSelectOption?.(option)
     setQuery(next)
+    setActiveIndex(-1)
     setOpen(false)
   }
 
@@ -155,6 +159,7 @@ export function SearchableSelect({
           aria-expanded={open}
           aria-controls={listId}
           aria-autocomplete="list"
+          aria-activedescendant={open && activeIndex >= 0 && filtered[activeIndex] ? `${listId}-${activeIndex}` : undefined}
           disabled={disabled}
           value={safeText(query)}
           placeholder={placeholder}
@@ -164,12 +169,26 @@ export function SearchableSelect({
           onChange={(event) => {
             const next = event.target.value ?? ""
             setQuery(next)
+            setActiveIndex(-1)
             setOpen(true)
             onQueryChange?.(next)
             if (allowCustom) onChange(next)
           }}
           onKeyDown={(event) => {
+            // 한글 조합을 확정하는 Enter가 검색 항목까지 선택하면 안 됩니다.
+            if (event.nativeEvent.isComposing || event.keyCode === 229) return
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              event.preventDefault()
+              setOpen(true)
+              setActiveIndex((i) => Math.max(0, Math.min(filtered.length - 1, i + (event.key === "ArrowDown" ? 1 : -1))))
+              return
+            }
             if ((event.key ?? "") !== "Enter") return
+            if (open && activeIndex >= 0 && filtered[activeIndex]) {
+              event.preventDefault()
+              selectOption(filtered[activeIndex])
+              return
+            }
             event.preventDefault()
             if (filtered[0] && !allowCustom) {
               selectOption(filtered[0])
@@ -234,17 +253,18 @@ export function SearchableSelect({
             </div>
           ) : (
             <ul className="flex flex-col gap-0.5">
-              {filtered.map((option) => {
+              {filtered.map((option, index) => {
                 const selected = option.value === safeValue
                 return (
                   <li key={option.id ?? `${option.value}:${option.description ?? ""}`}>
                     <button
                       type="button"
+                      id={`${listId}-${index}`}
                       role="option"
                       aria-selected={selected}
                       className={cn(
                         "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors",
-                        selected
+                        (selected || activeIndex === index)
                           ? "bg-primary/20 text-foreground"
                           : "hover:bg-primary/15 hover:text-foreground"
                       )}

@@ -80,7 +80,7 @@ function TripDetailComplete({ tripId }: { tripId: string }) {
   const displayTrip = trip
 
   const goHome = () => router.push("/")
-  const openTrip = (next: Trip) => router.push(`/settlement/${next.id}`)
+  const openTrip = (next: Pick<Trip, "id">) => router.push(`/settlement/${next.id}`)
 
   if (loading) {
     return (
