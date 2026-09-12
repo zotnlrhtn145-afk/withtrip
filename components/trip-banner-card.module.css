@@ -37,3 +37,16 @@
 .approved button:active { opacity: .8; }
 @keyframes home-arrive { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .approved { animation: none; } }
+
+/* 123 실기기 피드백: 표지와 정보를 한 카드로 묶고 메타 대비를 높인다. */
+.approved:not(.approvedCompact) { border: 1px solid #d5dadf; border-radius: 22px; background: white; }
+.heroLink { border-radius: 21px 21px 0 0; }
+.info { padding: 8px 16px 16px; }
+.memberRow { display: flex; align-items: center; min-height: 44px; padding: 0; gap: 6px; }
+.members { font-size: 15px; font-weight: 600; line-height: 22px; color: #191919; }
+.details { margin-top: 6px; gap: 10px; font-size: 14px; line-height: 21px; color: #475569; align-items: center; }
+.details > span:first-child { background: #fbbf24; border-radius: 8px; padding: 5px 9px; font-size: 13px; font-weight: 700; color: #191919; }
+.approvedCompact .info { padding: 0; }
+.rowLink .dates { font-size: 14px; line-height: 21px; color: #475569; }
+.approvedCompact .details { margin-top: 6px; }
+.approvedCompact .details > span:first-child { background: none; padding: 0; font-size: 14px; }

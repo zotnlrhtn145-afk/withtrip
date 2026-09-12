@@ -195,7 +195,7 @@ export function HomeView({
         </div>
       ) : null}
 
-      {!showLoading && !showEmpty && upcomingList.length > 1 ? <p className="text-[11px] text-gray-500">준비 중인 여행 {upcomingList.length}개</p> : null}
+      {!showLoading && !showEmpty && upcomingList.length > 1 ? <p className="text-sm text-slate-600">준비 중인 여행 {upcomingList.length}개</p> : null}
 
       {showLoading ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-6 py-16 text-center">
@@ -296,7 +296,7 @@ export function HomeView({
                 ) : (
                   list.map((trip, index) => (
                     <Fragment key={trip.id}>
-                    {index === 1 ? <h3 className="mt-2.5 mb-0 text-lg font-semibold">그다음 여행 <span className="font-normal text-gray-500">{list.length - 1}</span></h3> : null}
+                    {index === 1 ? <h3 className="mt-3 mb-0 border-t border-[#d5dadf] pt-[22px] text-lg font-semibold">그다음 여행 <span className="font-normal text-gray-500">{list.length - 1}</span></h3> : null}
                     <TripBannerCard
                       approved
                       trip={trip}

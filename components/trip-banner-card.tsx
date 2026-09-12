@@ -130,6 +130,7 @@ export function TripBannerCard({
           </span>
           {compact ? <ChevronRight size={18} /> : null}
         </button>
+        <div className={styles.info}>
         <div className={styles.memberRow}>
           {!compact ? <button type="button" onClick={() => onSelect(trip)} aria-label={`${memberSummary}, 여행 열기`} className={styles.members}>
             {!compact ? <AvatarGroup className="-space-x-2">
@@ -198,6 +199,7 @@ export function TripBannerCard({
           <span>{muted ? "종료" : trip.dDay > 0 ? `D-${trip.dDay}` : trip.dDay === 0 ? "D-DAY" : `D+${Math.abs(trip.dDay)}`}</span>
           {weather ? <span><WeatherIcon size={14} />{weather.label}</span> : null}
           {trip.flight ? <span><Plane size={14} />{trip.flight}</span> : null}
+        </div>
         </div>
       </article> : (
       <article
