@@ -138,7 +138,7 @@ export function MobileGlobalChrome() {
             <div className="flex items-center">
               <NotificationBellButton className="size-11" iconClassName="size-5" />
               <HeaderAuthControl />
-              <button type="button" aria-label="퀵 등록" onClick={() => window.dispatchEvent(new CustomEvent("withtrip:open-quick-menu"))} className="flex size-11 items-center justify-center rounded-full bg-[#fbbf24]"><Plus className="size-6 stroke-[1.5]" /></button>
+              <button type="button" aria-label="퀵 등록" onClick={() => window.dispatchEvent(new CustomEvent("withtrip:open-quick-menu"))} className="flex size-11 items-center justify-center rounded-full bg-white"><Plus className="size-6 stroke-[1.5]" /></button>
             </div>
           </div> : (
           <div className="flex items-center justify-between px-4 py-3">
