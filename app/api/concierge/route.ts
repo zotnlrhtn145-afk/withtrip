@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { placeRecommendationCopy } from "@/shared/place-recommendation-copy"
 
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import { buildPlacePhotoProxyUrl, resolveCoverImageUrl } from "@/lib/place-cover-image"
@@ -26,6 +27,7 @@ type LatLng = { lat: number; lng: number }
 export type ConciergePick = {
   name: string
   localName: string
+  highlight?: string
   reason: string
   kind: string
   address: string
@@ -119,10 +121,6 @@ const CACHE_TTL = 60 * 60 * 1000
 const DAILY = new Map<string, { day: string; n: number }>()
 const DAILY_CAP = 10
 
-function normQuery(q: string): string {
-  return q.toLowerCase().replace(/[\s.,!?~·…]/g, "").slice(0, 60)
-}
-
 export async function POST(request: Request) {
   try {
     const geminiKey = (process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || "").trim()
@@ -147,7 +145,7 @@ export async function POST(request: Request) {
     const country = String(body.country ?? "").trim()
 
     /* ① 캐시 — 같은 도시+질문이면 그대로 돌려준다 */
-    const cacheKey = `${city}|${normQuery(query)}`
+    const cacheKey = JSON.stringify(["copy-v2", city, country, query, body.accommodation ?? null, Array.isArray(body.existingNames) ? [...body.existingNames].sort() : [], tripId])
     const hit = CACHE.get(cacheKey)
     if (hit && Date.now() - hit.at < CACHE_TTL) {
       return NextResponse.json({ results: hit.results, cached: true })
@@ -186,10 +184,12 @@ export async function POST(request: Request) {
       `이 요청에 딱 맞는 실제 장소 10곳을 추천해줘. 실존하는, 지도에서 검색되는 정확한 상호만.\n` +
       `서로 겹치지 않는 다른 장소여야 하고, 관광객 함정보다 현지에서 평가가 좋은 곳을 골라라.\n` +
       (existingNames.length > 0 ? `이미 목록에 있어 제외할 곳: ${existingNames.join(", ")}\n` : "") +
-      `각 장소마다: 왜 이 요청에 맞는지 한국어로 짧게(20자 내외), 그리고 종류(식당/바/카페/스파/클럽/명소/쇼핑/기타).\n` +
-      `반드시 JSON 만: {"picks":[{"name":"정확한 상호","reason":"이유","kind":"종류"}]}`
+      `각 장소마다 highlight는 핵심 특징 하나를 8~24자 한국어로, reason은 이 사용자의 요청과 그 특징이 어떻게 맞는지 2~3문장(80~180자)으로 각각 작성해라.\n` +
+      `reason에서 highlight를 그대로 반복하지 말고, 어떤 활동이나 상황에 적합한지 구체적으로 설명해라. 모든 장소에 같은 문장을 복사하지 마라.\n` +
+      `확인되지 않은 시설, 가격, 운영시간, 예약/일일 입장 가능 여부, 자격/수상은 단정하지 마라. 불확실한 방문 조건은 확인이 필요하다고 밝혀라. 근거가 부족하면 빈칸을 채우려고 사실을 만들지 마라.\n` +
+      `종류는 식당/바/카페/스파/클럽/명소/쇼핑/기타. 반드시 JSON만: {"picks":[{"name":"정확한 상호","highlight":"핵심 특징","reason":"요청과 연결한 상세 추천 이유","kind":"종류"}]}`
 
-    let picks: { name: string; reason: string; kind: string }[] = []
+    let picks: { name: string; highlight: string; reason: string; kind: string }[] = []
     try {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 15_000)
@@ -212,11 +212,11 @@ export async function POST(request: Request) {
           candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
         }
         const rawText = (data.candidates?.[0]?.content?.parts?.[0]?.text ?? "").replace(/```json|```/g, "").trim()
-        const parsed = JSON.parse(rawText) as { picks?: Array<{ name?: string; reason?: string; kind?: string }> }
+        const parsed = JSON.parse(rawText) as { picks?: Array<{ name?: string; highlight?: string; reason?: string; kind?: string }> }
         picks = (parsed.picks ?? [])
           .map((p) => ({
             name: String(p.name ?? "").trim(),
-            reason: String(p.reason ?? "").trim(),
+            ...placeRecommendationCopy(p),
             kind: String(p.kind ?? "기타").trim(),
           }))
           .filter((p) => p.name)
@@ -240,7 +240,7 @@ export async function POST(request: Request) {
       if ((g.rating ?? 0) < 4.0) continue
       results.push({
         ...g,
-        reason: picks[i].reason,
+        ...placeRecommendationCopy(picks[i]),
         kind: picks[i].kind,
         distanceKm: accommodation
           ? Math.round((distanceMeters(accommodation, { lat: g.lat, lng: g.lng }) / 1000) * 10) / 10

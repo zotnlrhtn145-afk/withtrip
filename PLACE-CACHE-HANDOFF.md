@@ -1,3 +1,7 @@
+## 2026-09-13 Codex · 위디 추천 설명 필드 분리 (미배포)
+
+concierge reason20자 프롬프트→highlight핵심/reason2~3문장 요청 연결 설명. 사실 미확인 운영·입장·가격 단정 금지. 기존 단일 AI 호출 유지. shared/place-recommendation-copy.ts 중복/비정상 하이라이트 방어 및 앱sync. copy-v2 캐시는 전체 질문·국가·숙소·제외목록·여행 포함해 이전맥락 재사용 방지. 앱 카드/기존 컨시어지 표시 연결. 양쪽tsc·모의API/캐시/중복/구형데이터 검사·shared28통과. 실제AI출력/운영 호출 미검증. DB변경/배포없음. 앱 다음빌드와 웹API 배포 필요. 무관 eas.json/app.json/tsconfig.tsbuildinfo 보전.
+
 ## 2026-09-13 Codex · 찜/길찾기 아이콘 확정 반영
 
 - 사용자 승인: 하단 찜은 큰 노란 핀+작은 접힌 지도, 길찾기는 바깥 원 없는 핀 단독. Figma 내보낸 SVG를 public/design에 저장, BottomNav saved 렌더 교체. 공통 DirectionsMenu는 동일 자산 사용.
