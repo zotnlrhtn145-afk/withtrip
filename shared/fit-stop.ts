@@ -175,8 +175,8 @@ export function judge(
     const km = c.straightKm ?? null
     const why = shutToday
       ? openToday.state === "closed" && openToday.reason === "dayoff"
-        ? "오늘 휴무예요"
-        : "오늘 영업이 끝났어요"
+        ? "선택한 날은 휴무예요"
+        : "선택한 시각에는 영업이 끝났어요"
       : c.noRoute
         ? km != null && km >= 50
           ? `차로 갈 수 있는 길이 없어요 · 직선 ${Math.round(km)}km`
@@ -237,7 +237,7 @@ export function judge(
 
   const why = shut
     ? openAtArrive.state === "closed" && openAtArrive.reason === "dayoff"
-      ? "오늘 휴무예요"
+      ? "선택한 날은 휴무예요"
       : "도착하면 이미 영업이 끝나요"
     : slack == null
       ? waited > 0
