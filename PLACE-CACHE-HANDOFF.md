@@ -1,3 +1,8 @@
+## 2026-09-13 Codex · 찜/길찾기 아이콘 확정 반영
+
+- 사용자 승인: 하단 찜은 큰 노란 핀+작은 접힌 지도, 길찾기는 바깥 원 없는 핀 단독. Figma 내보낸 SVG를 public/design에 저장, BottomNav saved 렌더 교체. 공통 DirectionsMenu는 동일 자산 사용.
+- 기존 내비게이션 축소/선택 모션 유지. 앱에도 동일 반영. 앱·웹 타입 검사 통과. 로컬 변경만, 웹 push/배포 없음.
+
 ## 2026-09-13 Codex · 확정 일정 사진/시간선 디자인
 
 앱과 공통으로 ScheduleSection 대표사진280:156/r10, 동행자 옆 아이콘길찾기, 시간선 중간 이동정보 적용. 저장사진/숙소 원본ID 우선, shared/schedule-cover.ts로 현재일차 누락사진만 기존 search API 재사용(동시2·30분캐시·10초·동일상호/500m·실제photoUrls만). 앱sync완료. DirectionsMenu 기본glyph 피그마원본, 커스텀아이콘 보전. 원래없는 웹 사진업로드/주변추천 UI는 신설하지 않음. 앱웹타입 통과. 배포없음, 사용자 eas.json 등 무관 변경 유지.

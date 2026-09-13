@@ -25,10 +25,11 @@ function toHref(key: NavKey): string {
 
 /** 동결 시안 shared-nav.js의 SVG 경로·레이어 순서. */
 function ReferenceNavIcon({ item, selected, compact, reduced }: { item: typeof navItems[number]; selected: boolean; compact: boolean; reduced: boolean }) {
+  if (item.key === "saved") return <span style={{ width: selected && !compact ? 30 : 25, height: selected && !compact ? 30 : 25, display: "grid", placeItems: "center", flexShrink: 0, transition: reduced ? "none" : "width 280ms, height 280ms" }}><img src="/design/saved-map-pin-figma.svg" alt="" style={{ height: "100%", width: "auto" }} /></span>
   const ink = "#182126", yellow = "#fbbf24", muted = "#747e80"
   const stroke = selected ? ink : muted
   return <svg width={selected && !compact ? 30 : 25} height={selected && !compact ? 30 : 25} style={{ flexShrink: 0, transition: reduced ? "none" : "width 280ms, height 280ms" }} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    {item.key === "home" ? <><circle cx="12" cy="12" r="10" fill={selected ? yellow : "none"} stroke={selected ? yellow : stroke} /><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" fill={selected ? ink : "none"} /></> : item.key === "saved" ? <path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5" fill={selected ? yellow : "none"} stroke={selected ? yellow : stroke} /> : <><circle cx="12" cy="12" r="10" fill={selected ? yellow : "none"} stroke={selected ? yellow : stroke} /><path d="M17.925 20.056a6 6 0 0 0-11.851.001" /><circle cx="12" cy="11" r="4" /></>}
+    {item.key === "home" ? <><circle cx="12" cy="12" r="10" fill={selected ? yellow : "none"} stroke={selected ? yellow : stroke} /><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" fill={selected ? ink : "none"} /></> : <><circle cx="12" cy="12" r="10" fill={selected ? yellow : "none"} stroke={selected ? yellow : stroke} /><path d="M17.925 20.056a6 6 0 0 0-11.851.001" /><circle cx="12" cy="11" r="4" /></>}
   </svg>
 }
 
