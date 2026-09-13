@@ -1,3 +1,7 @@
+## 2026-09-13 Codex · 확정 일정 사진/시간선 디자인
+
+앱과 공통으로 ScheduleSection 대표사진280:156/r10, 동행자 옆 아이콘길찾기, 시간선 중간 이동정보 적용. 저장사진/숙소 원본ID 우선, shared/schedule-cover.ts로 현재일차 누락사진만 기존 search API 재사용(동시2·30분캐시·10초·동일상호/500m·실제photoUrls만). 앱sync완료. DirectionsMenu 기본glyph 피그마원본, 커스텀아이콘 보전. 원래없는 웹 사진업로드/주변추천 UI는 신설하지 않음. 앱웹타입 통과. 배포없음, 사용자 eas.json 등 무관 변경 유지.
+
 ## 2026-09-13 Codex · 미쉐린 아이콘 통일
 
 quick-michelin 필터를 기존 미쉐린 얼굴 PNG로 교체. 정적 SVG도 동일 얼굴로 갱신. flower-2/white의 일반 꽃을 실제 MichelinStar 경로로 교체, 출처·라이선스 기록 추가. 앱에도 동일 자산/스타 지도 아이콘 반영. 양쪽 타입 및 앱 지도 검사 통과. 웹 push 없음. staged eas.json 및 tsconfig.tsbuildinfo/AGENTS.md/app.json 등 무관 변경 유지.

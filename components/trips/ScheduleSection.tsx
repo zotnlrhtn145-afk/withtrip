@@ -1,7 +1,9 @@
 "use client"
 
+import { findScheduleCover } from "@/shared/schedule-cover"
+import { rewriteLegacyGooglePhotoUrl } from "@/lib/place-cover-image"
 import { ContactLine } from "@/components/contact-line"
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react"
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Calendar, AlertCircle, Check, ChevronDown, ChevronRight, MoreHorizontal, Car, Bus, Footprints, Crown, Loader2, LogOut, MapPin, Pencil, Plane, Plus, Search, Trash2, UserRound } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -41,7 +43,7 @@ import {
   type ScheduleCategory,
   type TripSchedule,
 } from "@/lib/schedules-api"
-import { legLabel, legTone, straightKm } from "@/shared/trip-distance"
+import { formatKm, formatMinutes, roughMinutes, isFlightLeg, legLabel, legTone, straightKm } from "@/shared/trip-distance"
 import {
   computePresence,
   isPresent,
@@ -719,6 +721,7 @@ function MemberAvatars({
 export function TimelineItem({
   item,
   nextItem,
+  coverUrl,
   realLeg,
   isLast,
   isAuthor,
@@ -735,6 +738,7 @@ export function TimelineItem({
   onOpenPlace,
 }: {
   item: TripSchedule
+  coverUrl?: string
   /** 바로 다음 일정 — 사이 거리를 재는 데 쓴다. 마지막이면 null */
   nextItem?: TripSchedule | null
   /** 실제 조회된 이동 시간 (없으면 추정치 사용) */
@@ -758,6 +762,23 @@ export function TimelineItem({
   onOpenPlace?: (item: TripSchedule) => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [coverFailed, setCoverFailed] = useState(false)
+  const rowRef = useRef<HTMLLIElement>(null)
+  const [legTop, setLegTop] = useState(0)
+  useEffect(() => setCoverFailed(false), [coverUrl])
+  useEffect(() => {
+    const row = rowRef.current
+    if (!row || !nextItem) return
+    const next = Array.from(row.parentElement?.querySelectorAll<HTMLElement>("[data-schedule-id]") ?? []).find(el => el.dataset.scheduleId === nextItem.id)
+    if (!next) return
+    const measure = () => setLegTop((next.offsetTop - row.offsetTop) / 2 + 12)
+    const observer = new ResizeObserver(measure)
+    observer.observe(row.parentElement!)
+    observer.observe(row)
+    observer.observe(next)
+    measure()
+    return () => observer.disconnect()
+  }, [nextItem?.id])
   const timeLabel = item.visitTime || "--:--"
 
   /*
@@ -776,11 +797,12 @@ export function TimelineItem({
           )
           return {
             km,
-            text: legLabel(km, realLeg?.mode ?? "walk", realLeg?.minutes ?? null),
+            text: legLabel(km, realLeg?.mode ?? "drive", realLeg?.minutes ?? null),
             far: legTone(km) === "far" && realLeg == null,
           }
         })()
       : null
+  const flight = !!leg && !!nextItem && isFlightLeg({ category: item.category, place_name: item.placeName }, { category: nextItem.category, place_name: nextItem.placeName }, leg.km)
   const authorName = authorProfile?.name || "멤버"
   const authorIsHost = Boolean(ownerId) && (authorProfile?.userId === ownerId || item.createdBy === ownerId)
   const isAuto = isAutoSchedule(item)
@@ -788,7 +810,7 @@ export function TimelineItem({
   const showAuthor = !isAuto && Boolean(item.createdBy || item.userId)
 
   return (
-    <li className="relative flex gap-[14px] pb-8 pl-5 last:pb-0">
+    <li ref={rowRef} data-schedule-id={item.id} className="relative flex gap-1 pb-6 pl-[26px] last:pb-0">
       <span aria-hidden="true" className="absolute top-[9px] left-0 z-10 size-2.5 rounded-full border-2 border-slate-900 bg-[#FBBF24]" />
       <div className="w-[44px] shrink-0 pt-1">
         <span className="text-[14px] leading-5 font-semibold tabular-nums text-slate-800">{timeLabel}</span>
@@ -800,7 +822,7 @@ export function TimelineItem({
       */}
       <div
         className={cn(
-          "min-w-0 flex-1 border-b border-slate-200 bg-white pb-6",
+          "min-w-0 flex-1 border-b border-[#e5e5e5] bg-white pb-6",
           notMine && "opacity-45"
         )}
       >
@@ -849,6 +871,9 @@ export function TimelineItem({
           ) : null}
         </div>
 
+        <button type="button" disabled={!onOpenPlace} onClick={() => onOpenPlace?.(item)} aria-label={`${item.placeName} 상세보기`} className="mt-4 flex aspect-[280/156] w-full items-center justify-center overflow-hidden rounded-[10px] border border-[#e5e5e5] text-xs text-[#777] transition-transform active:scale-[.98] motion-reduce:transition-none">
+          {coverUrl && !coverFailed ? <img src={rewriteLegacyGooglePhotoUrl(coverUrl)} alt={item.placeName} loading="lazy" className="h-full w-full object-cover" onError={() => setCoverFailed(true)} /> : "장소 사진이 아직 없어요"}
+        </button>
         {/* 작성자·메모·주소·전화는 제목 행 **밖**에 둔다.
             제목 행 안(=아이콘 버튼과 같은 flex 행)에 있으면, 아이콘 3개(길찾기·수정·삭제)가
             shrink-0 으로 폭을 가져가 좁은 폰에서 텍스트 컬럼이 100pt 남짓만 남는다.
@@ -859,7 +884,8 @@ export function TimelineItem({
             <CreatorBadge name={authorName} avatarUrl={authorProfile?.avatarUrl} isHost={authorIsHost} />
           </div>
         ) : null}
-        {isAuto ? (
+        <div className="mt-3 flex min-h-11 items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">        {isAuto ? (
           <MemberAvatars members={memberProfiles} ownerId={ownerId} />
         ) : partialMembers.length > 0 ? (
           <MemberAvatars
@@ -870,6 +896,9 @@ export function TimelineItem({
         ) : (
           <MemberAvatars members={memberProfiles} ownerId={ownerId} />
         )}
+</div>
+          <DirectionsMenu destination={item.lat != null && item.lng != null ? { name: item.placeName, lat: item.lat, lng: item.lng } : null} fallbackQuery={item.address || item.placeName} variant="icon" className="size-11 border-0 text-[#222]" />
+        </div>
         {notMine && notMineReason ? (
           <p className="mt-1.5 text-[11px] font-bold text-slate-400">{notMineReason}</p>
         ) : null}
@@ -882,14 +911,14 @@ export function TimelineItem({
             {item.phoneNumber ? <ContactLine kind="phone" value={item.phoneNumber} /> : null}
           </div>
         ) : null}
-        {item.placeName || item.address ? <DirectionsMenu destination={item.lat != null && item.lng != null ? { name: item.placeName, lat: item.lat, lng: item.lng } : null} fallbackQuery={item.address || item.placeName} className="mt-3 h-11 rounded-[13px] px-3 text-[13px] font-medium text-slate-900" /> : null}
-        {leg ? (
-          <div className={cn("mt-5 flex min-h-11 items-center gap-2 border-t border-slate-100 pt-4 text-[14px] leading-6", leg.far ? "text-amber-700" : "text-slate-600")}>
-            {leg.far ? <AlertCircle className="size-[18px] shrink-0" /> : realLeg?.mode === "drive" ? <Car className="size-[18px] shrink-0" /> : realLeg?.mode === "transit" ? <Bus className="size-[18px] shrink-0" /> : <Footprints className="size-[18px] shrink-0" />}
-            <span>{leg.text}</span>
-          </div>
-        ) : null}
+
       </div>
+      {leg ? <div aria-label={leg.text} className="pointer-events-none absolute -left-[16px] flex w-10 -translate-y-1/2 flex-col items-center gap-0.5 bg-white py-2 text-center" style={{ top: legTop }}>
+        {flight ? <Plane size={20} /> : realLeg?.mode === "transit" ? <Bus size={20} /> : <Car size={20} />}
+        <span className="text-xs font-bold text-[#222]">{flight ? "비행" : `${realLeg ? "" : "약 "}${formatMinutes(realLeg?.minutes ?? roughMinutes(leg.km, "drive"))}`}</span>
+        <span className="text-[10px] text-[#777]">{formatKm(leg.km)}</span>
+      </div> : null}
+
 
 
     </li>
@@ -962,6 +991,27 @@ export function ScheduleSection({
   )
   const [selectedDay, setSelectedDay] = useState(1)
   const [items, setItems] = useState<TripSchedule[]>([])
+  const [coverByName, setCoverByName] = useState<Map<string, string>>(new Map())
+  useEffect(() => {
+    let alive = true
+    setCoverByName(new Map())
+    const db = createClient()
+    void Promise.all([
+      db.from("saved_places").select("place_name,image_url").eq("trip_id", tripId),
+      db.from("trip_accommodations").select("id,name,image_url").eq("trip_id", tripId),
+    ]).then(([places, stays]) => {
+      if (!alive) return
+      const covers = new Map<string, string>()
+      for (const row of places.data ?? []) if (row.place_name && row.image_url) covers.set(row.place_name.trim().toLowerCase(), row.image_url)
+      for (const row of stays.data ?? []) if (row.image_url) {
+        covers.set(`source:${row.id}`, row.image_url)
+        if (row.name) covers.set(row.name.trim().toLowerCase(), row.image_url)
+      }
+      setCoverByName(covers)
+    })
+    return () => { alive = false }
+  }, [tripId, refreshKey])
+
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingSchedule, setEditingSchedule] = useState<TripSchedule | null>(null)
@@ -1283,6 +1333,25 @@ export function ScheduleSection({
     if (!next) setEditingSchedule(null)
   }
 
+  const [searchedCovers, setSearchedCovers] = useState<Record<string, string>>({})
+  const coverLookupKey = JSON.stringify(visibleItems.map(item => [item.id, item.placeName, item.lat, item.lng]))
+  useEffect(() => {
+    let alive = true
+    let cursor = 0
+    const missing = visibleItems.filter(item => !coverByName.has(`source:${item.sourceId}`) && !coverByName.has(item.placeName.trim().toLowerCase()))
+    const worker = async () => {
+      while (alive && cursor < missing.length) {
+        const item = missing[cursor++]
+        const uri = await findScheduleCover({ name: item.placeName, lat: item.lat, lng: item.lng })
+        if (alive && uri) setSearchedCovers(prev => ({ ...prev, [JSON.stringify([item.id, item.placeName, item.lat, item.lng])]: uri }))
+      }
+    }
+    void Promise.all([worker(), worker()])
+    return () => { alive = false }
+    // Content key includes every lookup input; don't re-run on resolved pictures.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coverLookupKey, coverByName])
+
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
@@ -1364,6 +1433,7 @@ export function ScheduleSection({
               ))}
             <TimelineItem
               item={item}
+              coverUrl={coverByName.get(`source:${item.sourceId}`) ?? coverByName.get(item.placeName.trim().toLowerCase()) ?? searchedCovers[JSON.stringify([item.id, item.placeName, item.lat, item.lng])]}
               isLast={index === visibleItems.length - 1}
               /*
                 다음 일정까지 얼마나 먼가.

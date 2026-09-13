@@ -69,7 +69,7 @@ export function DirectionsMenu({
         aria-label={`${effectiveDest.name} ${label}`}
         className={cn(baseClass, className)}
       >
-        <TriggerIcon className={variant === "pill" ? "size-3.5" : "size-4"} />
+        {icon ? <TriggerIcon className={variant === "pill" ? "size-3.5" : "size-4"} /> : <img src="/design/directions-figma.svg" alt="" width={18} height={22} className="h-[22px] w-[18px] shrink-0" />}
         {variant !== "icon" ? label : null}
       </PopoverTrigger>
       <PopoverContent
