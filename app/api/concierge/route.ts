@@ -2,7 +2,10 @@ import { NextResponse } from "next/server"
 import { placeRecommendationCopy } from "@/shared/place-recommendation-copy"
 
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
-import { buildPlacePhotoProxyUrl, resolveCoverImageUrl } from "@/lib/place-cover-image"
+import { buildPlacePhotoProxyUrl } from "@/lib/place-cover-image"
+import { candidateTypes, selectVerifiedPlace, supportedTypes, type Candidate, type PlaceEvidence } from "@/lib/concierge-validation"
+import { reviewRecommendationPhotos } from "@/lib/concierge-photos"
+import { getCachedSearch, readPlacesByGoogleIds, putCachedSearch, writePlaces } from "@/lib/places-cache"
 import { distanceMeters } from "@/lib/geo"
 
 /**
@@ -32,21 +35,15 @@ export type ConciergePick = {
   kind: string
   address: string
   imageUrl: string
+  photoLabel?: string
+  photoDescription?: string
+  photoAnalyzed?: boolean
   rating?: number
   reviewCount?: number
   lat: number
   lng: number
   distanceKm?: number
   michelin?: string | null
-}
-
-type GoogleTextSearchItem = {
-  name?: string
-  formatted_address?: string
-  rating?: number
-  user_ratings_total?: number
-  photos?: { photo_reference?: string }[]
-  geometry?: { location?: { lat?: number; lng?: number } }
 }
 
 function normalizeName(value: string): string {
@@ -65,47 +62,48 @@ function getPlacesApiKey() {
   ).trim()
 }
 
-async function ground(
-  name: string,
-  city: string,
-  apiKey: string,
-  origin: string
-): Promise<Omit<ConciergePick, "reason" | "kind" | "distanceKm" | "michelin"> | null> {
+const CITIES = new Map<string, {at:number;point:LatLng}>()
+async function cityCenter(city:string,country:string,key:string):Promise<LatLng|null> {
+  const cacheKey=JSON.stringify([city,country]);const hit=CITIES.get(cacheKey)
+  if(hit&&Date.now()-hit.at<86400000)return hit.point
   try {
-    const url = new URL("https://maps.googleapis.com/maps/api/place/textsearch/json")
-    url.searchParams.set("query", `${name} ${city}`)
-    url.searchParams.set("key", apiKey)
-    url.searchParams.set("language", "ko")
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8_000)
-    let res: Response
-    try {
-      res = await fetch(url.toString(), { cache: "no-store", signal: controller.signal })
-    } finally {
-      clearTimeout(timeout)
+    const url=new URL("https://maps.googleapis.com/maps/api/geocode/json");url.searchParams.set("address",`${city} ${country}`);url.searchParams.set("key",key)
+    const r=await fetch(url,{signal:AbortSignal.timeout(5000)});if(!r.ok)return null
+    const data=await r.json();const candidates=(data.results??[]).filter((v:{types?:string[];partial_match?:boolean})=>!v.partial_match&&v.types?.some(t=>['locality','administrative_area_level_1','administrative_area_level_2'].includes(t)))
+    if(candidates.length!==1)return null
+    const point=candidates[0].geometry?.location
+    if(!Number.isFinite(point?.lat)||!Number.isFinite(point?.lng)||Math.abs(point.lat)>90||Math.abs(point.lng)>180)return null
+    CITIES.set(cacheKey,{at:Date.now(),point});while(CITIES.size>200)CITIES.delete(CITIES.keys().next().value!)
+    return point
+  }catch{return null}
+}
+async function ground(p:Candidate, query:string, city:string, country:string, center:LatLng, apiKey:string, origin:string) {
+  try {
+    const expected=candidateTypes(p,query);if(!expected.length)return null
+    const search=`${p.name} ${p.localName||''} ${p.addressHint||''} ${city} ${country} ${expected.join(' ')}`
+    const searchKey=JSON.stringify(['concierge-verified-v3',search])
+    const ids=await getCachedSearch(searchKey)
+    const cached=ids?.length?await readPlacesByGoogleIds(ids):null
+    let rows:PlaceEvidence[]=[]
+    if(ids?.length&&cached?.size===ids.length){rows=ids.map(id=>{const r=cached.get(id)!;return {place_id:id,name:r.name,formatted_address:r.address||'',types:r.google_types||[],business_status:r.is_closed?'CLOSED_PERMANENTLY':undefined,rating:r.rating??undefined,user_ratings_total:r.rating_count??undefined,photos:(r.photo_references||[]).map(photo_reference=>({photo_reference})),geometry:{location:{lat:r.lat,lng:r.lng}}}})}
+    else {
+      const url=new URL("https://maps.googleapis.com/maps/api/place/textsearch/json")
+      url.searchParams.set('query',search);url.searchParams.set('key',apiKey);url.searchParams.set('language','ko')
+      if(expected.length===1)url.searchParams.set('type',expected[0])
+      url.searchParams.set('location',`${center.lat},${center.lng}`);url.searchParams.set('radius','50000')
+      const r=await fetch(url,{signal:AbortSignal.timeout(6500)});if(!r.ok)return null
+      const j=await r.json();rows=Array.isArray(j.results)?j.results:[]
     }
-    if (!res.ok) return null
-    const json = (await res.json()) as { results?: GoogleTextSearchItem[] }
-    const top = json.results?.[0]
-    const lat = top?.geometry?.location?.lat
-    const lng = top?.geometry?.location?.lng
-    if (typeof lat !== "number" || typeof lng !== "number") return null
-    const placeName = String(top?.name ?? name).trim()
-    const photoRef = top?.photos?.[0]?.photo_reference
-    const photoUrl = photoRef ? buildPlacePhotoProxyUrl(photoRef, 1200, origin) : ""
-    return {
-      name: placeName,
-      localName: placeName,
-      address: String(top?.formatted_address ?? "").trim(),
-      imageUrl: photoUrl || resolveCoverImageUrl({ imageUrl: "", kind: "attraction", category: "관광지" }),
-      rating: typeof top?.rating === "number" ? top.rating : undefined,
-      reviewCount: typeof top?.user_ratings_total === "number" ? top.user_ratings_total : undefined,
-      lat,
-      lng,
+    const top=selectVerifiedPlace(p,query,rows,center,distanceMeters)
+    if(!top)return null
+    let refs=(top.photos||[]).map(v=>v.photo_reference||'').filter(Boolean).slice(0,2)
+    if(refs.length<2){
+      try{const u=new URL('https://maps.googleapis.com/maps/api/place/details/json');u.searchParams.set('place_id',top.place_id!);u.searchParams.set('fields','photos');u.searchParams.set('key',apiKey);const r=await fetch(u,{signal:AbortSignal.timeout(4000)});if(r.ok){const j=await r.json();const more=(j.result?.photos||[]).map((v:{photo_reference?:string})=>v.photo_reference).filter((v:unknown):v is string=>typeof v==='string');refs=[...new Set([...refs,...more])].slice(0,2)}}catch{}
     }
-  } catch {
-    return null
-  }
+    const loc=top.geometry!.location!;const point={lat:loc.lat!,lng:loc.lng!}
+    if(!cached?.size) {await writePlaces([{googlePlaceId:top.place_id!,name:top.name!,address:top.formatted_address,...point,rating:top.rating,ratingCount:top.user_ratings_total,googleTypes:top.types,photoReferences:refs}]);await putCachedSearch(searchKey,[top.place_id!])}
+    return {name:top.name!,localName:top.name!,address:top.formatted_address!,imageUrl:refs[0]?buildPlacePhotoProxyUrl(refs[0],1200,origin):'',rating:top.rating,reviewCount:top.user_ratings_total,...point,photoRefs:refs,verifiedType:expected.find(t=>top.types?.includes(t))!}
+  }catch{return null}
 }
 
 /*
@@ -145,7 +143,7 @@ export async function POST(request: Request) {
     const country = String(body.country ?? "").trim()
 
     /* ① 캐시 — 같은 도시+질문이면 그대로 돌려준다 */
-    const cacheKey = JSON.stringify(["copy-v2", city, country, query, body.accommodation ?? null, Array.isArray(body.existingNames) ? [...body.existingNames].sort() : [], tripId])
+    const cacheKey = JSON.stringify(["verified-v3", city, country, query, body.accommodation ?? null, Array.isArray(body.existingNames) ? [...body.existingNames].sort() : [], tripId])
     const hit = CACHE.get(cacheKey)
     if (hit && Date.now() - hit.at < CACHE_TTL) {
       return NextResponse.json({ results: hit.results, cached: true })
@@ -186,10 +184,11 @@ export async function POST(request: Request) {
       (existingNames.length > 0 ? `이미 목록에 있어 제외할 곳: ${existingNames.join(", ")}\n` : "") +
       `각 장소마다 highlight는 핵심 특징 하나를 8~24자 한국어로, reason은 이 사용자의 요청과 그 특징이 어떻게 맞는지 2~3문장(80~180자)으로 각각 작성해라.\n` +
       `reason에서 highlight를 그대로 반복하지 말고, 어떤 활동이나 상황에 적합한지 구체적으로 설명해라. 모든 장소에 같은 문장을 복사하지 마라.\n` +
-      `확인되지 않은 시설, 가격, 운영시간, 예약/일일 입장 가능 여부, 자격/수상은 단정하지 마라. 불확실한 방문 조건은 확인이 필요하다고 밝혀라. 근거가 부족하면 빈칸을 채우려고 사실을 만들지 마라.\n` +
-      `종류는 식당/바/카페/스파/클럽/명소/쇼핑/기타. 반드시 JSON만: {"picks":[{"name":"정확한 상호","highlight":"핵심 특징","reason":"요청과 연결한 상세 추천 이유","kind":"종류"}]}`
+      `확인되지 않은 시설, 가격, 운영시간, 예약/일일 입장 가능 여부, 자격/수상은 단정하지 마라. 불확실한 방문 조건은 확인이 필요하다고 밝혀라. 근거가 부족하면 빈칸을 채우려고 사실을 만들지 마라. 최고급·럭셔리·프라이빗 같은 품질이나 독점성 표현을 근거 없이 사용하지 마라.\n` +
+      `정확한 현지 상호 localName, 아는 경우 주소 addressHint(모르면 빈 문자열), 실제 업종 placeType을 ${supportedTypes.join("/")} 중 하나로 명시해라. 헬스클럽은 gym, 나이트클럽은 night_club이며 동명 화장품 매장은 제외.\n` +
+      `종류는 헬스장/식당/바/카페/스파/클럽/명소/쇼핑/기타. 반드시 JSON만: {"picks":[{"name":"정확한 상호","localName":"현지 상호","addressHint":"주소 또는 빈 문자열","placeType":"gym","highlight":"핵심 특징","reason":"요청과 연결한 상세 추천 이유","kind":"종류"}]}`
 
-    let picks: { name: string; highlight: string; reason: string; kind: string }[] = []
+    let picks: Candidate[] = []
     try {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 15_000)
@@ -212,10 +211,13 @@ export async function POST(request: Request) {
           candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
         }
         const rawText = (data.candidates?.[0]?.content?.parts?.[0]?.text ?? "").replace(/```json|```/g, "").trim()
-        const parsed = JSON.parse(rawText) as { picks?: Array<{ name?: string; highlight?: string; reason?: string; kind?: string }> }
+        const parsed = JSON.parse(rawText) as { picks?: Array<{ name?: string; localName?: string; addressHint?: string; placeType?: string; highlight?: string; reason?: string; kind?: string }> }
         picks = (parsed.picks ?? [])
           .map((p) => ({
             name: String(p.name ?? "").trim(),
+            localName: typeof p.localName === "string" ? p.localName.trim() : "",
+            addressHint: typeof p.addressHint === "string" ? p.addressHint.trim() : "",
+            placeType: typeof p.placeType === "string" ? p.placeType.trim() : "",
             ...placeRecommendationCopy(p),
             kind: String(p.kind ?? "기타").trim(),
           }))
@@ -232,16 +234,23 @@ export async function POST(request: Request) {
 
     /* 그라운딩 — 실존·좌표·평점. 평점 4.0 미만은 탈락(집 규칙) */
     const origin = new URL(request.url).origin
-    const grounded = await Promise.all(picks.map((p) => ground(p.name, city, placesKey, origin)))
+    const center=await cityCenter(city,country,placesKey)
+    if(!center)return NextResponse.json({results:[],error:"여행 지역을 정확히 확인하지 못했어요. 도시와 국가를 확인해 주세요."})
+    const grounded = await Promise.all(picks.map((p) => ground(p, query, city, country, center, placesKey, origin)))
+    const photos=await reviewRecommendationPhotos(grounded.map(g=>({refs:g?.photoRefs||[],type:g?.verifiedType||''})),geminiKey)
     let results: ConciergePick[] = []
     for (let i = 0; i < picks.length; i++) {
       const g = grounded[i]
       if (!g) continue
       if ((g.rating ?? 0) < 4.0) continue
       results.push({
-        ...g,
+        name:g.name,localName:g.localName,address:g.address,lat:g.lat,lng:g.lng,rating:g.rating,reviewCount:g.reviewCount,
+        ...photos[i],
         ...placeRecommendationCopy(picks[i]),
-        kind: picks[i].kind,
+        reason: [placeRecommendationCopy(picks[i]).reason, photos[i].imageUrl
+          ? `사진 안내: ${photos[i].photoAnalyzed ? `${photos[i].photoLabel} (AI 분류). ${photos[i].photoDescription} 사진만으로 시설 품질이나 현재 이용 조건은 확인할 수 없어요.` : photos[i].photoDescription}`
+          : '등록된 장소 사진을 확인하지 못했어요.'].filter(Boolean).join('\n\n'),
+        kind: ({gym:'헬스장',night_club:'클럽',restaurant:'식당',cafe:'카페',bar:'바',spa:'스파'} as Record<string,string>)[g.verifiedType] || picks[i].kind,
         distanceKm: accommodation
           ? Math.round((distanceMeters(accommodation, { lat: g.lat, lng: g.lng }) / 1000) * 10) / 10
           : undefined,
@@ -296,6 +305,7 @@ export async function POST(request: Request) {
     if (accommodation) results.sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
 
     const out = results.slice(0, 6)
+    if(!out.length)return NextResponse.json({results:[],error:"요청하신 업종과 위치가 확인된 장소를 찾지 못했어요. 조건을 조금 바꿔 주세요."})
     CACHE.set(cacheKey, { at: Date.now(), results: out })
     if (CACHE.size > 300) {
       const oldest = [...CACHE.entries()].sort((x, y) => x[1].at - y[1].at)[0]
