@@ -1,7 +1,7 @@
 "use client"
 import { ExternalPlaceShare } from "@/components/external-place-share"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Check, Loader2, Send } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -30,6 +30,7 @@ export function RecommendPlaceDialog({
   target: RecommendTarget | null
   onClose: () => void
 }) {
+  const swipe = useRef<{ x: number; y: number } | null>(null)
   const [friends, setFriends] = useState<UserSummary[]>([])
   const [loading, setLoading] = useState(false)
   const [sentTo, setSentTo] = useState<Set<string>>(new Set())
@@ -64,7 +65,15 @@ export function RecommendPlaceDialog({
         if (!next) onClose()
       }}
     >
-      <DialogContent className="w-full max-w-sm rounded-[30px] border border-slate-100 bg-white p-6 shadow-2xl">
+      <DialogContent onTouchStart={event => {
+        const scroller = (event.target as HTMLElement).closest("[data-share-friends]")
+        const touch = event.touches[0]
+        swipe.current = touch && (!scroller || scroller.scrollTop <= 1) ? { x: touch.clientX, y: touch.clientY } : null
+      }} onTouchCancel={() => { swipe.current = null }} onTouchEnd={event => {
+        const start = swipe.current; swipe.current = null
+        const end = event.changedTouches[0]
+        if (start && end && end.clientY - start.y > 90 && end.clientY - start.y > Math.abs(end.clientX - start.x) * 1.4) onClose()
+      }} className="w-full max-w-sm rounded-[30px] border border-slate-100 bg-white p-6 shadow-2xl">
         <DialogHeader className="mb-2 text-left">
           <DialogTitle className="text-[25px] leading-8 font-semibold text-slate-900">장소 공유</DialogTitle>
           <p className="mt-4 text-lg font-semibold">{target?.place.place_name}</p>
@@ -81,7 +90,7 @@ export function RecommendPlaceDialog({
         ) : friends.length === 0 ? (
           <p className="py-10 text-center text-sm text-slate-400">추천을 보낼 친구가 없어요.</p>
         ) : (
-          <ul className="flex max-h-96 flex-col overflow-y-auto">
+          <ul data-share-friends className="flex max-h-96 flex-col overflow-y-auto overscroll-contain">
             {friends.map((f) => {
               const sent = sentTo.has(f.userId)
               return (
