@@ -1,0 +1,10 @@
+/* Figma277:4870 /278:4872, preview lead-in removed; one-shot interactive entrance. */
+.row { animation: row-in 350ms ease-out both; }
+.case { position:absolute; left:10px; top:6px; width:24px; height:33px; }
+.badge { position:absolute; left:23px; top:21px; width:18px; height:18px; }
+.suitcase .case { animation: case-in 700ms 550ms ease-out both; }
+.suitcase .badge { animation: plus-in 670ms 630ms ease-out both; }
+@keyframes row-in { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes case-in { 0%,100% { transform:rotate(0) scale(1); } 26% { transform:rotate(-7deg) scale(.94); } 60% { transform:rotate(4deg) scale(1.02); } }
+@keyframes plus-in { 0%,100% { transform:translateY(0); } 30% { transform:translateY(-5px); } 67% { transform:translateY(1px); } }
+@media (prefers-reduced-motion:reduce) { .row,.suitcase .case,.suitcase .badge { animation:none; } }

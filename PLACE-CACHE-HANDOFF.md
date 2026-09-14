@@ -1,3 +1,9 @@
+## 2026-09-14 확정 공유/퀵등록 코드 적용 (미배포·카카오 설정 대기)
+
+Figma 285:4935/277:4870 기반 공유 및 퀵등록 시트 반영, SVG/키프레임 공통 디자인. authenticated POST /api/place-shares, 공유자 전용 인증 preview /share/place/[token], 장소정보 비노출 public /s/place/[token], authenticated recipient API 추가. private memo 제외, 저장 장소는 사용자 RLS 아래 조회하여 authoritative 필드 사용. Kakao feed 사진/발신자/로고/기본 장소정보 연결 코드; 실제 전송 미검증. 로그인 후 앱 상세 복원은 앱에 구현. Universal Links/설치 후 자동 복귀 없음.
+
+Supabase migration 20260914112351_place_share_links 실제 적용, server-only RLS table, 기존 데이터 변경 없음. 웹 코드 push/배포 없음. 사용자 Developers 로그인 후 WITHTRIP 앱1525585 확인했으나 브라우저 정책 연결 오류로 JS key/domain 미확인·미설정. 환경값/비밀값 출력 없음. 실카톡 전송 없음. 로컬 타입·API 인증/필드 모의 검사·비인증 landing 확인 통과, 인증 UI 전체 runtime 미검증. 앱 HANDOFF 최신 항목 참고. 기존 eas.json/app.json/tsconfig.tsbuildinfo 무관 변경 보전.
+
 ## 2026-09-14 장소 외부 공유 (미배포)
 
 추천/위치공유 다이얼로그에 ExternalPlaceShare 추가. Web Share→설치 앱(카카오톡 등) 선택, 미지원은 클립보드와 안내. 직접 Kakao SDK 아님. 공통 shared/external-place-share.ts에서 이름·주소·지도 URL만 생성: 국내 Kakao, 국외 OSM, 좌표 없을 때 Kakao검색. 비공개 ID/메모/사진 제외. 앱 동일 연결 및 shared sync30. 웹tsc 통과, 실제 브라우저 WebShare 미검증. Android 로컬 설치에서 chooser·취소재시도 확인, 카카오톡 미설치로 수신미검증. Figma282:4870. 웹push/DB변경 없음.

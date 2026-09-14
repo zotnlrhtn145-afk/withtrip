@@ -46,7 +46,7 @@ export function RecommendPlaceDialog({
   }, [target])
 
   const send = async (f: UserSummary) => {
-    if (!target || sentTo.has(f.userId)) return
+    if (!target || busy || sentTo.has(f.userId)) return
     setBusy(f.userId)
     const ok = await sendRecommendation({
       recipientId: f.userId,
@@ -67,11 +67,13 @@ export function RecommendPlaceDialog({
       <DialogContent className="w-full max-w-sm rounded-[30px] border border-slate-100 bg-white p-6 shadow-2xl">
         <DialogHeader className="mb-2 text-left">
           <DialogTitle className="text-[25px] leading-8 font-semibold text-slate-900">장소 공유</DialogTitle>
+          <p className="mt-4 text-lg font-semibold">{target?.place.place_name}</p>
           <DialogDescription className="text-xs leading-relaxed text-slate-400">
-            {target ? `"${target.label}"을(를) 보낼 친구를 선택하세요.` : ""}
+            {target ? `${target.place.address || ""}` : ""}
           </DialogDescription>
         </DialogHeader>
-        {target && <ExternalPlaceShare place={{ name: target.place.place_name, address: target.place.address, lat: target.place.lat, lng: target.place.lng }} />}
+        {target && <ExternalPlaceShare sourceId={target.sourceId} place={{ name: target.place.place_name, address: target.place.address, lat: target.place.lat, lng: target.place.lng, imageUrl: target.place.image_url, category: target.place.sub_category || target.place.category, rating: target.place.rating, reviewCount: target.place.review_count }} />}
+        <div className="border-t border-slate-200 pt-4 text-sm text-slate-500">위드트립 친구 {loading ? "" : friends.length}</div>
         {loading ? (
           <div className="flex items-center justify-center py-10 text-slate-400">
             <Loader2 className="size-5 animate-spin" />
@@ -90,16 +92,16 @@ export function RecommendPlaceDialog({
                   </Avatar>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-slate-900">{f.nickname}</p>
-                    <p className="truncate text-xs text-slate-400">{f.email || f.userId}</p>
+
                   </div>
                   <button
                     type="button"
-                    disabled={sent || busy === f.userId}
+                    disabled={sent || busy !== null}
                     onClick={() => void send(f)}
                     className={
                       sent
                         ? "flex shrink-0 items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500"
-                        : "flex shrink-0 items-center gap-1 rounded-full bg-amber-400 px-3 py-1.5 text-xs font-bold text-slate-950 transition-colors hover:bg-amber-500 disabled:opacity-60"
+                        : "flex shrink-0 items-center gap-1 rounded-full bg-white border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-950 transition-colors hover:bg-slate-50 disabled:opacity-60"
                     }
                   >
                     {busy === f.userId ? (
@@ -110,7 +112,7 @@ export function RecommendPlaceDialog({
                       </>
                     ) : (
                       <>
-                        <Send className="size-3.5" /> 보내기
+                        보내기
                       </>
                     )}
                   </button>

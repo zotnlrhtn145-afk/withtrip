@@ -59,7 +59,7 @@ async function loadKakaoSdk(): Promise<KakaoSDK | null> {
   return window.Kakao ?? null
 }
 
-async function ensureKakaoReady(): Promise<KakaoSDK | null> {
+export async function ensureKakaoReady(): Promise<KakaoSDK | null> {
   const key = getKakaoJsKey()
   if (!key) return null
 

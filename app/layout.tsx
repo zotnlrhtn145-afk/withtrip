@@ -17,7 +17,7 @@ const KAKAO_INAPP_ESCAPE_SCRIPT = `
 (function () {
   try {
     var ua = navigator.userAgent || '';
-    if (/KAKAOTALK/i.test(ua)) {
+    if (/KAKAOTALK/i.test(ua) && !/^\\/(s|share)\\/place\\//.test(location.pathname)) {
       location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(location.href);
     }
   } catch (e) {}
