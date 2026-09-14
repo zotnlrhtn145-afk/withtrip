@@ -1,3 +1,7 @@
+## 2026-09-15 카카오 수신 링크 앱 연결 (미배포)
+
+/s/place/{token}을 앱에서 직접받도록앱iOS associatedDomains/Android autoVerify +native-intent recipient라우팅추가. 웹 .well-known/apple-app-site-association와assetlinks.json 공개JSON 추가, middleware 두파일만세션갱신제외. Android fingerprint는 EAS APK85 apksigner verify 결과, Play추가시재확인. 기존수신landing 모바일customscheme1회시도+수동버튼유지(브라우저차단시자동열기보장안됨). 개인정보응답은기존인증API유지. 양쪽tsc/association검사/앱cold-warm링크검사/Expo생성설정검사통과, 실제카카오E2E는웹배포+새앱설치후필요. 서버먼저배포필요, 현재137/85에는미포함. push/빌드없음.
+
 ## 2026-09-15 사진 요청 비용 보호 (미배포)
 
 /api/places/photo에 lib/photo-request-guard.ts 연결. 동일ref해시+width 진행요청을 인스턴스 내1회로 병합; upstream/예외 실패 뒤30초503 Retry-After/no-store. 실패키1024·동시64 상한, 성공응답 장기캐시 추가없음. 기존 스토리지 정책/DB 변경없음. 다중서버 전체 중복방지는 아님. 앱 확대 현재±1장→현재1장 full1200px; 웹은 기존현재1장 유지. check-photo-request-guard.cjs 중복/body/만료/예외/크기/상한복구 및 양쪽tsc 통과. 실제기기·절감률 미측정, push/배포/신규빌드 없음.

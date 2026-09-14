@@ -41,6 +41,9 @@ function withPathTag(request: NextRequest): NextResponse {
 }
 
 export async function middleware(request: NextRequest) {
+  // OS association verification is public and must not depend on session refresh.
+  if (["/.well-known/apple-app-site-association", "/.well-known/assetlinks.json"].includes(request.nextUrl.pathname)) return NextResponse.next()
+
   const blocked = await guardAdmin(request)
   if (blocked) return blocked
 
