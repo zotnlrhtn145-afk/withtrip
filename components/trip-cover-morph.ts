@@ -18,7 +18,7 @@ export function openWithCover(source: HTMLElement, id: string, navigate: () => v
     copies[i].style.animation = "none"
     copies[i].removeAttribute("id")
   })
-  Object.assign(copy.style, { position: "absolute", left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px`, margin: "0", transform: "none" })
+  Object.assign(copy.style, { position: "absolute", left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px`, margin: "0", transform: "none", transformOrigin: "top left", willChange: "transform" })
   layer.append(backdrop, copy); document.body.append(layer)
   let done = false
   let timeout: ReturnType<typeof setTimeout>
@@ -30,16 +30,16 @@ export function openWithCover(source: HTMLElement, id: string, navigate: () => v
     done = true; observer.disconnect()
     const to = target.getBoundingClientRect()
     if (!to.width || !to.height) { clear(); return }
-    backdrop.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 450, fill: "forwards" })
+    backdrop.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 240, fill: "forwards" })
     const anim = copy.animate([
-      { left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px`, borderRadius: "21px 21px 0 0" },
-      { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px`, borderRadius: getComputedStyle(target).borderRadius },
-    ], { duration: 850, easing: "cubic-bezier(.22,1,.36,1)", fill: "forwards" })
-    anim.finished.then(async () => {
-      const img = target.querySelector("img")
-      if (img && !img.complete) await Promise.race([img.decode().catch(() => {}), new Promise(resolve => setTimeout(resolve, 1500))])
+      { transform: "translate(0px, 0px) scale(1, 1)", borderRadius: "21px 21px 0 0" },
+      { transform: `translate(${to.left - rect.left}px, ${to.top - rect.top}px) scale(${to.width / rect.width}, ${to.height / rect.height})`, borderRadius: getComputedStyle(target).borderRadius },
+    ], { duration: 460, easing: "cubic-bezier(.2,.75,.25,1)", fill: "forwards" })
+    const img = target.querySelector("img")
+    const decoded = img ? Promise.race([img.decode().catch(() => {}), new Promise(resolve => setTimeout(resolve, 1500))]) : Promise.resolve()
+    Promise.all([anim.finished, decoded]).then(async () => {
       if (!layer.isConnected) return
-      await layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: "forwards" }).finished
+      await layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, fill: "forwards" }).finished
       clear()
     }).catch(clear)
   }
