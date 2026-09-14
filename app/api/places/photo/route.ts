@@ -2,6 +2,8 @@ import { createHash } from "node:crypto"
 
 import { NextResponse } from "next/server"
 
+import { createPhotoRequestGuard } from "@/lib/photo-request-guard"
+
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 
 export const runtime = "nodejs"
@@ -82,6 +84,8 @@ async function fetchWithTimeout(url: string, init: RequestInit) {
   }
 }
 
+const guardedPhoto = createPhotoRequestGuard()
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const ref = String(searchParams.get("ref") ?? "").trim()
@@ -100,6 +104,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Google API 키가 설정되지 않았습니다." }, { status: 500 })
   }
 
+  return guardedPhoto(`${refHash(ref)}:${width}`, () => loadPhoto(ref, width, apiKey))
+}
+
+async function loadPhoto(ref: string, width: number, apiKey: string) {
   const admin = getSupabaseAdmin()
   const hash = refHash(ref)
 
