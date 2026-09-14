@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { differenceInHours, format, formatDistanceToNow, parseISO } from "date-fns"
 import { ko } from "date-fns/locale"
-import { Ban, Flag, Loader2, RefreshCw, Search, UserPlus, Users, X } from "lucide-react"
+import Link from "next/link"
+import { ChevronLeft, Ban, Flag, Loader2, RefreshCw, Search, UserPlus, Users, X } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -666,7 +667,8 @@ export function FriendsView() {
     <div className="mx-auto flex w-full max-w-xl flex-col gap-4 pb-6 sm:max-w-2xl">
       {/* Top bar */}
       <div className="flex items-center justify-between gap-3">
-        <div>
+        <Link href="/mypage" aria-label="프로필로 뒤로가기" className="flex size-11 shrink-0 items-center justify-center"><ChevronLeft className="size-6" /></Link>
+        <div className="flex-1">
           <h2 className="text-xl font-bold tracking-tight">친구</h2>
 
         </div>

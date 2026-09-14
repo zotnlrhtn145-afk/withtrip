@@ -1,3 +1,7 @@
+## 2026-09-15 친구 화면 프로필 복귀 버튼 (미배포)
+
+앱 친구 hidden tab 닫기→메인 오류를 profile replace로 수정하며 웹 FriendsView에도 /mypage 뒤로 링크 연결. 기존 색·아이콘 유지. Figma302:4888 헤더. 양쪽 tsc 통과, 실제기기 미검증. 웹 push/배포 없음.
+
 ## 2026-09-15 운영 배포 완료 (43개 승인 변경 + 빌드 보완)
 
 사용자 명시적 전체 운영승인으로 f4e0afb까지 push. Vercel clean pnpm 환경에서 google 타입 누락 발생해 @types/google.maps 3.65.3 개발의존성을 명시, 동일 pnpm production build 통과 후 9c07760 배포. DSAYBhRNupYzFCAi78Utfixb6CE7 Production Current Ready(59초), www.withtrip.co.kr 연결 확인. 운영 공유 POST404→401 로그인 JSON, 수신API401, landing/bridge200, logoPNG200 확인. Kakao JS Production 변수와 SDK 도메인은 앞서 설정됨. 인증된 실제 공유링크 생성·카톡 전송/수신은 미검증. 앱136/84는 기존배포, 새 닫기 제스처2cb3065는 다음 네이티브 빌드 대기. 무관 eas.json/app.json/tsconfig.tsbuildinfo 보전.
