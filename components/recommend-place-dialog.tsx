@@ -72,7 +72,7 @@ export function RecommendPlaceDialog({
             {target ? `${target.place.address || ""}` : ""}
           </DialogDescription>
         </DialogHeader>
-        {target && <ExternalPlaceShare sourceId={target.sourceId} place={{ name: target.place.place_name, address: target.place.address, lat: target.place.lat, lng: target.place.lng, imageUrl: target.place.image_url, category: target.place.sub_category || target.place.category, rating: target.place.rating, reviewCount: target.place.review_count }} />}
+        {target && <ExternalPlaceShare onNavigate={onClose} sourceId={target.sourceId} place={{ name: target.place.place_name, address: target.place.address, lat: target.place.lat, lng: target.place.lng, imageUrl: target.place.image_url, category: target.place.sub_category || target.place.category, rating: target.place.rating, reviewCount: target.place.review_count }} />}
         <div className="border-t border-slate-200 pt-4 text-sm text-slate-500">위드트립 친구 {loading ? "" : friends.length}</div>
         {loading ? (
           <div className="flex items-center justify-center py-10 text-slate-400">

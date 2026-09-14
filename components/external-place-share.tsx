@@ -2,7 +2,7 @@
 import { useRef, useState } from "react"
 import { Link, Share2, Loader2 } from "lucide-react"
 import { type SharePlace, validShareToken } from "@/shared/place-share"
-export function ExternalPlaceShare({ place, sourceId }: { place: SharePlace; sourceId?: string | null }) {
+export function ExternalPlaceShare({ place, sourceId, onNavigate }: { place: SharePlace; sourceId?: string | null; onNavigate?: () => void }) {
  const lock = useRef(false)
  const [busy, setBusy] = useState(false)
  const [status, setStatus] = useState("")
@@ -15,7 +15,7 @@ export function ExternalPlaceShare({ place, sourceId }: { place: SharePlace; sou
    const data = await res.json()
    if (!validShareToken(data.token)) throw new Error("공유 주소를 확인하지 못했어요.")
    if (copy) { await navigator.clipboard.writeText(data.url); setStatus("장소 링크를 복사했어요.") }
-   else window.location.assign(`/share/place/${data.token}`)
+   else { onNavigate?.(); window.location.assign(`/share/place/${data.token}?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`) }
   } catch (e) { setStatus(e instanceof Error ? e.message : "다시 시도해 주세요.") }
   finally { lock.current = false; setBusy(false) }
  }
