@@ -66,7 +66,7 @@ export function RecommendPlaceDialog({
     >
       <DialogContent className="w-full max-w-sm rounded-[30px] border border-slate-100 bg-white p-6 shadow-2xl">
         <DialogHeader className="mb-2 text-left">
-          <DialogTitle className="text-[25px] leading-8 font-semibold text-slate-900">누구에게 추천할까요?</DialogTitle>
+          <DialogTitle className="text-[25px] leading-8 font-semibold text-slate-900">장소 공유</DialogTitle>
           <DialogDescription className="text-xs leading-relaxed text-slate-400">
             {target ? `"${target.label}"을(를) 보낼 친구를 선택하세요.` : ""}
           </DialogDescription>
