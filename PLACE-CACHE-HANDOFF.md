@@ -1,3 +1,7 @@
+## 2026-09-15 운영 배포 완료 (43개 승인 변경 + 빌드 보완)
+
+사용자 명시적 전체 운영승인으로 f4e0afb까지 push. Vercel clean pnpm 환경에서 google 타입 누락 발생해 @types/google.maps 3.65.3 개발의존성을 명시, 동일 pnpm production build 통과 후 9c07760 배포. DSAYBhRNupYzFCAi78Utfixb6CE7 Production Current Ready(59초), www.withtrip.co.kr 연결 확인. 운영 공유 POST404→401 로그인 JSON, 수신API401, landing/bridge200, logoPNG200 확인. Kakao JS Production 변수와 SDK 도메인은 앞서 설정됨. 인증된 실제 공유링크 생성·카톡 전송/수신은 미검증. 앱136/84는 기존배포, 새 닫기 제스처2cb3065는 다음 네이티브 빌드 대기. 무관 eas.json/app.json/tsconfig.tsbuildinfo 보전.
+
 ## 2026-09-14 확정 공유/퀵등록 코드 적용 (미배포·카카오 설정 대기)
 
 Figma 285:4935/277:4870 기반 공유 및 퀵등록 시트 반영, SVG/키프레임 공통 디자인. authenticated POST /api/place-shares, 공유자 전용 인증 preview /share/place/[token], 장소정보 비노출 public /s/place/[token], authenticated recipient API 추가. private memo 제외, 저장 장소는 사용자 RLS 아래 조회하여 authoritative 필드 사용. Kakao feed 사진/발신자/로고/기본 장소정보 연결 코드; 실제 전송 미검증. 로그인 후 앱 상세 복원은 앱에 구현. Universal Links/설치 후 자동 복귀 없음.
