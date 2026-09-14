@@ -1,4 +1,5 @@
 "use client"
+import { openWithCover } from "./trip-cover-morph"
 
 import Image from "next/image"
 import styles from "./trip-banner-card.module.css"
@@ -88,12 +89,11 @@ export function TripBannerCard({
     if (openingRef.current) return
     if (!approved || compact || !focusRef.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) { onSelect(trip); return }
     openingRef.current = true
-    focusRef.current.dataset.opening = "true"
-    const from = getComputedStyle(focusRef.current).transform
     motionRef.current?.cancel()
-    const animation = focusRef.current.animate([{ transform: from }, { transform: "translateY(-76px) scale(1.11)" }], { duration: 650, easing: "ease-out", fill: "forwards" })
-    motionRef.current = animation
-    animation.finished.then(() => { onSelect(trip) }).catch(() => {}).finally(() => { animation.cancel(); openingRef.current = false; if (focusRef.current) delete focusRef.current.dataset.opening })
+    const hero = focusRef.current.querySelector<HTMLElement>(`button.${styles.heroLink}`)
+    if (hero) openWithCover(hero, trip.id, () => onSelect(trip))
+    else onSelect(trip)
+    openingRef.current = false
   }
   const focusPress = { onPointerDown: () => pressFocus(true), onPointerUp: () => pressFocus(false), onPointerCancel: () => pressFocus(false), onPointerLeave: () => pressFocus(false) }
 

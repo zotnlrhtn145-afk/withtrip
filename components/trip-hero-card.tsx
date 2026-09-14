@@ -371,7 +371,7 @@ export function TripHeroCard({
         flushBottom ? "" : "mb-8 border-b border-slate-200/70 pb-2"
       )}
     >
-      <div className={cn("relative h-[285px] overflow-hidden bg-slate-100", compact ? "-mx-4" : "rounded-[22px]")}>
+      <div data-trip-cover={trip.id} className={cn("relative h-[285px] overflow-hidden bg-slate-100", compact ? "-mx-4" : "rounded-[22px]")}>
         <Image src={coverSrc} alt={trip.heroImageAlt} fill priority sizes="(min-width: 1024px) 900px, 100vw" className="object-cover" onError={() => setCoverSrc(FALLBACK_TRIP_COVER)} />
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute top-[15px] right-[14px] z-20 flex items-center gap-1">

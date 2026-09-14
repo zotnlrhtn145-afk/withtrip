@@ -25,7 +25,7 @@ export function TripDetailHero({ trip }: { trip: Trip }) {
   }, [trip.heroImage])
 
   return (
-    <header className="relative isolate min-h-[280px] overflow-hidden sm:min-h-[320px]">
+    <header data-trip-cover={trip.id} className="relative isolate min-h-[280px] overflow-hidden sm:min-h-[320px]">
       <Image
         src={coverSrc}
         alt={trip.heroImageAlt}
