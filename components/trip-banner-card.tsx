@@ -74,6 +74,29 @@ export function TripBannerCard({
   const [deleting, setDeleting] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const focusRef = useRef<HTMLElement>(null)
+  const motionRef = useRef<Animation | null>(null)
+  const openingRef = useRef(false)
+  useEffect(() => () => { motionRef.current?.cancel() }, [])
+  const pressFocus = (down: boolean) => {
+    if (!approved || compact || openingRef.current || !focusRef.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    const from = getComputedStyle(focusRef.current).transform
+    motionRef.current?.cancel()
+    motionRef.current = focusRef.current.animate([{ transform: from }, { transform: `scale(${down ? .975 : 1})` }], { duration: down ? 220 : 350, easing: "ease-out", fill: "forwards" })
+  }
+  const selectTrip = () => {
+    if (openingRef.current) return
+    if (!approved || compact || !focusRef.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) { onSelect(trip); return }
+    openingRef.current = true
+    focusRef.current.dataset.opening = "true"
+    const from = getComputedStyle(focusRef.current).transform
+    motionRef.current?.cancel()
+    const animation = focusRef.current.animate([{ transform: from }, { transform: "translateY(-76px) scale(1.11)" }], { duration: 650, easing: "ease-out", fill: "forwards" })
+    motionRef.current = animation
+    animation.finished.then(() => { onSelect(trip) }).catch(() => {}).finally(() => { animation.cancel(); openingRef.current = false; if (focusRef.current) delete focusRef.current.dataset.opening })
+  }
+  const focusPress = { onPointerDown: () => pressFocus(true), onPointerUp: () => pressFocus(false), onPointerCancel: () => pressFocus(false), onPointerLeave: () => pressFocus(false) }
+
 
   useEffect(() => {
     setCoverSrc(trip.heroImage || FALLBACK_TRIP_COVER)
@@ -116,8 +139,8 @@ export function TripBannerCard({
 
   return (
     <>
-      {approved ? <article className={cn(styles.approved, compact && styles.approvedCompact)}>
-        <button type="button" onClick={() => onSelect(trip)} aria-label={`${trip.title} 상세 보기`} className={compact ? styles.rowLink : styles.heroLink}>
+      {approved ? <article ref={focusRef} className={cn(styles.approved, compact && styles.approvedCompact, !compact && styles.focusMotion)}>
+        <button type="button" onClick={selectTrip} {...focusPress} aria-label={`${trip.title} 상세 보기`} className={compact ? styles.rowLink : styles.heroLink}>
           {compact ? <span className={styles.rowPhoto}><Image src={coverSrc} alt={trip.heroImageAlt || `${trip.region || trip.country} 여행 사진`} fill sizes="80px" className="object-cover" onError={() => setCoverSrc(FALLBACK_TRIP_COVER)} /></span> : <>
             <Image src={coverSrc} alt={trip.heroImageAlt} fill priority={priority} sizes="(min-width: 768px) 640px, 100vw" className="object-cover" onError={() => setCoverSrc(FALLBACK_TRIP_COVER)} />
             <span className={styles.scrim} />
@@ -133,7 +156,7 @@ export function TripBannerCard({
         </button>
         <div className={styles.info}>
         <div className={styles.memberRow}>
-          {!compact ? <button type="button" onClick={() => onSelect(trip)} aria-label={`${memberSummary}, 여행 열기`} className={styles.members}>
+          {!compact ? <button type="button" onClick={selectTrip} {...focusPress} aria-label={`${memberSummary}, 여행 열기`} className={styles.members}>
             {!compact ? <AvatarGroup className="-space-x-2">
               {tripMembers.slice(0, 3).map(member => <Avatar key={member.id} className="size-7 ring-2 ring-white">
                 {"avatarUrl" in member && typeof member.avatarUrl === "string" && member.avatarUrl ? <AvatarImage src={member.avatarUrl} alt="" /> : null}
@@ -194,7 +217,7 @@ export function TripBannerCard({
               </div>
             ) : null}
           </div>
-          {!compact ? <button type="button" onClick={() => onSelect(trip)} aria-label="여행 열기" className={styles.open}><ArrowUpRight size={20} /></button> : null}
+          {!compact ? <button type="button" onClick={selectTrip} {...focusPress} aria-label="여행 열기" className={styles.open}><ArrowUpRight size={20} /></button> : null}
         </div>
         <div className={styles.details}>
           <span>{muted ? "종료" : trip.dDay > 0 ? `D-${trip.dDay}` : trip.dDay === 0 ? "D-DAY" : `D+${Math.abs(trip.dDay)}`}</span>

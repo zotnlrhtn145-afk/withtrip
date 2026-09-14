@@ -55,3 +55,22 @@
 .rowPhoto { position: relative; display: block; flex: none; width: 80px; height: 88px; border-radius: 14px; overflow: hidden; background: #f8fafc; }
 .rowLink .copy { min-width: 0; }
 .approvedCompact .details { margin-left: 94px; }
+
+/* Figma 268:4870: separately timed manual entrance tracks, never loop. */
+.focusMotion { animation: none; }
+.focusMotion .heroLink { animation: focus-hero 950ms ease-out both; }
+.focusMotion .heroLink > img { animation: focus-photo 950ms ease-out both; }
+.focusMotion .memberRow { animation: focus-members 600ms 450ms ease-out both; }
+.focusMotion .details { animation: focus-day 580ms 620ms ease-out both; }
+.focusMotion button:active { opacity: 1; }
+@keyframes focus-hero { 0%, 15.8% { opacity: 0; transform: translateY(14px); } 100% { opacity: 1; transform: translateY(0); } }
+@keyframes focus-photo { 0% { transform: scale(1.045); } 100% { transform: scale(1); } }
+@keyframes focus-members { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
+@keyframes focus-day { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .focusMotion .heroLink, .focusMotion .heroLink > img, .focusMotion .memberRow, .focusMotion .details { animation: none; }
+}
+
+.focusMotion[data-opening="true"] { z-index: 10; }
+.focusMotion::before { content: ""; position: absolute; inset: 0; border-radius: 22px; box-shadow: 0 0 0 100vmax white; opacity: 0; pointer-events: none; z-index: -1; transition: opacity 500ms ease-out; }
+.focusMotion[data-opening="true"]::before { opacity: 1; }
