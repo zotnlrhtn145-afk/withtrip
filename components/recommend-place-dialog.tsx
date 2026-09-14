@@ -1,4 +1,5 @@
 "use client"
+import { ExternalPlaceShare } from "@/components/external-place-share"
 
 import { useEffect, useState } from "react"
 import { Check, Loader2, Send } from "lucide-react"
@@ -70,6 +71,7 @@ export function RecommendPlaceDialog({
             {target ? `"${target.label}"을(를) 보낼 친구를 선택하세요.` : ""}
           </DialogDescription>
         </DialogHeader>
+        {target && <ExternalPlaceShare place={{ name: target.place.place_name, address: target.place.address, lat: target.place.lat, lng: target.place.lng }} />}
         {loading ? (
           <div className="flex items-center justify-center py-10 text-slate-400">
             <Loader2 className="size-5 animate-spin" />

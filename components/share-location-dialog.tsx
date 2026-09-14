@@ -1,4 +1,5 @@
 "use client"
+import { ExternalPlaceShare } from "@/components/external-place-share"
 
 import { useEffect, useState } from "react"
 import { Check, Loader2, Plane, Send } from "lucide-react"
@@ -109,6 +110,7 @@ export function ShareLocationDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {target && <ExternalPlaceShare place={target} />}
         {/* 친구 / 여행 세그먼트 */}
         <div className="mb-3 flex rounded-full bg-slate-100 p-1">
           {(
