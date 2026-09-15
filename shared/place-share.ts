@@ -7,8 +7,12 @@ export const placeShareAppUrl = (token: string) => `withtripapp://place/shared?t
 export function placeShareSummary(p: SharePlace) {
   return [p.category, p.rating != null ? `★ ${p.rating}${p.reviewCount != null ? ` (${p.reviewCount.toLocaleString("ko-KR")})` : ""}` : null, p.address, p.description].filter(Boolean).join(" · ")
 }
-export function kakaoPlaceFeed(share: PlaceShare, origin: string) {
+export function kakaoPlaceFeed(share: PlaceShare, origin: string, nativeAppLinks = false) {
   const url = placeShareUrl(origin, share.token)
-  const link = { mobileWebUrl: url, webUrl: url }
+  // Enable only after the native Kakao scheme is registered and released on both platforms.
+  const link = { mobileWebUrl: url, webUrl: url, ...(nativeAppLinks ? {
+    androidExecutionParams: `placeShareToken=${share.token}`,
+    iosExecutionParams: `placeShareToken=${share.token}`,
+  } : {}) }
   return { objectType: "feed", content: { title: share.place.name || "공유한 장소", description: placeShareSummary(share.place).slice(0, 200), imageUrl: share.place.imageUrl || `${origin}/design/withtrip-share-logo.png`, link }, itemContent: { profileText: `${share.sender}님이 이 장소를 공유합니다`, profileImageUrl: `${origin}/design/withtrip-share-logo.png` }, buttons: [{ title: "공유한 장소 보기", link }] }
 }

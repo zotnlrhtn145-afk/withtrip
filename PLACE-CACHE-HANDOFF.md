@@ -1,3 +1,9 @@
+## 2026-09-15 카카오 네이티브 수신 링크 보완 (미배포)
+
+- shared/place-share kakaoPlaceFeed 세번째nativeAppLinks 옵션: 사진/본문/content.link 및buttons.link에동일 iosExecutionParams/androidExecutionParams placeShareToken. 기본off, bridge NEXT_PUBLIC_KAKAO_NATIVE_SHARE_ENABLED=true시에만적용. 실제KakaoNativeKey/플랫폼설정과새앱배포확인전켜지말것.
+- 앱app.config EXPO_PUBLIC_KAKAO_NATIVE_KEY 기반scheme등록,+native-intent 엄격token라우팅구현. 개발자콘솔로그인필요하여사용자요청대기. 공통sync/회귀앱검사통과. 상세인계앱HANDOFF최상단참조.
+- 앞선130b359까지는운영배포완료/AASA AppleCDN확인,iOS140 Android86배포완료. 이번native params수정은그빌드에없음. 기존아래미배포표기는당시기록.
+
 ## 2026-09-15 카카오 수신 링크 앱 연결 (미배포)
 
 /s/place/{token}을 앱에서 직접받도록앱iOS associatedDomains/Android autoVerify +native-intent recipient라우팅추가. 웹 .well-known/apple-app-site-association와assetlinks.json 공개JSON 추가, middleware 두파일만세션갱신제외. Android fingerprint는 EAS APK85 apksigner verify 결과, Play추가시재확인. 기존수신landing 모바일customscheme1회시도+수동버튼유지(브라우저차단시자동열기보장안됨). 개인정보응답은기존인증API유지. 양쪽tsc/association검사/앱cold-warm링크검사/Expo생성설정검사통과, 실제카카오E2E는웹배포+새앱설치후필요. 서버먼저배포필요, 현재137/85에는미포함. push/빌드없음.
