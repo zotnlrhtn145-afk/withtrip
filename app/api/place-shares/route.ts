@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { shareAuth } from "@/lib/place-share-server"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import { checkRateLimit } from "@/lib/rate-limit"
-import { type SharePlace, placeShareUrl } from "@/shared/place-share"
+import { type SharedSchedule, type SharePlace, placeShareUrl } from "@/shared/place-share"
 export const runtime = "nodejs"
 const clean = (x: unknown, max: number) => typeof x === "string" ? x.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, max) : ""
 const number = (x: unknown, min: number, max: number) => typeof x === "number" && Number.isFinite(x) && x >= min && x <= max ? x : null
@@ -40,6 +40,20 @@ export async function POST(request: Request) {
   if (!p || !clean(p.name, 160)) return NextResponse.json({ error: "장소 이름이 필요합니다." }, { status: 400 })
   const origin = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.withtrip.co.kr").replace(/\/$/, "")
   const place: SharePlace = { name: clean(p.name, 160), address: clean(p.address, 250), category: clean(p.category, 80), lat: number(p.lat, -90, 90), lng: number(p.lng, -180, 180), rating: number(p.rating, 0, 5), reviewCount: number(p.reviewCount, 0, 100000000), imageUrl: safePhoto(p.imageUrl, origin) }
+  if (body.scheduleId) {
+    if (body.question !== "place" && body.question !== "schedule") return NextResponse.json({ error: "공유할 질문을 선택해 주세요." }, { status: 400 })
+    // Both reads use the sender's authenticated RLS client, never the admin.
+    const { data: schedule, error } = await db.from("trip_schedules").select("trip_id,day_number,visit_time,place_name,address,lat,lng,category").eq("id", body.scheduleId).maybeSingle()
+    if (error || !schedule) return NextResponse.json({ error: "공유할 일정을 확인하지 못했어요." }, { status: 404 })
+    const { data: trip } = await db.from("trips").select("title,start_date").eq("id", schedule.trip_id).maybeSingle()
+    if (!trip) return NextResponse.json({ error: "공유할 여행을 확인하지 못했어요." }, { status: 404 })
+    const day = Number(schedule.day_number)
+    if (!Number.isInteger(day) || day < 1 || day > 3660) return NextResponse.json({ error: "일차를 확인해 주세요." }, { status: 400 })
+    const start = trip.start_date ? new Date(`${trip.start_date}T00:00:00Z`) : null
+    if (start && Number.isFinite(start.getTime())) start.setUTCDate(start.getUTCDate() + day - 1)
+    const context: SharedSchedule = { tripTitle: clean(trip.title, 100) || "여행", day, date: start && Number.isFinite(start.getTime()) ? start.toISOString().slice(0, 10) : null, time: clean(schedule.visit_time, 5) || null, question: body.question }
+    Object.assign(place, { name: clean(schedule.place_name, 160) || place.name, address: clean(schedule.address, 250) || place.address, lat: number(schedule.lat, -90, 90), lng: number(schedule.lng, -180, 180), schedule: context })
+  }
   // No private memo in public previews. Display verified category/address/rating instead.
   const { data: profile } = await db.from("profiles").select("nickname").eq("id", user.id).maybeSingle()
   const share = { token: randomBytes(24).toString("hex"), sender: clean(profile?.nickname, 30) || "위드트립 여행자", place }
