@@ -93,11 +93,12 @@ export function KakaoPlaceBridge({ share, origin }: { share: PlaceShare; origin:
     animate: { opacity: 1, x: 0 },
     transition: { duration: .38, ease: [0, 0, .58, 1] as [number, number, number, number] },
   }
-  return <motion.main {...sceneEnter} className="mx-auto min-h-dvh max-w-[390px] bg-white px-5 pb-6 text-slate-900">
-    <header className="flex h-[60px] items-center justify-between">
+  return <motion.main {...sceneEnter} className="mx-auto flex min-h-dvh max-w-[390px] flex-col bg-white px-5 text-slate-900">
+    <header className="flex h-[60px] shrink-0 items-center justify-between">
       <h1 className="text-[22px] font-extrabold">장소 공유</h1>
       <button type="button" aria-label="닫기" onClick={() => window.location.replace("/saved")} className="flex size-9 items-center justify-center rounded-full bg-slate-100 active:opacity-70"><X size={22} /></button>
     </header>
+    <div className="flex flex-1 flex-col justify-center py-6">
     <motion.div aria-label="위드트립에서 카카오톡으로 공유" className="flex h-[58px] items-center gap-3" initial={reduceMotion ? undefined : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: .31, delay: .07, ease: "easeOut" }}>
       <img src="/design/withtrip-share-logo.png" width="26" height="26" alt="" className="rounded-[7px]" />
       <motion.span initial={reduceMotion ? undefined : { x: -5 }} animate={{ x: 0 }} transition={{ duration: .35, delay: .09, ease: "easeOut" }}><ArrowRight className="size-8 text-slate-400" strokeWidth={1.4} /></motion.span>
@@ -112,5 +113,6 @@ export function KakaoPlaceBridge({ share, origin }: { share: PlaceShare; origin:
       <motion.span initial={reduceMotion ? undefined : { x: -6 }} animate={{ x: [-6, 0, 3, 0] }} transition={{ duration: .72, delay: .25, times: [0, .56, .78, 1], ease: "easeOut" }}><ArrowRight size={27} /></motion.span>
     </motion.button>
     {error && <p role="status" className="mt-3.5 text-center text-xs leading-[18px] text-slate-500">{error}</p>}
+    </div>
   </motion.main>
 }
