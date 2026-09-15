@@ -3,6 +3,7 @@
 import { Suspense, useEffect, type ReactNode } from "react"
 import { usePathname, useRouter } from "next/navigation"
 
+import { BugReportLauncher } from "@/components/bug-report-launcher"
 import { MobileGlobalChrome } from "@/components/mobile-global-chrome"
 import { LoginNavigationProvider } from "@/components/login-navigation"
 import { MobileNotificationDrawer } from "@/components/notifications/MobileNotificationDrawer"
@@ -65,6 +66,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
         }}
       />
       <GlobalQuickAdd />
+      <BugReportLauncher />
     </>
   )
 }

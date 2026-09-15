@@ -1,3 +1,8 @@
+## 2026-09-15 임시 버그 신고 진입점 · 글 확인 후 복귀 (미배포)
+
+- BugReportLauncher 노란48px 전역 버튼, dialog+iframe 기존 /_buglist 열기. 부모 라우트/스크롤 유지, 원래 화면으로 닫기, 작성중 닫기 안내. NewBugForm 서버응답id의 글상세로 이동하여 방금 쓴 글 확인. 새API/DB/AI호출 없음.
+- 앱 BugReportHost도 기존 웹게시판을 Modal/WebView로 열고 닫음. 최초 웹로그인 별도 필요할 수 있음. 양쪽tsc 및 앱 scripts/check-bug-report-return.cjs 모의 제출4건/양OS닫기검사 통과. 실기기 로그인/업로드 미검증. 이번 push/운영배포 없음, 기존 공개GitHub 전송 승인대기 유지.
+
 ## 2026-09-15 카카오 운영 도메인/플랫폼 누락 수정
 
 Chrome로그인된1525585콘솔에서 제품링크관리 웹도메인0개확인→https://www.withtrip.co.kr기본등록/성공확인. JS SDK도메인과별개이므로기존카드링크제거가능원인. Native5469496 양쪽앱ID/배포Androidkeyhash/iOS스토어도등록,기본스킴연결확인. EAS환경키Sensitive3환경저장. 상세앱HANDOFF참조. 새카카오전송E2E미검증. 웹f8e687a nativeflag코드는아직미배포/비활성,기존https카드는새공유로검증필요.

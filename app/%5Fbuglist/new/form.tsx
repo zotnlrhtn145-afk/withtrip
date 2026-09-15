@@ -169,19 +169,21 @@ export function NewBugForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
-      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string }
-      if (!res.ok || !json.ok) throw new Error(json.error || `보내지 못했습니다 (${res.status})`)
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; id?: string; error?: string }
+      if (!res.ok || !json.ok || !json.id) throw new Error(json.error || `보내지 못했습니다 (${res.status})`)
+      return json.id
     }
 
     try {
+      let reportId: string
       try {
-        await send()
+        reportId = await send()
       } catch {
         // 한 번 더 — 잠깐 끊긴 것뿐일 수 있다
         await new Promise((r) => setTimeout(r, 1200))
-        await send()
+        reportId = await send()
       }
-      router.replace("/_buglist?s=mine")
+      router.replace(`/_buglist/${encodeURIComponent(reportId)}`)
     } catch (e) {
       const msg = e instanceof Error ? e.message : ""
       setErr(
