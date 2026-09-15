@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabase"
 import { distanceMeters, estimateWalkMinutes, formatDistance } from "@/lib/geo"
 import { resizePlacePhotoUrl } from "@/lib/place-cover-image"
 import { cn } from "@/lib/utils"
+import { fetchMichelinDetail, type MichelinDetail } from "@/shared/michelin-detail"
 import { PHOTO_W } from "@/shared/photo-widths"
 
 const NEAR_THRESHOLD_M = 40000 // 40km 이내면 내 위치도 함께
@@ -104,6 +105,14 @@ function PlaceDetailContents({
   /** 가게 열쇠를 방금 채웠을 때 — 목록의 그 행도 같이 맞춘다 */
   onGooglePlaceId?: (savedPlaceId: string, googlePlaceId: string) => void
 }) {
+  const [michelin, setMichelin] = useState<MichelinDetail | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    setMichelin(null)
+    if (place) void fetchMichelinDetail(supabase, { name: place.name, googlePlaceId: place.googlePlaceId, lat: place.lat, lng: place.lng })
+      .then(value => { if (!cancelled) setMichelin(value) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [place?.name, place?.googlePlaceId, place?.lat, place?.lng])
   const [photoOpen, setPhotoOpen] = useState(false)
   const [photoIndex, setPhotoIndex] = useState(0)
   const [detail, setDetail] = useState<ApiDetail | null>(null)
@@ -322,6 +331,7 @@ function PlaceDetailContents({
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-[26px] leading-9 font-semibold text-slate-900">{name}</h2>
+              {michelin ? <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-800 px-2.5 py-1 text-xs font-bold text-white" aria-label={`미쉐린 ${michelin.distinction || "가이드 등재"}${michelin.award_year ? ` ${michelin.award_year}` : ""}`}><span className="text-[10px] tracking-wide text-amber-200">MICHELIN</span>{michelin.distinction || "가이드 등재"}{michelin.award_year ? <span className="text-slate-400">{michelin.award_year}</span> : null}</span> : null}
               {detail?.openNow != null ? (
                 <span
                   className={cn(
