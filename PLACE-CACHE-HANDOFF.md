@@ -1,3 +1,7 @@
+## 2026-09-15 카카오 운영 도메인/플랫폼 누락 수정
+
+Chrome로그인된1525585콘솔에서 제품링크관리 웹도메인0개확인→https://www.withtrip.co.kr기본등록/성공확인. JS SDK도메인과별개이므로기존카드링크제거가능원인. Native5469496 양쪽앱ID/배포Androidkeyhash/iOS스토어도등록,기본스킴연결확인. EAS환경키Sensitive3환경저장. 상세앱HANDOFF참조. 새카카오전송E2E미검증. 웹f8e687a nativeflag코드는아직미배포/비활성,기존https카드는새공유로검증필요.
+
 ## 2026-09-15 카카오 네이티브 수신 링크 보완 (미배포)
 
 - shared/place-share kakaoPlaceFeed 세번째nativeAppLinks 옵션: 사진/본문/content.link 및buttons.link에동일 iosExecutionParams/androidExecutionParams placeShareToken. 기본off, bridge NEXT_PUBLIC_KAKAO_NATIVE_SHARE_ENABLED=true시에만적용. 실제KakaoNativeKey/플랫폼설정과새앱배포확인전켜지말것.
