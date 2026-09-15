@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion"
 import { ImageIcon } from "lucide-react"
-import { shareQuestionText, scheduleShareWhen, type PlaceShare } from "@/shared/place-share"
+import { shareQuestionText, scheduleShareHeading, scheduleShareContext, type PlaceShare } from "@/shared/place-share"
 
 const rise = (delay: number) => ({
   initial: { opacity: 0, y: 7 },
@@ -27,9 +27,10 @@ export function PlaceShareCard({ share }: { share: PlaceShare }) {
         <img src="/design/withtrip-share-logo.png" width="22" height="22" alt="" className="rounded-[7px]" />
         <p className="truncate text-[13px] font-semibold text-slate-900">{share.sender}님이 {p.schedule ? "여행 일정을" : "이 장소를"} 공유합니다</p>
       </motion.div>
-      {p.schedule && <div className="rounded-2xl bg-slate-50 p-3 text-sm leading-6">
-        <p className="font-bold">{shareQuestionText(p.schedule.question)}</p>
-        <p>{p.schedule.tripTitle}</p><p className="text-slate-500">{scheduleShareWhen(p.schedule)}</p>
+      {p.schedule && <div className="space-y-1.5 rounded-2xl bg-[#fffaeb] p-3">
+        <p className="text-[21px] font-bold leading-[30px] text-slate-900">{scheduleShareHeading(p.schedule)}</p>
+        <p className="text-xs leading-[18px] text-slate-500">{scheduleShareContext(p.schedule)}</p>
+        <p className="text-sm font-bold leading-5">{shareQuestionText(p.schedule.question)}</p>
       </div>}
       <motion.h1 {...item(.18)} className="line-clamp-2 text-[22px] font-extrabold leading-[29px] text-slate-900">{p.name}</motion.h1>
       <motion.div {...item(.26)} className="flex min-h-7 flex-wrap items-center gap-2">
