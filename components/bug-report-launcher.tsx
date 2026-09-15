@@ -16,7 +16,7 @@ export function BugReportLauncher() {
   }
   return <>
     <button type="button" aria-label="버그 신고" onClick={() => setOpen(true)}
-      style={{ position: "fixed", right: 12, top: "calc(env(safe-area-inset-top, 0px) + 100px)", zIndex: 70, width: 48, height: 48, borderRadius: 24, background: "#fbbf24", color: "#0f172a", display: "grid", placeItems: "center" }}>
+      style={{ position: "fixed", right: 12, bottom: "calc(max(16px, env(safe-area-inset-bottom, 0px)) + 78px)", zIndex: 70, width: 48, height: 48, borderRadius: 24, background: "#fbbf24", color: "#0f172a", display: "grid", placeItems: "center" }}>
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M8 7V5l-2-2m10 4V5l2-2M8 8h8a2 2 0 0 1 2 2v6a6 6 0 0 1-12 0v-6a2 2 0 0 1 2-2ZM12 8v13M3 10l3 2m12 0 3-2M3 16h3m12 0h3M4 22l3-3m10 0 3 3" />
       </svg>
