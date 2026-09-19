@@ -1,4 +1,5 @@
 "use client"
+import { CURRENT_LOCATION_IMAGE } from "@/shared/current-location-marker"
 
 import { useEffect } from "react"
 import { AdvancedMarker, APIProvider, Map, useMap } from "@vis.gl/react-google-maps"
@@ -53,8 +54,8 @@ export function MiniMap({ lat, lng, user }: { lat: number; lng: number; user?: {
             <span className="block size-4 rounded-full border-[3px] border-white bg-amber-400 shadow-md" />
           </AdvancedMarker>
           {user ? (
-            <AdvancedMarker position={user} zIndex={999}>
-              <span className="block size-4 rounded-full border-[3px] border-white bg-blue-600 shadow-md ring-4 ring-blue-600/25" />
+            <AdvancedMarker position={user} zIndex={999} anchorLeft="-50%" anchorTop="-50%">
+              <img src={CURRENT_LOCATION_IMAGE} alt="내 위치" width={44} height={44} />
             </AdvancedMarker>
           ) : null}
         </Map>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { checkWidyQuota, createWidyPlaceTicket } from "@/lib/widy-quota"
 
 /**
  * 위디의 머리 — **라우터 + 답변** (신고 반영: "말만 많고 틀린 대답만 해").
@@ -29,6 +30,8 @@ export async function POST(request: Request) {
     }
     const query = String(body.query ?? "").trim().slice(0, 400)
     if (!query) return NextResponse.json({ mode: "chat", reply: null }, { status: 200 })
+    const quota = await checkWidyQuota(request)
+    if (quota.response) return quota.response
     const city = String(body.city ?? "").trim()
     const country = String(body.country ?? "").trim()
     const history = (Array.isArray(body.history) ? body.history : [])
@@ -82,9 +85,11 @@ export async function POST(request: Request) {
       const mode =
         parsed.mode === "places" || parsed.mode === "blocks" || parsed.mode === "schedule" ? parsed.mode : "chat"
       const sched = parsed.schedule
+      const search = String(parsed.search ?? "").trim().slice(0,200) || query.slice(0,200)
       return NextResponse.json({
         mode,
-        search: String(parsed.search ?? "").trim().slice(0, 200) || null,
+        widyTicket: mode === "places" ? createWidyPlaceTicket(quota.userId,search) : undefined,
+        search,
         reply: String(parsed.reply ?? "").trim().slice(0, 500) || null,
         schedule:
           mode === "schedule" && sched?.title

@@ -1,4 +1,5 @@
 "use client"
+import { CURRENT_LOCATION_IMAGE } from "@/shared/current-location-marker"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
@@ -105,12 +106,11 @@ function UserLocationMarker({ position }: { position: LatLng }) {
       position={position}
       zIndex={1000}
       title="내 위치"
+      anchorLeft="-50%"
+      anchorTop="-50%"
       clickable={false}
     >
-      <span className="relative flex size-[22px] items-center justify-center">
-        <span className="absolute inset-0 animate-ping rounded-full bg-[#ffc107]/45" />
-        <span className="relative size-3.5 rounded-full border-[2.5px] border-white bg-[#ffc107] shadow-md" />
-      </span>
+      <img src={CURRENT_LOCATION_IMAGE} alt="내 위치" width={44} height={44} />
     </AdvancedMarker>
   )
 }

@@ -1,0 +1,10 @@
+const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict'),ts=require('typescript');
+const source=fs.readFileSync(require('path').join(__dirname,'../lib/concierge-michelin.ts'),'utf8');
+let filters=[]; const rows=[{name:'star',lat:1,lng:1,distinction:'1스타',award_year:2026},{name:'selected',lat:1,lng:1,distinction:'셀렉티드',award_year:2026}];
+const lookup={gte(){return this},lte(){return this},in(k,v){filters=v;return this},async limit(){return {data:rows.filter(r=>!filters.length||filters.includes(r.distinction))}}};
+const ctx={exports:{},require:n=>n.includes('supabase')?{getSupabaseAdmin:()=>({from:()=>({select:()=>lookup})})}:n.includes('places-cache')?{readPlacesByGoogleIds:async()=>new Map()}:n.includes('geo')?{distanceMeters:()=>1}:{buildPlacePhotoProxyUrl:()=>''}};
+vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,ctx);
+const parse=ctx.exports.requestedMichelinStars;
+assert.equal(parse('맛집 추천'),null);
+for(const [q,want] of [['미쉐린 스타',[1,2,3]],['미쉘린 1스타',[1]],['미슐린 1,2,3 스타',[1,2,3]],['Michelin two stars',[2]],['미쉐린 가이드',[]]])assert.deepEqual(Array.from(parse(q)),want);
+(async()=>{const v=await ctx.exports.michelinRecommendations('미쉐린 스타',{lat:1,lng:1},null,[],'https://test.example');assert.equal(v.results.length,1);assert.equal(v.results[0].michelin,'1스타');assert.ok(!v.results.some(r=>r.michelin==='셀렉티드'));console.log('PASS: 미쉐린 등급 파싱, 셀렉티드 제외, 등급 원본 응답');})().catch(e=>{console.error(e);process.exitCode=1});

@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server"
+import { consumeWidyPlaceTicket } from "@/lib/widy-quota"
+import { michelinRecommendations, requestedMichelinStars } from "@/lib/concierge-michelin"
+import { guessSubCategory, kindFromGoogleTypes } from "@/shared/place-subcategories"
 import { placeRecommendationCopy } from "@/shared/place-recommendation-copy"
 
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
@@ -33,6 +36,7 @@ export type ConciergePick = {
   highlight?: string
   reason: string
   kind: string
+  subCategory?: string
   address: string
   imageUrl: string
   photoLabel?: string
@@ -102,7 +106,8 @@ async function ground(p:Candidate, query:string, city:string, country:string, ce
     }
     const loc=top.geometry!.location!;const point={lat:loc.lat!,lng:loc.lng!}
     if(!cached?.size) {await writePlaces([{googlePlaceId:top.place_id!,name:top.name!,address:top.formatted_address,...point,rating:top.rating,ratingCount:top.user_ratings_total,googleTypes:top.types,photoReferences:refs}]);await putCachedSearch(searchKey,[top.place_id!])}
-    return {name:top.name!,localName:top.name!,address:top.formatted_address!,imageUrl:refs[0]?buildPlacePhotoProxyUrl(refs[0],1200,origin):'',rating:top.rating,reviewCount:top.user_ratings_total,...point,photoRefs:refs,verifiedType:expected.find(t=>top.types?.includes(t))!}
+    const subCategory = cached?.get(top.place_id!)?.sub_category || guessSubCategory({kind:kindFromGoogleTypes(top.types),name:top.name,types:top.types})
+    return {subCategory:subCategory === "기타" ? undefined : subCategory,name:top.name!,localName:top.name!,address:top.formatted_address!,imageUrl:refs[0]?buildPlacePhotoProxyUrl(refs[0],1200,origin):'',rating:top.rating,reviewCount:top.user_ratings_total,...point,photoRefs:refs,verifiedType:expected.find(t=>top.types?.includes(t))!}
   }catch{return null}
 }
 
@@ -110,14 +115,13 @@ async function ground(p:Candidate, query:string, city:string, country:string, ce
   비용 안전장치 (v3.2 GO 확정):
   ① 같은 도시+비슷한 질문 1시간 캐시 — 위디의 방에서 같은 걸 다시 물어도 0원
   ② 그라운딩 후보 10 → 6곳 (Text Search 회당 $0.032)
-  ③ 여행당 일 상한 — 폭주 방지 뚜껑 (넘으면 정중히 내일로)
+  ③ 위디 질문 상한은 인증된 widy-chat에서 사용자 단위로 집계
   서버리스 메모리 캐시라 인스턴스마다 따로지만, 같은 사용자의 연타는 대부분
   같은 인스턴스에 떨어진다 — 완벽보다 뚜껑이 목적이다.
 */
 const CACHE = new Map<string, { at: number; results: ConciergePick[] }>()
 const CACHE_TTL = 60 * 60 * 1000
-const DAILY = new Map<string, { day: string; n: number }>()
-const DAILY_CAP = 10
+const DAILY = new Map<string,{day:string;n:number}>()
 
 export async function POST(request: Request) {
   try {
@@ -128,6 +132,7 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json()) as {
+      widyTicket?: string
       query?: string
       city?: string
       country?: string
@@ -142,26 +147,24 @@ export async function POST(request: Request) {
     const tripId = String((body as { tripId?: string }).tripId ?? "").trim()
     const country = String(body.country ?? "").trim()
 
+    if (body.widyTicket !== undefined) {
+      if (!await consumeWidyPlaceTicket(request,body.widyTicket,query)) return NextResponse.json({results:[],error:"검색 요청이 만료됐어요. 위디에게 다시 질문해 주세요."},{status:403})
+    } else {
+      // 기존 배포 앱/별도 컨시어지 호환 경로에는 기존 여행당 상한 유지.
+      const key = tripId || request.headers.get("x-forwarded-for")?.split(",")[0] || "legacy"
+      const day = new Date().toISOString().slice(0,10), old = DAILY.get(key)
+      const n = old?.day === day ? old.n : 0
+      if(n>=10)return NextResponse.json({results:[],error:"오늘의 이용 한도를 모두 사용했어요. 내일 다시 이용해 주세요."},{status:429})
+      DAILY.set(key,{day,n:n+1})
+    }
+
     /* ① 캐시 — 같은 도시+질문이면 그대로 돌려준다 */
-    const cacheKey = JSON.stringify(["verified-v3", city, country, query, body.accommodation ?? null, Array.isArray(body.existingNames) ? [...body.existingNames].sort() : [], tripId])
+    const cacheKey = JSON.stringify(["verified-v4", city, country, query, body.accommodation ?? null, Array.isArray(body.existingNames) ? [...body.existingNames].sort() : [], tripId])
     const hit = CACHE.get(cacheKey)
     if (hit && Date.now() - hit.at < CACHE_TTL) {
       return NextResponse.json({ results: hit.results, cached: true })
     }
 
-    /* ③ 여행당 일 상한 */
-    if (tripId) {
-      const today = new Date().toISOString().slice(0, 10)
-      const d = DAILY.get(tripId)
-      const n = d && d.day === today ? d.n : 0
-      if (n >= DAILY_CAP) {
-        return NextResponse.json(
-          { results: [], error: "오늘은 위디가 많이 뛰었어요 — 내일 다시 물어봐 주세요." },
-          { status: 200 }
-        )
-      }
-      DAILY.set(tripId, { day: today, n: n + 1 })
-    }
     const destination = country ? `${city}, ${country}` : city
     const existingNames = Array.isArray(body.existingNames)
       ? body.existingNames.map((n) => String(n ?? "").trim()).filter(Boolean)
@@ -170,6 +173,13 @@ export async function POST(request: Request) {
       body.accommodation && typeof body.accommodation.lat === "number" && typeof body.accommodation.lng === "number"
         ? body.accommodation
         : null
+
+    // 미쉐린 등급 요청은 생성 모델의 후보가 아니라 등급 원본에서 검색합니다.
+    if (requestedMichelinStars(query) !== null) {
+      const center = await cityCenter(city, country, placesKey)
+      if (!center) return NextResponse.json({results:[],error:"여행 지역을 확인하지 못했어요. 도시와 국가를 확인해 주세요."})
+      return NextResponse.json(await michelinRecommendations(query,center,accommodation,existingNames,new URL(request.url).origin))
+    }
 
     /*
       의도를 그대로 준다 — 요약하거나 고치지 않는다. 사람이 쓴 문장이 곧 스펙이다.
@@ -254,6 +264,7 @@ export async function POST(request: Request) {
         distanceKm: accommodation
           ? Math.round((distanceMeters(accommodation, { lat: g.lat, lng: g.lng }) / 1000) * 10) / 10
           : undefined,
+        subCategory: g.subCategory,
         michelin: null,
       })
     }
@@ -272,7 +283,7 @@ export async function POST(request: Request) {
     }
     results = dedup
 
-    /* 미쉐린 대조 — 이름 또는 150m 근접. 우리만 붙일 수 있는 뱃지 */
+    /* 미쉐린 대조 — 같은 이름과 가까운 좌표가 모두 확인된 식당만. */
     const admin = getSupabaseAdmin()
     if (admin && results.length > 0) {
       const lats = results.map((r) => r.lat)
@@ -287,11 +298,11 @@ export async function POST(request: Request) {
       for (const r of results) {
         /*
           ⚠️ 근접만으로 붙이면 안 된다 — 미쉐린 식당 옆 스파에 뱃지가 붙었다(실측).
-             이름이 같거나, (식당이면서 60m 안)일 때만 인정한다.
+             이름이 같고 식당이며 60m 안일 때만 인정한다.
         */
         const hit = ((mich ?? []) as { name: string; distinction: string | null; lat: number | null; lng: number | null }[]).find(
           (m) =>
-            normalizeName(m.name) === normalizeName(r.name) ||
+            normalizeName(m.name) === normalizeName(r.name) &&
             (r.kind === "식당" &&
               m.lat != null &&
               m.lng != null &&

@@ -7,14 +7,14 @@ export function SavedDesignIcon({ name, size = 22 }: { name: string; size?: numb
   if (name === "quick-michelin") return <img src="/design/saved/michelin-face.png" alt="" aria-hidden width={size} height={size} style={{ width: size, height: size, borderRadius: "50%", flexShrink: 0 }} />
   return <img src={`/design/saved/${name}.svg`} alt="" aria-hidden width={size} height={size} style={{ width: size, height: size, flexShrink: 0 }} />
 }
-export function SavedPlaceCard({ name, source, photo, selected, starred, onStar, onDetail, metadata, details, actions, badge }: {
+export function SavedPlaceCard({ name, source, photo, selected, starred, onStar, onDetail, onMap, metadata, details, actions, badge }: {
   name: string; source: "mine" | "trip" | "friend"; photo?: string | null; selected?: boolean; starred?: boolean;
-  onStar?: () => void; onDetail: () => void; metadata?: ReactNode; details?: ReactNode; actions?: ReactNode; badge?: ReactNode;
+  onStar?: () => void; onDetail: () => void; onMap?: () => void; metadata?: ReactNode; details?: ReactNode; actions?: ReactNode; badge?: ReactNode;
 }) {
   const data = { mine: ["heart", "나의 찜"], trip: ["clapperboard", "여행클립"], friend: ["circle-user-round", "친구 찜"] }[source]
   return <article className={styles.card} data-selected={selected}>
     {photo ? <div className={styles.photo}>
-      <button className={styles.photoLink} onClick={onDetail} aria-label={`${name} 상세보기`}><img src={photo} alt="" loading="lazy" /></button>
+      <button className={styles.photoLink} onClick={onMap ?? onDetail} aria-label={`${name} ${onMap ? "지도에서 보기" : "상세보기"}`}><img src={photo} alt="" loading="lazy" /></button>
       <span className={styles.source}><SavedDesignIcon name={data[0]} size={16} />{data[1]}</span>
       {onStar ? <button className={styles.star} onClick={onStar} aria-label="별표 표시" aria-pressed={!!starred}><SavedDesignIcon name={starred ? "star-selected" : "star"} size={21} /></button> : null}
       {badge ? <div className={styles.badge}>{badge}</div> : null}
