@@ -1,12 +1,17 @@
+import { BEST_HISTORY, BEST_DISCOVERY } from "./world-best-history"
 /** Official list facts. Editions follow each list's metadata, not the current year.
  * Regional lists are independent rankings; a venue can appear on more than one.
  * World bars currently publishes 99 rows (rank 94 absent); never invent missing ranks.
  * Sources: https://www.the50.com/restaurants/ and https://www.the50.com/bars/
  */
-export type BestScope = "world" | "asia" | "europe" | "north-america" | "latin-america" | "middle-east-and-north-africa"
-export const BEST_SCOPE_LABELS: Record<BestScope, string> = {world:"세계",asia:"아시아",europe:"유럽","north-america":"북미","latin-america":"중남미","middle-east-and-north-africa":"중동·북아프리카"}
-export type WorldBest = { kind: "restaurants" | "bars"; scope?: BestScope; year: number; rank: number; name: string; city: string; url: string; address: string; googlePlaceId?: string }
-export const WORLD_BEST: WorldBest[] = [
+export type BestScope = "world" | "asia" | "europe" | "north-america" | "latin-america" | "middle-east-and-north-africa" | "discovery"
+export const BEST_SCOPE_LABELS: Record<BestScope, string> = {discovery:"Discovery",world:"세계",asia:"아시아",europe:"유럽","north-america":"북미","latin-america":"중남미","middle-east-and-north-africa":"중동·북아프리카"}
+type BestVenue = { kind: "restaurants" | "bars"; name: string; city: string; url: string; address: string; googlePlaceId?: string }
+export type WorldBest = BestVenue & (
+  | { recognition?: "ranked"; scope?: Exclude<BestScope, "discovery">; year: number; rank: number }
+  | { recognition: "discovery"; scope: "discovery"; observedAt: string; year?: never; rank?: never }
+)
+export const CURRENT_WORLD_BEST: WorldBest[] = [
   {
     "kind": "restaurants",
     "scope": "world",
@@ -7664,20 +7669,42 @@ export const WORLD_BEST: WorldBest[] = [
     "address": ""
   }
 ]
+/** Latest editions first so one-place search deduplication preserves the newest record. */
+export const WORLD_BEST: WorldBest[] = [...CURRENT_WORLD_BEST, ...BEST_HISTORY, ...BEST_DISCOVERY]
+const byPlaceId = new Map<string, WorldBest[]>()
+for (const award of WORLD_BEST) {
+  if (!award.googlePlaceId) continue
+  const rows = byPlaceId.get(award.googlePlaceId) ?? []
+  rows.push(award)
+  byPlaceId.set(award.googlePlaceId, rows)
+}
+export function worldBestKey(row: WorldBest): string { return `${row.kind}:${row.scope}:${row.year ?? "discovery"}:${row.rank ?? row.url}` }
+export function worldBestStatus(row: WorldBest): string {
+  if (row.recognition === "discovery") return "소개 장소"
+  const latest = CURRENT_WORLD_BEST.find(r => r.kind === row.kind && r.scope === row.scope)
+  return latest?.year === row.year ? "최신 선정" : "과거 선정"
+}
+export function sortBestHistory(rows: WorldBest[]): WorldBest[] {
+  return [...rows].sort((a,b) => (b.year ?? 0) - (a.year ?? 0) || (a.rank ?? 0) - (b.rank ?? 0))
+}
+
 const norm = (s: string) => s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9가-힣]/g, "")
 /** Verified permanent place IDs first (2026-09-20 official street review); otherwise exact name + street.
  * Ambiguous Hope & Sesame and Celele are deliberately not linked. No Google coordinates/photos stored here. */
 export function worldBestFor(name: string, address: string | null | undefined, googlePlaceId?: string | null): WorldBest[] {
-  if (googlePlaceId) return WORLD_BEST.filter(r => r.googlePlaceId === googlePlaceId)
+  if (googlePlaceId) return sortBestHistory(byPlaceId.get(googlePlaceId) ?? [])
   if (!address) return []
   const n = norm(name), a = norm(address)
-  return WORLD_BEST.filter(r => {
+  return sortBestHistory(WORLD_BEST.filter(r => {
     const expected = norm(r.name)
     if (n !== expected) return false
     const segments = r.address.split(",").filter(part => /\d/.test(part))
     const words = segments.flatMap(part => part.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().match(/[a-z]{3,}|\d+/g) ?? [])
     const numbers = new Set(address.match(/\d+/g) ?? [])
     return words.some(w => /^[a-z]{4,}$/.test(w)) && words.every(w => /^\d+$/.test(w) ? numbers.has(w) : a.includes(w))
-  })
+  }))
 }
-export function worldBestLabel(row: WorldBest): string { return `${BEST_SCOPE_LABELS[row.scope ?? "world"]} · 50 BEST ${row.kind === "bars" ? "BARS" : "RESTAURANTS"} · ${row.year} #${row.rank}` }
+export function worldBestLabel(row: WorldBest): string {
+  if (row.recognition === "discovery") return `50 BEST DISCOVERY · ${row.kind === "bars" ? "바" : "레스토랑"} · 소개 장소`
+  return `${BEST_SCOPE_LABELS[row.scope ?? "world"]} · 50 BEST ${row.kind === "bars" ? "BARS" : "RESTAURANTS"} · ${row.year} ${row.rank}위`
+}

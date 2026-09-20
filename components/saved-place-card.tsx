@@ -15,10 +15,10 @@ export function SavedPlaceCard({ name, source, photo, selected, starred, onStar,
   return <article className={styles.card} data-selected={selected}>
     {photo ? <div className={styles.photo}>
       <button className={styles.photoLink} onClick={onMap ?? onDetail} aria-label={`${name} ${onMap ? "지도에서 보기" : "상세보기"}`}><img src={photo} alt="" loading="lazy" /></button>
-      <span className={styles.source}><SavedDesignIcon name={data[0]} size={16} />{data[1]}</span>
+      {source !== "best" ? <span className={styles.source}><SavedDesignIcon name={data[0]} size={16} />{data[1]}</span> : null}
       {onStar ? <button className={styles.star} onClick={onStar} aria-label="별표 표시" aria-pressed={!!starred}><SavedDesignIcon name={starred ? "star-selected" : "star"} size={21} /></button> : null}
       {badge ? <div className={styles.badge}>{badge}</div> : null}
-    </div> : <div className={styles.noPhoto}><SavedDesignIcon name={data[0]} size={16} /><span>{data[1]}</span>{onStar ? <button onClick={onStar} aria-label="별표 표시" aria-pressed={!!starred}><SavedDesignIcon name={starred ? "star-selected" : "star"} /></button> : null}</div>}
+    </div> : source === "best" ? null : <div className={styles.noPhoto}><SavedDesignIcon name={data[0]} size={16} /><span>{data[1]}</span>{onStar ? <button onClick={onStar} aria-label="별표 표시" aria-pressed={!!starred}><SavedDesignIcon name={starred ? "star-selected" : "star"} /></button> : null}</div>}
     <button className={styles.name} onClick={onDetail}><span>{name}</span><SavedDesignIcon name="chevron-right" size={19} /></button>
     <div className={styles.meta}>{metadata}</div>
     {!photo && badge ? <div className={styles.inlineBadges}>{badge}</div> : null}

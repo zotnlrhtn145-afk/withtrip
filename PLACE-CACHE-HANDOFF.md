@@ -1,3 +1,9 @@
+## 2026-09-20 과거 선정·Discovery / 상세 이력 — 배포 대기
+
+- shared 원본에 아시아바 과거601기록/호치민Discovery12 추가(현재판749 별도). rank/year 없는 Discovery union, 장소ID 인덱스, 이력 정렬. 웹·앱 상세에 같은 선정 이력, 목록/지도 업종만 표시.
+- API 로컬234기록/110장소, 호치민12장소(바7/식당5) 안전 사진 확인. 공식주소 불일치 Sol Kitchen/Alley 미연결. 전체과거/Discovery커버리지 미완료. 1128기록 위치·신선캐시 미연결.
+- 타입/shared/회귀/API/양OS export 통과. 실기기 미검증. 배포/새빌드 없음. 상세 ../withtrip-app/docs/best-history-2026-09-20.md. unrelated eas.json/app.json/tsconfig.tsbuildinfo 유지.
+
 ## 2026-09-20 찜 지역검색 / BEST 종류 분리 — 배포 대기
 
 - 앱과 같은 지역 검색/viewport확정/기본 거리순, 식당·바/세계·지역별 범위, 단일 결과 배열로 지도·목록·개수 연결. 사진 안전 프록시 및 미연결 안내. Figma373:4898.

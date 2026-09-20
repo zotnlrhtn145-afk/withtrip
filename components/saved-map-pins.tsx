@@ -1,5 +1,6 @@
 "use client"
 
+import { Wine, Utensils } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { AdvancedMarker, AdvancedMarkerAnchorPoint, useMap } from "@vis.gl/react-google-maps"
 import { SavedDesignIcon } from "./saved-place-card"
@@ -20,7 +21,7 @@ export function groupSavedPins(spots: MapSpot[], viewport: Viewport | null): Gro
     if (!inMapViewport(spot, viewport)) continue
     const sin = Math.sin(Math.max(-85, Math.min(85, spot.lat)) * Math.PI / 180)
     const x = (spot.lng + 180) / 360, y = .5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)
-    const key = `${spot.worldBest ? "best" : "saved"}:${Math.floor(x / cell)}:${Math.floor(y / cell)}`
+    const key = `${spot.worldBest ? `best:${spot.bestKind}` : "saved"}:${Math.floor(x / cell)}:${Math.floor(y / cell)}`
     const existing = groups.get(key)
     if (existing) { const count = existing.spots.length; existing.lat = (existing.lat * count + spot.lat) / (count + 1); existing.lng = (existing.lng * count + spot.lng) / (count + 1); existing.spots.push(spot) }
     else groups.set(key, { id: key, lat: spot.lat, lng: spot.lng, spots: [spot] })
@@ -68,7 +69,7 @@ export function SavedMapPins({ spots, selectedId, onSelect, onDetail }: { spots:
   const choose = (group: Group) => { setPopupVisible(20); setPopup(group); if (group.spots.length === 1) { clicked.current = group.spots[0].id; onSelect(group.spots[0].id) } }
   return <>{groups.map((group, index) => <AdvancedMarker key={`${group.id}:${group.spots.length}:${group.spots[0].id}`} position={{ lat: group.lat, lng: group.lng }} anchorPoint={AdvancedMarkerAnchorPoint.CENTER} zIndex={popup?.id === group.id ? 900 : 400} onClick={() => choose(group)}>
     <button className={styles.mapPin} data-active={group.spots.some(spot => spot.id === selectedId)} aria-label={group.spots.length > 1 ? `장소 ${group.spots.length}곳 보기` : group.spots[0].name} style={{ animationDelay: `${Math.min(index, 8) * 24}ms`, ...(group.spots.some(spot => spot.worldBest) ? { width: 42, height: 42, borderRadius: 12, border: "none", overflow: "visible" } : {}) }}>
-      {group.spots.some(s => s.worldBest) ? <span style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", width: 42, height: 42, border: `2px solid ${group.spots.some(spot => spot.id === selectedId) ? "#182430" : "#FBBF24"}`, borderRadius: 12, background: "white", color: "#182430" }}><b style={{ fontSize: 18, lineHeight: "20px" }}>50</b><small style={{ fontSize: 7 }}>{group.spots.length > 1 ? `${group.spots.length}곳` : "BEST"}</small></span> : group.spots.length > 1 ? <b>{group.spots.length > 999 ? "999+" : group.spots.length}</b> : group.spots[0].image ? <img src={group.spots[0].image} alt="" onError={event => { event.currentTarget.style.display = "none" }} /> : <SavedDesignIcon name="heart" size={18} />}
+      {group.spots.some(s => s.worldBest) ? <span style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", width: 42, height: 42, border: `2px solid ${group.spots.some(spot => spot.id === selectedId) ? "#182430" : "#FBBF24"}`, borderRadius: 12, background: "white", color: "#182430" }}>{group.spots[0].bestKind === "bars" ? <Wine size={18} /> : <Utensils size={18} />}<small style={{ fontSize: 9 }}>{group.spots.length > 1 ? `${group.spots.length}곳` : group.spots[0].bestKind === "bars" ? "바" : "레스토랑"}</small></span> : group.spots.length > 1 ? <b>{group.spots.length > 999 ? "999+" : group.spots.length}</b> : group.spots[0].image ? <img src={group.spots[0].image} alt="" onError={event => { event.currentTarget.style.display = "none" }} /> : <SavedDesignIcon name="heart" size={18} />}
     </button>
   </AdvancedMarker>)}
   {popup && popupSpots.length ? <AdvancedMarker position={{ lat: popup.lat, lng: popup.lng }} anchorPoint={AdvancedMarkerAnchorPoint.BOTTOM_CENTER} zIndex={1100} clickable={false}>

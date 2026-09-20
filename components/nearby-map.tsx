@@ -24,6 +24,7 @@ import { SavedMapPins } from "./saved-map-pins"
 
 export type MapSpot = NearbySpot & {
   worldBest?: boolean
+  bestKind?: "bars" | "restaurants"
   distanceMeters: number
   distanceLabel: string
 }

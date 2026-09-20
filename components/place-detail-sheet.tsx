@@ -333,7 +333,6 @@ function PlaceDetailContents({
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-[26px] leading-9 font-semibold text-slate-900">{name}</h2>
-              <WorldBestBadges name={name} address={address} googlePlaceId={gpid || place?.googlePlaceId} />
               {michelin ? <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-800 px-2.5 py-1 text-xs font-bold text-white" aria-label={`미쉐린 ${michelin.distinction || "가이드 등재"}${michelin.award_year ? ` ${michelin.award_year}` : ""}`}><span className="text-[10px] tracking-wide text-amber-200">MICHELIN</span>{michelin.distinction || "가이드 등재"}{michelin.award_year ? <span className="text-slate-400">{michelin.award_year}</span> : null}</span> : null}
               {detail?.openNow != null ? (
                 <span
@@ -358,6 +357,8 @@ function PlaceDetailContents({
               ) : null}
             </div>
           </div>
+
+          <WorldBestBadges name={name} address={address} googlePlaceId={gpid || place?.googlePlaceId} />
 
           {address ? <p className="text-sm leading-[22px] text-slate-500">{address}</p> : null}
           {summary ? <p className="text-[15px] leading-[23px] text-[#242424]">{summary}</p> : null}
