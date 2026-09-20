@@ -556,7 +556,7 @@ export function SavedPlacesView() {
           authorAvatarUrl: avatarUrl,
           isInterest: true,
           starred: place.starred,
-          worldBest: bestOnly && (worldBestFor(place.placeName, place.address).length > 0 || worldBestFor(place.localName || "", place.address).length > 0),
+          worldBest: bestOnly && (worldBestFor(place.placeName, place.address, place.googlePlaceId).length > 0 || worldBestFor(place.localName || "", place.address, place.googlePlaceId).length > 0),
           distanceMeters: meters,
           distanceLabel: formatDistance(meters),
         }
@@ -643,7 +643,7 @@ export function SavedPlacesView() {
     const meters = distanceMeters(geo.position, { lat: r.lat!, lng: r.lng! })
     return { id: r.id, name: r.placeName, nameLocal: r.placeName, category: r.category ?? "친구찜", address: r.address ?? "", lat: r.lat!, lng: r.lng!, rating: r.rating ?? 0, image: r.imageUrl ?? "", imageAlt: r.placeName, distanceMeters: meters, distanceLabel: formatDistance(meters) }
   }), [searchedRecs, geo.position])
-  const bestMapSpots: MapSpot[] = useMemo(() => bestOnly ? bestPlaces.filter(p => !places.some(saved => saved.googlePlaceId === p.google_place_id)).map(p => ({ id: `best:${p.google_place_id}`, name: p.name, nameLocal: p.name, address: p.address, lat: p.lat, lng: p.lng, category: p.award.kind === "bars" ? "바" : "레스토랑", rating: 0, image: "", imageAlt: p.name, userId: null, authorNickname: null, authorAvatarUrl: null, worldBest: true, distanceMeters: distanceMeters(geo.position,p), distanceLabel: formatDistance(distanceMeters(geo.position,p)) })) : [], [bestOnly,bestPlaces,places,geo.position])
+  const bestMapSpots: MapSpot[] = useMemo(() => bestOnly ? bestPlaces.filter(p => !places.some(saved => saved.googlePlaceId === p.google_place_id && mapSpots.some(m => m.id === saved.id))).map(p => ({ id: `best:${p.google_place_id}`, name: p.name, nameLocal: p.name, address: p.address, lat: p.lat, lng: p.lng, category: p.award.kind === "bars" ? "바" : "레스토랑", rating: 0, image: "", imageAlt: p.name, userId: null, authorNickname: null, authorAvatarUrl: null, worldBest: true, distanceMeters: distanceMeters(geo.position,p), distanceLabel: formatDistance(distanceMeters(geo.position,p)) })) : [], [bestOnly,bestPlaces,places,mapSpots,geo.position])
   const baseMapSpots = useMemo(() => tab === "all" ? [...mapSpots, ...tripMapSpots, ...friendMapSpots] : tab === "friends" ? friendMapSpots : subTab === "wish" ? mapSpots : tripMapSpots, [tab, subTab, mapSpots, tripMapSpots, friendMapSpots])
   const activeMapSpots = useMemo(() => [...baseMapSpots, ...bestMapSpots], [baseMapSpots, bestMapSpots])
   const selectCategory = (key: "all" | "wish" | "trip" | "friends") => {

@@ -1,5 +1,6 @@
 "use client"
 
+import { DateRangeField } from "@/components/itinerary/date-range-field"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { BedDouble, Check, Loader2, Plus, X } from "lucide-react"
 
@@ -335,46 +336,22 @@ export function AccommodationRegisterModal({
               </FieldDescription>
             </Field>
 
+            <DateRangeField
+              start={checkInDate ? new Date(`${checkInDate}T12:00:00`) : undefined}
+              end={checkOutDate ? new Date(`${checkOutDate}T12:00:00`) : undefined}
+              startLabel="체크인 날짜" endLabel="체크아웃 날짜"
+              onChange={(a, b) => {
+                const day = (d?: Date) => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}` : ""
+                setCheckInDate(day(a)); setCheckOutDate(day(b))
+              }}
+            />
             <div className="grid grid-cols-2 gap-3">
               <Field>
-                <FieldLabel htmlFor="acc-checkin-date" className={labelClass}>
-                  체크인 날짜
-                </FieldLabel>
-                <Input
-                  id="acc-checkin-date"
-                  type="date"
-                  value={checkInDate}
-                  onChange={(event) => setCheckInDate(event.target.value)}
-                  className={cn(inputClass, "tabular-nums")}
-                  required
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="acc-checkin-time" className={labelClass}>
-                  체크인 시간
-                </FieldLabel>
+                <FieldLabel htmlFor="acc-checkin-time" className={labelClass}>체크인 시간</FieldLabel>
                 <TimeSelect24 id="acc-checkin-time" value={checkInTime} onChange={setCheckInTime} />
               </Field>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
               <Field>
-                <FieldLabel htmlFor="acc-checkout-date" className={labelClass}>
-                  체크아웃 날짜
-                </FieldLabel>
-                <Input
-                  id="acc-checkout-date"
-                  type="date"
-                  value={checkOutDate}
-                  onChange={(event) => setCheckOutDate(event.target.value)}
-                  className={cn(inputClass, "tabular-nums")}
-                  required
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="acc-checkout-time" className={labelClass}>
-                  체크아웃 시간
-                </FieldLabel>
+                <FieldLabel htmlFor="acc-checkout-time" className={labelClass}>체크아웃 시간</FieldLabel>
                 <TimeSelect24 id="acc-checkout-time" value={checkOutTime} onChange={setCheckOutTime} />
               </Field>
             </div>

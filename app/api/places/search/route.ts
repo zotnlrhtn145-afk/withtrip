@@ -334,9 +334,11 @@ export async function GET(request: Request) {
     ⚠️ 캐시 열쇠에 좌표를 **반올림해서** 넣는다 — 도쿄에서 "카페"를 찾은
        답을 서울 "카페"에 돌려주면 안 된다. 0.1° ≈ 11km 칸이면 충분하다.
   */
-  const biasLat = Number(searchParams.get("lat"))
-  const biasLng = Number(searchParams.get("lng"))
-  const hasBias = Number.isFinite(biasLat) && Number.isFinite(biasLng)
+  const rawLat = searchParams.get("lat")?.trim()
+  const rawLng = searchParams.get("lng")?.trim()
+  const biasLat = rawLat ? Number(rawLat) : NaN
+  const biasLng = rawLng ? Number(rawLng) : NaN
+  const hasBias = Number.isFinite(biasLat) && Number.isFinite(biasLng) && Math.abs(biasLat) <= 90 && Math.abs(biasLng) <= 180
   if (q.length < 1) {
     return NextResponse.json({ results: [] })
   }
