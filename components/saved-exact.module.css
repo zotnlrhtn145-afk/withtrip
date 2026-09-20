@@ -33,3 +33,10 @@
 .bestScopeRow{display:flex;gap:8px;overflow-x:auto}
 .bestScope{flex:0 0 auto;min-width:68px;min-height:44px;padding:11px 16px;border-radius:22px;background:#f5f5f6;color:#182430;font-size:13px}
 .bestScope[aria-pressed="true"]{background:#fbbf24}
+
+/* Same icon slot and label baseline for every saved filter. */
+.filterButtons button{flex:1 0 44px;display:grid;grid-template-rows:24px 16px;justify-items:center;align-content:center;gap:4px;height:62px;padding:8px 2px 10px;line-height:16px}
+.filterButtons button>svg,.filterButtons button>img{align-self:center;grid-row:1}
+.filterButtons button>span{grid-row:2;line-height:16px}
+.filterButtons{overflow-x:auto}
+.filterButtons button:last-child{flex:1 0 44px;margin-left:4px}
