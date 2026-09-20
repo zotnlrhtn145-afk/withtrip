@@ -1,3 +1,9 @@
+## 2026-09-21 모바일146·92 완료
+
+- iOS146 빌드/제출 FINISHED, Apple VALID / 내부 IN_BETA_TESTING. Android92 FINISHED·다운로드/패키지버전/v2서명 검증 성공.
+- APK: https://expo.dev/artifacts/eas/fhVCxDLAikLkadHEi50xMTxJIs86pGQkrTBf7tXV3yk.apk
+- 웹은 아래 Vercel 운영 배포 완료 상태. 양OS 전체 내부 로그인·제스처 검증은 미완료이며 앱 docs/release-146-92-2026-09-21.md 참조. 추가 유료 빌드 중복 실행 금지.
+
 ## 2026-09-21 웹 운영 배포 / 모바일146·92 진행
 
 - 사용자 배포·빌드 승인. 웹 a62fe21을 git archive로 배포(미커밋 eas.json/app.json/tsbuildinfo 제외). Vercel dpl_HPejyQ44EnnArCf8gQJjbCrYmH3o READY, www.withtrip.co.kr 운영 승격 완료.
