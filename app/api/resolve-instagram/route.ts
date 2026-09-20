@@ -1,3 +1,4 @@
+import { normalizeThreadsUrl } from "@/shared/social-post-url";
 import { NextResponse } from "next/server";
 
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -202,9 +203,11 @@ function getPlacesKey() {
 export function normalizeInstagramUrl(input: string): string | null {
   const raw = String(input ?? "").trim();
   if (!raw) return null;
-  const m = raw.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i);
+  const threads = normalizeThreadsUrl(raw);
+  if (threads) return threads;
+  const m = raw.match(/instagram\.com\/(p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i);
   if (!m) return null;
-  return `https://www.instagram.com/reel/${m[1]}/`;
+  return `https://www.instagram.com/${m[1].toLowerCase() === "p" ? "p" : "reel"}/${m[2]}/`;
 }
 
 /** 캡션에서 og:description 앞머리("62K likes, 99 comments - user - date:")를 걷어낸다. */
@@ -1230,7 +1233,7 @@ export async function POST(request: Request) {
     const target = normalizeInstagramUrl(String(body.url));
     if (!target) {
       return NextResponse.json(
-        { places: [], error: "인스타그램 게시물 주소가 아니에요." },
+        { places: [], error: "지원하는 인스타그램·스레드 게시물 주소가 아니에요." },
         { status: 200 },
       );
     }
@@ -1284,7 +1287,7 @@ export async function POST(request: Request) {
         places: [],
         error: yt
           ? "이 영상은 설명란도 자막도 비어 있어서 읽을 내용이 없어요."
-          : "캡션을 읽지 못했어요. 앱에서 게시물 내용을 함께 보내주세요(서버에서는 인스타를 읽을 수 없습니다).",
+          : "캡션을 읽지 못했어요. 앱에서 게시물 내용을 함께 보내주세요(비공개 글이나 제한된 미리보기는 읽지 못할 수 있어요).",
       },
       { status: 200 },
     );
@@ -1296,6 +1299,7 @@ export async function POST(request: Request) {
        껍데기가 붙고 본문이 잘린다. 임베드 것은 본문 원문이다.
        (여기서 한 번 더 캐도 위에서 캔 것을 재사용하므로 요청이 늘지 않는다)
   */
+  caption = caption.normalize("NFC");
   const og = splitOgPrefix(caption);
   let cleaned = og.body;
   const diag: ExtractDiag = { keyPresent: false, attempts: [] };
@@ -1310,7 +1314,7 @@ export async function POST(request: Request) {
   let embed = { videoUrl: "", imageUrls: [] as string[], caption: "" };
   if (body.url && !yt && !String(body.videoUrl ?? "").trim()) {
     const t = normalizeInstagramUrl(String(body.url));
-    if (t) embed = await fetchFromEmbed(t);
+    if (t && !normalizeThreadsUrl(t)) embed = await fetchFromEmbed(t);
   }
 
   if (embed.caption && embed.caption.length > cleaned.length) {

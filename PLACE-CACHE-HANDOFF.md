@@ -1,3 +1,9 @@
+## 2026-09-20 수정대기 추가 (미배포)
+
+- 공유 요약 memo를 목록3줄/상세공통상단 전체 표시. Figma354:4894 예시. 신규 AI요청 없음.
+- shared/social-post-url.ts Threads 다중링크 정규화, 서버 미리보기 fallback 허용/NFC/Threads embed 제외. Instagram /p/ 유지. 앱sync 및 URL회귀 통과. 실제 원문 전체추출 보장 아님.
+- 웹tsc --noEmit --incremental false 통과. 앱 대화 tray는 앱전용. 운영배포/새유료빌드 없음, 기존 공개원격 승인대기 유지.
+
 ## 2026-09-20 수정대기 처리 중 (코드 미배포)
 
 - 전체22건 중 진행 상황은 앱 docs/queued-fixes-2026-09-20.md. 전체 완료 아님.

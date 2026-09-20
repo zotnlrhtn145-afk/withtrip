@@ -30,6 +30,7 @@ export type PlaceDetailInput = {
   savedPlaceId?: string | null
   /** 어디서 보고 담았는지 — 인스타 공유로 들어온 곳만 있다 */
   sourceUrl?: string | null
+  memo?: string | null
   /** 이미 채워져 있는 열쇠. 같으면 다시 쓰지 않는다(열 때마다 쓸 이유가 없다) */
   googlePlaceId?: string | null
   name: string
@@ -278,7 +279,7 @@ function PlaceDetailContents({
   const address = detail?.address || place.address || ""
   const rating = detail?.rating ?? place.rating ?? null
   const reviewCount = detail?.reviewCount ?? place.reviewCount ?? null
-  const summary = detail?.summary || ""
+  const summary = place.memo?.trim() || detail?.summary || ""
   const lat = place.lat ?? detail?.lat
   const lng = place.lng ?? detail?.lng
   const dist = userLoc && lat != null && lng != null ? distanceMeters(userLoc, { lat, lng }) : null
@@ -357,6 +358,7 @@ function PlaceDetailContents({
           </div>
 
           {address ? <p className="text-sm leading-[22px] text-slate-500">{address}</p> : null}
+          {summary ? <p className="text-[15px] leading-[23px] text-[#242424]">{summary}</p> : null}
           <div className="flex items-start justify-around gap-2 py-3">
             <div className="flex flex-1 flex-col items-center gap-2"><DirectionsMenu destination={lat != null && lng != null ? { name, lat, lng } : null} fallbackQuery={address || name} variant="icon" className="size-11 rounded-full border border-slate-300 bg-white text-slate-900" /><span className="text-xs">길찾기</span></div>
             {detail?.phone ? <a href={`tel:${detail.phone.replace(/[^+0-9]/g, "")}`} className="flex flex-1 flex-col items-center gap-2 text-xs"><span className="grid size-11 place-items-center rounded-full border border-slate-300"><img src="/design/place/action-2.svg" alt="" className="size-[22px]" /></span>전화</a> : null}
@@ -402,7 +404,7 @@ function PlaceDetailContents({
             </a></section>
           ) : null}
 
-          {summary ? <p className="text-sm leading-relaxed text-slate-500">{summary}</p> : null}
+
 
 
 
