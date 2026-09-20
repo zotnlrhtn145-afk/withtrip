@@ -1,3 +1,10 @@
+## 2026-09-20 운영 반영 완료 / iOS145·Android91
+
+- 웹 e58270b를 clean git archive로 Vercel 직접 배포. dpl_72cRxYPYY7VhdGjuyjEiQrTYrSqA READY 후 promote 성공. www.withtrip.co.kr에서 50 BEST98 조회200, 위디 GET/POST 비로그인401 확인. 공개 git push 없음.
+- Supabase widy_turns_and_cover_policy 적용: widy_turns RLS·본인/여행참여자 읽기, 익명 읽기/사용자 쓰기 차단, 서버 쓰기 허용. places.cover_policy_version 추가. 새 테이블 특정 보안 advisor 없음.
+- iOS1.1.0(145) Apple21371f1c-831b-442b-89a3-6543a3f086bc VALID/IN_BETA_TESTING, Android91 빌드34485c1d-f838-4074-8d52-bfc85ae24078 진행 중. 이전 앱은 새 인증 흐름을 위해 업데이트 필요.
+- 실제 양OS 전체 제스처/백그라운드/공유 플로우 미검증. 50 BEST Hope & Sesame·Celele 공식주소 불일치 제외, 개인 AI 구독 연결 미구현 유지. 신고를 일괄 완료 처리하지 않음.
+
 ## 2026-09-20 신고대기 재점검 추가 (미배포)
 
 - 50 BEST 공식100곳을 기존 운영검색API로 1회씩 대조, 98개 고유ID와신선캐시좌표재조회. 한글명도ID우선매칭. Hope & Sesame/Celele는주소불일치미연결. 좌표·사진은shared에고정저장안함.
