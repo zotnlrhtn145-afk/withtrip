@@ -1,3 +1,10 @@
+## 2026-09-21 웹 운영 배포 / 모바일146·92 진행
+
+- 사용자 배포·빌드 승인. 웹 a62fe21을 git archive로 배포(미커밋 eas.json/app.json/tsbuildinfo 제외). Vercel dpl_HPejyQ44EnnArCf8gQJjbCrYmH3o READY, www.withtrip.co.kr 운영 승격 완료.
+- 홈/API200, 운영 world-best 총1362/좌표연결234기록·110고유장소 확인. 호치민12장소(바7·식당5) 사진 URL 있음/구글키 없음. 1128미연결기록 유지, 전체세계자료 완성 주장 금지.
+- 작은 공식로고 상세배지(Figma382:4898), 지역검색·목록·지도/업종·범위 필터, 과거/Discovery 반영. DB변경 없음.
+- 앱 b77f84e iOS146 9ac5284d-1287-43cd-8c7f-3dc8a10286b1 제출d6bd7d5b-437e-496c-aa8a-7aea276bb7c3, Android92 f2f5cd02-3a89-4b4c-8130-452b988c26e9 빌드중. 앱HANDOFF에서 완료 확인. 추가 유료빌드/OTA 금지.
+
 ## 2026-09-21 작은 50 BEST 로고 배지 — 다음 배포 대기
 
 - Figma382:4898 확정안 앱과 동일 반영. 상세 큰 목록 삭제, 30px 공식 로고/지역·연도·순위 및 +N 접기. 44px 클릭영역·키보드 포커스, 다른 장소에서 접힘 복원. shared/world-best-logo.ts SVG 원본 공통 내장.
