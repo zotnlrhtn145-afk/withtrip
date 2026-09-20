@@ -1,3 +1,10 @@
+## 2026-09-20 찜 지역검색 / BEST 종류 분리 — 배포 대기
+
+- 앱과 같은 지역 검색/viewport확정/기본 거리순, 식당·바/세계·지역별 범위, 단일 결과 배열로 지도·목록·개수 연결. 사진 안전 프록시 및 미연결 안내. Figma373:4898.
+- shared/world-best 공식9개판749선정 기록. API 실제 캐시166기록(101개장소), 호치민바2+식당1 사진조회200. **583기록 위치 미연결/신선캐시없음**, 전체커버리지 미완료. 대량 Google호출 안 함.
+- 상세 인계는 ../withtrip-app/docs/best-region-filter-2026-09-20.md. 타입/shared/회귀 통과. 웹 로컬 로그인 및 양OS 실기기 통합검증 남음. 구/신 Next 생성 라우트 타입 충돌은 구버전 생성물 제외 임시 검사로 구분.
+- 새 운영 배포/빌드 없음. 사용자 빌드 요청 시 앱과 /api/world-best 변경 함께 배포. 기존 staged eas.json / untracked app.json / tsconfig.tsbuildinfo 유지.
+
 ## 2026-09-20 운영 반영 완료 / iOS145·Android91
 
 - 웹 e58270b를 clean git archive로 Vercel 직접 배포. dpl_72cRxYPYY7VhdGjuyjEiQrTYrSqA READY 후 promote 성공. www.withtrip.co.kr에서 50 BEST98 조회200, 위디 GET/POST 비로그인401 확인. 공개 git push 없음.

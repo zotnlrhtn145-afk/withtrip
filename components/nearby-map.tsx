@@ -1,4 +1,5 @@
 "use client"
+import type { SearchBounds } from "@/shared/saved-search"
 import { CURRENT_LOCATION_IMAGE } from "@/shared/current-location-marker"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -43,9 +44,11 @@ function googleMapId() {
 
 function MapController({
   center,
+  cameraBounds,
   selected,
   recenterKey,
 }: {
+  cameraBounds?: SearchBounds | null
   center: LatLng
   selected: MapSpot | null
   recenterKey: number
@@ -54,6 +57,7 @@ function MapController({
 
   useEffect(() => {
     if (!map || recenterKey === 0) return
+    if(cameraBounds){map.fitBounds({north:cameraBounds.n,south:cameraBounds.s,east:cameraBounds.e,west:cameraBounds.w},48);return}
     map.panTo({ lat: center.lat, lng: center.lng })
     const zoom = map.getZoom() ?? 15
     if (zoom < 15) map.setZoom(15)
@@ -197,6 +201,10 @@ function SpotAvatarPin({
 
 function NearbyMapInner({
   center,
+  cameraCenter,
+  cameraBounds,
+  onViewportChange,
+  onMapGesture,
   accuracy,
   spots,
   selectedId,
@@ -212,6 +220,10 @@ function NearbyMapInner({
 }: {
   onSavedDetail?: (id: string) => void
   savedDesign?: boolean
+  cameraBounds?: SearchBounds | null
+  cameraCenter?: LatLng
+  onViewportChange?: (bounds:SearchBounds)=>void
+  onMapGesture?: ()=>void
   center: LatLng
   accuracy: number | null
   spots: MapSpot[]
@@ -251,7 +263,8 @@ function NearbyMapInner({
         clickableIcons={false}
       >
         <MapController
-          center={center}
+          cameraBounds={cameraBounds}
+          center={cameraCenter ?? center}
           selected={savedDesign ? null : selected}
           recenterKey={recenterKey}
         />
@@ -315,6 +328,10 @@ function NearbyMapInner({
 
 export function NearbyMap({
   center,
+  cameraCenter,
+  cameraBounds,
+  onViewportChange,
+  onMapGesture,
   accuracy,
   spots,
   selectedId,
@@ -331,6 +348,10 @@ export function NearbyMap({
 }: {
   onSavedDetail?: (id: string) => void
   savedDesign?: boolean
+  cameraBounds?: SearchBounds | null
+  cameraCenter?: LatLng
+  onViewportChange?: (bounds:SearchBounds)=>void
+  onMapGesture?: ()=>void
   center: LatLng
   accuracy: number | null
   spots: MapSpot[]
@@ -396,6 +417,10 @@ export function NearbyMap({
         <div className={cn(fill && "min-h-0 flex-1")}>
           <NearbyMapInner
             center={center}
+            cameraBounds={cameraBounds}
+            cameraCenter={cameraCenter}
+            onViewportChange={onViewportChange}
+            onMapGesture={onMapGesture}
             accuracy={accuracy}
             spots={spots}
             selectedId={selectedId}

@@ -8,10 +8,10 @@ export function SavedDesignIcon({ name, size = 22 }: { name: string; size?: numb
   return <img src={`/design/saved/${name}.svg`} alt="" aria-hidden width={size} height={size} style={{ width: size, height: size, flexShrink: 0 }} />
 }
 export function SavedPlaceCard({ name, source, photo, selected, starred, onStar, onDetail, onMap, metadata, details, actions, badge }: {
-  name: string; source: "mine" | "trip" | "friend"; photo?: string | null; selected?: boolean; starred?: boolean;
+  name: string; source: "mine" | "trip" | "friend" | "best"; photo?: string | null; selected?: boolean; starred?: boolean;
   onStar?: () => void; onDetail: () => void; onMap?: () => void; metadata?: ReactNode; details?: ReactNode; actions?: ReactNode; badge?: ReactNode;
 }) {
-  const data = { mine: ["heart", "나의 찜"], trip: ["clapperboard", "여행클립"], friend: ["circle-user-round", "친구 찜"] }[source]
+  const data = { best: ["bookmark", "선정 장소"], mine: ["heart", "나의 찜"], trip: ["clapperboard", "여행클립"], friend: ["circle-user-round", "친구 찜"] }[source]
   return <article className={styles.card} data-selected={selected}>
     {photo ? <div className={styles.photo}>
       <button className={styles.photoLink} onClick={onMap ?? onDetail} aria-label={`${name} ${onMap ? "지도에서 보기" : "상세보기"}`}><img src={photo} alt="" loading="lazy" /></button>

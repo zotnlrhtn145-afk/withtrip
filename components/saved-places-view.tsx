@@ -1,4 +1,7 @@
 "use client"
+import { Utensils, Wine } from "lucide-react"
+import { WORLD_BEST, BEST_SCOPE_LABELS, type BestScope } from "@/shared/world-best"
+import { boundsCenter, filterBestPlaces, inSearchBounds, type SearchBounds, type BestPlace } from "@/shared/saved-search"
 import { worldBestFor, type WorldBest } from "@/shared/world-best"
 
 import dynamic from "next/dynamic"
@@ -125,8 +128,30 @@ export function SavedPlacesView() {
   const [places, setPlaces] = useState<SavedPlace[]>([])
   const [loading, setLoading] = useState(false)
   const [bestOnly, setBestOnly] = useState(false)
-  const [bestPlaces, setBestPlaces] = useState<{google_place_id:string;name:string;address:string;lat:number;lng:number;award:WorldBest}[]>([])
-  useEffect(() => { if (!bestOnly) return; let alive=true; void fetch("/api/world-best").then(r=>r.ok?r.json():null).then(data=>{if(alive&&data)setBestPlaces(data.places??[])}).catch(()=>{});return()=>{alive=false} }, [bestOnly])
+  const [bestKind,setBestKind] = useState<WorldBest["kind"]>("bars")
+  const [bestScope,setBestScope] = useState<BestScope|"all">("all")
+  const [bestPlaces,setBestPlaces] = useState<BestPlace[]>([])
+  const [bestLoading,setBestLoading] = useState(false)
+  const [bestError,setBestError] = useState(false)
+  const [bestRetry,setBestRetry] = useState(0)
+  const [bestIncomplete,setBestIncomplete] = useState(false)
+  const [pinned,setPinned] = useState<SearchBounds|null>(null)
+  const [viewport,setViewport] = useState<SearchBounds|null>(null)
+  const [mapMoved,setMapMoved] = useState(false)
+  const [cameraCenter,setCameraCenter] = useState<{lat:number;lng:number}|undefined>()
+  const [searchAreaName,setSearchAreaName] = useState("")
+  const [regionSearching,setRegionSearching] = useState(false)
+  const [regionError,setRegionError] = useState("")
+  useEffect(() => {
+    if (!bestOnly) return
+    const controller=new AbortController()
+    setBestLoading(true);setBestError(false)
+    void fetch("/api/world-best",{signal:controller.signal}).then(async r=>{if(!r.ok)throw new Error();return r.json()})
+      .then(d=>{if(!controller.signal.aborted){setBestPlaces(d.places??[]);setBestIncomplete((d.unlocated?.length??0)>0)}})
+      .catch(()=>{if(!controller.signal.aborted)setBestError(true)})
+      .finally(()=>{if(!controller.signal.aborted)setBestLoading(false)})
+    return ()=>controller.abort()
+  },[bestOnly,bestRetry])
   const [subFilter, setSubFilter] = useState<string | null>(null)
   const [addOpen, setAddOpen] = useState(false)
   const [assigningPlace, setAssigningPlace] = useState<SavedPlace | null>(null)
@@ -152,7 +177,7 @@ export function SavedPlacesView() {
   }, [searchParams])
   const [subTab, setSubTab] = useState<"wish" | "trip">("wish")
   const [search, setSearch] = useState("") // 저장 전용 검색 — 이름·지역·주소
-  const [sort, setSort] = useState<SortMode>("recent")
+  const [sort, setSort] = useState<SortMode>("distance")
   const [tripFilter, setTripFilter] = useState<string>("all")
   const [filterOpen, setFilterOpen] = useState(false)
   const [tripSpots, setTripSpots] = useState<NearbySpot[]>([])
@@ -166,6 +191,7 @@ export function SavedPlacesView() {
   const followNextFix = useRef(false)
   const cardRefs = useRef<Record<string, HTMLLIElement | null>>({})
   const geo = useGeolocation()
+  const distanceOrigin = useMemo(()=>pinned?boundsCenter(pinned):geo.position,[pinned,geo.position])
   // 선택이 어디서 왔는지 — "map"(마커 클릭)이면 리스트 카드로 스크롤, "list"(카드 클릭)면 지도로 스크롤.
   const selectSource = useRef<"list" | "map">("map")
 
@@ -431,13 +457,13 @@ export function SavedPlacesView() {
     if (!el) return
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries.some((e) => e.isIntersecting)) setVisible((v) => Math.min(v + PAGE, Math.max(PAGE, places.length + tripSpots.length + recs.length)))
+        if (entries.some((e) => e.isIntersecting)) setVisible((v) => Math.min(v + PAGE, Math.max(PAGE, places.length + tripSpots.length + recs.length + bestPlaces.length)))
       },
       { rootMargin: "400px" }
     )
     io.observe(el)
     return () => io.disconnect()
-  }, [tab, subTab, visible, loading, places.length, tripSpots.length, recs.length])
+  }, [tab, subTab, visible, loading, places.length, tripSpots.length, recs.length,bestPlaces.length])
 
   /** 꼭 가고 싶은 곳만 보기 — 켜면 목록도 지도도 별표만 남는다 */
   const [starredOnly, setStarredOnly] = useState(false)
@@ -476,17 +502,17 @@ export function SavedPlacesView() {
     const byCat = subFilter ? byAward.filter((place) => place.subCategory.trim() === subFilter) : byAward
     const byVisit = visitedOnly ? byCat.filter(place => !!place.googlePlaceId && marks[place.googlePlaceId]?.visited) : byCat
     const base = starredOnly ? byVisit.filter((place) => place.starred) : byVisit
-    const arr = [...base]
+    const arr = base.filter(p=>inSearchBounds(p,pinned))
     if (sort === "recent") return arr.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
     if (sort === "name") return arr.sort((a, b) => a.placeName.localeCompare(b.placeName, "ko"))
     if (sort === "rating") return arr.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
     // 내 위치에서 가까운 순 (좌표 없는 곳은 뒤로)
     return arr.sort((a, b) => {
-      const da = a.lat != null && a.lng != null ? distanceMeters(geo.position, { lat: a.lat, lng: a.lng }) : Infinity
-      const db = b.lat != null && b.lng != null ? distanceMeters(geo.position, { lat: b.lat, lng: b.lng }) : Infinity
+      const da = a.lat != null && a.lng != null ? distanceMeters(distanceOrigin, { lat: a.lat, lng: a.lng }) : Infinity
+      const db = b.lat != null && b.lng != null ? distanceMeters(distanceOrigin, { lat: b.lat, lng: b.lng }) : Infinity
       return da - db
     })
-  }, [places, subFilter, geo.position, sort, search, starredOnly, visitedOnly, marks, country, region, bestOnly])
+  }, [places, subFilter, distanceOrigin, sort, search, starredOnly, visitedOnly, marks, country, region, bestOnly, pinned])
 
   /*
     지금 갈 수 있는 곳만 남긴다.
@@ -525,11 +551,11 @@ export function SavedPlacesView() {
     const map = new Map<string, string>()
     for (const place of visiblePlaces) {
       if (typeof place.lat !== "number" || typeof place.lng !== "number") continue
-      const meters = distanceMeters(geo.position, { lat: place.lat, lng: place.lng })
+      const meters = distanceMeters(distanceOrigin, { lat: place.lat, lng: place.lng })
       map.set(place.id, formatDistance(meters))
     }
     return map
-  }, [visiblePlaces, geo.position])
+  }, [visiblePlaces, distanceOrigin])
 
   /** 지도 마커 — 현재 카테고리 필터가 그대로 적용되고, 좌표가 없는 곳은 제외된다. */
   const mapSpots: MapSpot[] = useMemo(() => {
@@ -539,7 +565,7 @@ export function SavedPlacesView() {
           typeof place.lat === "number" && typeof place.lng === "number"
       )
       .map((place) => {
-        const meters = distanceMeters(geo.position, { lat: place.lat, lng: place.lng })
+        const meters = distanceMeters(distanceOrigin, { lat: place.lat, lng: place.lng })
         return {
           id: place.id,
           name: place.placeName,
@@ -584,30 +610,30 @@ export function SavedPlacesView() {
       ? byTrip.filter((s) => matchesSearch(q, [s.name, s.nameLocal, s.address, s.category]))
       : byTrip
     const base = subFilter ? bySearch.filter((s) => (s.category ?? "").trim() === subFilter) : bySearch
-    const arr = [...base]
+    const arr = base.filter(p=>inSearchBounds(p,pinned))
     if (sort === "name") return arr.sort((a, b) => a.name.localeCompare(b.name, "ko"))
     if (sort === "rating") return arr.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
     return arr.sort((a, b) => {
-      const da = a.lat != null && a.lng != null ? distanceMeters(geo.position, { lat: a.lat, lng: a.lng }) : Infinity
-      const db = b.lat != null && b.lng != null ? distanceMeters(geo.position, { lat: b.lat, lng: b.lng }) : Infinity
+      const da = a.lat != null && a.lng != null ? distanceMeters(distanceOrigin, { lat: a.lat, lng: a.lng }) : Infinity
+      const db = b.lat != null && b.lng != null ? distanceMeters(distanceOrigin, { lat: b.lat, lng: b.lng }) : Infinity
       return da - db
     })
-  }, [tripSpots, subFilter, geo.position, sort, tripFilter, search])
+  }, [tripSpots, subFilter, distanceOrigin, sort, tripFilter, search, pinned])
 
   const tripDistanceLabels = useMemo(() => {
     const map = new Map<string, string>()
     for (const s of filteredTripSpots) {
       if (typeof s.lat !== "number" || typeof s.lng !== "number") continue
-      map.set(s.id, formatDistance(distanceMeters(geo.position, { lat: s.lat, lng: s.lng })))
+      map.set(s.id, formatDistance(distanceMeters(distanceOrigin, { lat: s.lat, lng: s.lng })))
     }
     return map
-  }, [filteredTripSpots, geo.position])
+  }, [filteredTripSpots, distanceOrigin])
 
   const tripMapSpots: MapSpot[] = useMemo(() => {
     return filteredTripSpots
       .filter((s): s is NearbySpot & { lat: number; lng: number } => typeof s.lat === "number" && typeof s.lng === "number")
       .map((s) => {
-        const meters = distanceMeters(geo.position, { lat: s.lat, lng: s.lng })
+        const meters = distanceMeters(distanceOrigin, { lat: s.lat, lng: s.lng })
         return {
           id: s.id,
           name: s.name,
@@ -628,7 +654,7 @@ export function SavedPlacesView() {
         }
       })
       .sort((a, b) => a.distanceMeters - b.distanceMeters)
-  }, [filteredTripSpots, geo.position])
+  }, [filteredTripSpots, distanceOrigin])
 
   // 여행별 선택 옵션 (여행클립 찜 필터용)
   const tripOptions = useMemo(() => {
@@ -638,14 +664,39 @@ export function SavedPlacesView() {
   }, [tripSpots])
 
   const activeChips = subTab === "wish" ? subChips : tripChips
-  const searchedRecs = useMemo(() => { const q = buildQuery(search); return q ? recs.filter(r => matchesSearch(q, [r.placeName, r.address, r.category, r.subCategory])) : recs }, [recs, search])
+  const searchedRecs = useMemo(() => { const q = buildQuery(search); return recs.filter(r=>inSearchBounds(r,pinned)&&(!q||matchesSearch(q,[r.placeName,r.address,r.category,r.subCategory]))) }, [recs, search,pinned])
   const friendMapSpots = useMemo<MapSpot[]>(() => searchedRecs.filter(r => r.lat != null && r.lng != null).map(r => {
-    const meters = distanceMeters(geo.position, { lat: r.lat!, lng: r.lng! })
+    const meters = distanceMeters(distanceOrigin, { lat: r.lat!, lng: r.lng! })
     return { id: r.id, name: r.placeName, nameLocal: r.placeName, category: r.category ?? "친구찜", address: r.address ?? "", lat: r.lat!, lng: r.lng!, rating: r.rating ?? 0, image: r.imageUrl ?? "", imageAlt: r.placeName, distanceMeters: meters, distanceLabel: formatDistance(meters) }
-  }), [searchedRecs, geo.position])
-  const bestMapSpots: MapSpot[] = useMemo(() => bestOnly ? bestPlaces.filter(p => !places.some(saved => saved.googlePlaceId === p.google_place_id && mapSpots.some(m => m.id === saved.id))).map(p => ({ id: `best:${p.google_place_id}`, name: p.name, nameLocal: p.name, address: p.address, lat: p.lat, lng: p.lng, category: p.award.kind === "bars" ? "바" : "레스토랑", rating: 0, image: "", imageAlt: p.name, userId: null, authorNickname: null, authorAvatarUrl: null, worldBest: true, distanceMeters: distanceMeters(geo.position,p), distanceLabel: formatDistance(distanceMeters(geo.position,p)) })) : [], [bestOnly,bestPlaces,places,mapSpots,geo.position])
+  }), [searchedRecs, distanceOrigin])
+  const bestResults = useMemo(()=>{
+    if(bestLoading||bestError)return []
+    const q=buildQuery(search)
+    return filterBestPlaces(bestPlaces,bestKind,bestScope,pinned).filter(p=>(!q||matchesSearch(q,[p.name,p.address,p.award.city,regionLabel(p.award.city)]))&&(country==="all"||matchesSearch(buildQuery(flagNameOf(country)),[p.address]))&&(region==="all"||matchesSearch(buildQuery(region),[p.address,p.award.city]))).sort((a,b)=>sort==="name"?a.name.localeCompare(b.name):sort==="rating"?(b.rating??0)-(a.rating??0):distanceMeters(distanceOrigin,a)-distanceMeters(distanceOrigin,b))
+  },[bestPlaces,bestKind,bestScope,pinned,search,distanceOrigin,bestLoading,bestError,country,region,sort])
+  const availableBestScopes=[...new Set(WORLD_BEST.filter(r=>r.kind===bestKind).map(r=>r.scope??"world"))]
+  const bestMapSpots:MapSpot[]=useMemo(()=>bestResults.map(p=>({id:`best:${p.google_place_id}`,name:p.name,nameLocal:p.name,address:p.address,lat:p.lat,lng:p.lng,category:p.award.kind==="bars"?"바":"레스토랑",rating:p.rating??0,image:p.photo??"",imageAlt:p.name,userId:null,authorNickname:null,authorAvatarUrl:null,worldBest:true,distanceMeters:distanceMeters(distanceOrigin,p),distanceLabel:formatDistance(distanceMeters(distanceOrigin,p))})),[bestResults,distanceOrigin])
+  const toggleBest=(kind:WorldBest["kind"])=>{
+    setBestOnly(!bestOnly||bestKind!==kind);setBestKind(kind);setBestScope("all");setSort("distance");setStarredOnly(false);setVisitedOnly(false);setOpenOnly(false);setSubFilter(null);setSelectedMapId(null);setVisible(PAGE)
+  }
+  const searchRegion=async()=>{
+    const query=search.trim();if(!query||regionSearching)return
+    setRegionSearching(true);setRegionError("")
+    try {
+      if(typeof google==="undefined"||!google.maps)throw new Error()
+      const {results}=await new google.maps.Geocoder().geocode({address:query,language:"ko"})
+      const result=results.find(r=>r.types.some(t=>t==="locality"||t==="country"||t.startsWith("administrative_area")||t.startsWith("sublocality")))
+      if(!result){setRegionError("도시나 동네 이름으로 지역을 검색해 주세요.");return}
+      const lat=result.geometry.location.lat(),lng=result.geometry.location.lng()
+      const dLat=20/111.32,dLng=dLat/Math.max(.1,Math.cos(lat*Math.PI/180))
+      setPinned({n:Math.min(90,lat+dLat),s:Math.max(-90,lat-dLat),e:((lng+dLng+540)%360)-180,w:((lng-dLng+540)%360)-180})
+      setCameraCenter({lat,lng});setSearchAreaName(`${query} 주변 20km`);setSearch("");setCountry("all");setRegion("all");setSort("distance");setSelectedMapId(null);setMapMoved(false);setVisible(PAGE);setRecenterKey(k=>k+1)
+    } catch {setRegionError("지역 위치를 확인하지 못했어요. 지도가 열린 뒤 다시 시도해 주세요.")}
+    finally {setRegionSearching(false)}
+  }
+  const applyArea=()=>{if(!viewport)return;setPinned(viewport);setSearchAreaName("지도에서 선택한 지역");setSearch("");setCountry("all");setRegion("all");setSort("distance");setMapMoved(false);setSelectedMapId(null);setVisible(PAGE)}
   const baseMapSpots = useMemo(() => tab === "all" ? [...mapSpots, ...tripMapSpots, ...friendMapSpots] : tab === "friends" ? friendMapSpots : subTab === "wish" ? mapSpots : tripMapSpots, [tab, subTab, mapSpots, tripMapSpots, friendMapSpots])
-  const activeMapSpots = useMemo(() => [...baseMapSpots, ...bestMapSpots], [baseMapSpots, bestMapSpots])
+  const activeMapSpots = useMemo(() => bestOnly ? bestMapSpots : baseMapSpots, [baseMapSpots, bestMapSpots,bestOnly])
   const selectCategory = (key: "all" | "wish" | "trip" | "friends") => {
     setTab(key === "all" ? "all" : key === "friends" ? "friends" : "mine")
     if (key === "wish" || key === "trip") setSubTab(key)
@@ -669,6 +720,7 @@ export function SavedPlacesView() {
   }, [geo.status, geo.position.lat, geo.position.lng])
 
   const handleRecenter = () => {
+    setPinned(null);setCameraCenter(undefined);setSearchAreaName("");setCountry("all");setRegion("all");setSearch("");setSort("distance");setMapMoved(false)
     followNextFix.current = true
     setRecenterKey((key) => key + 1)
     geo.locate()
@@ -874,10 +926,10 @@ export function SavedPlacesView() {
   const openRecDetail = (rec: IncomingRec) => { setDetailAssign(null); setDetailPlace({ name: rec.placeName, address: rec.address ?? "", lat: rec.lat, lng: rec.lng, imageUrl: rec.imageUrl, category: rec.subCategory || rec.category, rating: rec.rating, reviewCount: rec.reviewCount }) }
   const renderTripSpotCard = (spot: NearbySpot) => <li key={spot.id} ref={node => { cardRefs.current[spot.id] = node }} className="list-none"><SavedPlaceCard name={spot.name} source="trip" photo={spot.image ? photoUrlWith(fastPhotos, spot.image, PHOTO_W.card) : null} selected={selectedMapId === spot.id} onMap={spot.lat != null && spot.lng != null ? () => showOnMap(spot.id) : undefined} onDetail={() => openSpotDetail(spot)} metadata={<><span>{spot.category}</span>{tripDistanceLabels.has(spot.id) ? <span>· {tripDistanceLabels.get(spot.id)}</span> : null}{spot.rating ? <b>· ★ {spot.rating}</b> : null}</>} details={<><div className={savedStyles.person}>{spot.authorAvatarUrl ? <img src={spot.authorAvatarUrl} alt="" /> : <i />}<span>{spot.tripTitle || "여행"}{spot.authorNickname ? ` · ${spot.authorNickname}` : ""}</span></div>{spot.address ? <p>{spot.address}</p> : null}</>} actions={<><div><DirectionsMenu destination={{ name: spot.name, lat: spot.lat, lng: spot.lng }} fallbackQuery={spot.address || spot.name} label="길찾기" /></div><SavedCardAction icon="locate-fixed" label="지도에서 보기" onClick={() => showOnMap(spot.id)} /><SavedCardAction icon="info" label="상세" onClick={() => openSpotDetail(spot)} /></>} /></li>
   const allRows = useMemo(() => [
-    ...visiblePlaces.map(place => ({ key: `mine:${place.id}`, type: "mine" as const, place, name: place.placeName, created: place.createdAt, rating: place.rating ?? 0, distance: place.lat != null && place.lng != null ? distanceMeters(geo.position, { lat: place.lat, lng: place.lng }) : Infinity })),
-    ...filteredTripSpots.map(spot => ({ key: `trip:${spot.id}`, type: "trip" as const, spot, name: spot.name, created: undefined, rating: spot.rating ?? 0, distance: distanceMeters(geo.position, { lat: spot.lat, lng: spot.lng }) })),
-    ...searchedRecs.map(rec => ({ key: `friend:${rec.id}`, type: "friend" as const, rec, name: rec.placeName, created: rec.createdAt, rating: rec.rating ?? 0, distance: rec.lat != null && rec.lng != null ? distanceMeters(geo.position, { lat: rec.lat, lng: rec.lng }) : Infinity })),
-  ].sort((a,b) => sort === "name" ? a.name.localeCompare(b.name, "ko") : sort === "rating" ? b.rating-a.rating : sort === "distance" ? a.distance-b.distance : (b.created ?? "").localeCompare(a.created ?? "")), [visiblePlaces, filteredTripSpots, searchedRecs, geo.position, sort])
+    ...visiblePlaces.map(place => ({ key: `mine:${place.id}`, type: "mine" as const, place, name: place.placeName, created: place.createdAt, rating: place.rating ?? 0, distance: place.lat != null && place.lng != null ? distanceMeters(distanceOrigin, { lat: place.lat, lng: place.lng }) : Infinity })),
+    ...filteredTripSpots.map(spot => ({ key: `trip:${spot.id}`, type: "trip" as const, spot, name: spot.name, created: undefined, rating: spot.rating ?? 0, distance: distanceMeters(distanceOrigin, { lat: spot.lat, lng: spot.lng }) })),
+    ...searchedRecs.map(rec => ({ key: `friend:${rec.id}`, type: "friend" as const, rec, name: rec.placeName, created: rec.createdAt, rating: rec.rating ?? 0, distance: rec.lat != null && rec.lng != null ? distanceMeters(distanceOrigin, { lat: rec.lat, lng: rec.lng }) : Infinity })),
+  ].sort((a,b) => sort === "name" ? a.name.localeCompare(b.name, "ko") : sort === "rating" ? b.rating-a.rating : sort === "distance" ? a.distance-b.distance : (b.created ?? "").localeCompare(a.created ?? "")), [visiblePlaces, filteredTripSpots, searchedRecs, distanceOrigin, sort])
   const openSelectedPopup = (id: string) => { const best = bestPlaces.find(p => `best:${p.google_place_id}` === id); if(best){setDetailAssign(null);setDetailPlace({name:best.name,address:best.address,lat:best.lat,lng:best.lng,googlePlaceId:best.google_place_id,category:best.award.kind==="bars"?"바":"레스토랑"});return} const place = places.find(p => p.id === id); if (place) { openDetail(place); return } const spot = tripSpots.find(p => p.id === id); if (spot) { openSpotDetail(spot); return } const rec = recs.find(p => p.id === id); if (rec) openRecDetail(rec) }
 
   return (
@@ -888,6 +940,10 @@ export function SavedPlacesView() {
           >
             <NearbyMap
               center={geo.position}
+              cameraBounds={pinned}
+              cameraCenter={cameraCenter}
+              onViewportChange={setViewport}
+              onMapGesture={() => setMapMoved(true)}
               accuracy={geo.accuracy}
               spots={activeMapSpots}
               selectedId={selectedMapId}
@@ -905,14 +961,23 @@ export function SavedPlacesView() {
           </div>
 
           <div className={savedStyles.top}><button className={savedStyles.round} onClick={() => window.history.length > 1 ? router.back() : router.push("/")} aria-label="뒤로"><SavedDesignIcon name="arrow-left" /></button><span /><button className={savedStyles.round} onClick={() => setAddOpen(true)} aria-label="장소 추가"><Plus size={22} /></button></div>
+          {mapMoved ? <button className="absolute left-1/2 top-24 z-20 -translate-x-1/2 rounded-full bg-white px-5 py-3 text-sm font-semibold shadow-md" onClick={applyArea}>이 지역 검색</button> : null}
           <SavedMapTools value={tab === "all" ? "all" : tab === "friends" ? "friends" : subTab} onChange={selectCategory} onLocate={handleRecenter} locating={geo.status === "locating"} />
-          <SavedMapSheet collapseKey={collapseKey} resetKey={`${tab}:${subTab}`} title={tab === "all" ? "전체보기" : tab === "friends" ? "친구 찜" : subTab === "wish" ? "나의 찜" : "여행클립 찜"} subtitle={tab === "all" ? `나의 찜 ${visiblePlaces.length} · 여행클립 ${filteredTripSpots.length} · 친구 찜 ${searchedRecs.length}` : undefined} count={tab === "all" ? allRows.length : tab === "friends" ? searchedRecs.length : subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length}>
+          <SavedMapSheet collapseKey={collapseKey} resetKey={`${tab}:${subTab}`} title={tab === "all" ? "전체보기" : tab === "friends" ? "친구 찜" : subTab === "wish" ? "나의 찜" : "여행클립 찜"} subtitle={bestOnly?`${searchAreaName||"전체 지역"} · ${bestKind==="bars"?"베스트 바":"베스트 레스토랑"}`:searchAreaName?searchAreaName:tab === "all" ? `나의 찜 ${visiblePlaces.length} · 여행클립 ${filteredTripSpots.length} · 친구 찜 ${searchedRecs.length}` : undefined} count={bestOnly ? bestResults.length : tab === "all" ? allRows.length : tab === "friends" ? searchedRecs.length : subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length}>
 
-            <div className={savedStyles.search}><SavedDesignIcon name="search" size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="지역·이름으로 검색" aria-label="저장 장소 검색" />{search ? <button onClick={() => setSearch("")} aria-label="검색어 지우기"><X size={18} /></button> : null}</div>
-            {tab !== "friends" ? <div className={savedStyles.filters}><p className={savedStyles.summary}>{tab === "all" ? allRows.length : subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length}곳 · {SORT_LABELS[sort]}{subFilter ? ` · ${subFilter}` : ""}</p><div className={savedStyles.filterButtons}>{subTab === "wish" || tab === "all" ? <><button aria-pressed={starredOnly} onClick={() => setStarredOnly(v => !v)}><SavedDesignIcon name="quick-star" size={19} /><span>별표</span></button><button aria-pressed={visitedOnly} onClick={() => setVisitedOnly(v => !v)}><SavedDesignIcon name="quick-visited" size={19} /><span>다녀온 곳</span></button><button aria-pressed={openOnly} onClick={() => setOpenOnly(v => !v)}><SavedDesignIcon name="quick-open" size={19} /><span>지금 갈 곳</span></button><button aria-pressed={bestOnly} onClick={() => setBestOnly(v => !v)}><span aria-hidden className="rounded-md border-2 border-[#FBBF24] px-1 text-xs font-extrabold">50</span><span>50 Best</span></button></> : null}<button aria-label="필터" aria-pressed={!!subFilter || sort !== "recent" || country !== "all" || region !== "all" || tripFilter !== "all"} onClick={() => setFilterOpen(true)}><SavedDesignIcon name="quick-filter" size={19} /><span>필터</span></button></div></div> : null}
+            <div className={savedStyles.search}><SavedDesignIcon name="search" size={17} /><input value={search} onChange={event => setSearch(event.target.value)} onKeyDown={e=>{if(e.key==="Enter")void searchRegion()}} placeholder="지역·이름으로 검색" aria-label="저장 장소 검색" />{search ? <button onClick={() => setSearch("")} aria-label="검색어 지우기"><X size={18} /></button> : null}</div>
+            {tab !== "friends" ? <div className={savedStyles.filters}><p className={savedStyles.summary}>{bestOnly?bestResults.length:tab === "all" ? allRows.length : subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length}곳 · {SORT_LABELS[sort]}{subFilter ? ` · ${subFilter}` : ""}</p><div className={savedStyles.filterButtons}>{subTab === "wish" || tab === "all" ? <><button aria-pressed={starredOnly} onClick={() => {setBestOnly(false);setStarredOnly(v => !v)}}><SavedDesignIcon name="quick-star" size={19} /><span>별표</span></button><button aria-pressed={visitedOnly} onClick={() => {setBestOnly(false);setVisitedOnly(v => !v)}}><SavedDesignIcon name="quick-visited" size={19} /><span>다녀온 곳</span></button><button aria-pressed={openOnly} onClick={() => {setBestOnly(false);setOpenOnly(v => !v)}}><SavedDesignIcon name="quick-open" size={19} /><span>지금 갈 곳</span></button><button aria-pressed={bestOnly&&bestKind==="restaurants"} onClick={()=>toggleBest("restaurants")}><Utensils size={19}/><span>베스트 식당</span></button><button aria-pressed={bestOnly&&bestKind==="bars"} onClick={()=>toggleBest("bars")}><Wine size={19}/><span>베스트 바</span></button></> : null}<button aria-label="필터" aria-pressed={!!subFilter || sort !== "distance" || country !== "all" || region !== "all" || tripFilter !== "all"} onClick={() => setFilterOpen(true)}><SavedDesignIcon name="quick-filter" size={19} /><span>필터</span></button></div></div> : null}
 
             <div>
-              {loading ? <div className="py-8"><Loader2 className="mx-auto size-6 animate-spin" /></div> : tab === "all" ? <ul className="m-0 list-none p-0">{allRows.slice(0, visible).map(row => row.type === "mine" ? renderPlaceCard(row.place) : row.type === "trip" ? renderTripSpotCard(row.spot) : <li key={row.key}><FriendRecsList recs={[row.rec]} savingId={savingRecId} onRegister={handleRegisterRec} onSave={handleSaveRec} onDismiss={handleDismissRec} onDetail={openRecDetail} onMap={showOnMap} /></li>)}</ul> : tab === "friends" ? <FriendRecsList recs={searchedRecs.slice(0,visible)} savingId={savingRecId} onRegister={handleRegisterRec} onSave={handleSaveRec} onDismiss={handleDismissRec} onDetail={openRecDetail} onMap={showOnMap} /> : subTab === "wish" ? (
+              {search.trim()?<button onClick={()=>void searchRegion()} disabled={regionSearching} className="mb-3 py-2 text-sm">{regionSearching?"지역을 찾고 있어요…":`‘${search.trim()}’ 지역 검색`}</button>:null}
+              {regionError?<p role="alert" className="mb-3 text-sm">{regionError}</p>:null}
+              {searchAreaName?<p className="mb-3 text-sm text-slate-500">{searchAreaName} · 가까운 순</p>:null}
+              {bestOnly?<div className="mb-4 flex gap-2 overflow-x-auto">{(["all",...availableBestScopes] as const).map(scope=><button key={scope} aria-pressed={bestScope===scope} onClick={()=>{setBestScope(scope);setVisible(PAGE);setSelectedMapId(null)}} className={`shrink-0 rounded-full px-4 py-2 text-sm ${bestScope===scope?"bg-[#FBBF24]":"bg-slate-50"}`}>{scope==="all"?"전체":BEST_SCOPE_LABELS[scope]}</button>)}</div>:null}
+              {bestOnly ? bestLoading ? <div className="py-8"><Loader2 className="mx-auto size-6 animate-spin"/></div> : bestError ? <button onClick={()=>setBestRetry(n=>n+1)} className="py-8">선정 장소를 불러오지 못했어요. 다시 시도</button> : <>
+              <p className="mb-4 text-xs text-slate-500">{bestResults.length}곳 · {bestKind==="bars"?"베스트 바":"베스트 레스토랑"}{bestIncomplete?" · 일부 선정 장소는 위치 확인 중이에요":""}</p>
+              <ul className="m-0 list-none p-0">{bestResults.slice(0,visible).map(p=><li key={p.google_place_id} ref={node=>{cardRefs.current[`best:${p.google_place_id}`]=node}}><SavedPlaceCard name={p.name} source="best" photo={p.photo} selected={selectedMapId===`best:${p.google_place_id}`} onMap={()=>showOnMap(`best:${p.google_place_id}`)} onDetail={()=>openSelectedPopup(`best:${p.google_place_id}`)} metadata={<span>{p.award.kind==="bars"?"바":"레스토랑"}{p.rating!=null?` · ★ ${p.rating}`:""} · {formatDistance(distanceMeters(distanceOrigin,p))}</span>} details={<p>{p.address}</p>} actions={<><SavedCardAction icon="locate-fixed" label="지도" onClick={()=>showOnMap(`best:${p.google_place_id}`)}/><SavedCardAction icon="info" label="상세" onClick={()=>openSelectedPopup(`best:${p.google_place_id}`)}/></>}/></li>)}</ul>
+              {!bestResults.length?<p className="py-8 text-center text-sm text-slate-500">{bestIncomplete?"이 조건에서 위치가 확인된 선정 장소가 아직 없어요.":"선택한 지역과 필터에 맞는 선정 장소가 없어요."}</p>:null}
+              </> : loading ? <div className="py-8"><Loader2 className="mx-auto size-6 animate-spin" /></div> : tab === "all" ? <ul className="m-0 list-none p-0">{allRows.slice(0, visible).map(row => row.type === "mine" ? renderPlaceCard(row.place) : row.type === "trip" ? renderTripSpotCard(row.spot) : <li key={row.key}><FriendRecsList recs={[row.rec]} savingId={savingRecId} onRegister={handleRegisterRec} onSave={handleSaveRec} onDismiss={handleDismissRec} onDetail={openRecDetail} onMap={showOnMap} /></li>)}</ul> : tab === "friends" ? <FriendRecsList recs={searchedRecs.slice(0,visible)} savingId={savingRecId} onRegister={handleRegisterRec} onSave={handleSaveRec} onDismiss={handleDismissRec} onDetail={openRecDetail} onMap={showOnMap} /> : subTab === "wish" ? (
                 visiblePlaces.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-400">
                     {search.trim() ? `'${search.trim()}' 검색 결과가 없어요.` : "이 카테고리에 저장된 장소가 없어요."}
