@@ -26,3 +26,14 @@
 .mapPin{width:35px;height:35px;border:2px solid white;border-radius:50%;display:grid;place-items:center;background:white;color:#182430;box-shadow:0 3px 10px #17253638;overflow:hidden;cursor:pointer;animation:savedPinIn 380ms cubic-bezier(.22,1,.36,1) both;transition:transform 230ms,border-color 230ms}.mapPin>img{width:100%;height:100%;object-fit:cover}.mapPin b{font-size:13px;font-weight:700}.mapPin[data-active=true]{border-color:#fbbf24;transform:scale(1.16)}.anchoredPopup{position:relative;left:auto;top:auto;margin-bottom:25px;max-width:calc(100vw - 36px)}.popupList{max-height:204px;overflow:auto;overscroll-behavior:contain}.popupZoom{width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px;font-size:11px;border-top:1px solid #f0f2f3;color:#334155;background:white}.popupRow>img{flex-shrink:0}@keyframes savedPinIn{0%{opacity:0;scale:.5;translate:0 10px}70%{opacity:1;scale:1.08;translate:0 -2px}100%{opacity:1;scale:1;translate:0 0}}@media(prefers-reduced-motion:reduce){.mapPin{animation:none;transition:none}}
 
 .card .addressLink{display:flex;align-items:center;gap:8px;width:100%;min-height:32px;text-align:left;padding:0;margin-top:7px;font-size:12px;color:#65717c}.addressLink span{flex:1;min-width:0;overflow-wrap:anywhere}.inlineBadges{display:flex;align-items:center;gap:8px;margin-top:5px;font-size:11px;color:#65717c}
+
+/* Figma 387:4900: distinguish awards from quick utilities. */
+.awardFilters{display:flex;gap:12px;margin:20px 0 4px}
+.awardFilter{flex:1;min-width:0;min-height:100px;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:1px solid #e5e7eb;border-radius:14px;background:#fff;color:#182430;font-size:12px;line-height:17px}
+.awardFilter[aria-pressed="true"]{border-color:#fbbf24;font-weight:700}
+.awardFilter img{width:44px;height:51px;object-fit:contain}
+.bestScopes{margin:20px 0 24px}
+.bestScopes>p{margin:0 0 10px;color:#65717c;font-size:12px}
+.bestScopeRow{display:flex;gap:8px;overflow-x:auto}
+.bestScope{flex:0 0 auto;min-width:68px;min-height:44px;padding:11px 16px;border-radius:22px;background:#f5f5f6;color:#182430;font-size:13px}
+.bestScope[aria-pressed="true"]{background:#fbbf24}

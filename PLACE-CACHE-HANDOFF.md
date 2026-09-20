@@ -1,3 +1,10 @@
+## 2026-09-21 BEST 필터 공식 로고 / 네 액션 복원 — 다음 배포 대기
+
+- 앱 Figma387:4900 기준. 공식 식당·바 브랜드 PNG는 shared/best-filter-marks.ts 한 원본, 앱 sync 완료. 유틸리티/브랜드 행 분리, 지역 칩44px 이상·위20/아래24 여백.
+- BEST 장소에도 길찾기/여행담기/공유/상세 연결. 여행담기는 저장 UUID 없이 가능한 DTO 타입으로 제한, 친구·카카오 공유에는 가짜 sourceId 전달하지 않음.
+- 앱·웹 tsc/shared/BEST 및 지도 회귀 통과. 로그인 후 실제 네 버튼/제스처·큰 글씨 검증 남음. 앱 docs/best-filter-actions-2026-09-21.md 참조.
+- 운영 배포/새 모바일 빌드 없음. 기존 무관 eas.json/app.json/tsconfig.tsbuildinfo 보존.
+
 ## 2026-09-21 모바일146·92 완료
 
 - iOS146 빌드/제출 FINISHED, Apple VALID / 내부 IN_BETA_TESTING. Android92 FINISHED·다운로드/패키지버전/v2서명 검증 성공.
