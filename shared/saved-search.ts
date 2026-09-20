@@ -12,7 +12,7 @@ export function boundsCenter(b:SearchBounds):{lat:number;lng:number} {
  return {lat:(b.n+b.s)/2,lng}
 }
 /** One venue per place ID. This same array feeds the list, count and map. */
-export function filterBestPlaces(rows:BestPlace[],kind:WorldBest["kind"],scope:BestScope|"all",bounds:SearchBounds|null):BestPlace[] {
+export function filterBestPlaces(rows:BestPlace[],kind:WorldBest["kind"]|"all",scope:BestScope|"all",bounds:SearchBounds|null):BestPlace[] {
  const seen=new Set<string>()
- return rows.filter(p=>{if(p.award.kind!==kind || (scope!=="all"&&(p.award.scope??"world")!==scope) || !inSearchBounds(p,bounds) || seen.has(p.google_place_id))return false;seen.add(p.google_place_id);return true})
+ return rows.filter(p=>{if((kind!=="all"&&p.award.kind!==kind) || (scope!=="all"&&(p.award.scope??"world")!==scope) || !inSearchBounds(p,bounds) || seen.has(p.google_place_id))return false;seen.add(p.google_place_id);return true})
 }

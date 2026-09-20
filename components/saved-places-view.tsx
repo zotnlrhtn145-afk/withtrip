@@ -1,5 +1,5 @@
 "use client"
-import { BEST_FILTER_MARKS } from "@/shared/best-filter-marks"
+import { WORLD_BEST_LOGO_SVG } from "@/shared/world-best-logo"
 import { WORLD_BEST, BEST_SCOPE_LABELS, type BestScope } from "@/shared/world-best"
 import { boundsCenter, filterBestPlaces, inSearchBounds, type SearchBounds, type BestPlace } from "@/shared/saved-search"
 import { worldBestFor, type WorldBest } from "@/shared/world-best"
@@ -120,6 +120,7 @@ const SORT_LABELS: Record<SortMode, string> = {
 }
 
 /** "저장한 장소" — 여행에 상관없이 담아둔 관심 맛집을 한곳에 모아보는 탭. */
+const BEST_FILTER_URI = `data:image/svg+xml,${encodeURIComponent(WORLD_BEST_LOGO_SVG.replaceAll("#fff", "#182430"))}`
 export function SavedPlacesView() {
   const router = useRouter()
   const { trips } = useTrips()
@@ -128,7 +129,7 @@ export function SavedPlacesView() {
   const [places, setPlaces] = useState<SavedPlace[]>([])
   const [loading, setLoading] = useState(false)
   const [bestOnly, setBestOnly] = useState(false)
-  const [bestKind,setBestKind] = useState<WorldBest["kind"]>("bars")
+  const [bestKind,setBestKind] = useState<WorldBest["kind"]|"all">("all")
   const [bestScope,setBestScope] = useState<BestScope|"all">("all")
   const [bestPlaces,setBestPlaces] = useState<BestPlace[]>([])
   const [bestLoading,setBestLoading] = useState(false)
@@ -674,11 +675,12 @@ export function SavedPlacesView() {
     const q=buildQuery(search)
     return filterBestPlaces(bestPlaces,bestKind,bestScope,pinned).filter(p=>(!q||matchesSearch(q,[p.name,p.address,p.award.city,regionLabel(p.award.city)]))&&(country==="all"||matchesSearch(buildQuery(flagNameOf(country)),[p.address]))&&(region==="all"||matchesSearch(buildQuery(region),[p.address,p.award.city]))).sort((a,b)=>sort==="name"?a.name.localeCompare(b.name):sort==="rating"?(b.rating??0)-(a.rating??0):distanceMeters(distanceOrigin,a)-distanceMeters(distanceOrigin,b))
   },[bestPlaces,bestKind,bestScope,pinned,search,distanceOrigin,bestLoading,bestError,country,region,sort])
-  const availableBestScopes=[...new Set(WORLD_BEST.filter(r=>r.kind===bestKind).map(r=>r.scope??"world"))]
+  const availableBestScopes=[...new Set(WORLD_BEST.filter(r=>bestKind==="all"||r.kind===bestKind).map(r=>r.scope??"world"))]
   const bestMapSpots:MapSpot[]=useMemo(()=>bestResults.map(p=>({id:`best:${p.google_place_id}`,name:p.name,nameLocal:p.name,address:p.address,lat:p.lat,lng:p.lng,category:p.award.kind==="bars"?"바":"레스토랑",rating:p.rating??0,image:p.photo??"",imageAlt:p.name,userId:null,authorNickname:null,authorAvatarUrl:null,worldBest:true,bestKind:p.award.kind,distanceMeters:distanceMeters(distanceOrigin,p),distanceLabel:formatDistance(distanceMeters(distanceOrigin,p))})),[bestResults,distanceOrigin])
-  const toggleBest=(kind:WorldBest["kind"])=>{
-    setBestOnly(!bestOnly||bestKind!==kind);setBestKind(kind);setBestScope("all");setSort("distance");setStarredOnly(false);setVisitedOnly(false);setOpenOnly(false);setSubFilter(null);setSelectedMapId(null);setVisible(PAGE)
+  const selectBestKind=(kind:WorldBest["kind"]|"all"|null)=>{
+    setBestOnly(kind!==null);setBestKind(kind??"all");setBestScope("all");setSort("distance");setStarredOnly(false);setVisitedOnly(false);setOpenOnly(false);setSubFilter(null);setSelectedMapId(null);setVisible(PAGE)
   }
+  const toggleBest=()=>selectBestKind(bestOnly?null:"all")
   const searchRegion=async()=>{
     const query=search.trim();if(!query||regionSearching)return
     setRegionSearching(true);setRegionError("")
@@ -963,10 +965,10 @@ export function SavedPlacesView() {
           <div className={savedStyles.top}><button className={savedStyles.round} onClick={() => window.history.length > 1 ? router.back() : router.push("/")} aria-label="뒤로"><SavedDesignIcon name="arrow-left" /></button><span /><button className={savedStyles.round} onClick={() => setAddOpen(true)} aria-label="장소 추가"><Plus size={22} /></button></div>
           {mapMoved ? <button className="absolute left-1/2 top-24 z-20 -translate-x-1/2 rounded-full bg-white px-5 py-3 text-sm font-semibold shadow-md" onClick={applyArea}>이 지역 검색</button> : null}
           <SavedMapTools value={tab === "all" ? "all" : tab === "friends" ? "friends" : subTab} onChange={selectCategory} onLocate={handleRecenter} locating={geo.status === "locating"} />
-          <SavedMapSheet collapseKey={collapseKey} resetKey={`${tab}:${subTab}`} title={tab === "all" ? "전체보기" : tab === "friends" ? "친구 찜" : subTab === "wish" ? "나의 찜" : "여행클립 찜"} subtitle={bestOnly?`${searchAreaName||"전체 지역"} · ${bestKind==="bars"?"베스트 바":"베스트 레스토랑"}`:searchAreaName?searchAreaName:tab === "all" ? `나의 찜 ${visiblePlaces.length} · 여행클립 ${filteredTripSpots.length} · 친구 찜 ${searchedRecs.length}` : undefined} count={bestOnly ? bestResults.length : tab === "all" ? allRows.length : tab === "friends" ? searchedRecs.length : subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length}>
+          <SavedMapSheet collapseKey={collapseKey} resetKey={`${tab}:${subTab}`} title={tab === "all" ? "전체보기" : tab === "friends" ? "친구 찜" : subTab === "wish" ? "나의 찜" : "여행클립 찜"} subtitle={bestOnly?`${searchAreaName||"전체 지역"} · ${bestKind==="all"?"월드 베스트":bestKind==="bars"?"월드 베스트 · 바":"월드 베스트 · 음식점"}`:searchAreaName?searchAreaName:tab === "all" ? `나의 찜 ${visiblePlaces.length} · 여행클립 ${filteredTripSpots.length} · 친구 찜 ${searchedRecs.length}` : undefined} count={bestOnly ? bestResults.length : tab === "all" ? allRows.length : tab === "friends" ? searchedRecs.length : subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length}>
 
             <div className={savedStyles.search}><SavedDesignIcon name="search" size={17} /><input value={search} onChange={event => setSearch(event.target.value)} onKeyDown={e=>{if(e.key==="Enter")void searchRegion()}} placeholder="지역·이름으로 검색" aria-label="저장 장소 검색" />{search ? <button onClick={() => setSearch("")} aria-label="검색어 지우기"><X size={18} /></button> : null}</div>
-            {tab !== "friends" ? <div className={savedStyles.filters}><p className={savedStyles.summary}>{bestOnly?bestResults.length:tab === "all" ? allRows.length : subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length}곳 · {SORT_LABELS[sort]}{subFilter ? ` · ${subFilter}` : ""}</p><div className={savedStyles.filterButtons}>{subTab === "wish" || tab === "all" ? <><button aria-pressed={starredOnly} onClick={() => {setBestOnly(false);setStarredOnly(v => !v)}}><SavedDesignIcon name="quick-star" size={19} /><span>별표</span></button><button aria-pressed={visitedOnly} onClick={() => {setBestOnly(false);setVisitedOnly(v => !v)}}><SavedDesignIcon name="quick-visited" size={19} /><span>다녀온 곳</span></button><button aria-pressed={openOnly} onClick={() => {setBestOnly(false);setOpenOnly(v => !v)}}><SavedDesignIcon name="quick-open" size={19} /><span>지금 갈 곳</span></button>{(["restaurants","bars"] as const).map(kind=><button key={kind} aria-pressed={bestOnly&&bestKind===kind} onClick={()=>toggleBest(kind)}><img src={BEST_FILTER_MARKS[kind]} width={24} height={24} className={savedStyles.bestFilterIcon} alt=""/><span>{kind==="bars"?"베스트 바":"베스트 식당"}</span></button>)}</> : null}<button aria-label="필터" aria-pressed={!!subFilter || sort !== "distance" || country !== "all" || region !== "all" || tripFilter !== "all"} onClick={() => setFilterOpen(true)}><SavedDesignIcon name="quick-filter" size={19} /><span>필터</span></button></div></div> : null}
+            {tab !== "friends" ? <div className={savedStyles.filters}><p className={savedStyles.summary}>{bestOnly?bestResults.length:tab === "all" ? allRows.length : subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length}곳 · {SORT_LABELS[sort]}{subFilter ? ` · ${subFilter}` : ""}</p><div className={savedStyles.filterButtons}>{subTab === "wish" || tab === "all" ? <><button aria-pressed={starredOnly} onClick={() => {setBestOnly(false);setStarredOnly(v => !v)}}><SavedDesignIcon name="quick-star" size={19} /><span>별표</span></button><button aria-pressed={visitedOnly} onClick={() => {setBestOnly(false);setVisitedOnly(v => !v)}}><SavedDesignIcon name="quick-visited" size={19} /><span>다녀온 곳</span></button><button aria-pressed={openOnly} onClick={() => {setBestOnly(false);setOpenOnly(v => !v)}}><SavedDesignIcon name="quick-open" size={19} /><span>지금 갈 곳</span></button><button aria-pressed={bestOnly} onClick={toggleBest}><img src={BEST_FILTER_URI} width={24} height={24} className={savedStyles.bestFilterIcon} alt=""/><span>월드 베스트</span></button></> : null}<button aria-label="필터" aria-pressed={(bestOnly && bestKind!=="all") || !!subFilter || sort !== "distance" || country !== "all" || region !== "all" || tripFilter !== "all"} onClick={() => setFilterOpen(true)}><SavedDesignIcon name="quick-filter" size={19} /><span>필터</span></button></div></div> : null}
 
 
             <div>
@@ -975,7 +977,7 @@ export function SavedPlacesView() {
               {searchAreaName?<p className="mb-3 text-sm text-slate-500">{searchAreaName} · 가까운 순</p>:null}
               {bestOnly?<div className={savedStyles.bestScopes}><p>선정 지역</p><div className={savedStyles.bestScopeRow}>{(["all",...availableBestScopes] as const).map(scope=><button key={scope} aria-pressed={bestScope===scope} onClick={()=>{setBestScope(scope);setVisible(PAGE);setSelectedMapId(null)}} className={savedStyles.bestScope}>{scope==="all"?"전체":BEST_SCOPE_LABELS[scope]}</button>)}</div></div>:null}
               {bestOnly ? bestLoading ? <div className="py-8"><Loader2 className="mx-auto size-6 animate-spin"/></div> : bestError ? <button onClick={()=>setBestRetry(n=>n+1)} className="py-8">선정 장소를 불러오지 못했어요. 다시 시도</button> : <>
-              <p className="mb-4 text-xs text-slate-500">{bestResults.length}곳 · {bestKind==="bars"?"베스트 바":"베스트 레스토랑"}{bestScope==="all"?" · 과거 선정·Discovery 포함":""}{bestIncomplete?" · 일부 장소는 위치 확인 중이에요":""}</p>
+              <p className="mb-4 text-xs text-slate-500">{bestResults.length}곳 · {bestKind==="all"?"월드 베스트":bestKind==="bars"?"월드 베스트 · 바":"월드 베스트 · 음식점"}{bestScope==="all"?" · 과거 선정·Discovery 포함":""}{bestIncomplete?" · 일부 장소는 위치 확인 중이에요":""}</p>
               <ul className="m-0 list-none p-0">{bestResults.slice(0,visible).map(p=><li key={p.google_place_id} ref={node=>{cardRefs.current[`best:${p.google_place_id}`]=node}}><SavedPlaceCard name={p.name} source="best" photo={p.photo} selected={selectedMapId===`best:${p.google_place_id}`} onMap={()=>showOnMap(`best:${p.google_place_id}`)} onDetail={()=>openSelectedPopup(`best:${p.google_place_id}`)} metadata={<span>{p.award.kind==="bars"?"바":"레스토랑"}{p.rating!=null?` · ★ ${p.rating}`:""} · {formatDistance(distanceMeters(distanceOrigin,p))}</span>} details={<p>{p.address}</p>} actions={<><div><DirectionsMenu destination={{name:p.name,lat:p.lat,lng:p.lng}} fallbackQuery={p.address||p.name} label="길찾기"/></div><SavedCardAction icon="plane" label="여행담기" onClick={()=>setSendTarget({placeName:p.name,category:p.award.kind==="bars"?"술 한잔":"식사",subCategory:p.award.kind==="bars"?"바":"레스토랑",localName:"",phoneNumber:"",address:p.address??"",imageUrl:p.photo??"",rating:p.rating??null,reviewCount:p.rating_count??null,lat:p.lat,lng:p.lng})}/><SavedCardAction icon="send" label="공유" onClick={()=>setRecTarget({label:p.name,place:{place_name:p.name,category:p.award.kind==="bars"?"술 한잔":"식사",sub_category:p.award.kind==="bars"?"바":"레스토랑",address:p.address,image_url:p.photo??null,rating:p.rating??null,review_count:p.rating_count??null,lat:p.lat,lng:p.lng}})}/><SavedCardAction icon="info" label="상세" onClick={()=>openSelectedPopup(`best:${p.google_place_id}`)}/></>}/></li>)}</ul>
               {!bestResults.length?<p className="py-8 text-center text-sm text-slate-500">{bestIncomplete?"이 조건에서 위치가 확인된 선정 장소가 아직 없어요.":"선택한 지역과 필터에 맞는 선정 장소가 없어요."}</p>:null}
               </> : loading ? <div className="py-8"><Loader2 className="mx-auto size-6 animate-spin" /></div> : tab === "all" ? <ul className="m-0 list-none p-0">{allRows.slice(0, visible).map(row => row.type === "mine" ? renderPlaceCard(row.place) : row.type === "trip" ? renderTripSpotCard(row.spot) : <li key={row.key}><FriendRecsList recs={[row.rec]} savingId={savingRecId} onRegister={handleRegisterRec} onSave={handleSaveRec} onDismiss={handleDismissRec} onDetail={openRecDetail} onMap={showOnMap} /></li>)}</ul> : tab === "friends" ? <FriendRecsList recs={searchedRecs.slice(0,visible)} savingId={savingRecId} onRegister={handleRegisterRec} onSave={handleSaveRec} onDismiss={handleDismissRec} onDetail={openRecDetail} onMap={showOnMap} /> : subTab === "wish" ? (
@@ -1110,6 +1112,10 @@ export function SavedPlacesView() {
       */}
       <PlaceFilterDrawer open={filterOpen} onClose={() => setFilterOpen(false)}>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-6 pt-4">
+              <FilterSection title="월드 베스트">
+                <PlaceChip label="선택 안 함" on={!bestOnly} onClick={()=>selectBestKind(null)}/>
+                {(["all","restaurants","bars"] as const).map(kind=><PlaceChip key={kind} label={kind==="all"?"전체":kind==="bars"?"바":"음식점"} on={bestOnly&&bestKind===kind} onClick={()=>selectBestKind(kind)}/>)}
+              </FilterSection>
               <FilterSection title="정렬">
                 {(["recent", "distance", "name", "rating"] as SortMode[]).map((o) => (
                   <PlaceChip key={o} label={SORT_LABELS[o]} on={sort === o} onClick={() => setSort(o)} />
@@ -1192,6 +1198,8 @@ export function SavedPlacesView() {
               <button
                 type="button"
                 onClick={() => {
+                  setBestKind("all")
+                  setBestScope("all")
                   setCountry("all")
                   setRegion("all")
                   setSubFilter("")
@@ -1207,7 +1215,7 @@ export function SavedPlacesView() {
                 onClick={() => setFilterOpen(false)}
                 className="min-h-12 flex-1 rounded-2xl bg-amber-400 px-3 py-3 text-[15px] font-bold text-slate-950 transition-colors hover:bg-amber-500"
               >
-                {(subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length).toLocaleString()}곳 보기
+                {(bestOnly ? bestResults.length : subTab === "wish" ? visiblePlaces.length : filteredTripSpots.length).toLocaleString()}곳 보기
               </button>
             </footer>
       </PlaceFilterDrawer>
