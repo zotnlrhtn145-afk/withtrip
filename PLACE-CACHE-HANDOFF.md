@@ -1,3 +1,8 @@
+## 2026-09-21 작은 50 BEST 로고 배지 — 다음 배포 대기
+
+- Figma382:4898 확정안 앱과 동일 반영. 상세 큰 목록 삭제, 30px 공식 로고/지역·연도·순위 및 +N 접기. 44px 클릭영역·키보드 포커스, 다른 장소에서 접힘 복원. shared/world-best-logo.ts SVG 원본 공통 내장.
+- 앱·웹 타입/shared/선정 회귀/양OS Hermes export 통과. 실기기 및 브라우저 터치 통합검증 남음. 운영 배포/새빌드 없음. 기존 무관 eas.json/app.json/tsconfig.tsbuildinfo 유지.
+
 ## 2026-09-20 과거 선정·Discovery / 상세 이력 — 배포 대기
 
 - shared 원본에 아시아바 과거601기록/호치민Discovery12 추가(현재판749 별도). rank/year 없는 Discovery union, 장소ID 인덱스, 이력 정렬. 웹·앱 상세에 같은 선정 이력, 목록/지도 업종만 표시.

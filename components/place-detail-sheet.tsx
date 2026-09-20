@@ -347,6 +347,7 @@ function PlaceDetailContents({
                 <span className="text-sm font-semibold text-slate-600">불러오는 중…</span>
               ) : null}
             </div>
+            <WorldBestBadges name={name} address={address} googlePlaceId={gpid || place?.googlePlaceId} />
             <div className="flex flex-wrap items-center gap-2">
               {rating ? (
                 <span className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500">
@@ -357,8 +358,6 @@ function PlaceDetailContents({
               ) : null}
             </div>
           </div>
-
-          <WorldBestBadges name={name} address={address} googlePlaceId={gpid || place?.googlePlaceId} />
 
           {address ? <p className="text-sm leading-[22px] text-slate-500">{address}</p> : null}
           {summary ? <p className="text-[15px] leading-[23px] text-[#242424]">{summary}</p> : null}
