@@ -1,3 +1,5 @@
+import { preferredPhotoRefs } from "@/shared/place-photo-policy"
+import { readPlaceByGoogleId } from "@/lib/places-cache"
 import { NextResponse } from "next/server"
 
 import { buildPlacePhotoProxyUrl, resolveRequestOrigin } from "@/lib/place-cover-image"
@@ -144,7 +146,9 @@ export async function GET(request: Request) {
     const r = await fetchDetails(apiKey, placeId)
     if (!r) return NextResponse.json({ detail: null })
 
-    const photos = (r.photos ?? [])
+    const chosen = await readPlaceByGoogleId(r.place_id ?? placeId)
+    const orderedPhotos = preferredPhotoRefs((r.photos ?? []).map(p => p.photo_reference ?? ""), chosen?.cover_photo_reference).map(photo_reference => ({ photo_reference }))
+    const photos = orderedPhotos
       .slice(0, 4)
       .map((p) =>
         p.photo_reference

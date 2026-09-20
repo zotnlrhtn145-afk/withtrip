@@ -1,3 +1,4 @@
+import { preferredPhotoRefs } from "@/shared/place-photo-policy"
 import { NextResponse } from "next/server"
 
 import {
@@ -223,7 +224,7 @@ function cachedToDetails(row: CachedPlace): GoogleDetailsResult {
     rating: row.rating ?? undefined,
     user_ratings_total: row.rating_count ?? undefined,
     types: row.google_types ?? undefined,
-    photos: (row.photo_references ?? []).map((ref) => ({ photo_reference: ref })),
+    photos: preferredPhotoRefs(row.photo_references, row.cover_photo_reference).map((ref) => ({ photo_reference: ref })),
     geometry: { location: { lat: row.lat, lng: row.lng } },
   }
 }

@@ -1,3 +1,4 @@
+import { fundCurrency } from "@/shared/fund-currency"
 import { resolveAvatarUrl } from "@/lib/avatar"
 import { applyProxyPayments } from "@/shared/settlement-proxy"
 import { createClient } from "@/utils/supabase/client"
@@ -452,6 +453,7 @@ export async function deleteSettlementGuest(guestId: string) {
 }
 
 export type CarryoverConfig = {
+  currency: string
   /** 정산에서 먼저 빼고 나눌 공동 자금(이월). */
   carryover: number
   /** 이월 적용 대상 멤버 user_id (빈 배열 = 전체 멤버). */
@@ -465,19 +467,24 @@ export async function fetchTripCarryoverConfig(tripId: string): Promise<Carryove
   const supabase = createClient()
   const { data, error } = await supabase
     .from("trips")
-    .select("carryover, carryover_members, user_id")
+    .select("carryover, carryover_members, user_id, location, city, country_code, title")
     .eq("id", tripId)
     .maybeSingle()
   if (error) {
     logError("fetchTripCarryoverConfig", error)
-    return { carryover: 0, members: [], ownerId: null }
+    return { carryover: 0, members: [], ownerId: null, currency: "KRW" }
   }
   const row = (data ?? null) as {
+    location?: string | null
+    city?: string | null
+    country_code?: string | null
+    title?: string | null
     carryover?: number | null
     carryover_members?: string[] | null
     user_id?: string | null
   } | null
   return {
+    currency: fundCurrency(row),
     carryover: Math.max(0, Math.round(Number(row?.carryover ?? 0))),
     members: Array.isArray(row?.carryover_members) ? row!.carryover_members! : [],
     ownerId: row?.user_id ?? null,

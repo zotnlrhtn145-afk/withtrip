@@ -1,3 +1,5 @@
+import { flashModelCandidates } from "@/lib/gemini-models"
+import { placePhotoPrompt } from "@/shared/place-photo-policy"
 import { NextResponse } from "next/server"
 
 import { checkRateLimit } from "@/lib/rate-limit"
@@ -14,10 +16,12 @@ async function fetchAsBase64(
     // 사진 URL은 이제 우리 프록시(/api/places/photo?...)라 상대경로로 온다.
     // 서버 fetch는 절대 URL이 필요하므로 요청 origin을 붙인다.
     const absolute = url.startsWith("/") ? new URL(url, origin).toString() : url
-    const res = await fetch(absolute)
+    const res = await fetch(absolute, { signal: AbortSignal.timeout(8000) })
     if (!res.ok) return null
     const mimeType = res.headers.get("content-type")?.split(";")[0]?.trim() || "image/jpeg"
+    if (!mimeType.startsWith("image/")) return null
     const buffer = await res.arrayBuffer()
+    if (buffer.byteLength > 5 * 1024 * 1024) return null
     const bytes = new Uint8Array(buffer)
     let binary = ""
     const chunk = 0x8000
@@ -66,42 +70,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ bestIndex: -1, imageUrl: null })
     }
 
-    const kindLabel =
-      body.kind === "stay" ? "숙소" : body.kind === "bar" ? "바/라운지" : "레스토랑"
+    const promptText = placePhotoPrompt(body.placeName ?? "이 장소", body.kind ?? "restaurant", body.subCategory ?? "", candidates.length)
 
-    const promptText =
-      `아래 이미지는 "${body.placeName ?? "이 장소"}"(${kindLabel}${body.subCategory ? " · " + body.subCategory : ""}) ` +
-      `후보 대표 사진 ${candidates.length}장이다 (0번부터 순서대로). ` +
-      "이 중에서 대표 이미지로 쓰기 가장 좋은 사진을 하나 골라라. " +
-      "좋은 사진 = 업장 내부 인테리어/분위기 사진, 또는 먹음직스러운 시그니처 음식·음료 클로즈업 사진. " +
-      "나쁜 사진(고르지 말 것) = 건물 외경/간판만 있는 사진, 메뉴판/영수증, 로고, 지도 스크린샷, " +
-      "사람 얼굴이 크게 나온 사진, 흐릿하거나 화질이 매우 낮은 사진. " +
-      "적합한 사진이 하나도 없으면 bestIndex를 -1로 답하라. " +
-      '반드시 {"bestIndex": 0, "reason": "..."} 형태의 JSON으로만 응답해라.'
-
-    const preferredFirst = ["gemini-flash-latest"]
-    let candidateModels: string[] = []
-    try {
-      const modelsResponse = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models",
-        { headers: { "x-goog-api-key": apiKey } }
-      )
-      if (modelsResponse.ok) {
-        const modelsData = (await modelsResponse.json()) as {
-          models?: { name?: string; supportedGenerationMethods?: string[] }[]
-        }
-        candidateModels = (modelsData.models || [])
-          .filter((m) => m.supportedGenerationMethods?.includes("generateContent"))
-          .map((m) => String(m.name ?? "").replace(/^models\//, ""))
-          .filter((m) => Boolean(m) && !/tts|image/i.test(m))
-      }
-    } catch {
-      // live model list is best-effort; fall back to the pinned default below
-    }
-    const allModelsToTry = Array.from(
-      // ⚠️ 죽은 모델 이름을 폴백으로 두지 않는다 — 전부 404 라 시간만 버리고 끝은 같다
-      new Set([...preferredFirst, ...candidateModels])
-    )
+    const allModelsToTry = (await flashModelCandidates(apiKey)).slice(0, 2)
 
     let lastError = ""
     for (const model of allModelsToTry) {
@@ -110,6 +81,7 @@ export async function POST(req: Request) {
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
           {
             method: "POST",
+            signal: AbortSignal.timeout(12000),
             headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
             body: JSON.stringify({
               contents: [

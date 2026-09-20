@@ -1,3 +1,4 @@
+import { placePhotoPrompt } from "@/shared/place-photo-policy"
 import { createHash } from "node:crypto"
 
 import { NextResponse } from "next/server"
@@ -23,14 +24,14 @@ export const maxDuration = 60
  * ⚠️ **결과는 places 에 적어 둔다.** places 는 가게 단위 캐시라 모든 사용자가
  *    나눠 쓴다. 사람마다 다시 고르면 AI 비용이 사람 수만큼 붙는다.
  *
- * ⚠️ **돈이 드는 일은 하나도 하지 않는다.**
+ * ⚠️ Google 추가 조회 없이 캐시 사진을 재사용한다. AI 사진 판별 비용은 발생한다.
  *    - 구글 Details 를 부르지 않는다. 후보는 캐시에 적힌 photo_references 만 쓴다.
  *    - 사진도 **이미 우리 저장소에 받아 둔 것만** 본다(place_photos).
  *      사진 프록시는 (ref, 폭) 별로 캐시하므로 없는 폭을 달라고 하면
  *      그 순간 구글 Place Photo 호출이 된다 — 그래서 저장소를 직접 읽는다.
  *
  * ⚠️ 볼 게 모자라면 **"골랐음" 표시를 남기지 않는다.** 나중에 상세 화면을 한 번만
- *    열어도 사진이 캐시에 쌓이므로, 그때 공짜로 다시 시도할 수 있어야 한다.
+ *    열어도 사진이 캐시에 쌓이므로, 그때 저장된 사진으로 다시 시도할 수 있어야 한다.
  */
 
 type Item = {
@@ -97,35 +98,6 @@ async function cachedImages(
   return out.sort((a, b) => refs.indexOf(a.ref) - refs.indexOf(b.ref))
 }
 
-function promptFor(name: string, kind: string, subCategory: string, count: number): string {
-  const isStay = kind === "stay"
-  const label = isStay ? "숙소" : kind === "bar" ? "바/라운지" : "음식점"
-
-  /**
-   * ⚠️ **숙소와 음식점은 좋은 사진의 기준이 다르다.** 호텔은 건물 외관이나
-   *    로비·객실이 대표 사진으로 알맞지만, 음식점에 건물 외관이 걸리면
-   *    "여기가 어디지" 싶어진다. 한 프롬프트로 뭉뚱그리면 둘 다 어긋난다.
-   */
-  const good = isStay
-    ? "객실, 로비·라운지, 수영장·부대시설, 숙소 건물 전경(간판만 크게 찍힌 건 제외)"
-    : "가게 안 인테리어·분위기, 먹음직스러운 대표 음식·음료, 가게 간판이 보이는 정면 외관"
-
-  const bad = isStay
-    ? "주변 길거리, 지도 화면, 로고, 메뉴판, 사람 얼굴이 크게 나온 사진, 흐린 사진"
-    : "가게가 들어 있는 큰 빌딩의 외관·로비(가게가 안 보임), 길거리, 주차장, 지도 화면, " +
-      "로고, 메뉴판·영수증, 사람 얼굴이 크게 나온 사진, 흐린 사진"
-
-  return (
-    `"${name}"(${label}${subCategory ? " · " + subCategory : ""})의 대표 사진 후보 ${count}장이다(0번부터).\n` +
-    `목록에서 이 가게를 한눈에 알아볼 사진 하나를 골라라.\n\n` +
-    `좋은 사진: ${good}\n` +
-    `나쁜 사진: ${bad}\n\n` +
-    `⚠️ 특히 **가게가 큰 건물 안에 있을 때** 건물 외관·로비 사진이 섞여 들어온다. ` +
-    `그건 이 가게 사진이 아니다. 고르지 마라.\n` +
-    `쓸 만한 게 하나도 없으면 bestIndex 를 -1 로 해라.\n` +
-    `{"bestIndex": 0} 형태의 JSON 으로만 답해라.`
-  )
-}
 
 async function pickBest(
   key: string,
@@ -134,7 +106,7 @@ async function pickBest(
   kind: string,
   subCategory: string,
   images: { mime_type: string; data: string }[]
-): Promise<number> {
+): Promise<number | null> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 25_000)
   try {
@@ -147,7 +119,7 @@ async function pickBest(
           contents: [
             {
               parts: [
-                { text: promptFor(name, kind, subCategory, images.length) },
+                { text: placePhotoPrompt(name, kind, subCategory, images.length) },
                 ...images.map((i) => ({ inline_data: i })),
               ],
             },
@@ -161,17 +133,17 @@ async function pickBest(
         signal: controller.signal,
       }
     )
-    if (!res.ok) return -1
+    if (!res.ok) return null
     const data = (await res.json()) as {
       candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
     }
     const raw = data.candidates?.[0]?.content?.parts?.[0]?.text
-    if (!raw) return -1
+    if (!raw) return null
     const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as { bestIndex?: unknown }
-    const n = Number(parsed.bestIndex)
-    return Number.isFinite(n) && n >= 0 && n < images.length ? n : -1
+    const n = parsed.bestIndex
+    return typeof n === "number" && Number.isInteger(n) && n >= -1 && n < images.length ? n : null
   } catch {
-    return -1
+    return null
   } finally {
     clearTimeout(timer)
   }
@@ -201,29 +173,30 @@ export async function POST(request: Request) {
   const ids = items.map((i) => String(i.googlePlaceId))
   const cached = new Map<string, { ref: string | null; done: boolean; refs: string[] }>()
   if (db) {
-    const { data } = await db
+    const { data, error } = await db
       .from("places")
-      .select("google_place_id, cover_photo_reference, cover_curated_at, photo_references")
+      .select("google_place_id, cover_photo_reference, cover_curated_at, cover_policy_version, photo_references")
       .in("google_place_id", ids)
+    if (error) return NextResponse.json({ covers: {} }, { status: 503 })
     for (const r of (data as
       | {
           google_place_id: string
           cover_photo_reference: string | null
           cover_curated_at: string | null
+          cover_policy_version: string | null
           photo_references: string[] | null
         }[]
       | null) ?? []) {
       cached.set(r.google_place_id, {
         ref: r.cover_photo_reference,
-        done: !!r.cover_curated_at,
+        done: !!r.cover_curated_at && r.cover_policy_version === "category-v2",
         refs: r.photo_references ?? [],
       })
     }
   }
 
   const key = (process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || "").trim()
-  const models = key ? await flashModelCandidates(key) : []
-  const model = models[0] ?? ""
+  let modelPromise: Promise<string> | undefined
 
   // ── 2) 아직 안 고른 것만 고른다 ──────────────────────────────
   await Promise.all(
@@ -231,10 +204,7 @@ export async function POST(request: Request) {
       const gid = String(item.googlePlaceId)
       const hit = cached.get(gid)
 
-      if (hit?.ref) {
-        covers[gid] = buildPlacePhotoProxyUrl(hit.ref, 1200, origin)
-        return
-      }
+      if (hit?.ref) covers[gid] = buildPlacePhotoProxyUrl(hit.ref, 1200, origin)
       // 한 번 골라 봤는데 쓸 만한 게 없었던 곳은 다시 부르지 않는다
       if (hit?.done) return
 
@@ -245,13 +215,16 @@ export async function POST(request: Request) {
       const refs = (item.photoRefs?.length ? item.photoRefs : (hit?.refs ?? []))
         .filter(Boolean)
         .slice(0, MAX_CANDIDATES)
-      if (refs.length < 2 || !model || !db) return
+      if (refs.length < 2 || !key || !db) return
 
       // 이미 받아 둔 사진만 본다. 모자라면 **표시를 남기지 않고** 물러난다 —
-      // 상세 화면을 한 번 열면 사진이 쌓이므로 그때 공짜로 다시 하면 된다.
+      // 상세 화면을 한 번 열면 사진이 쌓이므로 그때 Google 재호출 없이 다시 선별한다.
       const images = await cachedImages(db, refs)
       if (images.length < 2) return
 
+      modelPromise ??= flashModelCandidates(key).then(models => models[0] ?? "")
+      const model = await modelPromise
+      if (!model) return
       const best = await pickBest(
         key,
         model,
@@ -260,13 +233,14 @@ export async function POST(request: Request) {
         String(item.subCategory ?? ""),
         images.map((i) => i.inline)
       )
+      if (best === null) return // 통신/모델 오류를 선별 완료로 저장하지 않습니다.
       const chosen = best >= 0 ? images[best].ref : null
       if (chosen) covers[gid] = buildPlacePhotoProxyUrl(chosen, 1200, origin)
 
       // 골랐든 못 골랐든 적어 둔다 — 못 고른 곳을 매번 다시 부르면 AI 비용만 샌다
       await db
         .from("places")
-        .update({ cover_photo_reference: chosen, cover_curated_at: new Date().toISOString() })
+        .update({ cover_photo_reference: chosen, cover_policy_version: "category-v2", cover_curated_at: new Date().toISOString() })
         .eq("google_place_id", gid)
     })
   )

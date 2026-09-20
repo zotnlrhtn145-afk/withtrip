@@ -1,11 +1,13 @@
 "use client"
 
+import { DateRangeField } from "./date-range-field"
+
 import approvedForm from "@/components/approved-form.module.css"
 
 import { useState, type ReactNode } from "react"
 import { BedDouble } from "lucide-react"
 
-import { DateTimeField, formatDotDate } from "@/components/itinerary/date-time-field"
+import { formatDotDate } from "@/components/itinerary/date-time-field"
 import { useTrips } from "@/components/trips-store"
 import { Button } from "@/components/ui/button"
 import {
@@ -52,7 +54,7 @@ export function StayDialog({ trip, trigger }: { trip: Trip; trigger: ReactNode }
     setMemo("")
   }
 
-  const canSubmit = Boolean(name.trim() && checkInDate && checkOutDate)
+  const canSubmit = Boolean(name.trim() && checkInDate && checkOutDate && checkOutDate >= checkInDate)
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
@@ -153,23 +155,8 @@ export function StayDialog({ trip, trigger }: { trip: Trip; trigger: ReactNode }
               </FieldDescription>
             </Field>
 
-            <DateTimeField
-              id="stay-checkin"
-              label="체크인"
-              date={checkInDate}
-              time={checkInTime}
-              onDateChange={setCheckInDate}
-              onTimeChange={setCheckInTime}
-            />
-
-            <DateTimeField
-              id="stay-checkout"
-              label="체크아웃"
-              date={checkOutDate}
-              time={checkOutTime}
-              onDateChange={setCheckOutDate}
-              onTimeChange={setCheckOutTime}
-            />
+            <DateRangeField start={checkInDate} end={checkOutDate} startLabel="체크인" endLabel="체크아웃" onChange={(a, b) => { setCheckInDate(a); setCheckOutDate(b) }} />
+            <div className="grid grid-cols-2 gap-3"><label>체크인 시간<Input type="time" value={checkInTime} onChange={e => setCheckInTime(e.target.value)} /></label><label>체크아웃 시간<Input type="time" value={checkOutTime} onChange={e => setCheckOutTime(e.target.value)} /></label></div>
 
             <Field>
               <FieldLabel htmlFor="stay-phone">숙소 전화번호</FieldLabel>

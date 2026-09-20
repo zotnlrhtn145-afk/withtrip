@@ -1,9 +1,11 @@
 "use client"
 
+import { DateRangeField } from "./date-range-field"
+
 import { useState, type ReactNode } from "react"
 import { ArrowRight, Plane } from "lucide-react"
 
-import { DateTimeField, formatDotDate } from "@/components/itinerary/date-time-field"
+import { formatDotDate } from "@/components/itinerary/date-time-field"
 import { useTrips } from "@/components/trips-store"
 import { Button } from "@/components/ui/button"
 import {
@@ -205,23 +207,8 @@ export function FlightDialog({ trip, trigger }: { trip: Trip; trigger: ReactNode
               <FieldDescription>IATA 공항 코드 3자리를 입력하세요.</FieldDescription>
             </Field>
 
-            <DateTimeField
-              id="flight-depart"
-              label="출발 일시"
-              date={departDate}
-              time={departTime}
-              onDateChange={setDepartDate}
-              onTimeChange={setDepartTime}
-            />
-
-            <DateTimeField
-              id="flight-arrive"
-              label="도착 일시"
-              date={arriveDate}
-              time={arriveTime}
-              onDateChange={setArriveDate}
-              onTimeChange={setArriveTime}
-            />
+            <DateRangeField start={departDate} end={arriveDate} startLabel="출발" endLabel="도착" allowReverse onChange={(a, b) => { setDepartDate(a); setArriveDate(b) }} />
+            <div className="grid grid-cols-2 gap-3"><label>출발 시간<Input type="time" value={departTime} onChange={e => setDepartTime(e.target.value)} /></label><label>도착 시간<Input type="time" value={arriveTime} onChange={e => setArriveTime(e.target.value)} /></label></div>
           </FieldGroup>
         </form>
 

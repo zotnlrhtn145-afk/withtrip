@@ -1,5 +1,7 @@
 "use client"
 
+import { DateRangeField } from "@/components/itinerary/date-range-field"
+
 import { useEffect, useId, useMemo, useState } from "react"
 import { Car, Check, Loader2, Plane, Plus, TrainFront, Trash2 } from "lucide-react"
 
@@ -289,18 +291,7 @@ function SegmentFields({
             />
           </Field>
         </div>
-        <Field>
-          <FieldLabel htmlFor={`${baseId}-depart-date`} className="text-xs text-gray-500">
-            출발 날짜 <span className="ml-1 text-gray-300">(선택)</span>
-          </FieldLabel>
-          <Input
-            id={`${baseId}-depart-date`}
-            type="date"
-            value={segment.departDate}
-            onChange={(event) => patch({ departDate: event.target.value })}
-            className="h-9 rounded-xl border-gray-200 bg-gray-50/80 tabular-nums focus-visible:bg-white"
-          />
-        </Field>
+
 
         <div className="grid grid-cols-2 gap-3">
           <Field>
@@ -339,18 +330,10 @@ function SegmentFields({
             />
           </Field>
         </div>
-        <Field>
-          <FieldLabel htmlFor={`${baseId}-arrive-date`} className="text-xs text-gray-500">
-            도착 날짜 <span className="ml-1 text-gray-300">(선택)</span>
-          </FieldLabel>
-          <Input
-            id={`${baseId}-arrive-date`}
-            type="date"
-            value={segment.arriveDate}
-            onChange={(event) => patch({ arriveDate: event.target.value })}
-            className="h-9 rounded-xl border-gray-200 bg-gray-50/80 tabular-nums focus-visible:bg-white"
-          />
-        </Field>
+        <DateRangeField start={segment.departDate ? new Date(`${segment.departDate}T12:00:00`) : undefined} end={segment.arriveDate ? new Date(`${segment.arriveDate}T12:00:00`) : undefined} startLabel="출발 날짜" endLabel="도착 날짜" allowReverse onChange={(a, b) => {
+          const day = (d?: Date) => d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` : ""
+          patch({ departDate: day(a), arriveDate: day(b) })
+        }} />
 
         <Field>
           <FieldLabel htmlFor={`${baseId}-duration`} className="text-xs text-gray-500">

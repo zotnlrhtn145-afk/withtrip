@@ -28,6 +28,7 @@ export type CachedPlace = {
   sub_category: string | null
   price_level: number | null
   google_types: string[] | null
+  cover_photo_reference?: string | null
   photo_references: string[] | null
   phone: string | null
   is_closed: boolean
@@ -60,7 +61,7 @@ export type PlaceCacheInput = {
 }
 
 const SELECT_COLS =
-  "id,google_place_id,name,address,lat,lng,rating,rating_count,category,sub_category,price_level,google_types,photo_references,phone,is_closed,last_refreshed_at"
+  "id,google_place_id,name,address,lat,lng,rating,rating_count,category,sub_category,price_level,google_types,photo_references,cover_photo_reference,phone,is_closed,last_refreshed_at"
 
 function isFresh(row: CachedPlace): boolean {
   const ts = Date.parse(row.last_refreshed_at)

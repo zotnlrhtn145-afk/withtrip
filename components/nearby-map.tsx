@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils"
 import { SavedMapPins } from "./saved-map-pins"
 
 export type MapSpot = NearbySpot & {
+  worldBest?: boolean
   distanceMeters: number
   distanceLabel: string
 }

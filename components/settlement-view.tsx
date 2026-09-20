@@ -1,5 +1,7 @@
 "use client"
 
+import { fundKrw, fundInput } from "@/shared/fund-currency"
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
@@ -203,6 +205,30 @@ export function SettlementView({
   const [carryOwnerId, setCarryOwnerId] = useState<string | null>(null)
   const [carryModalOpen, setCarryModalOpen] = useState(false)
   const [carryInput, setCarryInput] = useState("")
+  const [carryCurrency, setCarryCurrency] = useState("KRW")
+  const [localCurrency, setLocalCurrency] = useState("KRW")
+  const [carryRate, setCarryRate] = useState<number | null>(null)
+  const [carryRateError, setCarryRateError] = useState(false)
+  const [carryRateRetry, setCarryRateRetry] = useState(0)
+  const carryBase = useRef(0)
+  const carryInitial = useRef({ input: "", krw: 0 })
+  const carryValue = carryRate == null ? null : carryInput === carryInitial.current.input ? carryInitial.current.krw : fundKrw(carryInput, carryRate)
+  useEffect(() => {
+    if (!carryModalOpen) return
+    let alive = true
+    setCarryRate(null); setCarryRateError(false)
+    void (async () => {
+      try {
+        const r = carryCurrency === "KRW" ? 1 : await fetch(`/api/fx?from=${encodeURIComponent(carryCurrency)}`).then(async response => { if (!response.ok) throw new Error(); return Number((await response.json()).rate) })
+        if (!alive) return
+        if (!Number.isFinite(r) || r <= 0) throw new Error()
+        const input = fundInput(carryBase.current, r)
+        carryInitial.current = { input, krw: carryBase.current }
+        setCarryInput(input); setCarryRate(r)
+      } catch { if (alive) setCarryRateError(true) }
+    })()
+    return () => { alive = false }
+  }, [carryModalOpen, carryCurrency, carryRateRetry])
   const [carrySel, setCarrySel] = useState<Set<string>>(new Set())
   const [savingCarry, setSavingCarry] = useState(false)
 
@@ -286,6 +312,7 @@ export function SettlementView({
       setMembers(loadedMembers)
       setExpenses(loadedExpenses)
       setCarryover(carryConfig.carryover)
+      setLocalCurrency(carryConfig.currency)
       setCarryMembers(carryConfig.members)
       setCarryOwnerId(carryConfig.ownerId)
       setProxies(loadedProxies)
@@ -348,7 +375,8 @@ export function SettlementView({
 
   // 공동 자금(이월) 모달 열기 — 현재 값으로 초기화. 대상 미지정이면 게스트 제외 전체 멤버.
   const openCarryModal = useCallback(() => {
-    setCarryInput(carryover ? String(carryover) : "")
+    carryBase.current = carryover
+    setCarryCurrency(localCurrency); setCarryRate(null); setCarryInput("")
     setCarrySel(
       new Set(
         carryMembers.length > 0
@@ -357,11 +385,12 @@ export function SettlementView({
       )
     )
     setCarryModalOpen(true)
-  }, [carryover, carryMembers, members])
+  }, [carryover, carryMembers, members, localCurrency])
 
   const saveCarryover = useCallback(async () => {
     if (!activeTripId || savingCarry) return
-    const value = Math.max(0, Math.round(Number(carryInput.replace(/[^0-9]/g, "")) || 0))
+    const value = carryValue
+    if (value == null) { showToast("환율과 입력 금액을 확인해 주세요."); return }
     const mems = value > 0 ? [...carrySel] : []
     setSavingCarry(true)
     try {
@@ -374,7 +403,7 @@ export function SettlementView({
     } finally {
       setSavingCarry(false)
     }
-  }, [activeTripId, savingCarry, carryInput, carrySel, refreshSettlementData, showToast])
+  }, [activeTripId, savingCarry, carryValue, carrySel, refreshSettlementData, showToast])
 
   useEffect(() => {
     if (!activeTripId) {
@@ -2223,16 +2252,20 @@ export function SettlementView({
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
             <div>
-              <label className="mb-1.5 block text-xs font-bold text-gray-700">이월 금액 (원)</label>
+              <label className="mb-1.5 block text-xs font-bold text-gray-700">통화 <select aria-label="공동 자금 통화" disabled={savingCarry} value={carryCurrency} onChange={e => { if (e.target.value === carryCurrency) return; carryBase.current = carryValue ?? carryBase.current; setCarryRate(null); setCarryCurrency(e.target.value) }} className="ml-3 rounded-lg border p-2">{Array.from(new Set([localCurrency, "KRW", "USD", "JPY", "EUR", "VND", "THB", "TWD", "HKD", "SGD", "CNY", "PHP", "GBP", "AUD"])).map(c => <option key={c} value={c}>{c}</option>)}</select></label>
+              <label className="mb-1.5 block text-xs font-bold text-gray-700">공동 자금 ({carryCurrency})</label>
               <Input
-                inputMode="numeric"
-                value={carryInput ? Number(carryInput.replace(/[^0-9]/g, "")).toLocaleString() : ""}
-                onChange={(event) => setCarryInput(event.target.value.replace(/[^0-9]/g, ""))}
-                placeholder="예: 300,000"
+                inputMode="decimal"
+                disabled={carryRate == null || savingCarry}
+                value={carryInput}
+                onChange={(event) => setCarryInput(event.target.value)}
+                placeholder="0"
                 className="h-11 rounded-xl border-gray-200 bg-gray-50 text-right text-base font-bold tabular-nums shadow-none focus-visible:border-yellow-400 focus-visible:ring-1 focus-visible:ring-yellow-400/30"
               />
             </div>
 
+            <p className="text-sm text-neutral-600">{carryRateError ? "환율을 불러오지 못했어요. 다시 시도하거나 KRW로 입력해 주세요." : carryRate == null ? "환율 확인 중…" : carryValue == null ? "0 이상의 금액을 입력해 주세요." : `적용 금액 ${carryValue.toLocaleString()}원 · 1 ${carryCurrency} = ${carryRate.toLocaleString(undefined, { maximumFractionDigits: 6 })}원`}</p>
+            {carryRateError ? <button type="button" onClick={() => setCarryRateRetry(n => n + 1)}>환율 다시 확인</button> : null}
             <div>
               <p className="mb-1.5 text-xs font-bold text-gray-700">
                 이 돈을 함께 쓴 사람 <span className="font-normal text-gray-400">(선택 인원끼리 나눠 부담을 덜어요)</span>
@@ -2275,11 +2308,11 @@ export function SettlementView({
             <Button
               type="button"
               onClick={() => void saveCarryover()}
-              disabled={savingCarry}
+              disabled={savingCarry || carryValue == null}
               className="w-full rounded-2xl bg-yellow-400 py-3.5 text-base font-bold text-gray-900 shadow-none transition-all hover:bg-yellow-500 active:scale-[0.98]"
             >
               {savingCarry ? <Loader2 className="animate-spin" /> : null}
-              {carryInput && Number(carryInput.replace(/[^0-9]/g, "")) > 0 ? "적용하기" : "공동 자금 해제"}
+              {carryValue != null && carryValue > 0 ? "적용하기" : "공동 자금 해제"}
             </Button>
           </div>
         </DialogContent>
