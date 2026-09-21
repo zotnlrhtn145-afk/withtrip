@@ -1,3 +1,9 @@
+## 2026-09-22 BEST 운영 검증 완료(부분 연결)
+- 667838b / dpl_DcswqHoQjqQuaxJwm7UXSXfzCA9T READY, www.withtrip.co.kr 운영 반영.
+- 실제 API1249선정/685장소/미연결113선정 확인. 오사카 La Cime, Bar Nayuta, Craftroom 3장소7선정 확인.
+- 미확인70그룹 남음. 신고39a50b25는 fixing/shipped=false로 진행내역 반영·재조회 완료. 개인AI 기존API선택 신고5cbb58eb는 resolved/shipped=true 확인.
+- 앱 상세배지 새ID는 다음 모바일 빌드 대기. 이번 양OS새빌드/실기기화면/OTA 없음.
+
 ## 2026-09-22 BEST 공식명·지도명 표기 차이 후속
 - 17그룹 추가 확인, 총1249/1362기록 연결/685장소. 미확인113기록70그룹 유지. 전체완료 아님.
 - 1차329f9f6 운영검증1214/668/오사카3곳 통과. 후속배포1249/685 응답 확인 예정. 상세근거 docs/world-best-global-link-audit-2026-09-21.json.
