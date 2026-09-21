@@ -834,7 +834,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mil",
     "city": "Cusco",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ44w-0C3DbZERMiSuC6LNweo"
   },
   {
     "kind": "restaurants",
@@ -932,7 +933,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Aponiente",
     "city": "El Puerto de Santa María",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJS8jxvenPDQ0Rl6kdS43TPQc"
   },
   {
     "kind": "restaurants",
@@ -2021,7 +2023,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Xin Rong Ji (Xinyuan South Road)",
     "city": "Beijing",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJpUivl4Ss8TURC3ygTskJKgI"
   },
   {
     "kind": "restaurants",
@@ -2097,7 +2100,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Côte by Mauro Colagreco",
     "city": "Bangkok",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJf8OOlnmZ4jAR1XxCVTOPfPY"
   },
   {
     "kind": "restaurants",
@@ -2734,7 +2738,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mil",
     "city": "Moray",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/Mil.html",
-    "address": "Vía a Moray, Maras 08655, Peru"
+    "address": "Vía a Moray, Maras 08655, Peru",
+    "googlePlaceId": "ChIJ44w-0C3DbZERMiSuC6LNweo"
   },
   {
     "kind": "restaurants",
@@ -3634,7 +3639,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "+61",
     "city": "Marrakech",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/-61.html",
-    "address": "96 Rue Mohammed el Beqal, Marrakech 40000, Morocco"
+    "address": "96 Rue Mohammed el Beqal, Marrakech 40000, Morocco",
+    "googlePlaceId": "ChIJG6SYcFPvrw0RRWCvBD9uP54"
   },
   {
     "kind": "restaurants",
@@ -4128,7 +4134,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Holbox",
     "city": "Los Angeles",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/holbox.html",
-    "address": "Mercado La Paloma, 3655 S. Grand Ave. c9, Los Angeles, CA 90007, United States"
+    "address": "Mercado La Paloma, 3655 S. Grand Ave. c9, Los Angeles, CA 90007, United States",
+    "googlePlaceId": "ChIJMc9-jgrIwoARvFaE32ZlJzA"
   },
   {
     "kind": "restaurants",
@@ -5149,7 +5156,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Hero Bar",
     "city": "Nairobi",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJUXQSNa4XLxgRotUHZyrIE-4"
   },
   {
     "kind": "bars",
@@ -6042,7 +6050,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "BOP",
     "city": "Singapore",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJk9RzX8EZ2jERCulUGmWx10o"
   },
   {
     "kind": "bars",
@@ -6294,7 +6303,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Bar at the Ritz-Carlton Tokyo",
     "city": "Tokyo",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ93Zf7ZeLGGARdDCTIB2iipI"
   },
   {
     "kind": "bars",
@@ -6929,7 +6939,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Gorilla",
     "city": "Thessaloniki",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJK5VqbKc5qBQRRwNcwJBQ560"
   },
   {
     "kind": "bars",
@@ -7401,7 +7412,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "La Factoría",
     "city": "San Juan",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/la-factoria.html",
-    "address": "148 C. de San Sebastián, San Juan, Puerto Rico, 00901"
+    "address": "148 C. de San Sebastián, San Juan, Puerto Rico, 00901",
+    "googlePlaceId": "ChIJc9aTvp5oA4wRiQJndEa2cVg"
   },
   {
     "kind": "bars",
@@ -8136,7 +8148,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Realm of 52 Remedies",
     "city": "San Diego",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJH4kc7OD_24ARC4FtA0cUVug"
   },
   {
     "kind": "bars",
@@ -8201,7 +8214,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Door No.4",
     "city": "Grand Cayman",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ3ypgOlaHJY8RhKRcOo4M1d4"
   },
   {
     "kind": "bars",
