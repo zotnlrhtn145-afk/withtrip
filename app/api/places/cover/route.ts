@@ -1,4 +1,4 @@
-import { REVIEWED_AIRPORT_ASSETS, REVIEWED_AIRPORT_COVERS } from "@/lib/airport-cover-reviewed"
+import { REVIEWED_AIRPORT_COVERS } from "@/lib/airport-cover-reviewed"
 import { placePhotoPrompt, coverPolicyVersion } from "@/shared/place-photo-policy"
 import { createHash } from "node:crypto"
 
@@ -209,23 +209,20 @@ export async function POST(request: Request) {
       const hit = cached.get(gid)
 
       const policy = coverPolicyVersion(String(item.name ?? ""), String(item.kind ?? "restaurant"), String(item.subCategory ?? ""))
-      const airport = policy === "airport-exterior-v3"
-      const asset = airport ? REVIEWED_AIRPORT_ASSETS[gid] : undefined
-      if (asset) {
-        covers[gid] = new URL(asset, origin).toString()
-        coverPolicies[gid] = policy
-        return
-      }
+      const airport = policy === "airport-interior-v4"
+      // iOS 147 / Android 93 require this legacy wire token. Cache validation and
+      // selection use interior-v4; keep deployed clients able to display the new photo.
+      const responsePolicy = airport ? "airport-exterior-v3" : policy
       const reviewed = airport ? REVIEWED_AIRPORT_COVERS[gid] : undefined
       if (reviewed && hit?.refs.includes(reviewed)) {
         covers[gid] = buildPlacePhotoProxyUrl(reviewed, 1200, origin)
-        coverPolicies[gid] = policy
+        coverPolicies[gid] = responsePolicy
         return
       }
       const validPolicy = hit?.done && hit.policy === policy
       if (hit?.ref && (!airport || validPolicy)) {
         covers[gid] = buildPlacePhotoProxyUrl(hit.ref, 1200, origin)
-        if (validPolicy) coverPolicies[gid] = policy
+        if (validPolicy) coverPolicies[gid] = responsePolicy
       }
       // 한 번 골라 봤는데 쓸 만한 게 없었던 곳은 다시 부르지 않는다
       if (validPolicy) return
@@ -242,7 +239,7 @@ export async function POST(request: Request) {
       // 이미 받아 둔 사진만 본다. 모자라면 **표시를 남기지 않고** 물러난다 —
       // 상세 화면을 한 번 열면 사진이 쌓이므로 그때 Google 재호출 없이 다시 선별한다.
       const images = await cachedImages(db, refs)
-      // Airport-only bounded warmup: otherwise an interior-only cache can never discover its exterior.
+      // Airport-only bounded warmup: otherwise an exterior-only cache cannot discover an interior.
       // The standard proxy persists these images; at most four missing candidates are fetched once.
       if (airport) {
         const present = new Set(images.map(image => image.ref))
@@ -275,7 +272,7 @@ export async function POST(request: Request) {
       )
       if (best === null) return // 통신/모델 오류를 선별 완료로 저장하지 않습니다.
       const chosen = best >= 0 ? images[best].ref : null
-      if (chosen) { covers[gid] = buildPlacePhotoProxyUrl(chosen, 1200, origin); coverPolicies[gid] = policy }
+      if (chosen) { covers[gid] = buildPlacePhotoProxyUrl(chosen, 1200, origin); coverPolicies[gid] = responsePolicy }
 
       if (airport && !chosen && images.length < refs.length) return
 

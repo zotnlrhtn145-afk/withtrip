@@ -1,13 +1,7 @@
-/** Manually reviewed 2026-09-21: ICN terminal exterior. Use only while present in that airport’s cached references. */
+/** Visually reviewed 2026-09-21: ICN departure hall and SGN check-in halls.
+ * Only use each airport’s own cached reference; never substitute another airport. */
 export const REVIEWED_AIRPORT_COVERS: Readonly<Record<string, string>> = {
-  "ChIJWfpeOoOaezUR1L5cy5agS40": "AVoNoXSTgJQuXvqEMuYL0lApck-vzETVdgGhVPNumyV7nczcvTzqWVie7jIWhzqoZVB52r_Y7ebrQykp3F_GUahpX_oPbT6L8DALsUInmBTKgoHRlpUZsrWY7_gWnOyaKBBtOBjA-QIa1desXIXkDM8f1dYwywgBRqz-JLyVL1ezFHARr7sxP1KY_TJsAwhakQQz2b7HqSmSW056zzcPqa_DBsrdC549kNfhluuP72z08aZk4KSC5kXsesp-y13DERo-LT_H7yMl02X5Daicitm38gensxmvBjvNHKDZgbij_s0_9BQL4uZQuHmV9xUc8sPS4M81qEerRPLN1xCafo5Z619CnX7nnPRjTgZHIi3LJdlTC7yKdj6YRrM3rIeuM2KDWdjg-rrhic9UTl80XUOpW3cIBjXkymhAe3LepPo6dIGUByXgPWy3qO_KPMsfemhA"
-}
-
-/** SGN international terminal, visually checked including its real airport signage.
- * Public-domain photo by Genghiskhanviet (2007), not a current-condition photo.
- * Provenance: public/images/airports/ATTRIBUTION.md. Exact airport IDs only.
- */
-export const REVIEWED_AIRPORT_ASSETS: Readonly<Record<string, string>> = {
-  "ChIJAePdxy4pdTERNABRSv-vNzw": "/images/airports/sgn-international-terminal.jpg",
-  "ChIJnZ-oGhEpdTER8ycbqsCc8Ng": "/images/airports/sgn-international-terminal.jpg",
+  "ChIJWfpeOoOaezUR1L5cy5agS40": "AVoNoXRtTbHPqgxq_CKadNwLK_yKeevHFlMxYc1kZKL2GaURlyVnjFiQhgzkFIa7o8ZQBylbmxH1xDXBl12c-3l-6PJFEMOYA0IV9uL9XAVUaYpgW16NDZReSpB_tXGrZiiLVfplb1U9Bisu67S3gApvz_Wi972_VOAXey3umYqMa0jfYqQdU2aZPvAYiJ4hKMsPHgXZSIERmdyjW8y0r9ysvpQLVyit2h9GK0570diplPrcjeGG-Jb0ZR0ser1OmgYNDLvgtLmrR1dtkbRzk1iHo1qGXuArfiGz4na4QfWse6H5gpuIb1nG36bJA9KXFcrwO-CHa7_5j9R4YkNjDWmoGHkslmcVSjlMocD9J8yJluhUuKASDNSQb8TzhBAH_-UZyIivO0pZirirFn9gZh8Hno7l-3OAUhUgzB5BstN83AWkmg",
+  "ChIJAePdxy4pdTERNABRSv-vNzw": "AVoNoXSJm-AevWFi6u9BnkULR8wwFH7YXl-42i7jeQTXvx0lNLzxhdOSEcWnvED90j4BgBiug4CnDU9B-BwgnVzx0_Prvme0vDCLOYAecY60wLgoGUR0bMNHHBKB72MzZH9eq5Rv1u2fYVmN-74cx2_TEkLkGkPoZkJ6fVcYwpHlcU20uWIqGclSHA-NDpEkEFWdl77Q0OSPOcVbVXhJd_9lZ_NQDiUFpJQ6lI7H9mv609Zg95v0QdR2zyfOkMgyzTo6S6IwOfYEYzHTkT_00G6-CCrlO6jokR3mphZn-McOKR8WAeL_clJq16ZdsQb8lJhk8nKeo1El5ARb27MHGBaasdBV6m-nZBEc5o4QGjDVcNisyda-TpU-H8rb9WfVxKj4fmh_JxmGKkOi7xkCOpw-lY5kRjW11ncAVkXueCSsPisgr8U",
+  "ChIJnZ-oGhEpdTER8ycbqsCc8Ng": "AVoNoXRcZCBhblxHXuLk2bgaa0rM1I64TqaeYkcC4JGQTf461aCtRZLvFkuXi_-4eDgQNm4NxN2fnFZ6fkXW-Aju7BG5OMJXMaVGmCmJekZY18ww-V53uer5RDLD5An1MlbGwkHBIgwp54QmdHs7yq9Yi3UQzV8qc0lkPa8zDEnBr46VdBAiGAC0MkEARw0Ybnr0tPVqrmxzvMLsAWeFTOaGlm5gUTEUtvRyB5Hwyq7x3j8i37TDL5YcrMNnJq-0N2eHiMuijkCkCH9dm7mgeuFwrbA9RT7r2QxMVwiYUNy4V6A6wN_F4HwnIaYN8emjRgkD6pcPmPp2IZx6x_qenbqzzLXnxvF8X7VhQcwSqqN4lH4zg9mOV9Q3LGIkcKcQg17_apd-J7m5K-77PRMffY6PAVuC0HKNOudmL3jSWRySvbdaYg"
 }

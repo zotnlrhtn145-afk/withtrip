@@ -10,7 +10,7 @@ export function photoFocus(name: string, kind: string, subCategory = ""): "airpo
 export function placePhotoPrompt(name: string, kind: string, subCategory: string, count: number): string {
   const focus = photoFocus(name, kind, subCategory)
   const priority = {
-    airport: "해당 공항 터미널 전체 외관·대표 건축물·관제탑과 터미널 전경만 선택. 공항을 알아볼 수 있는 외관이 필수다. 실내·로비·면세점·라운지·게이트·음식·비행기만 나온 사진은 제외. 다른 공항으로 대체 금지. 외관이 없으면 반드시 -1.",
+    airport: "해당 공항의 넓은 실내 터미널 전경을 선택. 1순위: 출국장·체크인홀. 2순위: 공항임을 알아볼 수 있는 대합실·탑승구 전경. 공항 이름·안내판이 함께 보이면 우선. 외관·면세점·카페·라운지·음식·비행기만 나온 사진은 제외. 다른 공항으로 대체 금지. 적합한 실내 사진이 없으면 -1.",
     food: "1순위: 그 식당·카페의 대표 음식·음료. 2순위: 업장 전체 실내 분위기. 적절한 음식 사진이 있으면 실내보다 우선해라.",
     venue: "1순위: 바·라운지·클럽의 좌석·바 카운터·조명 등 공간과 분위기가 잘 보이는 실내. 2순위: 해당 업장 입구. 칵테일·음식 클로즈업보다 공간을 우선해라.",
     stay: "1순위: 호텔·숙소 건물 전경. 2순위: 객실·로비·수영장. 건물 외관이라는 이유로 제외하지 마라.",
@@ -24,5 +24,5 @@ export function preferredPhotoRefs(refs: string[] | null | undefined, preferred?
 }
 
 export function coverPolicyVersion(name: string, kind: string, subCategory = ""): string {
-  return photoFocus(name, kind, subCategory) === "airport" ? "airport-exterior-v3" : "category-v2"
+  return photoFocus(name, kind, subCategory) === "airport" ? "airport-interior-v4" : "category-v2"
 }
