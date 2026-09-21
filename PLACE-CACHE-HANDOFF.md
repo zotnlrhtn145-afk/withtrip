@@ -1,3 +1,13 @@
+## 2026-09-21 공항 대표사진 외관 우선 — 다음 빌드 대기
+
+- 원인: shared schedule-cover가 photoUrls/photos[0]을 사용하고 기존 coverByName 사진은 재선별하지 않음. 앱·웹 공항 일정은 선별 결과를 우선하며 기존 임의 실내 사진으로 대체하지 않음.
+- 인천공항 Google ID ChIJWfpeOoOaezUR1L5cy5agS40 실제 후보4장 확인: 앞3장 실내, 네번째 터미널 외관. lib/airport-cover-reviewed.ts에 외관 ref 연결. 해당 공항 캐시 refs 안에 있을 때만 사용, 추가AI·DB쓰기 없이 반환. 운영 대표사진 캐시는 직접 변경하지 않음.
+- airport-exterior-v3 정책: 터미널 외관·대표건축물 전경만, 실내·음식·라운지·항공기만 있는 사진 제외. 다른 공항은 공용 선별 캐시 재사용. 부족한 후보만 공항당 요청 최대4장720px 프록시 확보(최초 Photo/AI 비용 가능, 이후캐시). 미선별/실패 시 임의사진을 쓰지 않으며 클라이언트 실패결과60초 캐시.
+- 전체공항 사진을 직접 검수 완료한 것은 아님. 외관 후보가 없으면 사진 없음 상태, 실제 모든 공항 E2E 확인은 남음.
+- 앱·웹 tsc, shared, schedule-cover/airport-cover-api/recommendation-photo 검사 통과. API 모의 검사: ICN수동선정·구정책실내거부·새정책재사용·후보최대4장. 실서비스 검색·사진4장200 확인.
+- Figma403:4898, docs/design-reference/airport-exterior-cover-2026-09-21.png. 사진 연결 미리보기이며 전체 앱 실행 캡처 아님. UI 레이아웃 변경 없음.
+- 운영 웹 배포 및 새 iOS/Android 빌드 없음. 다음 빌드 전 서버 cover API를 함께 배포해야 정책 응답이 연결됨.
+
 ## 2026-09-21 월드 베스트 아이콘 남색 확정
 
 통합 아이콘만 #172B4D 남색으로 적용. 크기·정렬·통합 필터 기능 유지. Figma400:4898 및 앱·웹 반영, 배포 대기.

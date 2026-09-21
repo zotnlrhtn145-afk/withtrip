@@ -1,6 +1,6 @@
 "use client"
 
-import { findScheduleCover } from "@/shared/schedule-cover"
+import { findScheduleCover, isAirportSchedule } from "@/shared/schedule-cover"
 import { rewriteLegacyGooglePhotoUrl } from "@/lib/place-cover-image"
 import { ContactLine } from "@/components/contact-line"
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -1338,7 +1338,7 @@ export function ScheduleSection({
   useEffect(() => {
     let alive = true
     let cursor = 0
-    const missing = visibleItems.filter(item => !coverByName.has(`source:${item.sourceId}`) && !coverByName.has(item.placeName.trim().toLowerCase()))
+    const missing = visibleItems.filter(item => isAirportSchedule(item.placeName) || !coverByName.has(`source:${item.sourceId}`) && !coverByName.has(item.placeName.trim().toLowerCase()))
     const worker = async () => {
       while (alive && cursor < missing.length) {
         const item = missing[cursor++]
@@ -1433,7 +1433,7 @@ export function ScheduleSection({
               ))}
             <TimelineItem
               item={item}
-              coverUrl={coverByName.get(`source:${item.sourceId}`) ?? coverByName.get(item.placeName.trim().toLowerCase()) ?? searchedCovers[JSON.stringify([item.id, item.placeName, item.lat, item.lng])]}
+              coverUrl={isAirportSchedule(item.placeName) ? searchedCovers[JSON.stringify([item.id, item.placeName, item.lat, item.lng])] : coverByName.get(`source:${item.sourceId}`) ?? coverByName.get(item.placeName.trim().toLowerCase()) ?? searchedCovers[JSON.stringify([item.id, item.placeName, item.lat, item.lng])]}
               isLast={index === visibleItems.length - 1}
               /*
                 다음 일정까지 얼마나 먼가.

@@ -1,4 +1,5 @@
-import { placePhotoPrompt } from "@/shared/place-photo-policy"
+import { REVIEWED_AIRPORT_COVERS } from "@/lib/airport-cover-reviewed"
+import { placePhotoPrompt, coverPolicyVersion } from "@/shared/place-photo-policy"
 import { createHash } from "node:crypto"
 
 import { NextResponse } from "next/server"
@@ -24,7 +25,8 @@ export const maxDuration = 60
  * ⚠️ **결과는 places 에 적어 둔다.** places 는 가게 단위 캐시라 모든 사용자가
  *    나눠 쓴다. 사람마다 다시 고르면 AI 비용이 사람 수만큼 붙는다.
  *
- * ⚠️ Google 추가 조회 없이 캐시 사진을 재사용한다. AI 사진 판별 비용은 발생한다.
+ * ⚠️ 일반 장소는 Google 추가 조회 없이 캐시 재사용. 공항만 미저장 후보 최대4장을 프록시로 확보한다.
+ *    공항 최초 후보 확보는 Photo 비용, 자동 선별은 AI 비용이 발생하며 이후 공용 캐시 재사용.
  *    - 구글 Details 를 부르지 않는다. 후보는 캐시에 적힌 photo_references 만 쓴다.
  *    - 사진도 **이미 우리 저장소에 받아 둔 것만** 본다(place_photos).
  *      사진 프록시는 (ref, 폭) 별로 캐시하므로 없는 폭을 달라고 하면
@@ -168,10 +170,11 @@ export async function POST(request: Request) {
   const origin = resolveRequestOrigin(request.url)
   const db = getSupabaseAdmin()
   const covers: Record<string, string> = {}
+  const coverPolicies: Record<string, string> = {}
 
   // ── 1) 이미 골라 둔 게 있으면 그걸 쓴다 (AI 호출 0회) ──────────
   const ids = items.map((i) => String(i.googlePlaceId))
-  const cached = new Map<string, { ref: string | null; done: boolean; refs: string[] }>()
+  const cached = new Map<string, { ref: string | null; policy: string | null; done: boolean; refs: string[] }>()
   if (db) {
     const { data, error } = await db
       .from("places")
@@ -189,7 +192,8 @@ export async function POST(request: Request) {
       | null) ?? []) {
       cached.set(r.google_place_id, {
         ref: r.cover_photo_reference,
-        done: !!r.cover_curated_at && r.cover_policy_version === "category-v2",
+        done: !!r.cover_curated_at,
+        policy: r.cover_policy_version,
         refs: r.photo_references ?? [],
       })
     }
@@ -204,23 +208,53 @@ export async function POST(request: Request) {
       const gid = String(item.googlePlaceId)
       const hit = cached.get(gid)
 
-      if (hit?.ref) covers[gid] = buildPlacePhotoProxyUrl(hit.ref, 1200, origin)
+      const policy = coverPolicyVersion(String(item.name ?? ""), String(item.kind ?? "restaurant"), String(item.subCategory ?? ""))
+      const airport = policy === "airport-exterior-v3"
+      const reviewed = airport ? REVIEWED_AIRPORT_COVERS[gid] : undefined
+      if (reviewed && hit?.refs.includes(reviewed)) {
+        covers[gid] = buildPlacePhotoProxyUrl(reviewed, 1200, origin)
+        coverPolicies[gid] = policy
+        return
+      }
+      const validPolicy = hit?.done && hit.policy === policy
+      if (hit?.ref && (!airport || validPolicy)) {
+        covers[gid] = buildPlacePhotoProxyUrl(hit.ref, 1200, origin)
+        if (validPolicy) coverPolicies[gid] = policy
+      }
       // 한 번 골라 봤는데 쓸 만한 게 없었던 곳은 다시 부르지 않는다
-      if (hit?.done) return
+      if (validPolicy) return
 
       /**
        * ⚠️ 후보는 **캐시에 적힌 것만** 쓴다. 구글 Details 를 부르지 않는다 —
        *    사진 한 장 고치자고 부르면 가게마다 돈이 나간다.
        */
-      const refs = (item.photoRefs?.length ? item.photoRefs : (hit?.refs ?? []))
+      const refs = (airport ? (hit?.refs ?? []) : item.photoRefs?.length ? item.photoRefs : (hit?.refs ?? []))
         .filter(Boolean)
-        .slice(0, MAX_CANDIDATES)
-      if (refs.length < 2 || !key || !db) return
+        .slice(0, airport ? 8 : MAX_CANDIDATES)
+      if (refs.length < (airport ? 1 : 2) || !key || !db) return
 
       // 이미 받아 둔 사진만 본다. 모자라면 **표시를 남기지 않고** 물러난다 —
       // 상세 화면을 한 번 열면 사진이 쌓이므로 그때 Google 재호출 없이 다시 선별한다.
       const images = await cachedImages(db, refs)
-      if (images.length < 2) return
+      // Airport-only bounded warmup: otherwise an interior-only cache can never discover its exterior.
+      // The standard proxy persists these images; at most four missing candidates are fetched once.
+      if (airport) {
+        const present = new Set(images.map(image => image.ref))
+        const missing = refs.filter(ref => !present.has(ref)).slice(0, 4)
+        await Promise.all(missing.map(async ref => {
+          try {
+            const response = await fetch(buildPlacePhotoProxyUrl(ref, 720, origin), { signal: AbortSignal.timeout(12000) })
+            if (!response.ok) return
+            const mime = response.headers.get("content-type")?.split(";")[0] ?? ""
+            if (!mime.startsWith("image/")) return
+            const bytes = await response.arrayBuffer()
+            if (bytes.byteLength > 5 * 1024 * 1024) return
+            images.push({ ref, inline: { mime_type: mime, data: Buffer.from(bytes).toString("base64") } })
+          } catch { /* Keep verified cached candidates when a thumbnail cannot load. */ }
+        }))
+        images.sort((a,b) => refs.indexOf(a.ref) - refs.indexOf(b.ref))
+      }
+      if (images.length < (airport ? 1 : 2)) return
 
       modelPromise ??= flashModelCandidates(key).then(models => models[0] ?? "")
       const model = await modelPromise
@@ -235,15 +269,17 @@ export async function POST(request: Request) {
       )
       if (best === null) return // 통신/모델 오류를 선별 완료로 저장하지 않습니다.
       const chosen = best >= 0 ? images[best].ref : null
-      if (chosen) covers[gid] = buildPlacePhotoProxyUrl(chosen, 1200, origin)
+      if (chosen) { covers[gid] = buildPlacePhotoProxyUrl(chosen, 1200, origin); coverPolicies[gid] = policy }
+
+      if (airport && !chosen && images.length < refs.length) return
 
       // 골랐든 못 골랐든 적어 둔다 — 못 고른 곳을 매번 다시 부르면 AI 비용만 샌다
       await db
         .from("places")
-        .update({ cover_photo_reference: chosen, cover_policy_version: "category-v2", cover_curated_at: new Date().toISOString() })
+        .update({ cover_photo_reference: chosen, cover_policy_version: policy, cover_curated_at: new Date().toISOString() })
         .eq("google_place_id", gid)
     })
   )
 
-  return NextResponse.json({ covers })
+  return NextResponse.json({ covers, coverPolicies })
 }
