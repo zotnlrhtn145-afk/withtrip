@@ -32,3 +32,20 @@ export async function fetchMichelinDetail(client: SupabaseClient, place: Micheli
   if (error) throw error
   return matchMichelinDetail(place, (data ?? []) as MichelinDetail[])
 }
+
+/** One bounded, paginated read for visible/saved candidates; no paid Places lookups. */
+export async function fetchMichelinAroundDetails(client: SupabaseClient, places: MichelinPlace[]): Promise<MichelinDetail[]> {
+  const points = places.filter(p => p.lat != null && p.lng != null && Number.isFinite(p.lat) && Number.isFinite(p.lng))
+  if (!points.length) return []
+  const lat = points.map(p => p.lat!), lng = points.map(p => p.lng!)
+  const rows: MichelinDetail[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await client.from("michelin_places").select(columns)
+      .gte("lat", Math.min(...lat) - .0012).lte("lat", Math.max(...lat) + .0012)
+      .gte("lng", Math.min(...lng) - .0015).lte("lng", Math.max(...lng) + .0015)
+      .order("url").range(from, from + 999)
+    if (error) throw error
+    rows.push(...(data ?? []) as MichelinDetail[])
+    if ((data?.length ?? 0) < 1000) return rows
+  }
+}

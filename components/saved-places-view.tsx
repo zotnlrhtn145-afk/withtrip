@@ -1,9 +1,12 @@
 "use client"
+import { PlaceAwardMarks } from "./place-award-marks"
+import { bestAwardSummary } from "@/shared/place-awards"
+import { fetchMichelinAroundDetails, matchMichelinDetail, type MichelinDetail } from "@/shared/michelin-detail"
 import { regionQueries } from "@/shared/region-query"
 import { WORLD_BEST_LOGO_SVG } from "@/shared/world-best-logo"
 import { WORLD_BEST, BEST_SCOPE_LABELS, type BestScope } from "@/shared/world-best"
 import { boundsCenter, filterBestPlaces, inSearchBounds, type SearchBounds, type BestPlace } from "@/shared/saved-search"
-import { worldBestFor, type WorldBest } from "@/shared/world-best"
+import { type WorldBest } from "@/shared/world-best"
 
 import dynamic from "next/dynamic"
 import { PlaceChip, FilterSection } from "./saved-filter-controls"
@@ -270,6 +273,18 @@ export function SavedPlacesView() {
     setRecs((prev) => prev.filter((r) => r.id !== rec.id))
     void dismissRecommendation(rec.id)
   }
+
+  const [awardMichelin, setAwardMichelin] = useState<MichelinDetail[]>([])
+  useEffect(() => {
+    let alive = true
+    const candidates = [...places.map(p => ({name:p.placeName,lat:p.lat,lng:p.lng})), ...bestPlaces]
+    void fetchMichelinAroundDetails(createClient(), candidates).then(rows => { if(alive)setAwardMichelin(rows) }).catch(() => { if(alive)setAwardMichelin([]) })
+    return () => { alive = false }
+  }, [places,bestPlaces])
+  const awardsFor = useCallback((name: string, address?: string | null, googlePlaceId?: string | null, lat?: number | null, lng?: number | null, localName?: string | null) => {
+    const m = matchMichelinDetail({name,googlePlaceId,lat,lng}, awardMichelin)
+    return {...bestAwardSummary(name,address,googlePlaceId,localName),michelin:!!m,michelinYear:m?.award_year}
+  }, [awardMichelin])
 
   // 마커 아바타용 — 저장한 장소는 전부 내 소유라 프로필 사진 하나만 있으면 된다.
   useEffect(() => {
@@ -584,13 +599,14 @@ export function SavedPlacesView() {
           authorAvatarUrl: avatarUrl,
           isInterest: true,
           starred: place.starred,
-          worldBest: bestOnly && (worldBestFor(place.placeName, place.address, place.googlePlaceId).length > 0 || worldBestFor(place.localName || "", place.address, place.googlePlaceId).length > 0),
+          worldBest: bestAwardSummary(place.placeName, place.address, place.googlePlaceId, place.localName).worldBest,
+          awards: awardsFor(place.placeName,place.address,place.googlePlaceId,place.lat,place.lng,place.localName),
           distanceMeters: meters,
           distanceLabel: formatDistance(meters),
         }
       })
       .sort((a, b) => a.distanceMeters - b.distanceMeters)
-  }, [visiblePlaces, geo.position, avatarUrl, userId, bestOnly])
+  }, [visiblePlaces, geo.position, avatarUrl, userId, bestOnly, awardsFor])
 
   // ── 여행클립 찜 (여행별 멤버 기여) ──────────────────────
   const tripChips = useMemo(() => {
@@ -677,7 +693,7 @@ export function SavedPlacesView() {
     return filterBestPlaces(bestPlaces,bestKind,bestScope,pinned).filter(p=>(!q||matchesSearch(q,[p.name,p.address,p.award.city,regionLabel(p.award.city)]))&&(country==="all"||matchesSearch(buildQuery(flagNameOf(country)),[p.address]))&&(region==="all"||matchesSearch(buildQuery(region),[p.address,p.award.city]))).sort((a,b)=>sort==="name"?a.name.localeCompare(b.name):sort==="rating"?(b.rating??0)-(a.rating??0):distanceMeters(distanceOrigin,a)-distanceMeters(distanceOrigin,b))
   },[bestPlaces,bestKind,bestScope,pinned,search,distanceOrigin,bestLoading,bestError,country,region,sort])
   const availableBestScopes=[...new Set(WORLD_BEST.filter(r=>bestKind==="all"||r.kind===bestKind).map(r=>r.scope??"world"))]
-  const bestMapSpots:MapSpot[]=useMemo(()=>bestResults.map(p=>({id:`best:${p.google_place_id}`,name:p.name,nameLocal:p.name,address:p.address,lat:p.lat,lng:p.lng,category:p.award.kind==="bars"?"바":"레스토랑",rating:p.rating??0,image:p.photo??"",imageAlt:p.name,userId:null,authorNickname:null,authorAvatarUrl:null,worldBest:true,bestKind:p.award.kind,distanceMeters:distanceMeters(distanceOrigin,p),distanceLabel:formatDistance(distanceMeters(distanceOrigin,p))})),[bestResults,distanceOrigin])
+  const bestMapSpots:MapSpot[]=useMemo(()=>bestResults.map(p=>({id:`best:${p.google_place_id}`,name:p.name,nameLocal:p.name,address:p.address,lat:p.lat,lng:p.lng,category:p.award.kind==="bars"?"바":"레스토랑",rating:p.rating??0,image:p.photo??"",imageAlt:p.name,userId:null,authorNickname:null,authorAvatarUrl:null,worldBest:true,awards:awardsFor(p.name,p.address,p.google_place_id,p.lat,p.lng),bestKind:p.award.kind,distanceMeters:distanceMeters(distanceOrigin,p),distanceLabel:formatDistance(distanceMeters(distanceOrigin,p))})),[bestResults,distanceOrigin,awardsFor])
   const selectBestKind=(kind:WorldBest["kind"]|"all"|null)=>{
     setBestOnly(kind!==null);setBestKind(kind??"all");setBestScope("all");setSort("distance");setStarredOnly(false);setVisitedOnly(false);setOpenOnly(false);setSubFilter(null);setSelectedMapId(null);setVisible(PAGE)
   }
@@ -920,7 +936,7 @@ export function SavedPlacesView() {
     const tag = placeHours ? openLabel(openState(placeHours.periods, placeHours.utcOffsetMin, nowMs)) : null
     return <li key={place.id} ref={node => { cardRefs.current[place.id] = node }} className="list-none">
       <SwipeToDelete onDelete={() => setDeleteConfirm({ id: place.id, name: place.placeName })}>
-        <SavedPlaceCard name={place.placeName} source="mine" photo={place.imageUrl ? photoUrlWith(fastPhotos, place.imageUrl, PHOTO_W.card) : null} selected={selectedMapId === place.id} starred={place.starred} onStar={() => void toggleStar(place)} onMap={place.lat != null && place.lng != null ? () => showOnMap(place.id) : undefined} onDetail={() => openDetail(place)}
+        <SavedPlaceCard awards={<PlaceAwardMarks awards={awardsFor(place.placeName,place.address,place.googlePlaceId,place.lat,place.lng,place.localName)}/>} name={place.placeName} source="mine" photo={place.imageUrl ? photoUrlWith(fastPhotos, place.imageUrl, PHOTO_W.card) : null} selected={selectedMapId === place.id} starred={place.starred} onStar={() => void toggleStar(place)} onMap={place.lat != null && place.lng != null ? () => showOnMap(place.id) : undefined} onDetail={() => openDetail(place)}
           badge={<>{mark?.visited ? <span>다녀옴</span> : null}{place.sourceUrl ? <a href={place.sourceUrl} target="_blank" rel="noreferrer" aria-label="가져온 게시물 보기"><InstagramIcon className="size-4" /></a> : null}</>}
           metadata={<><span>{place.subCategory || place.category}</span>{placeDistanceLabels.has(place.id) ? <span>· {placeDistanceLabels.get(place.id)}</span> : null}{place.rating ? <b>· ★ {place.rating}{place.reviewCount ? ` (${place.reviewCount.toLocaleString()})` : ""}</b> : null}</>}
           details={<>{place.recommendedBy && place.recommender ? <div className={savedStyles.person}>{place.recommender.avatarUrl ? <img src={place.recommender.avatarUrl} alt="" /> : <i />}<span>{place.recommender.nickname || "게스트"}님이 추천한 장소</span></div> : null}<button className={savedStyles.addressLink} onClick={() => showOnMap(place.id)} aria-label={`${place.placeName} 지도에서 보기`}><span>{place.address || "지도에서 보기"}</span><SavedDesignIcon name="locate-fixed" size={15} /></button>{place.memo?.trim() ? <p className="line-clamp-3 text-[15px] leading-[23px] text-[#242424]">{place.memo.trim()}</p> : null}{tag && tag.tone !== "none" ? <p style={{ color: tag.tone === "good" ? "#087b5d" : tag.tone === "warn" ? "#a16a00" : "#65717c", fontWeight: 600 }}>{tag.text}</p> : null}{mark?.myRating != null ? <p>내 평점 {mark.myRating}</p> : null}</>}
@@ -983,7 +999,7 @@ export function SavedPlacesView() {
               {bestOnly?<div className={savedStyles.bestScopes}><p>선정 지역</p><div className={savedStyles.bestScopeRow}>{(["all",...availableBestScopes] as const).map(scope=><button key={scope} aria-pressed={bestScope===scope} onClick={()=>{setBestScope(scope);setVisible(PAGE);setSelectedMapId(null)}} className={savedStyles.bestScope}>{scope==="all"?"전체":BEST_SCOPE_LABELS[scope]}</button>)}</div></div>:null}
               {bestOnly ? bestLoading ? <div className="py-8"><Loader2 className="mx-auto size-6 animate-spin"/></div> : bestError ? <button onClick={()=>setBestRetry(n=>n+1)} className="py-8">선정 장소를 불러오지 못했어요. 다시 시도</button> : <>
               <p className="mb-4 text-xs text-slate-500">{bestResults.length}곳 · {bestKind==="all"?"월드 베스트":bestKind==="bars"?"월드 베스트 · 바":"월드 베스트 · 음식점"}{bestScope==="all"?" · 과거 선정·Discovery 포함":""}{bestIncomplete?" · 일부 장소는 위치 확인 중이에요":""}</p>
-              <ul className="m-0 list-none p-0">{bestResults.slice(0,visible).map(p=><li key={p.google_place_id} ref={node=>{cardRefs.current[`best:${p.google_place_id}`]=node}}><SavedPlaceCard name={p.name} source="best" photo={p.photo} selected={selectedMapId===`best:${p.google_place_id}`} onMap={()=>showOnMap(`best:${p.google_place_id}`)} onDetail={()=>openSelectedPopup(`best:${p.google_place_id}`)} metadata={<span>{p.award.kind==="bars"?"바":"레스토랑"}{p.rating!=null?` · ★ ${p.rating}`:""} · {formatDistance(distanceMeters(distanceOrigin,p))}</span>} details={<p>{p.address}</p>} actions={<><div><DirectionsMenu destination={{name:p.name,lat:p.lat,lng:p.lng}} fallbackQuery={p.address||p.name} label="길찾기"/></div><SavedCardAction icon="plane" label="여행담기" onClick={()=>setSendTarget({placeName:p.name,category:p.award.kind==="bars"?"술 한잔":"식사",subCategory:p.award.kind==="bars"?"바":"레스토랑",localName:"",phoneNumber:"",address:p.address??"",imageUrl:p.photo??"",rating:p.rating??null,reviewCount:p.rating_count??null,lat:p.lat,lng:p.lng})}/><SavedCardAction icon="send" label="공유" onClick={()=>setRecTarget({label:p.name,place:{place_name:p.name,category:p.award.kind==="bars"?"술 한잔":"식사",sub_category:p.award.kind==="bars"?"바":"레스토랑",address:p.address,image_url:p.photo??null,rating:p.rating??null,review_count:p.rating_count??null,lat:p.lat,lng:p.lng}})}/><SavedCardAction icon="info" label="상세" onClick={()=>openSelectedPopup(`best:${p.google_place_id}`)}/></>}/></li>)}</ul>
+              <ul className="m-0 list-none p-0">{bestResults.slice(0,visible).map(p=><li key={p.google_place_id} ref={node=>{cardRefs.current[`best:${p.google_place_id}`]=node}}><SavedPlaceCard awards={<PlaceAwardMarks awards={awardsFor(p.name,p.address,p.google_place_id,p.lat,p.lng)}/>} name={p.name} source="best" photo={p.photo} selected={selectedMapId===`best:${p.google_place_id}`} onMap={()=>showOnMap(`best:${p.google_place_id}`)} onDetail={()=>openSelectedPopup(`best:${p.google_place_id}`)} metadata={<span>{p.award.kind==="bars"?"바":"레스토랑"}{p.rating!=null?` · ★ ${p.rating}`:""} · {formatDistance(distanceMeters(distanceOrigin,p))}</span>} details={<p>{p.address}</p>} actions={<><div><DirectionsMenu destination={{name:p.name,lat:p.lat,lng:p.lng}} fallbackQuery={p.address||p.name} label="길찾기"/></div><SavedCardAction icon="plane" label="여행담기" onClick={()=>setSendTarget({placeName:p.name,category:p.award.kind==="bars"?"술 한잔":"식사",subCategory:p.award.kind==="bars"?"바":"레스토랑",localName:"",phoneNumber:"",address:p.address??"",imageUrl:p.photo??"",rating:p.rating??null,reviewCount:p.rating_count??null,lat:p.lat,lng:p.lng})}/><SavedCardAction icon="send" label="공유" onClick={()=>setRecTarget({label:p.name,place:{place_name:p.name,category:p.award.kind==="bars"?"술 한잔":"식사",sub_category:p.award.kind==="bars"?"바":"레스토랑",address:p.address,image_url:p.photo??null,rating:p.rating??null,review_count:p.rating_count??null,lat:p.lat,lng:p.lng}})}/><SavedCardAction icon="info" label="상세" onClick={()=>openSelectedPopup(`best:${p.google_place_id}`)}/></>}/></li>)}</ul>
               {!bestResults.length?<p className="py-8 text-center text-sm text-slate-500">{bestIncomplete?"이 조건에서 위치가 확인된 선정 장소가 아직 없어요.":"선택한 지역과 필터에 맞는 선정 장소가 없어요."}</p>:null}
               </> : loading ? <div className="py-8"><Loader2 className="mx-auto size-6 animate-spin" /></div> : tab === "all" ? <ul className="m-0 list-none p-0">{allRows.slice(0, visible).map(row => row.type === "mine" ? renderPlaceCard(row.place) : row.type === "trip" ? renderTripSpotCard(row.spot) : <li key={row.key}><FriendRecsList recs={[row.rec]} savingId={savingRecId} onRegister={handleRegisterRec} onSave={handleSaveRec} onDismiss={handleDismissRec} onDetail={openRecDetail} onMap={showOnMap} /></li>)}</ul> : tab === "friends" ? <FriendRecsList recs={searchedRecs.slice(0,visible)} savingId={savingRecId} onRegister={handleRegisterRec} onSave={handleSaveRec} onDismiss={handleDismissRec} onDetail={openRecDetail} onMap={showOnMap} /> : subTab === "wish" ? (
                 visiblePlaces.length === 0 ? (

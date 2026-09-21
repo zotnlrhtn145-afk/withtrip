@@ -7,9 +7,9 @@ export function SavedDesignIcon({ name, size = 22 }: { name: string; size?: numb
   if (name === "quick-michelin") return <img src="/design/saved/michelin-face.png" alt="" aria-hidden width={size} height={size} style={{ width: size, height: size, borderRadius: "50%", flexShrink: 0 }} />
   return <img src={`/design/saved/${name}.svg`} alt="" aria-hidden width={size} height={size} style={{ width: size, height: size, flexShrink: 0 }} />
 }
-export function SavedPlaceCard({ name, source, photo, selected, starred, onStar, onDetail, onMap, metadata, details, actions, badge }: {
+export function SavedPlaceCard({ name, source, photo, selected, starred, onStar, onDetail, onMap, metadata, details, actions, badge, awards }: {
   name: string; source: "mine" | "trip" | "friend" | "best"; photo?: string | null; selected?: boolean; starred?: boolean;
-  onStar?: () => void; onDetail: () => void; onMap?: () => void; metadata?: ReactNode; details?: ReactNode; actions?: ReactNode; badge?: ReactNode;
+  onStar?: () => void; onDetail: () => void; onMap?: () => void; metadata?: ReactNode; details?: ReactNode; actions?: ReactNode; badge?: ReactNode; awards?: ReactNode;
 }) {
   const data = { best: ["bookmark", "선정 장소"], mine: ["heart", "나의 찜"], trip: ["clapperboard", "여행클립"], friend: ["circle-user-round", "친구 찜"] }[source]
   return <article className={styles.card} data-selected={selected}>
@@ -20,6 +20,7 @@ export function SavedPlaceCard({ name, source, photo, selected, starred, onStar,
       {badge ? <div className={styles.badge}>{badge}</div> : null}
     </div> : source === "best" ? null : <div className={styles.noPhoto}><SavedDesignIcon name={data[0]} size={16} /><span>{data[1]}</span>{onStar ? <button onClick={onStar} aria-label="별표 표시" aria-pressed={!!starred}><SavedDesignIcon name={starred ? "star-selected" : "star"} /></button> : null}</div>}
     <button className={styles.name} onClick={onDetail}><span>{name}</span><SavedDesignIcon name="chevron-right" size={19} /></button>
+    {awards}
     <div className={styles.meta}>{metadata}</div>
     {!photo && badge ? <div className={styles.inlineBadges}>{badge}</div> : null}
     <div className={styles.details}>{details}</div>

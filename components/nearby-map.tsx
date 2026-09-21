@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils"
 import { SavedMapPins } from "./saved-map-pins"
 
 export type MapSpot = NearbySpot & {
+  awards?: import("@/shared/place-awards").PlaceAwards
   worldBest?: boolean
   bestKind?: "bars" | "restaurants"
   distanceMeters: number

@@ -1,3 +1,9 @@
+## 2026-09-22 이중 선정 지도 1안 — 다음 배포 대기
+- 사용자 확정 Figma422:4898(사진 핀 아래 Michelin·50Best), 카드417:4898(이름 아래 마크·연도).
+- 웹·앱 지도/목록/선택 팝업 표시 연결. 한 장소의 복수 선정은 기존 ID 중복 제거 유지, 가까운 서로 다른 장소는 숫자 묶음. Discovery는 순위/선정연도 생성 금지.
+- 기존 michelin_places 공개 자료 bounded pagination과 ID/이름+좌표 엄격 일치. 새 유료 Places/AI 호출 없음. 사진 실패 시 위치 아이콘.
+- 타입/공통 데이터/관련 회귀검사 통과. iOS·Android 실제 지도 터치/마커 렌더·웹 브라우저 실지도는 미검증. 운영 배포 및 모바일 빌드 없음.
+
 ## 2026-09-22 BEST 운영 검증 완료(부분 연결)
 - 667838b / dpl_DcswqHoQjqQuaxJwm7UXSXfzCA9T READY, www.withtrip.co.kr 운영 반영.
 - 실제 API1249선정/685장소/미연결113선정 확인. 오사카 La Cime, Bar Nayuta, Craftroom 3장소7선정 확인.
