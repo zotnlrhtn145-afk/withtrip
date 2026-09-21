@@ -120,7 +120,7 @@ const SORT_LABELS: Record<SortMode, string> = {
 }
 
 /** "저장한 장소" — 여행에 상관없이 담아둔 관심 맛집을 한곳에 모아보는 탭. */
-const BEST_FILTER_URI = `data:image/svg+xml,${encodeURIComponent(WORLD_BEST_LOGO_SVG.replaceAll("#fff", "#182430"))}`
+const BEST_FILTER_URI = `data:image/svg+xml,${encodeURIComponent(WORLD_BEST_LOGO_SVG.replaceAll("#fff", "#172B4D"))}`
 export function SavedPlacesView() {
   const router = useRouter()
   const { trips } = useTrips()
