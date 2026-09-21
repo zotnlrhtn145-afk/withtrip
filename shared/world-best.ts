@@ -537,7 +537,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Celele",
     "city": "Cartagena",
     "url": "https://www.the50.com/restaurants/best-in-the-world/the-list/celele.html",
-    "address": "Calle del Espiritu Santo, cr 10c # 29 – 200, Getsemaní, Cartagena, Colombia"
+    "address": "Calle del Espiritu Santo, cr 10c # 29 – 200, Getsemaní, Cartagena, Colombia",
+    "googlePlaceId": "ChIJBVeqVVgv9o4RhYsb8WvR9EI"
   },
   {
     "kind": "restaurants",
@@ -569,7 +570,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Alcalde",
     "city": "Guadalajara",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJSxhI0W6uKIQRLbizqZhTQuQ"
   },
   {
     "kind": "restaurants",
@@ -579,7 +581,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Schloss Schauenstein",
     "city": "Fürstenau",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJmdeEklvqhEcRnfl0CO7_szw"
   },
   {
     "kind": "restaurants",
@@ -589,7 +592,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Den",
     "city": "Tokyo",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJKxOIF5iMGGARiFoVm5Ay8W4"
   },
   {
     "kind": "restaurants",
@@ -599,7 +603,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "El Chato",
     "city": "Bogotá",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJQclc-kSaP44RJgBygHivOB4"
   },
   {
     "kind": "restaurants",
@@ -609,7 +614,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "La Colombe",
     "city": "Cape Town",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJCWq-g2FCzB0R4RYvykSREW4"
   },
   {
     "kind": "restaurants",
@@ -619,7 +625,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Jordnær",
     "city": "Copenhagen",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJWxyiJPFNUkYRTp10-YnYcNg"
   },
   {
     "kind": "restaurants",
@@ -629,7 +636,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Onjium",
     "city": "Seoul",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJk5DRDD2jfDURUA4aAk0Frx0"
   },
   {
     "kind": "restaurants",
@@ -639,7 +647,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Restaurant Tim Raue",
     "city": "Berlin",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJpdyYVNFRqEcRFTrYsDXDrY4"
   },
   {
     "kind": "restaurants",
@@ -649,7 +658,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Nobelhart & Schmutzig",
     "city": "Berlin",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJNdtTjdNRqEcR-n4Xa0Y92G4"
   },
   {
     "kind": "restaurants",
@@ -659,7 +669,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Pujol",
     "city": "Mexico City",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJWZ2zdav40YURFvsU_rU3uaE"
   },
   {
     "kind": "restaurants",
@@ -669,7 +680,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Nuema",
     "city": "Quito",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ8Wv4QnmZ1ZERpY0fkRPP5fE"
   },
   {
     "kind": "restaurants",
@@ -679,7 +691,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Willem Hiele",
     "city": "Oudenburg",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ4Q4MHFWW3EcR_LPF7RLN_U0"
   },
   {
     "kind": "restaurants",
@@ -689,7 +702,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bozar",
     "city": "Brussels",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJERlyloDEw0cRI9eVzn4V-4s"
   },
   {
     "kind": "restaurants",
@@ -699,7 +713,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Fu He Hui",
     "city": "Shanghai",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJNZenaONlsjURk5lrxUnMSZU"
   },
   {
     "kind": "restaurants",
@@ -709,7 +724,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Quique Dacosta",
     "city": "Dénia",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJU1izUBkbnhIRfn-1gHM6C8Y"
   },
   {
     "kind": "restaurants",
@@ -719,7 +735,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Saint Peter",
     "city": "Sydney",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ9-UbWgauEmsRa9hUtKIjdN4"
   },
   {
     "kind": "restaurants",
@@ -729,7 +746,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Arca",
     "city": "Tulum",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJJ-ohbMvQT48RUyLPOYlArC0"
   },
   {
     "kind": "restaurants",
@@ -739,7 +757,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Masque",
     "city": "Mumbai",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ2RdH8orO5zsR9j_YJgVbG64"
   },
   {
     "kind": "restaurants",
@@ -749,7 +768,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Hiša Franko",
     "city": "Kobarid",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJg2ySsFBbekcR-PLGw2nIRAY"
   },
   {
     "kind": "restaurants",
@@ -759,7 +779,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Tuju",
     "city": "São Paulo",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJm2pQ-1dXzpQRLcFNxi6yWeI"
   },
   {
     "kind": "restaurants",
@@ -769,7 +790,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Sazenka",
     "city": "Tokyo",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJqZDavAuLGGARV-fj_CVDFnI"
   },
   {
     "kind": "restaurants",
@@ -779,7 +801,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Chef Tam's Seasons",
     "city": "Macau",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJS0UZ8v1xATQRY8atMJIReq4"
   },
   {
     "kind": "restaurants",
@@ -789,7 +812,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Tantris",
     "city": "Munich",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJtSGICsp1nkcRsO8j0sObIio"
   },
   {
     "kind": "restaurants",
@@ -799,7 +823,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mountain",
     "city": "London",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJGXGPYsEFdkgRAIIfSSET698"
   },
   {
     "kind": "restaurants",
@@ -819,7 +844,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Leo",
     "city": "Bogotá",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJf0x6pJuZP44RbF-3kBjiZLs"
   },
   {
     "kind": "restaurants",
@@ -829,7 +855,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Le Doyenné",
     "city": "Saint-Vrain",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJFddyE7rb5UcRaA53AIRo_gw"
   },
   {
     "kind": "restaurants",
@@ -839,7 +866,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Cocina Hermanos Torres",
     "city": "Barcelona",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJrcC3iq2ZpBIRyVqXiw2N8XU"
   },
   {
     "kind": "restaurants",
@@ -849,7 +877,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Coda",
     "city": "Berlin",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJvVDs7bZPqEcRVuzEV98NWz8"
   },
   {
     "kind": "restaurants",
@@ -859,7 +888,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "SingleThread",
     "city": "Healdsburg",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ8TVwjTMXhIARQ5MLkvMyVvY"
   },
   {
     "kind": "restaurants",
@@ -869,7 +899,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Oteque",
     "city": "Rio de Janeiro",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJd30eZgB_mQAR-KdRFwN99rE"
   },
   {
     "kind": "restaurants",
@@ -879,7 +910,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Fyn",
     "city": "Cape Town",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJJXjP9dFnzB0RKRtezQrweYM"
   },
   {
     "kind": "restaurants",
@@ -889,7 +921,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "A Casa do Porco",
     "city": "São Paulo",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJK76a5E5YzpQRCoY7nm1M3-k"
   },
   {
     "kind": "restaurants",
@@ -909,7 +942,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Txispa",
     "city": "Atxondo",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJz-u9dpzTTw0RZHHXvqX4fb8"
   },
   {
     "kind": "restaurants",
@@ -919,7 +953,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Clove Club",
     "city": "London",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJkbGoX7ocdkgRgfrpjeC7xzM"
   },
   {
     "kind": "restaurants",
@@ -929,7 +964,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mugaritz",
     "city": "San Sebastián",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJrbLj_tauUQ0RpCer8fGceF8"
   },
   {
     "kind": "restaurants",
@@ -939,7 +975,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Salsify at the Roundhouse",
     "city": "Cape Town",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJL5QxrbpnzB0REZTW-bJD0qA"
   },
   {
     "kind": "restaurants",
@@ -949,7 +986,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Huniik",
     "city": "Mérida",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJG_gayOp2Vo8R7ZP4TYIkEDc"
   },
   {
     "kind": "restaurants",
@@ -959,7 +997,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Le Bernardin",
     "city": "New York",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJV7QQ6kdZwokRax4615zpSGU"
   },
   {
     "kind": "restaurants",
@@ -969,7 +1008,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Koan",
     "city": "Copenhagen",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJoxbQhIBTUkYR15NWp69nCt0"
   },
   {
     "kind": "restaurants",
@@ -979,7 +1019,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Al Gatto Verde",
     "city": "Modena",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJYQwpBIXnf0cRekgb5iH_HMM"
   },
   {
     "kind": "restaurants",
@@ -989,7 +1030,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Burnt Ends",
     "city": "Singapore",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJLZ9DYnIZ2jERQ51Am7WzJLM"
   },
   {
     "kind": "restaurants",
@@ -1009,7 +1051,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Evvai",
     "city": "São Paulo",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ15xqwHlXzpQR-wSlgx8ckJM"
   },
   {
     "kind": "restaurants",
@@ -1019,7 +1062,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Atelier Crenn",
     "city": "San Francisco",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJx1ULhNCAhYARSRq9NDWTeqI"
   },
   {
     "kind": "restaurants",
@@ -1029,7 +1073,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Labyrinth",
     "city": "Singapore",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJj99Fo3IZ2jERFIUg_m-VhO8"
   },
   {
     "kind": "restaurants",
@@ -1039,7 +1084,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "César",
     "city": "New York",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJeyzWYABZwokRkxhWJzFpqvU"
   },
   {
     "kind": "restaurants",
@@ -1049,7 +1095,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Amisfield Restaurant",
     "city": "Queenstown",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJQw4OaFgf1akRsNbxrHgfmpU"
   },
   {
     "kind": "restaurants",
@@ -1059,7 +1106,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Neolokal",
     "city": "Istanbul",
     "url": "https://www.the50.com/restaurants/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJGbaw0-e5yhQRXCPUhlJLb8w"
   },
   {
     "kind": "restaurants",
@@ -1134,7 +1182,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Chef Tam's Seasons",
     "city": "Macau",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Chef-Tams-Seasons.html",
-    "address": "Wynn Palace, Av. da Nave Desportiva, Cotai, Macau"
+    "address": "Wynn Palace, Av. da Nave Desportiva, Cotai, Macau",
+    "googlePlaceId": "ChIJS0UZ8v1xATQRY8atMJIReq4"
   },
   {
     "kind": "restaurants",
@@ -1154,7 +1203,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Ling Long",
     "city": "Shanghai",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/ling-long.html",
-    "address": "No.2 Zhong Shan Dong Yi Rd Huang Pu District Shanghai, 200002 China"
+    "address": "No.2 Zhong Shan Dong Yi Rd Huang Pu District Shanghai, 200002 China",
+    "googlePlaceId": "ChIJ33vAighwsjURrVTEPiRhrSM"
   },
   {
     "kind": "restaurants",
@@ -1174,7 +1224,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Fu He Hui",
     "city": "Shanghai",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Fu-He-Hui.html",
-    "address": "1037 Yu Yuan Road, Changning District, Shanghai"
+    "address": "1037 Yu Yuan Road, Changning District, Shanghai",
+    "googlePlaceId": "ChIJNZenaONlsjURk5lrxUnMSZU"
   },
   {
     "kind": "restaurants",
@@ -1206,7 +1257,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Onjium",
     "city": "Seoul",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/onjium.html",
-    "address": "Seoul, Jongno-gu, Hyoja-ro, 49 4층"
+    "address": "Seoul, Jongno-gu, Hyoja-ro, 49 4층",
+    "googlePlaceId": "ChIJk5DRDD2jfDURUA4aAk0Frx0"
   },
   {
     "kind": "restaurants",
@@ -1216,7 +1268,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Masque",
     "city": "Mumbai",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Masque.html",
-    "address": "Nit G3, Laxmi Woollen Mill Shakti Mills Lane, Off Dr. E. Moses Road Mahalaxmi, Mumbai 400011"
+    "address": "Nit G3, Laxmi Woollen Mill Shakti Mills Lane, Off Dr. E. Moses Road Mahalaxmi, Mumbai 400011",
+    "googlePlaceId": "ChIJ2RdH8orO5zsR9j_YJgVbG64"
   },
   {
     "kind": "restaurants",
@@ -1269,7 +1322,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Seroja",
     "city": "Singapore",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/seroja.html",
-    "address": "7 Fraser Street, Rochor, Singapore, 189356"
+    "address": "7 Fraser Street, Rochor, Singapore, 189356",
+    "googlePlaceId": "ChIJ-_VlLioZ2jERU0eWh_TKqkI"
   },
   {
     "kind": "restaurants",
@@ -1279,7 +1333,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Sazenka",
     "city": "Tokyo",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Sazenka.html",
-    "address": "4 Chome-7-5 Minamiazabu, Minato City, Tokyo 106-0047, Japan"
+    "address": "4 Chome-7-5 Minamiazabu, Minato City, Tokyo 106-0047, Japan",
+    "googlePlaceId": "ChIJqZDavAuLGGARV-fj_CVDFnI"
   },
   {
     "kind": "restaurants",
@@ -1289,7 +1344,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Logy",
     "city": "Taipei",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Logy.html",
-    "address": "1F, No.39, Lane 258, Ruiguang Road., Neihu District, Taipei, Taiwan"
+    "address": "1F, No.39, Lane 258, Ruiguang Road., Neihu District, Taipei, Taiwan",
+    "googlePlaceId": "ChIJNWCqhOGrQjQR_4bJNRZ8uM0"
   },
   {
     "kind": "restaurants",
@@ -1299,7 +1355,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Born",
     "city": "Singapore",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Born.html",
-    "address": "1 Neil Rd, #01-01, Singapore 088804"
+    "address": "1 Neil Rd, #01-01, Singapore 088804",
+    "googlePlaceId": "ChIJEbQ9xpYZ2jERyBrI8a2FtEY"
   },
   {
     "kind": "restaurants",
@@ -1309,7 +1366,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Neighborhood",
     "city": "Hong Kong",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Neighborhood.html",
-    "address": "61 Hollywood Rd, Central, Hong Kong"
+    "address": "61 Hollywood Rd, Central, Hong Kong",
+    "googlePlaceId": "ChIJq5eqgnsABDQRAxupXLYqR4U"
   },
   {
     "kind": "restaurants",
@@ -1330,7 +1388,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Eatanic Garden",
     "city": "Seoul",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/eatanic-garden.html",
-    "address": "231 Teheran-ro, Gangnam District, Seoul, South Korea 06142"
+    "address": "231 Teheran-ro, Gangnam District, Seoul, South Korea 06142",
+    "googlePlaceId": "ChIJKWHZw3alfDUR5A5F61Oqj5I"
   },
   {
     "kind": "restaurants",
@@ -1340,7 +1399,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Ms. Maria & Mr. Singh",
     "city": "Bangkok",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Ms-Maria-Mr-Singh.html",
-    "address": "2nd Floor of Gaggan Anand Restaurant, 68 Sukhumvit 31, Sukhumvit Road, Klongton-Neu, Wattana, Bangkok 10110"
+    "address": "2nd Floor of Gaggan Anand Restaurant, 68 Sukhumvit 31, Sukhumvit Road, Klongton-Neu, Wattana, Bangkok 10110",
+    "googlePlaceId": "ChIJ3Q8xB3-f4jARKduiRnBWOuw"
   },
   {
     "kind": "restaurants",
@@ -1371,7 +1431,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Naar",
     "city": "Kasauli",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Naar.html",
-    "address": "VPO Darwa, sub tehsil kishangarh  Kasauli, District Solan  Himachal Pradesh 173206"
+    "address": "VPO Darwa, sub tehsil kishangarh  Kasauli, District Solan  Himachal Pradesh 173206",
+    "googlePlaceId": "ChIJT2YvUKRjBTkRICfpMSZL6fE"
   },
   {
     "kind": "restaurants",
@@ -1392,7 +1453,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Estro",
     "city": "Hong Kong",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/estro.html",
-    "address": "2/F, 1 Duddell St, Central, Hong Kong"
+    "address": "2/F, 1 Duddell St, Central, Hong Kong",
+    "googlePlaceId": "ChIJUVwefskBBDQRLp-GyShVfyA"
   },
   {
     "kind": "restaurants",
@@ -1413,7 +1475,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Crony",
     "city": "Tokyo",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/crony.html",
-    "address": "1 Chome-20-3 Higashiazabu, Minato City, Tokyo 106-0044, Japan"
+    "address": "1 Chome-20-3 Higashiazabu, Minato City, Tokyo 106-0044, Japan",
+    "googlePlaceId": "ChIJz29nSWWLGGARQibtSAIQLP0"
   },
   {
     "kind": "restaurants",
@@ -1423,7 +1486,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Caprice",
     "city": "Hong Kong",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Caprice.html",
-    "address": "Four Seasons Hotel, 8 Finance Street, Central, Hong Kong"
+    "address": "Four Seasons Hotel, 8 Finance Street, Central, Hong Kong",
+    "googlePlaceId": "ChIJzbDWTWIABDQRfEbzv7wxi40"
   },
   {
     "kind": "restaurants",
@@ -1455,7 +1519,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Les Amis",
     "city": "Singapore",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Les-amis.html",
-    "address": "1 Scotts Rd, #01 - 16 Shaw Centre, Singapore 228208"
+    "address": "1 Scotts Rd, #01 - 16 Shaw Centre, Singapore 228208",
+    "googlePlaceId": "ChIJR5yDbY0Z2jER6GcsxL56OLk"
   },
   {
     "kind": "restaurants",
@@ -1465,7 +1530,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Au Jardin",
     "city": "Penang",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Au-Jardin.html",
-    "address": "The Warehouse @ Hin Bus Depot  125, Jalan Timah, 10150,  Georgetown, Penang, Malaysia"
+    "address": "The Warehouse @ Hin Bus Depot  125, Jalan Timah, 10150,  Georgetown, Penang, Malaysia",
+    "googlePlaceId": "ChIJO7pVFaDDSjARUI1CyPfDXwM"
   },
   {
     "kind": "restaurants",
@@ -1475,7 +1541,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Labyrinth",
     "city": "Singapore",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Labyrinth.html",
-    "address": "8 Raffles Avenue, Downtown Core, Singapore, 039802"
+    "address": "8 Raffles Avenue, Downtown Core, Singapore, 039802",
+    "googlePlaceId": "ChIJj99Fo3IZ2jERFIUg_m-VhO8"
   },
   {
     "kind": "restaurants",
@@ -1485,7 +1552,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mosu",
     "city": "Seoul",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Mosu.html",
-    "address": "4 Hoenamu-ro 41-gil, Yongsan District, Seoul"
+    "address": "4 Hoenamu-ro 41-gil, Yongsan District, Seoul",
+    "googlePlaceId": "ChIJJeNdcbOjfDURCzyDecCVK7o"
   },
   {
     "kind": "restaurants",
@@ -1495,7 +1563,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "August",
     "city": "Jakarta",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/August.html",
-    "address": "Sequis Tower - Ground Floor #03-02, Jl. Jenderal Sudirman No.Kav. 71, Jakarta, Jakarta 12190"
+    "address": "Sequis Tower - Ground Floor #03-02, Jl. Jenderal Sudirman No.Kav. 71, Jakarta, Jakarta 12190",
+    "googlePlaceId": "ChIJWakHrTXxaS4Rf8RXhBHg-W4"
   },
   {
     "kind": "restaurants",
@@ -1505,7 +1574,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bium",
     "city": "Seoul",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Bium.html",
-    "address": "1F ,41, Hakdong-ro 97-gil, Gangnam-gu, Seoul"
+    "address": "1F ,41, Hakdong-ro 97-gil, Gangnam-gu, Seoul",
+    "googlePlaceId": "ChIJNUC-Pz2lfDURMGV1S250AKg"
   },
   {
     "kind": "restaurants",
@@ -1515,7 +1585,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Locavore NXT",
     "city": "Ubud",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Locavore-NXT.html",
-    "address": " Jl. A.A. Gede Rai Gang Pura Panti Bija, Lodtunduh, Kecamatan Ubud, Kabupaten Gianyar, Bali 80571, Ubud, Indonesia, Bali"
+    "address": " Jl. A.A. Gede Rai Gang Pura Panti Bija, Lodtunduh, Kecamatan Ubud, Kabupaten Gianyar, Bali 80571, Ubud, Indonesia, Bali",
+    "googlePlaceId": "ChIJy91I5vg90i0RUB8xLPBXcVo"
   },
   {
     "kind": "restaurants",
@@ -1525,7 +1596,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Nae:Um",
     "city": "Singapore",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Naeum.html",
-    "address": "161 Telok Ayer St, Singapore 068615"
+    "address": "161 Telok Ayer St, Singapore 068615",
+    "googlePlaceId": "ChIJ0zevoBEZ2jER9eYTLSlcX1Q"
   },
   {
     "kind": "restaurants",
@@ -1535,7 +1607,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mono",
     "city": "Hong Kong",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/mono.html",
-    "address": "5/F, 18 On Lan Street Central, Hong Kong"
+    "address": "5/F, 18 On Lan Street Central, Hong Kong",
+    "googlePlaceId": "ChIJCx5dprEBBDQR0ulHVcrC7Os"
   },
   {
     "kind": "restaurants",
@@ -1545,7 +1618,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Wana Yook",
     "city": "Bangkok",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/Wana-Yook.html",
-    "address": "5, 15 Phaya Thai Rd, Thanon Phaya Thai, Ratchathewi, Bangkok 10400, Thailand"
+    "address": "5, 15 Phaya Thai Rd, Thanon Phaya Thai, Ratchathewi, Bangkok 10400, Thailand",
+    "googlePlaceId": "ChIJOTiQRnKf4jAR5hsFRsOF2RM"
   },
   {
     "kind": "restaurants",
@@ -1565,7 +1639,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "7th Door",
     "city": "Seoul",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/7th-door.html",
-    "address": "Seoul, Gangnam-gu, Hakdong-ro 97-gil, 41 4층"
+    "address": "Seoul, Gangnam-gu, Hakdong-ro 97-gil, 41 4층",
+    "googlePlaceId": "ChIJJ1xm8n-lfDUR5AOAQSJ0oeM"
   },
   {
     "kind": "restaurants",
@@ -1575,7 +1650,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "JL Studio",
     "city": "Taichung",
     "url": "https://www.the50.com/restaurants/best-in-asia/the-list/jl-studio.html",
-    "address": "2nd F, No. 689, Yifeng Road, Section 4, Nantun District, Taichung, 408"
+    "address": "2nd F, No. 689, Yifeng Road, Section 4, Nantun District, Taichung, 408",
+    "googlePlaceId": "ChIJpzHEAN09aTQRdBlo7PKl7A0"
   },
   {
     "kind": "restaurants",
@@ -1585,7 +1661,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Den",
     "city": "Tokyo",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJKxOIF5iMGGARiFoVm5Ay8W4"
   },
   {
     "kind": "restaurants",
@@ -1605,7 +1682,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Baan Tepa",
     "city": "Bangkok",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJg1tidYdhHTER4NNOidyhVvc"
   },
   {
     "kind": "restaurants",
@@ -1615,7 +1693,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "San",
     "city": "Seoul",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJr__jo2OjfDURT4N0VNw62MM"
   },
   {
     "kind": "restaurants",
@@ -1625,7 +1704,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Solbam",
     "city": "Seoul",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJL2hHUjujfDURbxzijlzZtxs"
   },
   {
     "kind": "restaurants",
@@ -1635,7 +1715,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Born and Bred",
     "city": "Seoul",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ03uyyKqkfDURBP72STLlOHU"
   },
   {
     "kind": "restaurants",
@@ -1645,7 +1726,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Alla Prima",
     "city": "Seoul",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJsdM8l_KjfDURobnSNkInVo8"
   },
   {
     "kind": "restaurants",
@@ -1655,7 +1737,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Thevar",
     "city": "Singapore",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJT19LkL4Z2jERuLB_g4cX3mI"
   },
   {
     "kind": "restaurants",
@@ -1665,7 +1748,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Burnt Ends",
     "city": "Singapore",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJLZ9DYnIZ2jERQ51Am7WzJLM"
   },
   {
     "kind": "restaurants",
@@ -1675,7 +1759,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Goh",
     "city": "Fukuoka",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJza_s2oCRQTURNTw-js0p8yY"
   },
   {
     "kind": "restaurants",
@@ -1685,7 +1770,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mume",
     "city": "Taipei",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJp6GC5NGrQjQRDuHabyIYADA"
   },
   {
     "kind": "restaurants",
@@ -1695,7 +1781,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Dewakan",
     "city": "Kuala Lumpur",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJD5ydgbdNzDERVeakzTjfpk8"
   },
   {
     "kind": "restaurants",
@@ -1705,7 +1792,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Sushi Shunji",
     "city": "Tokyo",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJQ7vkUDaLGGAR6qq4tuxpeYQ"
   },
   {
     "kind": "restaurants",
@@ -1715,7 +1803,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Silks House",
     "city": "Taipei",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ5ymH9mipQjQRvCXzKzCR3OI"
   },
   {
     "kind": "restaurants",
@@ -1735,7 +1824,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Papa's",
     "city": "Mumbai",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJv-IMoXLJ5zsRNQuheauiSNA"
   },
   {
     "kind": "restaurants",
@@ -1745,7 +1835,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Samrub Samrub Thai",
     "city": "Bangkok",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJP-vfELmZ4jARGlXpoG1esoU"
   },
   {
     "kind": "restaurants",
@@ -1755,7 +1846,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Ta Vie",
     "city": "Hong Kong",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJB-qdUXsABDQRlotSKcO6_3Q"
   },
   {
     "kind": "restaurants",
@@ -1775,7 +1867,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Vea",
     "city": "Hong Kong",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJrZRui3wABDQRzgwMfdtdkJ4"
   },
   {
     "kind": "restaurants",
@@ -1785,7 +1878,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Toyo Eatery",
     "city": "Manila",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJLTls5S_JlzMRb7f42HFUagY"
   },
   {
     "kind": "restaurants",
@@ -1795,7 +1889,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Sushi Saito",
     "city": "Tokyo",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJscN5u4-LGGARIyRklEh6-e4"
   },
   {
     "kind": "restaurants",
@@ -1805,7 +1900,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Table",
     "city": "Mumbai",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJow6BN8HR5zsR4pHs8jdHOCE"
   },
   {
     "kind": "restaurants",
@@ -1815,7 +1911,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Soigné",
     "city": "Seoul",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJIU2RrnahfDURNvCJDhODupM"
   },
   {
     "kind": "restaurants",
@@ -1825,7 +1922,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Inja",
     "city": "New Delhi",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ4_elLN3jDDkRIsCuplMRy94"
   },
   {
     "kind": "restaurants",
@@ -1835,7 +1933,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Cenci",
     "city": "Kyoto",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJw2vMBfAIAWAR86pLyFaUBas"
   },
   {
     "kind": "restaurants",
@@ -1845,7 +1944,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Meta",
     "city": "Singapore",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ6WJrhG0Z2jERFtVbDrD08jM"
   },
   {
     "kind": "restaurants",
@@ -1855,7 +1955,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Peach Blossoms",
     "city": "Singapore",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJn909kKgZ2jERW5Ihje4p1Zw"
   },
   {
     "kind": "restaurants",
@@ -1865,7 +1966,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Ensue",
     "city": "Shenzhen",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJiacInLX1AzQRFJncm4L9Yg8"
   },
   {
     "kind": "restaurants",
@@ -1875,7 +1977,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Jade Dragon",
     "city": "Macau",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJIb6sPwRwATQR7XJPFXV9J-M"
   },
   {
     "kind": "restaurants",
@@ -1885,7 +1988,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Villa Aida",
     "city": "Wakayama",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJFUuB5U81B2ARkTWAg-CCMt4"
   },
   {
     "kind": "restaurants",
@@ -1895,7 +1999,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Kataori",
     "city": "Kanazawa",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ0VXTfKYz-F8RO3Clvtymgek"
   },
   {
     "kind": "restaurants",
@@ -1905,7 +2010,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Farmlore",
     "city": "Bengaluru",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJH1j-ke8ZrjsR157H5DoLZhE"
   },
   {
     "kind": "restaurants",
@@ -1925,7 +2031,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Jin Sha",
     "city": "Hangzhou",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJgS2i8a6XTDQRJAkc-WyO4fA"
   },
   {
     "kind": "restaurants",
@@ -1946,7 +2053,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Jungsik",
     "city": "Seoul",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJLwsYxYijfDURiJD-QZw6MYU"
   },
   {
     "kind": "restaurants",
@@ -1956,7 +2064,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Andō",
     "city": "Hong Kong",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJgxUMAe8BBDQR-9T1PEYvk80"
   },
   {
     "kind": "restaurants",
@@ -1966,7 +2075,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Gēn",
     "city": "Penang",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJmTeucOPDSjARDrArqCrKAXg"
   },
   {
     "kind": "restaurants",
@@ -1976,7 +2086,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Amber",
     "city": "Hong Kong",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJK_Ki6GQABDQR6msLLCzNE04"
   },
   {
     "kind": "restaurants",
@@ -1996,7 +2107,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Respiración",
     "city": "Kanazawa",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJf8WQHXEz-F8RyloAPIsk22Q"
   },
   {
     "kind": "restaurants",
@@ -2006,7 +2118,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Dewaya",
     "city": "Nishikawa",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJXYZMn7rri18R3P8d1c7ewxI"
   },
   {
     "kind": "restaurants",
@@ -2016,7 +2129,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Ministry of Crab",
     "city": "Colombo",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJzYLatSVZ4joRPyjlgtZcnos"
   },
   {
     "kind": "restaurants",
@@ -2026,7 +2140,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Gaa",
     "city": "Bangkok",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ9Rn3Stqe4jARvC9rgWzu31Q"
   },
   {
     "kind": "restaurants",
@@ -2036,7 +2151,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Haoma",
     "city": "Bangkok",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ8c3kP_qe4jARjg8dTyubyiA"
   },
   {
     "kind": "restaurants",
@@ -2046,7 +2162,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "L'évo",
     "city": "Nanto",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJs316U3wX-F8R_NX2hR7nP7c"
   },
   {
     "kind": "restaurants",
@@ -2056,7 +2173,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Kwonsooksoo",
     "city": "Seoul",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJZ1-yoYijfDURvkRg_wdaQao"
   },
   {
     "kind": "restaurants",
@@ -2066,7 +2184,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Fiotto",
     "city": "Busan",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJR213d3-NaDURUOQjo5l1sjI"
   },
   {
     "kind": "restaurants",
@@ -2076,7 +2195,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Celera",
     "city": "Makati City",
     "url": "https://www.the50.com/restaurants/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJuXYsfgDJlzMRUSeJ03Rn1z4"
   },
   {
     "kind": "restaurants",
@@ -2086,7 +2206,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "El Chato",
     "city": "Bogotá",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/El-Chato.html",
-    "address": "Calle 65 # 4-76, Chapinero Alto 110221, Bogotá, Colombia"
+    "address": "Calle 65 # 4-76, Chapinero Alto 110221, Bogotá, Colombia",
+    "googlePlaceId": "ChIJQclc-kSaP44RJgBygHivOB4"
   },
   {
     "kind": "restaurants",
@@ -2129,7 +2250,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Celele",
     "city": "Cartagena",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/Celele.html",
-    "address": "Calle del Espiritu Santo, cr 10c # 29 – 200, Getsemaní, Cartagena, Colombia"
+    "address": "Calle del Espiritu Santo, cr 10c # 29 – 200, Getsemaní, Cartagena, Colombia",
+    "googlePlaceId": "ChIJBVeqVVgv9o4RhYsb8WvR9EI"
   },
   {
     "kind": "restaurants",
@@ -2161,7 +2283,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Tuju",
     "city": "São Paulo",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/tuju.html",
-    "address": "R. Frei Galvão, 135 - Jardim Paulistano, São Paulo - SP, 01454-060"
+    "address": "R. Frei Galvão, 135 - Jardim Paulistano, São Paulo - SP, 01454-060",
+    "googlePlaceId": "ChIJm2pQ-1dXzpQRLcFNxi6yWeI"
   },
   {
     "kind": "restaurants",
@@ -2171,7 +2294,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Cosme",
     "city": "Lima",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/cosme.html",
-    "address": "Av. Tudela y Varela 162, San Isidro 15073, Peru"
+    "address": "Av. Tudela y Varela 162, San Isidro 15073, Peru",
+    "googlePlaceId": "ChIJFwC6XkfIBZERnBz9ewLyAvk"
   },
   {
     "kind": "restaurants",
@@ -2181,7 +2305,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Nuema",
     "city": "Quito",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/nuema.html",
-    "address": "Bello Horizonte E11-12 y, Quito 170517, Ecuador"
+    "address": "Bello Horizonte E11-12 y, Quito 170517, Ecuador",
+    "googlePlaceId": "ChIJ8Wv4QnmZ1ZERpY0fkRPP5fE"
   },
   {
     "kind": "restaurants",
@@ -2202,7 +2327,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Nelita",
     "city": "São Paulo",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/nelita.html",
-    "address": "R. Ferreira de Araújo, 330 - Pinheiros, São Paulo, 05428-000, Brazil"
+    "address": "R. Ferreira de Araújo, 330 - Pinheiros, São Paulo, 05428-000, Brazil",
+    "googlePlaceId": "ChIJxRFEFEBXzpQRHeWNJX73-4s"
   },
   {
     "kind": "restaurants",
@@ -2223,7 +2349,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Casa Las Cujas",
     "city": "Santiago",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/casa-las-cujas.html",
-    "address": "Alonso de Córdova 2467, Vitacura, Santiago, 7630418"
+    "address": "Alonso de Córdova 2467, Vitacura, Santiago, 7630418",
+    "googlePlaceId": "ChIJx69plUfPYpYRMfTUZgHxkLE"
   },
   {
     "kind": "restaurants",
@@ -2233,7 +2360,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Alcalde",
     "city": "Guadalajara",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/Alcalde.html",
-    "address": "Av. México 2903, Vallarta Nte., 44690 Guadalajara, Jal., Mexico"
+    "address": "Av. México 2903, Vallarta Nte., 44690 Guadalajara, Jal., Mexico",
+    "googlePlaceId": "ChIJSxhI0W6uKIQRLbizqZhTQuQ"
   },
   {
     "kind": "restaurants",
@@ -2243,7 +2371,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Villa Torél",
     "city": "Ensenada",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/Villa-Torél.html",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJNVB1tKDt2IAR7kqnfQnmOa8"
   },
   {
     "kind": "restaurants",
@@ -2253,7 +2382,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Fauna",
     "city": "Valle de Guadalupe",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/fauna.html",
-    "address": "México 3 km #73, 22760 Francisco Zarco, Valle de Guadalupe, Mexico"
+    "address": "México 3 km #73, 22760 Francisco Zarco, Valle de Guadalupe, Mexico",
+    "googlePlaceId": "ChIJf14DZSH62IARNQugvhGUxCU"
   },
   {
     "kind": "restaurants",
@@ -2263,7 +2393,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Maito",
     "city": "Panama City",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/maito.html",
-    "address": "C. 50, Panamá, Provincia de Panamá, Panama"
+    "address": "C. 50, Panamá, Provincia de Panamá, Panama",
+    "googlePlaceId": "ChIJOxrVAgqprI8RD5aEG4VatXA"
   },
   {
     "kind": "restaurants",
@@ -2273,7 +2404,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Sublime",
     "city": "Guatemala City",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/sublime.html",
-    "address": "12 Calle 4-15, Guatemala City 01014, Guatemala"
+    "address": "12 Calle 4-15, Guatemala City 01014, Guatemala",
+    "googlePlaceId": "ChIJ5TBu3kCjiYURH_drhloRzSA"
   },
   {
     "kind": "restaurants",
@@ -2283,7 +2415,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Evvai",
     "city": "São Paulo",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/evvai.html",
-    "address": "Rua Joaquim Antunes 108, São Paulo, Brazil"
+    "address": "Rua Joaquim Antunes 108, São Paulo, Brazil",
+    "googlePlaceId": "ChIJ15xqwHlXzpQR-wSlgx8ckJM"
   },
   {
     "kind": "restaurants",
@@ -2293,7 +2426,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Niño Gordo",
     "city": "Buenos Aires",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/Nino-Gordo.html",
-    "address": "Thames 1810, C1414DDL C1414DDL, Cdad. Autónoma de Buenos Aires, Argentina"
+    "address": "Thames 1810, C1414DDL C1414DDL, Cdad. Autónoma de Buenos Aires, Argentina",
+    "googlePlaceId": "ChIJYRgoqYi1vJURmIm7r39sV6g"
   },
   {
     "kind": "restaurants",
@@ -2303,7 +2437,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Arca",
     "city": "Tulum",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/arca.html",
-    "address": "Carr. Tulum-Boca Paila km 7.6, Tulum Beach, 77780 Tulum, Q.R., Mexico"
+    "address": "Carr. Tulum-Boca Paila km 7.6, Tulum Beach, 77780 Tulum, Q.R., Mexico",
+    "googlePlaceId": "ChIJJ-ohbMvQT48RUyLPOYlArC0"
   },
   {
     "kind": "restaurants",
@@ -2313,7 +2448,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Leo",
     "city": "Bogotá",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/leo.html",
-    "address": "Cl. 65 Bis #4-23, Bogotá, Colombia"
+    "address": "Cl. 65 Bis #4-23, Bogotá, Colombia",
+    "googlePlaceId": "ChIJf0x6pJuZP44RbF-3kBjiZLs"
   },
   {
     "kind": "restaurants",
@@ -2323,7 +2459,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "El Preferido de Palermo",
     "city": "Buenos Aires",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/El-Preferido-de-Palermo.html",
-    "address": "Jorge Luis Borges 2108, C1425 FFD, Buenos Aires, Argentina"
+    "address": "Jorge Luis Borges 2108, C1425 FFD, Buenos Aires, Argentina",
+    "googlePlaceId": "ChIJRazshIa1vJURczNt-pu4coU"
   },
   {
     "kind": "restaurants",
@@ -2333,7 +2470,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "A Casa do Porco",
     "city": "São Paulo",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/a-casa-do-porco.html",
-    "address": "Rua Araújo, nº 124 Centro, São Paulo, Brazil"
+    "address": "Rua Araújo, nº 124 Centro, São Paulo, Brazil",
+    "googlePlaceId": "ChIJK76a5E5YzpQRCoY7nm1M3-k"
   },
   {
     "kind": "restaurants",
@@ -2343,7 +2481,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "La Mar",
     "city": "Lima",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/la-mar.html",
-    "address": "Av. Mariscal La Mar 770, Miraflores 15074, Peru"
+    "address": "Av. Mariscal La Mar 770, Miraflores 15074, Peru",
+    "googlePlaceId": "ChIJZdYsWjfIBZERGsmTqMbsqDk"
   },
   {
     "kind": "restaurants",
@@ -2353,7 +2492,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "El Mercado",
     "city": "Buenos Aires",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/el-mercado.html",
-    "address": "Martha Salotti 445 Buenos Aires, C1107CMB"
+    "address": "Martha Salotti 445 Buenos Aires, C1107CMB",
+    "googlePlaceId": "ChIJJwVtBEM1o5URrZHvlW9Bqdk"
   },
   {
     "kind": "restaurants",
@@ -2363,7 +2503,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Yum Cha",
     "city": "Santiago",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/yum-cha.html",
-    "address": "La Herradura 2722, Providencia, Santiago, 7530001"
+    "address": "La Herradura 2722, Providencia, Santiago, 7530001",
+    "googlePlaceId": "ChIJyQo_K4fPYpYRMKVHalp8O70"
   },
   {
     "kind": "restaurants",
@@ -2373,7 +2514,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Cordero",
     "city": "Caracas",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/Cordero.html",
-    "address": "Av Principal de las Mercedes CC Tolon Fashion Mall, Las Mercedes, Caracas"
+    "address": "Av Principal de las Mercedes CC Tolon Fashion Mall, Las Mercedes, Caracas",
+    "googlePlaceId": "ChIJNxus65JZKowRVg3CpWlK77Y"
   },
   {
     "kind": "restaurants",
@@ -2383,7 +2525,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Máximo",
     "city": "Mexico City",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/Máximo.html",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJdw0B4zv_0YURK8xSHYwyp2E"
   },
   {
     "kind": "restaurants",
@@ -2393,7 +2536,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Demo Magnolia",
     "city": "Santiago",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/demo-magnolia.html",
-    "address": "Hotel Magnolia, Huérfanos 539, Santiago, Región Metropolitana, Chile"
+    "address": "Hotel Magnolia, Huérfanos 539, Santiago, Región Metropolitana, Chile",
+    "googlePlaceId": "ChIJ95ZGBQDFYpYRvoy8ZD6OeWw"
   },
   {
     "kind": "restaurants",
@@ -2403,7 +2547,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Huniik",
     "city": "Mérida",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/Huniik.html",
-    "address": "Calle 60 No.415-B entre Calle 45 y Calle 47, Centro, 97000 Mérida, Yuc., Mexico"
+    "address": "Calle 60 No.415-B entre Calle 45 y Calle 47, Centro, 97000 Mérida, Yuc., Mexico",
+    "googlePlaceId": "ChIJG_gayOp2Vo8R7ZP4TYIkEDc"
   },
   {
     "kind": "restaurants",
@@ -2413,7 +2558,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Rafael",
     "city": "Lima",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/rafael.html",
-    "address": "Ca. San Martín 300, Miraflores 15074, Peru"
+    "address": "Ca. San Martín 300, Miraflores 15074, Peru",
+    "googlePlaceId": "ChIJeZWqKB_IBZEReGGZlrsARmI"
   },
   {
     "kind": "restaurants",
@@ -2423,7 +2569,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Afluente",
     "city": "Bogotá",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/afluente.html",
-    "address": "Kr 3a 57-35 Chapinero Alto, Bogotá, Colombia"
+    "address": "Kr 3a 57-35 Chapinero Alto, Bogotá, Colombia",
+    "googlePlaceId": "ChIJp2-bW3ubP44RfxtjR_I9OTY"
   },
   {
     "kind": "restaurants",
@@ -2433,7 +2580,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Aramburu",
     "city": "Buenos Aires",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/aramburu.html",
-    "address": "Pasaje del Correo, Vicente López 1661, C1103ACY Cdad. Autónoma de Buenos Aires, Argentina"
+    "address": "Pasaje del Correo, Vicente López 1661, C1103ACY Cdad. Autónoma de Buenos Aires, Argentina",
+    "googlePlaceId": "ChIJUwhogCjLvJURazYFxCm6cUM"
   },
   {
     "kind": "restaurants",
@@ -2443,7 +2591,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Trescha",
     "city": "Buenos Aires",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/Trescha.html",
-    "address": "Murillo 725, C1414 Cdad. Autónoma de Buenos Aires, Argentina"
+    "address": "Murillo 725, C1414 Cdad. Autónoma de Buenos Aires, Argentina",
+    "googlePlaceId": "ChIJ1Rgp0JfLvJURz9KmgBEdyAM"
   },
   {
     "kind": "restaurants",
@@ -2453,7 +2602,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Diacá",
     "city": "Guatemala City",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/Diacá.html",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJldoaAkGjiYURS754uYphYKI"
   },
   {
     "kind": "restaurants",
@@ -2463,7 +2613,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Oteque",
     "city": "Rio de Janeiro",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/oteque.html",
-    "address": "Rua Conde de Irajá, 581 - Botafogo, Rio de Janeiro - RJ, 22271-020"
+    "address": "Rua Conde de Irajá, 581 - Botafogo, Rio de Janeiro - RJ, 22271-020",
+    "googlePlaceId": "ChIJd30eZgB_mQAR-KdRFwN99rE"
   },
   {
     "kind": "restaurants",
@@ -2484,7 +2635,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Crizia",
     "city": "Buenos Aires",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/Crizia.html",
-    "address": "Fitz Roy 1819, Palermo Hollywood, Buenos Aires"
+    "address": "Fitz Roy 1819, Palermo Hollywood, Buenos Aires",
+    "googlePlaceId": "ChIJ02MiFom1vJURSNqKehH_raQ"
   },
   {
     "kind": "restaurants",
@@ -2494,7 +2646,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Humo Negro",
     "city": "Bogotá",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/humo-negro.html",
-    "address": "Cra. 5 #56-06, Chapinero, Bogotá, DC, Colombia"
+    "address": "Cra. 5 #56-06, Chapinero, Bogotá, DC, Colombia",
+    "googlePlaceId": "ChIJJTHLru-bP44R2ZY-9uplUfQ"
   },
   {
     "kind": "restaurants",
@@ -2504,7 +2657,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mercado 24",
     "city": "Guatemala City",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/Mercado-24.html",
-    "address": "Via 5 2-24, Cdad. de Guatemala, Guatemala"
+    "address": "Via 5 2-24, Cdad. de Guatemala, Guatemala",
+    "googlePlaceId": "ChIJ51V4rRqjiYURqDyLFc1wrNc"
   },
   {
     "kind": "restaurants",
@@ -2514,7 +2668,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Sikwa",
     "city": "San José",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/sikwa.html",
-    "address": "C. 41, Los Yoses, San José, Costa Rica"
+    "address": "C. 41, Los Yoses, San José, Costa Rica",
+    "googlePlaceId": "ChIJuZr6vcjjoI8RzMNa0WRoeRU"
   },
   {
     "kind": "restaurants",
@@ -2524,7 +2679,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Osso",
     "city": "Lima",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/Osso.html",
-    "address": "Av. Santo Toribio 173, San Isidro, Peru"
+    "address": "Av. Santo Toribio 173, San Isidro, Peru",
+    "googlePlaceId": "ChIJfTWaNUPIBZERsket5wA09YU"
   },
   {
     "kind": "restaurants",
@@ -2534,7 +2690,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Karai by Mitsuharu",
     "city": "Santiago",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/karai-by-mitsuharu.html",
-    "address": "Isidora Goyenechea 3000, Las Condes, Chile 7550653"
+    "address": "Isidora Goyenechea 3000, Las Condes, Chile 7550653",
+    "googlePlaceId": "ChIJg6KrmdzPYpYRu4xCbkO7oV4"
   },
   {
     "kind": "restaurants",
@@ -2544,7 +2701,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Manuel",
     "city": "Barranquilla",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/manuel.html",
-    "address": "Cra. 55 #74-125, Nte. Centro Historico, Barranquilla, Atlántico, Colombia"
+    "address": "Cra. 55 #74-125, Nte. Centro Historico, Barranquilla, Atlántico, Colombia",
+    "googlePlaceId": "ChIJAR8fCPkt9I4R9S42HMF_GWc"
   },
   {
     "kind": "restaurants",
@@ -2554,7 +2712,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Cantina del Tigre",
     "city": "Panama City",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/cantina-del-tigre.html",
-    "address": "Plaza Centenario, C. 68 Este, Panamá, Panama"
+    "address": "Plaza Centenario, C. 68 Este, Panamá, Panama",
+    "googlePlaceId": "ChIJb8-lq_-prI8RSAAmaaTeuiE"
   },
   {
     "kind": "restaurants",
@@ -2564,7 +2723,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Arami",
     "city": "La Paz",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/arami.html",
-    "address": "Av. Aviador 77, La Paz, Bolivia"
+    "address": "Av. Aviador 77, La Paz, Bolivia",
+    "googlePlaceId": "ChIJ4fN0HQAhX5ERZ_OAO-Jkvng"
   },
   {
     "kind": "restaurants",
@@ -2584,7 +2744,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Julia",
     "city": "Buenos Aires",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/the-list/julia.html",
-    "address": "Loyola 807, C1414 C1414AUQ, Cdad. Autónoma de Buenos Aires, Argentina"
+    "address": "Loyola 807, C1414 C1414AUQ, Cdad. Autónoma de Buenos Aires, Argentina",
+    "googlePlaceId": "ChIJMZMCq4y1vJURRfysuSq4vCA"
   },
   {
     "kind": "restaurants",
@@ -2594,7 +2755,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Pujol",
     "city": "Mexico City",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJWZ2zdav40YURFvsU_rU3uaE"
   },
   {
     "kind": "restaurants",
@@ -2604,7 +2766,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Origem",
     "city": "Salvador",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJs6QtNhIbFgcRjXPuuXdy1ss"
   },
   {
     "kind": "restaurants",
@@ -2614,7 +2777,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Conservatorium",
     "city": "San José",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJC5bP74n_oI8R3wyUVJtav38"
   },
   {
     "kind": "restaurants",
@@ -2624,7 +2788,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Cara de Vaca",
     "city": "Monterrey",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJv4qq4Tm9YoYR-ZTkwEa6Flk"
   },
   {
     "kind": "restaurants",
@@ -2634,7 +2799,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Kotori",
     "city": "São Paulo",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJeQpnUFtXzpQRJnW18gmbaaQ"
   },
   {
     "kind": "restaurants",
@@ -2644,7 +2810,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Metzi",
     "city": "São Paulo",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ0d8ugUhXzpQRFi13GotCmxM"
   },
   {
     "kind": "restaurants",
@@ -2654,7 +2821,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "La Calma by Fredes",
     "city": "Santiago",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJrbjc_knPYpYRy_ubXC6-xp4"
   },
   {
     "kind": "restaurants",
@@ -2664,7 +2832,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Le Chique",
     "city": "Cancún",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJM5U4eDaGTo8R6BZOAFT5-j4"
   },
   {
     "kind": "restaurants",
@@ -2674,7 +2843,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Sud 777",
     "city": "Mexico City",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJNTreqsH_zYUR82jk2MVoXMM"
   },
   {
     "kind": "restaurants",
@@ -2684,7 +2854,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Clara",
     "city": "Quito",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ0e0LhSqb1ZER7STSEEnGTmQ"
   },
   {
     "kind": "restaurants",
@@ -2694,7 +2865,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "La Tapa Del Coco",
     "city": "Panama City",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJO_OlvQCprI8RdkROekQpvl8"
   },
   {
     "kind": "restaurants",
@@ -2714,7 +2886,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Pulpería Santa Elvira",
     "city": "Santiago",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJa2t4G4LFYpYRRgZ0DRr9cQQ"
   },
   {
     "kind": "restaurants",
@@ -2724,7 +2897,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Ness",
     "city": "Buenos Aires",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJnc1mxdm3vJURF0g-hUlKFD8"
   },
   {
     "kind": "restaurants",
@@ -2734,7 +2908,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Oseille",
     "city": "Rio de Janeiro",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJx3sGNsHVmwARMA5CncK0nsY"
   },
   {
     "kind": "restaurants",
@@ -2744,7 +2919,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Clon",
     "city": "Lima",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ40BKpDy3BZER-fHBpOZ-2nM"
   },
   {
     "kind": "restaurants",
@@ -2754,7 +2930,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Maní",
     "city": "São Paulo",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJn2_PrFpXzpQR-FcAbYy3OmM"
   },
   {
     "kind": "restaurants",
@@ -2764,7 +2941,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Tributo",
     "city": "Quito",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJMadocJ-b1ZERXMOwmJyc7vE"
   },
   {
     "kind": "restaurants",
@@ -2774,7 +2952,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mishiguene",
     "city": "Buenos Aires",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJs6vp73m1vJURsaF0c45J64Q"
   },
   {
     "kind": "restaurants",
@@ -2784,7 +2963,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Gran Dabbang",
     "city": "Buenos Aires",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJM3RR83jKvJURRbA_5OGjCwQ"
   },
   {
     "kind": "restaurants",
@@ -2794,7 +2974,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Em",
     "city": "Mexico City",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ1bf3HX__0YURqxkTy1DKP9s"
   },
   {
     "kind": "restaurants",
@@ -2804,7 +2985,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Umi",
     "city": "Panama City",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJi8oYpxeprI8RKWJZNTzk63Y"
   },
   {
     "kind": "restaurants",
@@ -2814,7 +2996,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Cepa",
     "city": "São Paulo",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ8zTHnSpfzpQR0BJjy4zmMkM"
   },
   {
     "kind": "restaurants",
@@ -2824,7 +3007,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "D.O.M.",
     "city": "São Paulo",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ_Qdn5dZZzpQRWJ5lDWdVmSY"
   },
   {
     "kind": "restaurants",
@@ -2834,7 +3018,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Gustu",
     "city": "La Paz",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJAcKtqi8hX5ERa2iEZimHdu8"
   },
   {
     "kind": "restaurants",
@@ -2854,7 +3039,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Alo's",
     "city": "Buenos Aires",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJifCrHBPKvJUR7V6mgHPwANo"
   },
   {
     "kind": "restaurants",
@@ -2864,7 +3050,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "El Papagayo",
     "city": "Córdoba",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJwRW3K4CiMpQRvEti3s8gvzM"
   },
   {
     "kind": "restaurants",
@@ -2874,7 +3061,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Ancestral",
     "city": "La Paz",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJXVFRV4whX5ER99eqXu7l5_c"
   },
   {
     "kind": "restaurants",
@@ -2884,7 +3072,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Manu",
     "city": "Curitiba",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJHeVzMwjl3JQRiFIbAh_hREk"
   },
   {
     "kind": "restaurants",
@@ -2894,7 +3083,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Astrid y Gastón",
     "city": "Lima",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ5YbeNV3IBZERr13TGSmgmi8"
   },
   {
     "kind": "restaurants",
@@ -2904,7 +3094,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Fonda Lo Que Hay",
     "city": "Panama City",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJATwe3TSvrI8R8PoiICsyV5U"
   },
   {
     "kind": "restaurants",
@@ -2914,7 +3105,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Parador La Huella",
     "city": "José Ignacio",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJn2mAAsf6dJURCYf8M30x9AY"
   },
   {
     "kind": "restaurants",
@@ -2924,7 +3116,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Nicos",
     "city": "Mexico City",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ7bEfa5D40YURWT8nrY-pPxQ"
   },
   {
     "kind": "restaurants",
@@ -2934,7 +3127,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Debora",
     "city": "Bogotá",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJoYhK7ymbP44RIzU7fCm7iV4"
   },
   {
     "kind": "restaurants",
@@ -2944,7 +3138,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Manzanar",
     "city": "Montevideo",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJaZpkqm-Gn5URaLsHnjP5G90"
   },
   {
     "kind": "restaurants",
@@ -2954,7 +3149,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "El Xolo",
     "city": "San Salvador",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ8xPa7jgxY48RATvNGS9-_yE"
   },
   {
     "kind": "restaurants",
@@ -2964,7 +3160,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Aguají",
     "city": "Sosúa",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJhzR_kTjjsY4RKKYMuf4IFAk"
   },
   {
     "kind": "restaurants",
@@ -2974,7 +3171,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "La Casa Bistró",
     "city": "Caracas",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJCffhA7BZKowRFvwCTgH6C6g"
   },
   {
     "kind": "restaurants",
@@ -2984,7 +3182,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Lunario",
     "city": "Valle de Guadalupe",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJn-6Udmrv2IARlUW4xwk6Po4"
   },
   {
     "kind": "restaurants",
@@ -3004,7 +3203,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Lo de Tere",
     "city": "Punta del Este",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJvQvEyJ4FdZURUvfN5a7D2CE"
   },
   {
     "kind": "restaurants",
@@ -3024,7 +3224,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Ana",
     "city": "Guatemala City",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ9w17zCGjiYUR_1WHobUndpI"
   },
   {
     "kind": "restaurants",
@@ -3034,7 +3235,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Demencia",
     "city": "Santiago",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJK0UWHbbPYpYRYv5TMZqtCGE"
   },
   {
     "kind": "restaurants",
@@ -3044,7 +3246,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Selma",
     "city": "Bogotá",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJOSQgPxabP44Rr4qZnncV59E"
   },
   {
     "kind": "restaurants",
@@ -3054,7 +3257,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Azafrán",
     "city": "Mendoza",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJFyEWbkAJfpYRDb2xBz1l0nU"
   },
   {
     "kind": "restaurants",
@@ -3064,7 +3268,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Sambombi Bistró Local",
     "city": "Medellin",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJbZpAW1EpRI4R_GZuEliKnQk"
   },
   {
     "kind": "restaurants",
@@ -3074,7 +3279,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Restaurante Manga",
     "city": "Salvador",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJU_t9dJwDFgcRJRtihxNDtC4"
   },
   {
     "kind": "restaurants",
@@ -3084,7 +3290,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Fukasawa",
     "city": "Santiago",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJRYZC12vPYpYR6qM-36EyJIQ"
   },
   {
     "kind": "restaurants",
@@ -3094,7 +3301,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Khufu's",
     "city": "Giza",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Khufus.html",
-    "address": "X4HF+8P, Nazlet El-Semman, Al Haram, Giza Governorate 12512, Egypt"
+    "address": "X4HF+8P, Nazlet El-Semman, Al Haram, Giza Governorate 12512, Egypt",
+    "googlePlaceId": "ChIJES6Cx_hPWBQR0pU4NDzaCDg"
   },
   {
     "kind": "restaurants",
@@ -3104,7 +3312,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Kinoya",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Kinoya.html",
-    "address": "The Onyx Tower 2, Floor P2, Dubai, UAE"
+    "address": "The Onyx Tower 2, Floor P2, Dubai, UAE",
+    "googlePlaceId": "ChIJo_aEw_JtXz4RIrHIsLk_ab0"
   },
   {
     "kind": "restaurants",
@@ -3136,7 +3345,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Beihouse",
     "city": "Beirut",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Beihouse.html",
-    "address": "Beihouse, Pasteur Street, Beirut, Lebanon"
+    "address": "Beihouse, Pasteur Street, Beirut, Lebanon",
+    "googlePlaceId": "ChIJA1sYCQAXHxURjeViubhlFHA"
   },
   {
     "kind": "restaurants",
@@ -3146,7 +3356,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Kuuru",
     "city": "Jeddah",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Kuuru.html",
-    "address": "Al Malik Road, Al Khalidiyyah, Jeddah 23422, Saudi Arabia"
+    "address": "Al Malik Road, Al Khalidiyyah, Jeddah 23422, Saudi Arabia",
+    "googlePlaceId": "ChIJCV_6FK3bwxURGW35gnbsOmY"
   },
   {
     "kind": "restaurants",
@@ -3156,7 +3367,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Sufret Maryam",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Sufret-Maryam.html",
-    "address": "Wasl 51 – Jumeirah – Jumeirah 1 – Dubai"
+    "address": "Wasl 51 – Jumeirah – Jumeirah 1 – Dubai",
+    "googlePlaceId": "ChIJQ4ytmXdDXz4RYZTxqnJc3yM"
   },
   {
     "kind": "restaurants",
@@ -3166,7 +3378,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Jun's",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Juns.html",
-    "address": "Sheikh Mohammed bin Rashid Blvd - Downtown Dubai - Dubai - United Arab Emirates"
+    "address": "Sheikh Mohammed bin Rashid Blvd - Downtown Dubai - Dubai - United Arab Emirates",
+    "googlePlaceId": "ChIJMZuZr75DXz4RDF3KsT3WPek"
   },
   {
     "kind": "restaurants",
@@ -3176,7 +3389,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Manao",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Manao.html",
-    "address": "Wasl Vita Mall, Jumeirah 1, Dubai, UAE"
+    "address": "Wasl Vita Mall, Jumeirah 1, Dubai, UAE",
+    "googlePlaceId": "ChIJW2DSDblDXz4Rdrt-RN0-7qE"
   },
   {
     "kind": "restaurants",
@@ -3186,7 +3400,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Moonrise",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Moonrise.html",
-    "address": "Eden House - Al Satwa - Dubai - United Arab Emirates"
+    "address": "Eden House - Al Satwa - Dubai - United Arab Emirates",
+    "googlePlaceId": "ChIJS6LLvexDXz4RUPTv3HNI7Pc"
   },
   {
     "kind": "restaurants",
@@ -3196,7 +3411,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Table 3",
     "city": "Casablanca",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Table-3.html",
-    "address": " 4 Av. de la Côte d'Emeraude, Casablanca"
+    "address": " 4 Av. de la Côte d'Emeraude, Casablanca",
+    "googlePlaceId": "ChIJgR4paQDTpw0RUIjf-0emMHA"
   },
   {
     "kind": "restaurants",
@@ -3206,7 +3422,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Marble",
     "city": "Riyadh",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Marble.html",
-    "address": "Turki Square, Makkah Al Mukarramah Br Rd, Umm Al Hamam Al Sharqi, Riyadh 12321, Saudi Arabia"
+    "address": "Turki Square, Makkah Al Mukarramah Br Rd, Umm Al Hamam Al Sharqi, Riyadh 12321, Saudi Arabia",
+    "googlePlaceId": "ChIJcyPkjaYdLz4RbdL4GF8xQmM"
   },
   {
     "kind": "restaurants",
@@ -3216,7 +3433,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Em Sherif",
     "city": "Beirut",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Em-Sherif.html",
-    "address": "Damascus Street, Monot Beirut, Lebanon"
+    "address": "Damascus Street, Monot Beirut, Lebanon",
+    "googlePlaceId": "ChIJwwJNjh0XHxUR5mEZZqfY0uI"
   },
   {
     "kind": "restaurants",
@@ -3226,7 +3444,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "11 Woodfire",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/11-Woodfire.html",
-    "address": "Villa 11 75B St, Jumeirah, Jumeirah 1, Dubai, UAE"
+    "address": "Villa 11 75B St, Jumeirah, Jumeirah 1, Dubai, UAE",
+    "googlePlaceId": "ChIJ0XAHzFhDXz4RWB0pNY1dpuU"
   },
   {
     "kind": "restaurants",
@@ -3236,7 +3455,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Kokoro",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Kokoro.html",
-    "address": "Al Serkal Avenue 17th St - Al Quoz, Dubai"
+    "address": "Al Serkal Avenue 17th St - Al Quoz, Dubai",
+    "googlePlaceId": "ChIJqQUz5N9pXz4RIgkg1A876hc"
   },
   {
     "kind": "restaurants",
@@ -3246,7 +3466,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Marmellata Bakery",
     "city": "Abu Dhabi",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Marmellata-Bakery.html",
-    "address": "Zayed Port - Freezone 2 - Abu Dhabi - United Arab Emirates"
+    "address": "Zayed Port - Freezone 2 - Abu Dhabi - United Arab Emirates",
+    "googlePlaceId": "ChIJX0euT71nXj4RisNTr724dw8"
   },
   {
     "kind": "restaurants",
@@ -3256,7 +3477,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "3 Fils Dubai",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/3-Fils.html",
-    "address": "Jumeirah Fishing Harbour - Shop 02 - 1 Al Urouba St - Jumeirah 2 - Dubai - United Arab Emirates"
+    "address": "Jumeirah Fishing Harbour - Shop 02 - 1 Al Urouba St - Jumeirah 2 - Dubai - United Arab Emirates",
+    "googlePlaceId": "ChIJc_qkbD5CXz4RjckbjFAB3eM"
   },
   {
     "kind": "restaurants",
@@ -3266,7 +3488,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Cantina",
     "city": "Kuwait City",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Cantina.html",
-    "address": "Street 28, Shuwaikh Industrial, Kuwait"
+    "address": "Street 28, Shuwaikh Industrial, Kuwait",
+    "googlePlaceId": "ChIJAaM6bgGbzz8RH_eGGCw8XnA"
   },
   {
     "kind": "restaurants",
@@ -3276,7 +3499,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "La Grande Table Marocaine",
     "city": "Marrakech",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/La-Grande-Table-Marocaine.html",
-    "address": "Rue Abou El Abbas Sebti, Marrakesh 40000, Morocco"
+    "address": "Rue Abou El Abbas Sebti, Marrakesh 40000, Morocco",
+    "googlePlaceId": "ChIJI15MHDXvrw0RbXFkvCC8imE"
   },
   {
     "kind": "restaurants",
@@ -3286,7 +3510,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Reif Kushiyaki Cairo",
     "city": "Cairo",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Reif-Kushiyaki-Cairo.html",
-    "address": " 5A By The Waterway Developments, New Cairo 3, Cairo Governorate 4720113, Egypt"
+    "address": " 5A By The Waterway Developments, New Cairo 3, Cairo Governorate 4720113, Egypt",
+    "googlePlaceId": "ChIJy5ylHmQ9WBQRORE4ZawOu_A"
   },
   {
     "kind": "restaurants",
@@ -3296,7 +3521,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Le Petit Cornichon",
     "city": "Marrakech",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Le-Petit-Cornichon.html",
-    "address": "27 Rue Moulay Ali, Marrakech"
+    "address": "27 Rue Moulay Ali, Marrakech",
+    "googlePlaceId": "ChIJTxPoqI7urw0Rk2kR2g_psTE"
   },
   {
     "kind": "restaurants",
@@ -3306,7 +3532,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "FZN",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/FZN.html",
-    "address": "Atlantis The Palm, Crescent Road, The Palm Jumeirah, Dubai"
+    "address": "Atlantis The Palm, Crescent Road, The Palm Jumeirah, Dubai",
+    "googlePlaceId": "ChIJVwLdZgAVXz4RVgWqF6R2cdM"
   },
   {
     "kind": "restaurants",
@@ -3316,7 +3543,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "TakaHisa",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/TakaHisa.html",
-    "address": "Banyan Tree Dubai - First Floor - Bluewaters Island - Dubai - United Arab Emirates"
+    "address": "Banyan Tree Dubai - First Floor - Bluewaters Island - Dubai - United Arab Emirates",
+    "googlePlaceId": "ChIJOSl7nyQVXz4RxM7gerbeh8g"
   },
   {
     "kind": "restaurants",
@@ -3326,7 +3554,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Sesamo",
     "city": "Marrakech",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Sesamo.html",
-    "address": "Royal Mansour, El Sebti, Rue Abou Al Abbas, Marrakesh 40000, Morocco"
+    "address": "Royal Mansour, El Sebti, Rue Abou Al Abbas, Marrakesh 40000, Morocco",
+    "googlePlaceId": "ChIJz9Knc4vvrw0RgwdPnDDNLdE"
   },
   {
     "kind": "restaurants",
@@ -3336,7 +3565,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Kazoku",
     "city": "Cairo",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Kazoku.html",
-    "address": "Swan Lake Compound, Second New Cairo, Cairo Governorate 4732401, Egypt"
+    "address": "Swan Lake Compound, Second New Cairo, Cairo Governorate 4732401, Egypt",
+    "googlePlaceId": "ChIJ2xZMeVY9WBQRA7ey6PntQfc"
   },
   {
     "kind": "restaurants",
@@ -3346,7 +3576,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Shams El Balad",
     "city": "Amman",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Shams-El-Balad.html",
-    "address": "Mu'Ath Bin Jabal Street 69, Amman 11181, Jordan"
+    "address": "Mu'Ath Bin Jabal Street 69, Amman 11181, Jordan",
+    "googlePlaceId": "ChIJl409I5tfGxURC_j7a_HtJpk"
   },
   {
     "kind": "restaurants",
@@ -3356,7 +3587,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "LPM Dubai",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/LPM-Dubai.html",
-    "address": "Gate Village No, 8, DIFC, Dubai, UAE"
+    "address": "Gate Village No, 8, DIFC, Dubai, UAE",
+    "googlePlaceId": "ChIJC1IO84VCXz4RdlE5yzrVRes"
   },
   {
     "kind": "restaurants",
@@ -3366,7 +3598,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Alee",
     "city": "Amman",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Alee.html",
-    "address": "Building number 44, Jabal Amman ,First Circle, Othman Ben Affan St., Amman 00962, Jordan"
+    "address": "Building number 44, Jabal Amman ,First Circle, Othman Ben Affan St., Amman 00962, Jordan",
+    "googlePlaceId": "ChIJHarJS0pfGxURUnuirGuUvvs"
   },
   {
     "kind": "restaurants",
@@ -3376,7 +3609,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Three Bros",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Three-Bros.html",
-    "address": "Al Wasl 51, Dubai United Arab Emirates"
+    "address": "Al Wasl 51, Dubai United Arab Emirates",
+    "googlePlaceId": "ChIJQ6mRRQBDXz4RBns8XFi-kqw"
   },
   {
     "kind": "restaurants",
@@ -3386,7 +3620,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Dara Dining by Sara Aqel",
     "city": "Amman",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Dara-Dining-by-Sara-Aqel.html",
-    "address": "Al-Mutanabbi St. 46, Amman 11183, Jordan"
+    "address": "Al-Mutanabbi St. 46, Amman 11183, Jordan",
+    "googlePlaceId": "ChIJccKe09ahHBUR_HuRmGexeSI"
   },
   {
     "kind": "restaurants",
@@ -3406,7 +3641,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Zooba (Zamalek)",
     "city": "Cairo",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Zooba-Zamalek.html",
-    "address": "16 26 July St, Al Gabalayah, Zamalek, Giza Governorate 4270123, Egypt"
+    "address": "16 26 July St, Al Gabalayah, Zamalek, Giza Governorate 4270123, Egypt",
+    "googlePlaceId": "ChIJ1QVQreFAWBQRpvyKGd13Dmg"
   },
   {
     "kind": "restaurants",
@@ -3416,7 +3652,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Gaia",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Gaia.html",
-    "address": "Dubai International Financial Centre, Gate Village No. 4, Dubai, United Arab Emirates"
+    "address": "Dubai International Financial Centre, Gate Village No. 4, Dubai, United Arab Emirates",
+    "googlePlaceId": "ChIJpe0O-I1CXz4RaeYV4NE_rWg"
   },
   {
     "kind": "restaurants",
@@ -3426,7 +3663,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Zuma",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Zuma.html",
-    "address": "Podium Level, Gate Village, Building 3 - 06 Al Mustaqbal St - Trade Centre - DIFC - Dubai - United Arab Emirates"
+    "address": "Podium Level, Gate Village, Building 3 - 06 Al Mustaqbal St - Trade Centre - DIFC - Dubai - United Arab Emirates",
+    "googlePlaceId": "ChIJZTweiZFCXz4RdaYGx-3ktrA"
   },
   {
     "kind": "restaurants",
@@ -3436,7 +3674,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mimi Kakushi",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Mimi-Kakushi.html",
-    "address": "Four Seasons Resort - 23A St - Jumeirah - Jumeirah 2 - Dubai - United Arab Emirates"
+    "address": "Four Seasons Resort - 23A St - Jumeirah - Jumeirah 2 - Dubai - United Arab Emirates",
+    "googlePlaceId": "ChIJj-ySLalDXz4RLvs4jx1IGfo"
   },
   {
     "kind": "restaurants",
@@ -3446,7 +3685,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Row on 45",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Row-on-45.html",
-    "address": "Al Emreef St - Dubai Marina - Dubai - United Arab Emirates"
+    "address": "Al Emreef St - Dubai Marina - Dubai - United Arab Emirates",
+    "googlePlaceId": "ChIJBRo76ehrXz4R5CCsd8vFsvc"
   },
   {
     "kind": "restaurants",
@@ -3456,7 +3696,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Sachi Cairo",
     "city": "Cairo",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Sachi-Cairo.html",
-    "address": "3, Cleopatra St, Korba،El-Montaza, Heliopolis, Cairo Governorate, Egypt"
+    "address": "3, Cleopatra St, Korba،El-Montaza, Heliopolis, Cairo Governorate, Egypt",
+    "googlePlaceId": "ChIJt_ZwqCY-WBQRrcGsm8uMaPA"
   },
   {
     "kind": "restaurants",
@@ -3466,7 +3707,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Niri",
     "city": "Abu Dhabi",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Niri.html",
-    "address": "Mamsha Al Saadiyat - Al Saadiyat Island - SDN1 - Abu Dhabi - United Arab Emirates"
+    "address": "Mamsha Al Saadiyat - Al Saadiyat Island - SDN1 - Abu Dhabi - United Arab Emirates",
+    "googlePlaceId": "ChIJ4ymfflhFXj4RE1CM2gtsV7w"
   },
   {
     "kind": "restaurants",
@@ -3476,7 +3718,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Buco",
     "city": "Beirut",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Buco.html",
-    "address": "Gouraud, Beirut, Lebanon"
+    "address": "Gouraud, Beirut, Lebanon",
+    "googlePlaceId": "ChIJ3xyKblIXHxURg04jTvrR_ZA"
   },
   {
     "kind": "restaurants",
@@ -3486,7 +3729,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Chez Wam",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Chez-Wam.html",
-    "address": "St Regis Gardens, The Palm Jumeirah, Dubai, United Arab Emirates"
+    "address": "St Regis Gardens, The Palm Jumeirah, Dubai, United Arab Emirates",
+    "googlePlaceId": "ChIJk29snVFrXz4RUs4NTMpb2CQ"
   },
   {
     "kind": "restaurants",
@@ -3496,7 +3740,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Boca",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Boca.html",
-    "address": "Gate Village 6, DIFC, Dubai, UAE"
+    "address": "Gate Village 6, DIFC, Dubai, UAE",
+    "googlePlaceId": "ChIJNTSRiJFCXz4Rw__mt9fn62M"
   },
   {
     "kind": "restaurants",
@@ -3506,7 +3751,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "3 Fils Abu Dhabi",
     "city": "Abu Dhabi",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/3-Fils-Abu-Dhabi.html",
-    "address": "Al Bateen, W35, Abu Dhabi, United Arab Emirates"
+    "address": "Al Bateen, W35, Abu Dhabi, United Arab Emirates",
+    "googlePlaceId": "ChIJmaqWlo5lXj4RVQtyY29ooNA"
   },
   {
     "kind": "restaurants",
@@ -3516,7 +3762,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Girl and the Goose",
     "city": "Dubai",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Girl-and-the-Goose.html",
-    "address": "Anantara Downtown Hotel, Business Bay, Dubai, United Arab Emirates"
+    "address": "Anantara Downtown Hotel, Business Bay, Dubai, United Arab Emirates",
+    "googlePlaceId": "ChIJww96BO0VXz4RTtgKyMGmYIs"
   },
   {
     "kind": "restaurants",
@@ -3526,7 +3773,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Idam by Alain Ducasse",
     "city": "Doha",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Idam.html",
-    "address": "Museum of Islamic Art, 5th Floor, Corniche Promenade, Doha, Qatar"
+    "address": "Museum of Islamic Art, 5th Floor, Corniche Promenade, Doha, Qatar",
+    "googlePlaceId": "ChIJdaeOehfFRT4RBm6C9yJEbKo"
   },
   {
     "kind": "restaurants",
@@ -3536,7 +3784,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Myazu",
     "city": "Riyadh",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Myazu.html",
-    "address": "Musad Bin Jalawi, As Sulimaniyah, Riyadh 12244, Saudi Arabia"
+    "address": "Musad Bin Jalawi, As Sulimaniyah, Riyadh 12244, Saudi Arabia",
+    "googlePlaceId": "ChIJ8YsLeQsDLz4RUWQagqXaTgc"
   },
   {
     "kind": "restaurants",
@@ -3546,7 +3795,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Le Golfe",
     "city": "La Marsa",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Le-Golfe.html",
-    "address": "5 Rue Larbi Zarrouk, Tunis, Tunisia"
+    "address": "5 Rue Larbi Zarrouk, Tunis, Tunisia",
+    "googlePlaceId": "ChIJE4cwW4m04hIRfjLDC4QiFSA"
   },
   {
     "kind": "restaurants",
@@ -3556,7 +3806,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "LPM Abu Dhabi",
     "city": "Abu Dhabi",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/LPM-Abu-Dhabi.html",
-    "address": "The Galleria, Al Maryah Island, Abu Dhabi Global Market Square, Abu Dhabi, UAE"
+    "address": "The Galleria, Al Maryah Island, Abu Dhabi Global Market Square, Abu Dhabi, UAE",
+    "googlePlaceId": "ChIJqZNOAlVmXj4R9jviNjhfXuY"
   },
   {
     "kind": "restaurants",
@@ -3566,7 +3817,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Lyra",
     "city": "Manama",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Lyra.html",
-    "address": "Building 176, Road 6403, Diyar 973, Bahrain"
+    "address": "Building 176, Road 6403, Diyar 973, Bahrain",
+    "googlePlaceId": "ChIJM4y_seWnST4RnxGsy5X8u4U"
   },
   {
     "kind": "restaurants",
@@ -3576,7 +3828,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Farmers",
     "city": "Marrakech",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Farmers.html",
-    "address": "96 Rue Mohammed el Beqal, Marrakech 40000, Morocco"
+    "address": "96 Rue Mohammed el Beqal, Marrakech 40000, Morocco",
+    "googlePlaceId": "ChIJ_7Z9SADvrw0RFWSQpRKd3AQ"
   },
   {
     "kind": "restaurants",
@@ -3586,7 +3839,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Matbakhi",
     "city": "Kuwait City",
     "url": "https://www.the50.com/restaurants/best-in-middle-east-and-north-africa/the-list/Matbakhi.html",
-    "address": "Avenues Mall, Sheikh Zayed Bin Sultan Al Nahyan Road, Surra 03000, Kuwait"
+    "address": "Avenues Mall, Sheikh Zayed Bin Sultan Al Nahyan Road, Surra 03000, Kuwait",
+    "googlePlaceId": "ChIJuXOyJACbzz8R5mK50CbsCMk"
   },
   {
     "kind": "restaurants",
@@ -3596,7 +3850,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Smyth",
     "city": "Chicago",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/smyth.html",
-    "address": "177 North Ada St. 101, Chicago, IL 60607, United States"
+    "address": "177 North Ada St. 101, Chicago, IL 60607, United States",
+    "googlePlaceId": "ChIJxRcpzSctDogRBKHyFUKauHc"
   },
   {
     "kind": "restaurants",
@@ -3606,7 +3861,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Eight",
     "city": "Calgary",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/eight.html",
-    "address": "631 Confluence Way SE, Calgary, AB T2G 1C3, Canada"
+    "address": "631 Confluence Way SE, Calgary, AB T2G 1C3, Canada",
+    "googlePlaceId": "ChIJ4Y2DRJplcVMRgVmTiW0G-kg"
   },
   {
     "kind": "restaurants",
@@ -3616,7 +3872,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Restaurant Pearl Morissette",
     "city": "Lincoln",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/restaurant-pearl-morissette.html",
-    "address": "3953 Jordan Rd. Jordan Station, ON L0R 1S0, Canada"
+    "address": "3953 Jordan Rd. Jordan Station, ON L0R 1S0, Canada",
+    "googlePlaceId": "ChIJJYQ6w5VS04kRT_2C9D_qyno"
   },
   {
     "kind": "restaurants",
@@ -3626,7 +3883,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Dakar NOLA",
     "city": "New Orleans",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/dakar-nola.html",
-    "address": "937 Leonidas Street, New Orleans, LA 70118"
+    "address": "937 Leonidas Street, New Orleans, LA 70118",
+    "googlePlaceId": "ChIJrZTdR6ylIIYRE3vWwDQt90M"
   },
   {
     "kind": "restaurants",
@@ -3636,7 +3894,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mon Lapin",
     "city": "Montreal",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/mon-lapin.html",
-    "address": "150 Rue Saint-Zotique Est, Montreal, QC H2S 1L8, Canada"
+    "address": "150 Rue Saint-Zotique Est, Montreal, QC H2S 1L8, Canada",
+    "googlePlaceId": "ChIJEZybpW0ZyUwRUNE3vXSjTLU"
   },
   {
     "kind": "restaurants",
@@ -3646,7 +3905,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Albi",
     "city": "Washington DC",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/albi.html",
-    "address": "1346 4th St. SE. Washington, DC 20003, United States"
+    "address": "1346 4th St. SE. Washington, DC 20003, United States",
+    "googlePlaceId": "ChIJ240L8N25t4kRCoGiQ2-21bI"
   },
   {
     "kind": "restaurants",
@@ -3667,7 +3927,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Quetzal",
     "city": "Toronto",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/quetzal.html",
-    "address": "419 College St. Kensington Market, Toronto, ON, M5T 1T1"
+    "address": "419 College St. Kensington Market, Toronto, ON, M5T 1T1",
+    "googlePlaceId": "ChIJz7oN7gU1K4gRtjOP6_CCSiU"
   },
   {
     "kind": "restaurants",
@@ -3677,7 +3938,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Tanière3",
     "city": "Quebec City",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/taniere3.html",
-    "address": "7 Rue du Don-de-Dieu, Québec, QC G1K 3Z6, Canada"
+    "address": "7 Rue du Don-de-Dieu, Québec, QC G1K 3Z6, Canada",
+    "googlePlaceId": "ChIJ_Xs0crubuEwRmjgxCj6TwY4"
   },
   {
     "kind": "restaurants",
@@ -3687,7 +3949,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "César",
     "city": "New York",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/cesar.html",
-    "address": "333 Hudson St. New York, NY 10013, United States"
+    "address": "333 Hudson St. New York, NY 10013, United States",
+    "googlePlaceId": "ChIJeyzWYABZwokRkxhWJzFpqvU"
   },
   {
     "kind": "restaurants",
@@ -3697,7 +3960,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Kalaya",
     "city": "Philadelphia",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/kalaya.html",
-    "address": "4 West Palmer St. Philadelphia, PA 19125, United States"
+    "address": "4 West Palmer St. Philadelphia, PA 19125, United States",
+    "googlePlaceId": "ChIJLcLGB3jHxokRtTTgXtRPs34"
   },
   {
     "kind": "restaurants",
@@ -3707,7 +3971,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Le Veau d'Or",
     "city": "New York",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/le-veau-dor.html",
-    "address": "129 E. 60th St. New York, NY 10022, United States"
+    "address": "129 E. 60th St. New York, NY 10022, United States",
+    "googlePlaceId": "ChIJ8ccTf-9YwokRMrljca_idL0"
   },
   {
     "kind": "restaurants",
@@ -3717,7 +3982,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Le Bernardin",
     "city": "New York",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/le-bernadin.html",
-    "address": "155 W. 51st St. New York, NY 10019, United States"
+    "address": "155 W. 51st St. New York, NY 10019, United States",
+    "googlePlaceId": "ChIJV7QQ6kdZwokRax4615zpSGU"
   },
   {
     "kind": "restaurants",
@@ -3727,7 +3993,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Kabawa",
     "city": "New York",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/kabawa.html",
-    "address": "8 Extra Pl, New York, NY 10003, United States"
+    "address": "8 Extra Pl, New York, NY 10003, United States",
+    "googlePlaceId": "ChIJ685zLlZZwokRiEoiYj-Iyvg"
   },
   {
     "kind": "restaurants",
@@ -3737,7 +4004,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Le Violon",
     "city": "Montreal",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/le-violon.html",
-    "address": "4720 Rue Marquette, Montreal, QC H2J 3Y6, Canada"
+    "address": "4720 Rue Marquette, Montreal, QC H2J 3Y6, Canada",
+    "googlePlaceId": "ChIJ44BODgAbyUwRXj1U9_z8nAw"
   },
   {
     "kind": "restaurants",
@@ -3747,7 +4015,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "SingleThread",
     "city": "Healdsburg",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/singlethread.html",
-    "address": "131 North St. Healdsburg, CA 95448, United States"
+    "address": "131 North St. Healdsburg, CA 95448, United States",
+    "googlePlaceId": "ChIJ8TVwjTMXhIARQ5MLkvMyVvY"
   },
   {
     "kind": "restaurants",
@@ -3757,7 +4026,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Published on Main",
     "city": "Vancouver",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/published-on-main.html",
-    "address": "3593 Main St. Vancouver, BC V5V 3N4, Canada"
+    "address": "3593 Main St. Vancouver, BC V5V 3N4, Canada",
+    "googlePlaceId": "ChIJWx0eDi9zhlQRtAITySyE3oE"
   },
   {
     "kind": "restaurants",
@@ -3767,7 +4037,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Jungsik",
     "city": "New York",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/jungsik.html",
-    "address": "2 Harrison St. New York, NY 10013, United States"
+    "address": "2 Harrison St. New York, NY 10013, United States",
+    "googlePlaceId": "ChIJpSTN0R9awokRI29rK_SfbeA"
   },
   {
     "kind": "restaurants",
@@ -3777,7 +4048,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Penny",
     "city": "New York",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/penny.html",
-    "address": "90 E. 10th St. 1st Floor, New York, NY 10003, United States"
+    "address": "90 E. 10th St. 1st Floor, New York, NY 10003, United States",
+    "googlePlaceId": "ChIJIwaq1P5ZwokRmGG4WafDScw"
   },
   {
     "kind": "restaurants",
@@ -3787,7 +4059,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Emeril's",
     "city": "New Orleans",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/emerils.html",
-    "address": "800 Tchoupitoulas St. New Orleans, LA 70130, United States"
+    "address": "800 Tchoupitoulas St. New Orleans, LA 70130, United States",
+    "googlePlaceId": "ChIJp6mGj3GmIIYRfS0qjpoGsmo"
   },
   {
     "kind": "restaurants",
@@ -3797,7 +4070,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Chubby Fish",
     "city": "Charleston",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/chubby-fish.html",
-    "address": "252 Coming St. Charleston, SC 29403, United States"
+    "address": "252 Coming St. Charleston, SC 29403, United States",
+    "googlePlaceId": "ChIJyd7gfdF7_ogRRF4Us6IR9DI"
   },
   {
     "kind": "restaurants",
@@ -3807,7 +4081,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Saison",
     "city": "San Francisco",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/saison.html",
-    "address": "178 Townsend St. San Francisco, CA 94107, United States"
+    "address": "178 Townsend St. San Francisco, CA 94107, United States",
+    "googlePlaceId": "ChIJPUo32Aj3MhURXL06eVIEoHc"
   },
   {
     "kind": "restaurants",
@@ -3817,7 +4092,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Aska",
     "city": "New York",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/aska.html",
-    "address": "47 S. 5th St. Brooklyn, NY 11249, United States"
+    "address": "47 S. 5th St. Brooklyn, NY 11249, United States",
+    "googlePlaceId": "ChIJUwatTl1ZwokRUDXxYoFa-hk"
   },
   {
     "kind": "restaurants",
@@ -3827,7 +4103,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Moon Rabbit",
     "city": "Washington DC",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/moon-rabbit.html",
-    "address": "927 F. St. NW, Washington, DC 20004, United States"
+    "address": "927 F. St. NW, Washington, DC 20004, United States",
+    "googlePlaceId": "ChIJ4chOq8y3t4kRcTTAVjo_JxI"
   },
   {
     "kind": "restaurants",
@@ -3837,7 +4114,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Edulis",
     "city": "Toronto",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/edulis.html",
-    "address": "169 Niagara St. Toronto, Ontario"
+    "address": "169 Niagara St. Toronto, Ontario",
+    "googlePlaceId": "ChIJFeOAJx41K4gROrzCzqa777M"
   },
   {
     "kind": "restaurants",
@@ -3857,7 +4135,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Beba",
     "city": "Montreal",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/beba.html",
-    "address": "3900 Rue Éthel, Verdun, QC H4G 1S4, Canada"
+    "address": "3900 Rue Éthel, Verdun, QC H4G 1S4, Canada",
+    "googlePlaceId": "ChIJsU0h0aURyUwRi0ds76tTJYw"
   },
   {
     "kind": "restaurants",
@@ -3867,7 +4146,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mhel",
     "city": "Toronto",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/mhel.html",
-    "address": "276 Havelock St. Toronto, ON M6H 3B9, Canada"
+    "address": "276 Havelock St. Toronto, ON M6H 3B9, Canada",
+    "googlePlaceId": "ChIJA3NaEoU1K4gRF7_qf7mPKfY"
   },
   {
     "kind": "restaurants",
@@ -3877,7 +4157,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Avize",
     "city": "Atlanta",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/avize.html",
-    "address": "956 Brady Ave. NW Atlanta, GA 30318"
+    "address": "956 Brady Ave. NW Atlanta, GA 30318",
+    "googlePlaceId": "ChIJK9Gk2YYF9YgR3f-T6fTabpY"
   },
   {
     "kind": "restaurants",
@@ -3887,7 +4168,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Acamaya",
     "city": "New Orleans",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/acamaya.html",
-    "address": "3070 Dauphine St. New Orleans, LA 70117"
+    "address": "3070 Dauphine St. New Orleans, LA 70117",
+    "googlePlaceId": "ChIJ1_GQtPSnIIYRHIOEV_boIHM"
   },
   {
     "kind": "restaurants",
@@ -3897,7 +4179,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Addison by William Bradley",
     "city": "San Diego",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/Addison-by-William-Bradley.html",
-    "address": " 5200 Grand Del Mar Way, San Diego, CA 92130, United States"
+    "address": " 5200 Grand Del Mar Way, San Diego, CA 92130, United States",
+    "googlePlaceId": "ChIJrVfI5sEH3IARfAmbFue9xNc"
   },
   {
     "kind": "restaurants",
@@ -3907,7 +4190,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Providence",
     "city": "Los Angeles",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/providence.html",
-    "address": "5955 Melrose Ave. Los Angeles, CA 90038, United States"
+    "address": "5955 Melrose Ave. Los Angeles, CA 90038, United States",
+    "googlePlaceId": "ChIJaUBtetO-woARqyrV4ASPECg"
   },
   {
     "kind": "restaurants",
@@ -3917,7 +4201,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Benu",
     "city": "San Francisco",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/benu.html",
-    "address": "22 Hawthorne St. San Francisco, CA 94105, United States"
+    "address": "22 Hawthorne St. San Francisco, CA 94105, United States",
+    "googlePlaceId": "ChIJSToWqn2AhYAR1CuH2iGMvuo"
   },
   {
     "kind": "restaurants",
@@ -3927,7 +4212,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Sabayon",
     "city": "Montreal",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/sabayon.html",
-    "address": "2194 Rue Centre, Montreal, QC H3K 1J4, Canada"
+    "address": "2194 Rue Centre, Montreal, QC H3K 1J4, Canada",
+    "googlePlaceId": "ChIJgeCnhmwbyUwRKqn8ePtEY2k"
   },
   {
     "kind": "restaurants",
@@ -3937,7 +4223,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "AnnaLena",
     "city": "Vancouver",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/annalena.html",
-    "address": "1809 W 1st Ave. Vancouver, BC V6J 4M6, Canada"
+    "address": "1809 W 1st Ave. Vancouver, BC V6J 4M6, Canada",
+    "googlePlaceId": "ChIJJ_oZQcpzhlQRYmMyGpKp7PA"
   },
   {
     "kind": "restaurants",
@@ -3947,7 +4234,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Corima",
     "city": "New York",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/corima.html",
-    "address": "3 Allen St. New York, NY 10002, United States"
+    "address": "3 Allen St. New York, NY 10002, United States",
+    "googlePlaceId": "ChIJgaiXlpNbwokRN0vlYTshs-c"
   },
   {
     "kind": "restaurants",
@@ -3957,7 +4245,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Dōgon by Kwame Onwuachi",
     "city": "Washington DC",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/dogon.html",
-    "address": "1330 Maryland Ave. SW. Washington, DC 20024, United States"
+    "address": "1330 Maryland Ave. SW. Washington, DC 20024, United States",
+    "googlePlaceId": "ChIJtVoQBpi3t4kRTdYswbsDnaA"
   },
   {
     "kind": "restaurants",
@@ -3967,7 +4256,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Torrisi",
     "city": "New York",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/Torrisi.html",
-    "address": "275 Mulberry St. New York, NY 10012, United States"
+    "address": "275 Mulberry St. New York, NY 10012, United States",
+    "googlePlaceId": "ChIJWd7fRdZZwokRhru5tn4KsVM"
   },
   {
     "kind": "restaurants",
@@ -3977,7 +4267,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Tatiana by Kwame Onwuachi",
     "city": "New York",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/Tatiana-by-Kwame-Onwuachi.html",
-    "address": "10 Lincoln Center Plaza, New York, NY 10023, United States"
+    "address": "10 Lincoln Center Plaza, New York, NY 10023, United States",
+    "googlePlaceId": "ChIJxy0SM0xZwokR5vC0f4wVlP0"
   },
   {
     "kind": "restaurants",
@@ -3987,7 +4278,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Friday Saturday Sunday",
     "city": "Philadelphia",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/friday-saturday-sunday.html",
-    "address": "261 S. 21st St. Philadelphia, PA 19103, United States"
+    "address": "261 S. 21st St. Philadelphia, PA 19103, United States",
+    "googlePlaceId": "ChIJf7rSRDjGxokR1cJYp_u6uv8"
   },
   {
     "kind": "restaurants",
@@ -3997,7 +4289,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Semma",
     "city": "New York",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/Semma.html",
-    "address": "60 Greenwich Ave, New York, NY 10011, United States"
+    "address": "60 Greenwich Ave, New York, NY 10011, United States",
+    "googlePlaceId": "ChIJxZmzO7hZwokRx2fls4uU4YU"
   },
   {
     "kind": "restaurants",
@@ -4007,7 +4300,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Pascual",
     "city": "Washington DC",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/pascual.html",
-    "address": "732 Maryland Ave NE. Washington, DC 20002, United States"
+    "address": "732 Maryland Ave NE. Washington, DC 20002, United States",
+    "googlePlaceId": "ChIJnwFICei5t4kRrj34dLKdpxs"
   },
   {
     "kind": "restaurants",
@@ -4017,7 +4311,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Gramercy Tavern",
     "city": "New York",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/Gramercy-Tavern.html",
-    "address": "42 E 20th St. New York, NY 10003, United States"
+    "address": "42 E 20th St. New York, NY 10003, United States",
+    "googlePlaceId": "ChIJvSQIgqFZwokRFYQbJdzceSs"
   },
   {
     "kind": "restaurants",
@@ -4027,7 +4322,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Atelier Crenn",
     "city": "San Francisco",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/atelier-crenn.html",
-    "address": "3127 Fillmore St. San Francisco, CA 94123, United States"
+    "address": "3127 Fillmore St. San Francisco, CA 94123, United States",
+    "googlePlaceId": "ChIJx1ULhNCAhYARSRq9NDWTeqI"
   },
   {
     "kind": "restaurants",
@@ -4037,7 +4333,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Sons & Daughters",
     "city": "San Francisco",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/Sons-Daughters.html",
-    "address": "2875 18th St. San Francisco, CA 94110, United States"
+    "address": "2875 18th St. San Francisco, CA 94110, United States",
+    "googlePlaceId": "ChIJvXXIOoyAhYARe-ixq3WdmrY"
   },
   {
     "kind": "restaurants",
@@ -4047,7 +4344,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Somni",
     "city": "Los Angeles",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/somni.html",
-    "address": "9045 Nemo St. West Hollywood, CA 90069, United States"
+    "address": "9045 Nemo St. West Hollywood, CA 90069, United States",
+    "googlePlaceId": "ChIJVa5jok65woARLJWEqmHTCp8"
   },
   {
     "kind": "restaurants",
@@ -4057,7 +4355,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Wild Blue",
     "city": "Whistler",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/wild-ble.html",
-    "address": "4005 Whistler Way, Whistler, BC V8B 1J1, Canada"
+    "address": "4005 Whistler Way, Whistler, BC V8B 1J1, Canada",
+    "googlePlaceId": "ChIJC42-bvsjh1QRt0dkdZ2Rf5o"
   },
   {
     "kind": "restaurants",
@@ -4067,7 +4366,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Pine",
     "city": "Collingwood",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/The-Pine.html",
-    "address": "7535 County Rd 9, Creemore, ON L0M 1G0, Canada"
+    "address": "7535 County Rd 9, Creemore, ON L0M 1G0, Canada",
+    "googlePlaceId": "ChIJy4dyoG97KogRGYpXlpA4Ip4"
   },
   {
     "kind": "restaurants",
@@ -4077,7 +4377,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Kato",
     "city": "Los Angeles",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/kato.html",
-    "address": "777 S. Alameda St. Building 1, Suite 114, Los Angeles, CA 90021, United States"
+    "address": "777 S. Alameda St. Building 1, Suite 114, Los Angeles, CA 90021, United States",
+    "googlePlaceId": "ChIJnd0gSmi7woARCdXsW5usqKU"
   },
   {
     "kind": "restaurants",
@@ -4087,7 +4388,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Diane's Place",
     "city": "Minneapolis",
     "url": "https://www.the50.com/restaurants/best-in-north-america/the-list/Dianes-Place.html",
-    "address": "117 14th Ave NE. Minneapolis, MN 55413, United States"
+    "address": "117 14th Ave NE. Minneapolis, MN 55413, United States",
+    "googlePlaceId": "ChIJ-QOCaQAzs1IRuQH66gGRBEw"
   },
   {
     "kind": "bars",
@@ -4646,7 +4948,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Angelita",
     "city": "Madrid",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJsTMCAocoQg0R2in-xQOdPwc"
   },
   {
     "kind": "bars",
@@ -4656,7 +4959,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Licorería Limantour",
     "city": "Mexico City",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJX03s9zr_0YURHdcjFe9hbiE"
   },
   {
     "kind": "bars",
@@ -4666,7 +4970,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Cham",
     "city": "Seoul",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJxWShw9-jfDURS80cyKrrVI4"
   },
   {
     "kind": "bars",
@@ -4676,7 +4981,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Mauro",
     "city": "Mexico City",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJcdBWvtv_0YURTptIyzduRkU"
   },
   {
     "kind": "bars",
@@ -4686,7 +4992,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Pompette",
     "city": "Toronto",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJp6yGSxc1K4gRjEPJXU-EXoY"
   },
   {
     "kind": "bars",
@@ -4696,7 +5003,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Argo",
     "city": "Hong Kong",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJa0m0W30BBDQRJIxB7UyZMIU"
   },
   {
     "kind": "bars",
@@ -4706,7 +5014,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Wax On",
     "city": "Berlin",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJMQDojRFPqEcRBpat7o3A57s"
   },
   {
     "kind": "bars",
@@ -4716,7 +5025,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Freni e Frizioni",
     "city": "Rome",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJS0bh60dgLxMR5n3lh9HtPt8"
   },
   {
     "kind": "bars",
@@ -4726,7 +5036,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Schmuck",
     "city": "New York",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJq2X9dwBZwokRdlXSC222znQ"
   },
   {
     "kind": "bars",
@@ -4736,7 +5047,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "LPM Dubai",
     "city": "Dubai",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJC1IO84VCXz4RdlE5yzrVRes"
   },
   {
     "kind": "bars",
@@ -4746,7 +5058,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Exímia",
     "city": "São Paulo",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJaQcuEmxXzpQRjBLr6IZY5Wc"
   },
   {
     "kind": "bars",
@@ -4756,7 +5069,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Barro Negro",
     "city": "Athens",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJbR54Tl-9oRQRcgAzPAT-Erk"
   },
   {
     "kind": "bars",
@@ -4766,7 +5080,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "L'Antiquario",
     "city": "Naples",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJYx9o3qoJOxMRaGFGF0F_RNE"
   },
   {
     "kind": "bars",
@@ -4776,7 +5091,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "True Laurel",
     "city": "San Francisco",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJz2enRzd-j4ARkM49V6yDT2U"
   },
   {
     "kind": "bars",
@@ -4786,7 +5102,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The SG Club",
     "city": "Tokyo",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJB5cSL6-MGGARy54ZXakbYH4"
   },
   {
     "kind": "bars",
@@ -4796,7 +5113,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bird",
     "city": "Copenhagen",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJARY-4zNTUkYRgqL-YdxJKMU"
   },
   {
     "kind": "bars",
@@ -4806,7 +5124,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Smoke & Bitters",
     "city": "Hiriketiya",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ865FUzg34ToRJCfGCK2YU9o"
   },
   {
     "kind": "bars",
@@ -4816,7 +5135,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "La Sala de Laura",
     "city": "Bogotá",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJmxCzagCbP44ROffpSPjBZzc"
   },
   {
     "kind": "bars",
@@ -4847,7 +5167,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "El Gallo Altanero",
     "city": "Guadalajara",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ4TCrjA-uKIQRvlMaf5sUoCk"
   },
   {
     "kind": "bars",
@@ -4857,7 +5178,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Attaboy",
     "city": "New York",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJDbQMBIdZwokRVS4L8B8V5SA"
   },
   {
     "kind": "bars",
@@ -4867,7 +5189,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "🔶🟥🔵 A Bar with Shapes For a Name",
     "city": "London",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJrx4282IddkgRTeHNjFC_CEA"
   },
   {
     "kind": "bars",
@@ -4877,7 +5200,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Vender",
     "city": "Taichung",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ99j4kaw9aTQR1G3kt0X5Txk"
   },
   {
     "kind": "bars",
@@ -4887,7 +5211,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Martiny's",
     "city": "New York",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ_xzMHNtZwokRdVig2X11Rvk"
   },
   {
     "kind": "bars",
@@ -4897,7 +5222,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Tjoget",
     "city": "Stockholm",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJrZBLWMR3X0YR-K4amPgKyas"
   },
   {
     "kind": "bars",
@@ -4907,7 +5233,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Arca",
     "city": "Tulum",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJJ-ohbMvQT48RUyLPOYlArC0"
   },
   {
     "kind": "bars",
@@ -4917,7 +5244,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Baltra Bar",
     "city": "Mexico City",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ0Q5aE0D_0YURSgPnuAqiwlY"
   },
   {
     "kind": "bars",
@@ -4927,7 +5255,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Kwãnt Mayfair",
     "city": "London",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ1x7C-XsFdkgRODpYDs4BDUA"
   },
   {
     "kind": "bars",
@@ -4937,7 +5266,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Three Sheets Soho",
     "city": "London",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJxZHPBAAFdkgR-HXCu1vnNQM"
   },
   {
     "kind": "bars",
@@ -4947,7 +5277,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mamba Negra",
     "city": "Medellín",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJDQuvZsKDRo4RBDDVrOXelg4"
   },
   {
     "kind": "bars",
@@ -4957,7 +5288,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Café La Trova",
     "city": "Miami",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJZzgtHTW32YgR-k9p8IqD5m0"
   },
   {
     "kind": "bars",
@@ -4967,7 +5299,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Dr. Stravinsky",
     "city": "Barcelona",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJr0Kpwf6ipBIRyy5KccISQmE"
   },
   {
     "kind": "bars",
@@ -4977,7 +5310,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Native",
     "city": "Singapore",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJeZtTZA0Z2jERd2U9vPqi2Ds"
   },
   {
     "kind": "bars",
@@ -4987,7 +5321,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Boadas",
     "city": "Barcelona",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJxfUkvfaipBIRLCAVdkTWxMw"
   },
   {
     "kind": "bars",
@@ -4997,7 +5332,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Savory Project",
     "city": "Hong Kong",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJQdmKoKMBBDQRWLj35FF1heg"
   },
   {
     "kind": "bars",
@@ -5007,7 +5343,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Victor Audio Bar",
     "city": "Buenos Aires",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ8fWvKwC1vJURj-E99HYnPtM"
   },
   {
     "kind": "bars",
@@ -5028,7 +5365,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Foco",
     "city": "Barcelona",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJq7TeaMajpBIRIG0afQDlvek"
   },
   {
     "kind": "bars",
@@ -5038,7 +5376,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Florería Atlántico",
     "city": "Buenos Aires",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJJY8xLrHKvJURGgoMqdg8pXE"
   },
   {
     "kind": "bars",
@@ -5048,7 +5387,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Byrdi",
     "city": "Melbourne",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJj7YmeHdD1moRkVn3eBsrBpM"
   },
   {
     "kind": "bars",
@@ -5058,7 +5398,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Opium",
     "city": "Bangkok",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ95ecsjyZ4jARLm3_GznbJsc"
   },
   {
     "kind": "bars",
@@ -5068,7 +5409,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mírate",
     "city": "Los Angeles",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJm4eLSVPBwoARog2JIXTPCx8"
   },
   {
     "kind": "bars",
@@ -5078,7 +5420,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Employees Only",
     "city": "New York",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJLztrVJNZwokRTmcQJheGNR4"
   },
   {
     "kind": "bars",
@@ -5088,7 +5431,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Lair",
     "city": "New Delhi",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJgfIO3HMdDTkRAqK7duu2p30"
   },
   {
     "kind": "bars",
@@ -5098,7 +5442,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Kumiko",
     "city": "Chicago",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJVVVFV88sDogRIs6NMpEi61s"
   },
   {
     "kind": "bars",
@@ -5108,7 +5453,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Jerry Thomas Speakeasy",
     "city": "Rome",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJtVi6jkRgLxMR187T1pZelGw"
   },
   {
     "kind": "bars",
@@ -5118,7 +5464,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Gucci Giardino",
     "city": "Florence",
     "url": "https://www.the50.com/bars/best-in-the-world/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJl8XiJj5VKhMRrNIFj5S02lQ"
   },
   {
     "kind": "bars",
@@ -5202,7 +5549,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Lennon's",
     "city": "Bangkok",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/lennons.html",
-    "address": "30 Floor, Rosewood Bangkok, 1041/38 Phloen Chit Rd, Lumphini, Pathum Wan, Bangkok 10330, Thailand"
+    "address": "30 Floor, Rosewood Bangkok, 1041/38 Phloen Chit Rd, Lumphini, Pathum Wan, Bangkok 10330, Thailand",
+    "googlePlaceId": "ChIJNVj1ujqf4jARr9d6Pf25rSQ"
   },
   {
     "kind": "bars",
@@ -5212,7 +5560,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Boilermaker",
     "city": "Goa",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/boilermaker.html",
-    "address": "Church, Vaddi Siolim . Enroute Thalassa from, opposite Vailanka Wine store, Siolim, Goa, 403517, India"
+    "address": "Church, Vaddi Siolim . Enroute Thalassa from, opposite Vailanka Wine store, Siolim, Goa, 403517, India",
+    "googlePlaceId": "ChIJoy3hf6brvzsRiEajCWGOe0U"
   },
   {
     "kind": "bars",
@@ -5243,7 +5592,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Modernhaus",
     "city": "Jakarta",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/modernhaus.html",
-    "address": "Jl. Senopati No.79, RT.8/RW.3, Selong, Kec. Kby. Baru, Jakarta, Daerah Khusus Ibukota Jakarta 12190, Indonesia"
+    "address": "Jl. Senopati No.79, RT.8/RW.3, Selong, Kec. Kby. Baru, Jakarta, Daerah Khusus Ibukota Jakarta 12190, Indonesia",
+    "googlePlaceId": "ChIJzzpKtgnxaS4Rv-651w8InEQ"
   },
   {
     "kind": "bars",
@@ -5264,7 +5614,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Alice",
     "city": "Seoul",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/alice.html",
-    "address": "84-20 Dosan-daero 55-gil, Gangnam-gu, Seoul"
+    "address": "84-20 Dosan-daero 55-gil, Gangnam-gu, Seoul",
+    "googlePlaceId": "ChIJ1SQnb3ikfDURcbiz6NFB5h0"
   },
   {
     "kind": "bars",
@@ -5274,7 +5625,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Vender",
     "city": "Taichung",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/vender.html",
-    "address": "No. 118, Wuquan West 4th St, West District, Taichung"
+    "address": "No. 118, Wuquan West 4th St, West District, Taichung",
+    "googlePlaceId": "ChIJ99j4kaw9aTQR1G3kt0X5Txk"
   },
   {
     "kind": "bars",
@@ -5284,7 +5636,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Cosmo Pony",
     "city": "Jakarta",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/cosmo-pony.html",
-    "address": "Grand Hyatt Jakarta, 4th Floor, Jl. M.H. Thamrin Kav. 28-30, Jakarta, Daerah Khusus Ibukota Jakarta 10350, Indonesia"
+    "address": "Grand Hyatt Jakarta, 4th Floor, Jl. M.H. Thamrin Kav. 28-30, Jakarta, Daerah Khusus Ibukota Jakarta 10350, Indonesia",
+    "googlePlaceId": "ChIJ6bzZjWv1aS4RV6C4bJr9QP8"
   },
   {
     "kind": "bars",
@@ -5294,7 +5647,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Offtrack",
     "city": "Singapore",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/offtrack.html",
-    "address": "34 N Canal Rd, #01-01, Singapore 059290"
+    "address": "34 N Canal Rd, #01-01, Singapore 059290",
+    "googlePlaceId": "ChIJ983ePJYZ2jER37eSak28AR8"
   },
   {
     "kind": "bars",
@@ -5304,7 +5658,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Sathorn",
     "city": "Bangkok",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/bar-sathorn.html",
-    "address": "The House on Sathorn, 106 N Sathon Rd, Si Lom, Khet Bang Rak, Bangkok 10500, Thailand"
+    "address": "The House on Sathorn, 106 N Sathon Rd, Si Lom, Khet Bang Rak, Bangkok 10500, Thailand",
+    "googlePlaceId": "ChIJXyOvz1OZ4jARR_a5T-qORL8"
   },
   {
     "kind": "bars",
@@ -5314,7 +5669,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Soka",
     "city": "Bengaluru",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/soka.html",
-    "address": "No.210, A cross, 1st Main Rd, 2nd stage Indiranagar, Stage 2, Domlur, Bengaluru, Karnataka 560071, India"
+    "address": "No.210, A cross, 1st Main Rd, 2nd stage Indiranagar, Stage 2, Domlur, Bengaluru, Karnataka 560071, India",
+    "googlePlaceId": "ChIJC4jSzucVrjsR_TuLOhxNGCk"
   },
   {
     "kind": "bars",
@@ -5345,7 +5701,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Carrots Bar",
     "city": "Jakarta",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/carrots-bar.html",
-    "address": "Fairgrounds SCBD Jl. Jenderal Sudirman No.14 Lot 14, Basement Level, Jakarta 12190, Indonesia"
+    "address": "Fairgrounds SCBD Jl. Jenderal Sudirman No.14 Lot 14, Basement Level, Jakarta 12190, Indonesia",
+    "googlePlaceId": "ChIJT9o3eCLxaS4RA004mF0ke48"
   },
   {
     "kind": "bars",
@@ -5366,7 +5723,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Punch Room Tokyo",
     "city": "Tokyo",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/punch-room-tokyo.html",
-    "address": "2 Chome−8−13 東京エディション銀座 2階, Ginza, Chuo City, Tokyo, 〒104-0061"
+    "address": "2 Chome−8−13 東京エディション銀座 2階, Ginza, Chuo City, Tokyo, 〒104-0061",
+    "googlePlaceId": "ChIJy4YMDwCLGGAR6BajLITe_Oo"
   },
   {
     "kind": "bars",
@@ -5387,7 +5745,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Opium",
     "city": "Bangkok",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/opium.html",
-    "address": "422 Vanich 1 Rd, Samphanthawong, Bangkok 10100, Thailand"
+    "address": "422 Vanich 1 Rd, Samphanthawong, Bangkok 10100, Thailand",
+    "googlePlaceId": "ChIJ95ecsjyZ4jARLm3_GznbJsc"
   },
   {
     "kind": "bars",
@@ -5428,7 +5787,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Smoke & Bitters",
     "city": "Hiriketiya",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/smoke-and-bitters.html",
-    "address": "Pehebiya Rd, Dickwella, Matara, Hiriketiya"
+    "address": "Pehebiya Rd, Dickwella, Matara, Hiriketiya",
+    "googlePlaceId": "ChIJ865FUzg34ToRJCfGCK2YU9o"
   },
   {
     "kind": "bars",
@@ -5438,7 +5798,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Spirit Forward",
     "city": "Bengaluru",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/bar-spirit-forward.html",
-    "address": "Ground Floor, Hotel Southern Star, 40/2, Lavelle Road, Shanthala Nagar, Ashok Nagar, Bengaluru, Karnataka 560001, India"
+    "address": "Ground Floor, Hotel Southern Star, 40/2, Lavelle Road, Shanthala Nagar, Ashok Nagar, Bengaluru, Karnataka 560001, India",
+    "googlePlaceId": "ChIJk1UT0hoXrjsRnVPEieFPPfQ"
   },
   {
     "kind": "bars",
@@ -5458,7 +5819,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Three X Co",
     "city": "Kuala Lumpur",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/three-x-co.html",
-    "address": "Lot T6A, Level 3, Bangsar Shopping Centre, 285, Jalan Maarof, Bangsar, 59000 Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur, Malaysia"
+    "address": "Lot T6A, Level 3, Bangsar Shopping Centre, 285, Jalan Maarof, Bangsar, 59000 Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur, Malaysia",
+    "googlePlaceId": "ChIJd4DkNK9JzDERPutnazW1VtU"
   },
   {
     "kind": "bars",
@@ -5468,7 +5830,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Cham",
     "city": "Seoul",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/cham-bar.html",
-    "address": "34 Jahamun-ro 7-gil, Tongin-dong, Jongno-gu, Seoul"
+    "address": "34 Jahamun-ro 7-gil, Tongin-dong, Jongno-gu, Seoul",
+    "googlePlaceId": "ChIJxWShw9-jfDURS80cyKrrVI4"
   },
   {
     "kind": "bars",
@@ -5478,7 +5841,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Workshop14",
     "city": "Hanoi",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/Workshop14.html",
-    "address": "6 Alley 5, Tu Hoa Street, Tay Ho District, Hanoi"
+    "address": "6 Alley 5, Tu Hoa Street, Tay Ho District, Hanoi",
+    "googlePlaceId": "ChIJe1EmPACrNTERe09TEJewi3U"
   },
   {
     "kind": "bars",
@@ -5488,7 +5852,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "To Infinity & Beyond",
     "city": "Taipei",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/to-infinity-and-beyond.html",
-    "address": "No. 13號, Lane 160, Section 1, Dunhua S Rd, Da’an District, Taipei City, Taiwan 106"
+    "address": "No. 13號, Lane 160, Section 1, Dunhua S Rd, Da’an District, Taipei City, Taiwan 106",
+    "googlePlaceId": "ChIJ28DimWarQjQRZDkB3CI3bHg"
   },
   {
     "kind": "bars",
@@ -5509,7 +5874,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Argo",
     "city": "Hong Kong",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/argo.html",
-    "address": "8 Finance St, Central, Hong Kong"
+    "address": "8 Finance St, Central, Hong Kong",
+    "googlePlaceId": "ChIJa0m0W30BBDQRJIxB7UyZMIU"
   },
   {
     "kind": "bars",
@@ -5519,7 +5885,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Trigona",
     "city": "Kuala Lumpur",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/bar-trigona.html",
-    "address": "Four Seasons Place, 145, Jalan Ampang, 50450 Kuala Lumpur"
+    "address": "Four Seasons Place, 145, Jalan Ampang, 50450 Kuala Lumpur",
+    "googlePlaceId": "ChIJ1Xns2Zw3zDERT_IUhj_v3y4"
   },
   {
     "kind": "bars",
@@ -5529,7 +5896,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Libre",
     "city": "Tokyo",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/bar-libre.html",
-    "address": "3 Chome−25−8 相馬屋ビル B1F, Nishiikebukuro, Toshima City, Tokyo, Japan"
+    "address": "3 Chome−25−8 相馬屋ビル B1F, Nishiikebukuro, Toshima City, Tokyo, Japan",
+    "googlePlaceId": "ChIJoyaAE1yNGGARC29VU38_0Ns"
   },
   {
     "kind": "bars",
@@ -5539,7 +5907,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Golden Tooth",
     "city": "Jakarta",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/the-golden-tooth.html",
-    "address": "Jl. Adityawarman No.71, RT.5/RW.2, Melawai, Kec. Kby. Baru, Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12160, Indonesia"
+    "address": "Jl. Adityawarman No.71, RT.5/RW.2, Melawai, Kec. Kby. Baru, Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12160, Indonesia",
+    "googlePlaceId": "ChIJRW7ZVnjxaS4RIR6oSF6pNU8"
   },
   {
     "kind": "bars",
@@ -5549,7 +5918,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Han-Jia",
     "city": "Tainan",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/the-han-jia.html",
-    "address": "No. 669號, Section 1, Ximen Rd, Xinchang Village, South District, Tainan City, Taiwan 702"
+    "address": "No. 669號, Section 1, Ximen Rd, Xinchang Village, South District, Tainan City, Taiwan 702",
+    "googlePlaceId": "ChIJ3V4vfWx3bjQReOGSUx1Q7Ig"
   },
   {
     "kind": "bars",
@@ -5559,7 +5929,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "M+MS Bar",
     "city": "Seoul",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/MMS-bar.html",
-    "address": "32-1 Dosan-daero 49-gil, Gangnam District, Seoul, South Korea"
+    "address": "32-1 Dosan-daero 49-gil, Gangnam District, Seoul, South Korea",
+    "googlePlaceId": "ChIJZUI3YACjfDURl7Wnkp0OJFw"
   },
   {
     "kind": "bars",
@@ -5569,7 +5940,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Origin Bar",
     "city": "Singapore",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/origin-bar.html",
-    "address": "Lobby Level, Tower Wing, 22 Orange Grove Rd, Singapore 258350"
+    "address": "Lobby Level, Tower Wing, 22 Orange Grove Rd, Singapore 258350",
+    "googlePlaceId": "ChIJAaA8cPQZ2jERoR5rELvZYY0"
   },
   {
     "kind": "bars",
@@ -5579,7 +5951,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Problem Child",
     "city": "Makati",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/problem-child.html",
-    "address": "Unit 107 G/F, 369, Executive Building, Jupiter, Makati City, Metro Manila, Philippines"
+    "address": "Unit 107 G/F, 369, Executive Building, Jupiter, Makati City, Metro Manila, Philippines",
+    "googlePlaceId": "ChIJEYpuJgDJlzMRuIaGeZURjHY"
   },
   {
     "kind": "bars",
@@ -5599,7 +5972,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Hudson Rooms",
     "city": "Hanoi",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/the-hudson-room.html",
-    "address": "11 P. Lê Phụng Hiểu, French Quarter, Hoàn Kiếm, Hà Nội, Vietnam"
+    "address": "11 P. Lê Phụng Hiểu, French Quarter, Hoàn Kiếm, Hà Nội, Vietnam",
+    "googlePlaceId": "ChIJW8Z5ISGrNTER3aOusiwerhE"
   },
   {
     "kind": "bars",
@@ -5609,7 +5983,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Montana",
     "city": "Hong Kong",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/montana.html",
-    "address": "Shop A, G/F, 108 Hollywood Rd, Central, Hong Kong"
+    "address": "Shop A, G/F, 108 Hollywood Rd, Central, Hong Kong",
+    "googlePlaceId": "ChIJT_m7YAABBDQR8D1dVezrdGg"
   },
   {
     "kind": "bars",
@@ -5619,7 +5994,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Aqua Bar",
     "city": "Bangkok",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/aqua-bar.html",
-    "address": "Lumphini, Pathum Wan, Bangkok 10330, Thailand"
+    "address": "Lumphini, Pathum Wan, Bangkok 10330, Thailand",
+    "googlePlaceId": "ChIJq6qqTdee4jARpt0mPHZvpUM"
   },
   {
     "kind": "bars",
@@ -5629,7 +6005,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Penicillin",
     "city": "Hong Kong",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/penicillin.html",
-    "address": "L/G Amber Lodge, 23 Hollywood Road, Central, Hong Kong"
+    "address": "L/G Amber Lodge, 23 Hollywood Road, Central, Hong Kong",
+    "googlePlaceId": "ChIJcT8YnGABBDQRrZTqc7PxIr8"
   },
   {
     "kind": "bars",
@@ -5649,7 +6026,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Outrigger",
     "city": "Goa",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJnfpMzjvHvzsR7TXSkalLCFk"
   },
   {
     "kind": "bars",
@@ -5669,7 +6047,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Trench",
     "city": "Tokyo",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJf8D6JkCLGGARZICNBhKPn24"
   },
   {
     "kind": "bars",
@@ -5679,7 +6058,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Opposites",
     "city": "Hong Kong",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJbyMAGAABBDQRWBZLOW3ZI9k"
   },
   {
     "kind": "bars",
@@ -5711,7 +6091,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Side Door",
     "city": "Singapore",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ43oEGRwZ2jERPNdexSLp2Io"
   },
   {
     "kind": "bars",
@@ -5721,7 +6102,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Elephant Room",
     "city": "Singapore",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJvT8y8V8Z2jERMp-HfDjJQZw"
   },
   {
     "kind": "bars",
@@ -5731,7 +6113,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Yakoboku",
     "city": "Kumamoto",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJc1yetRb1QDURjUfTEvWfhvk"
   },
   {
     "kind": "bars",
@@ -5741,7 +6124,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Savory Project",
     "city": "Hong Kong",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJQdmKoKMBBDQRWLj35FF1heg"
   },
   {
     "kind": "bars",
@@ -5751,7 +6135,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Barc",
     "city": "Kathmandu",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJk69vp84Z6zkRynQgHUXXUaQ"
   },
   {
     "kind": "bars",
@@ -5772,7 +6157,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Reka",
     "city": "Kuala Lumpur",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJvwZpq4xJzDERgSnj0Je6Ico"
   },
   {
     "kind": "bars",
@@ -5782,7 +6168,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Penrose",
     "city": "Kuala Lumpur",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJS0y677RJzDERvxxFFqGh7eg"
   },
   {
     "kind": "bars",
@@ -5802,7 +6189,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Backdoor Bodega",
     "city": "Penang",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJv-fccJXDSjARxNL-_V6o3Q8"
   },
   {
     "kind": "bars",
@@ -5812,7 +6200,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Moonrock",
     "city": "Tainan",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ0RYVUJ13bjQRHTxc4fv1wBs"
   },
   {
     "kind": "bars",
@@ -5822,7 +6211,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Maltail",
     "city": "Kaohsiung",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJO0NebAAFbjQR8NKCtFeYpQw"
   },
   {
     "kind": "bars",
@@ -5832,7 +6222,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Messenger Service",
     "city": "Bangkok",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJcdcCLOhhHTERwEua_zsYjW4"
   },
   {
     "kind": "bars",
@@ -5842,7 +6233,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Nayuta",
     "city": "Osaka",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJC34bTBDnAGARvbWLBj-SxHg"
   },
   {
     "kind": "bars",
@@ -5852,7 +6244,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Raa",
     "city": "Hiriketiya",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJv4vVfes34ToRTp3CBRKScNc"
   },
   {
     "kind": "bars",
@@ -5862,7 +6255,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Craftroom",
     "city": "Osaka",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJpUeaY_LnAGARd3NkjbRrzQM"
   },
   {
     "kind": "bars",
@@ -5872,7 +6266,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Between the Sips",
     "city": "Jakarta",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ3Tj_uXrxaS4RkkdPAeV7TTY"
   },
   {
     "kind": "bars",
@@ -5882,7 +6277,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Gong Gan",
     "city": "Seoul",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJV6t5K8SifDURdoduQvb7M1E"
   },
   {
     "kind": "bars",
@@ -5902,7 +6298,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mahaniyom Cocktail Bar",
     "city": "Bangkok",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJafEshvuZ4jARSGrjbWhG0Fk"
   },
   {
     "kind": "bars",
@@ -5912,7 +6309,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Hats Bar",
     "city": "Jakarta",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJz-LzhdvxaS4Rek_Tob9VGk4"
   },
   {
     "kind": "bars",
@@ -5922,7 +6320,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Firefly",
     "city": "Bangkok",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJPysUcIGf4jAR8COXqx4arDU"
   },
   {
     "kind": "bars",
@@ -5943,7 +6342,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Native",
     "city": "Singapore",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJeZtTZA0Z2jERd2U9vPqi2Ds"
   },
   {
     "kind": "bars",
@@ -5953,7 +6353,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Tell Camellia",
     "city": "Hong Kong",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJCQRTIMQBBDQRlbmNEGvZ2lc"
   },
   {
     "kind": "bars",
@@ -5963,7 +6364,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Mood",
     "city": "Taipei",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJgbsg4tqrQjQRNTNaBAUYOfA"
   },
   {
     "kind": "bars",
@@ -5973,7 +6375,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Coley",
     "city": "Kuala Lumpur",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJuc6RtZVJzDERItK2WuGQlqk"
   },
   {
     "kind": "bars",
@@ -5994,7 +6397,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Aabbcc",
     "city": "New Delhi",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJxdnSWgAdDTkRmbO9yJ7S5E4"
   },
   {
     "kind": "bars",
@@ -6004,7 +6408,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Cat Bite Club",
     "city": "Singapore",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJk04hRdgZ2jER-20uIYTmdYc"
   },
   {
     "kind": "bars",
@@ -6014,7 +6419,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Charles H",
     "city": "Seoul",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJfZLLbCOjfDURJv2oIh07atc"
   },
   {
     "kind": "bars",
@@ -6024,7 +6430,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Le Chamber",
     "city": "Seoul",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ639qa3ikfDURlcK_PQa7PbQ"
   },
   {
     "kind": "bars",
@@ -6034,7 +6441,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Soko",
     "city": "Seoul",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJs6t57rqjfDURcAERAFWRa50"
   },
   {
     "kind": "bars",
@@ -6044,7 +6452,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Bon Funk",
     "city": "Singapore",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJr1vfYXYZ2jERZplahertywQ"
   },
   {
     "kind": "bars",
@@ -6054,7 +6463,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Chimney",
     "city": "Hangzhou",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJtbh5pXqdTDQR2EP48YHvdm4"
   },
   {
     "kind": "bars",
@@ -6064,7 +6474,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Public House",
     "city": "Taipei",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJxfexRv-rQjQRYFeQmIbL7N8"
   },
   {
     "kind": "bars",
@@ -6074,7 +6485,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Ropewalk",
     "city": "Galle",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJLXFdjpdz4ToRgpOGiWh1CVw"
   },
   {
     "kind": "bars",
@@ -6115,7 +6527,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Stay Gold Flamingo",
     "city": "Singapore",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJqXgcpzQZ2jERW4dfMXSZ2FE"
   },
   {
     "kind": "bars",
@@ -6125,7 +6538,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Spirits Library",
     "city": "Makati",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJM3y4b1HJlzMR9cFhFYOdrRM"
   },
   {
     "kind": "bars",
@@ -6135,7 +6549,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Lab",
     "city": "Taipei",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJj4HGw_CrQjQR0OUL57g9mRM"
   },
   {
     "kind": "bars",
@@ -6145,7 +6560,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Sora",
     "city": "Phnom Penh",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJzadboUNRCTERDhj1kx5tY2Q"
   },
   {
     "kind": "bars",
@@ -6287,7 +6703,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Barro Negro",
     "city": "Athens",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJbR54Tl-9oRQRcgAzPAT-Erk"
   },
   {
     "kind": "bars",
@@ -6330,7 +6747,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Wax On",
     "city": "Berlin",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJMQDojRFPqEcRBpat7o3A57s"
   },
   {
     "kind": "bars",
@@ -6340,7 +6758,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Camparino in Galleria",
     "city": "Milan",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJp12yKazGhkcRf6_h7JBATK0"
   },
   {
     "kind": "bars",
@@ -6394,7 +6813,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Waltz",
     "city": "London",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJnW3vxB0ddkgR78mdB6YLrq0"
   },
   {
     "kind": "bars",
@@ -6404,7 +6824,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bird",
     "city": "Copenhagen",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJARY-4zNTUkYRgqL-YdxJKMU"
   },
   {
     "kind": "bars",
@@ -6414,7 +6835,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Alma Prague",
     "city": "Prague",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJyUyE1AGVC0cRYm23uQ301qY"
   },
   {
     "kind": "bars",
@@ -6424,7 +6846,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Aldea",
     "city": "Barcelona",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJuSucRvmjpBIR_y46jUvkZCw"
   },
   {
     "kind": "bars",
@@ -6444,7 +6867,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "L'Antiquario",
     "city": "Naples",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJYx9o3qoJOxMRaGFGF0F_RNE"
   },
   {
     "kind": "bars",
@@ -6454,7 +6878,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Gucci Giardino",
     "city": "Florence",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJl8XiJj5VKhMRrNIFj5S02lQ"
   },
   {
     "kind": "bars",
@@ -6464,7 +6889,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Clumsies",
     "city": "Athens",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJYatZZTu9oRQRJrkQceYY2uQ"
   },
   {
     "kind": "bars",
@@ -6474,7 +6900,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Freni e Frizioni",
     "city": "Rome",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJS0bh60dgLxMR5n3lh9HtPt8"
   },
   {
     "kind": "bars",
@@ -6505,7 +6932,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "De Vie",
     "city": "Paris",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJVyaZqexv5kcR4RpO3OdCWAc"
   },
   {
     "kind": "bars",
@@ -6515,7 +6943,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "14 De La Rosa",
     "city": "Barcelona",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJH5ZRzsKjpBIRdgATl7PcQHA"
   },
   {
     "kind": "bars",
@@ -6525,7 +6954,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Boadas",
     "city": "Barcelona",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJxfUkvfaipBIRLCAVdkTWxMw"
   },
   {
     "kind": "bars",
@@ -6535,7 +6965,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Tjoget",
     "city": "Stockholm",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJrZBLWMR3X0YR-K4amPgKyas"
   },
   {
     "kind": "bars",
@@ -6545,7 +6976,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Forbína Bar",
     "city": "Prague",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJt337SuaVC0cRc-gh2_yR8Gs"
   },
   {
     "kind": "bars",
@@ -6555,7 +6987,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Tag",
     "city": "Krakow",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJB2KIfjNbFkcRQfbUOteOVQc"
   },
   {
     "kind": "bars",
@@ -6565,7 +6998,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Kwãnt Mayfair",
     "city": "London",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ1x7C-XsFdkgRODpYDs4BDUA"
   },
   {
     "kind": "bars",
@@ -6575,7 +7009,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Three Sheets (Soho)",
     "city": "London",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJxZHPBAAFdkgR-HXCu1vnNQM"
   },
   {
     "kind": "bars",
@@ -6585,7 +7020,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Super Lyan",
     "city": "Amsterdam",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJzV8Am7wcdkgRlkzS9YLmIYU"
   },
   {
     "kind": "bars",
@@ -6606,7 +7042,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Late Bloomers",
     "city": "Zurich",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJcfz7CkwLkEcRdGzbU3-pMwQ"
   },
   {
     "kind": "bars",
@@ -6616,7 +7053,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Angelita",
     "city": "Madrid",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJsTMCAocoQg0R2in-xQOdPwc"
   },
   {
     "kind": "bars",
@@ -6648,7 +7086,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Foco",
     "city": "Barcelona",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJq7TeaMajpBIRIG0afQDlvek"
   },
   {
     "kind": "bars",
@@ -6658,7 +7097,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Rita",
     "city": "Milan",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJC5jiffDDhkcR_8vBv9VhI64"
   },
   {
     "kind": "bars",
@@ -6668,7 +7108,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Dunlin",
     "city": "Innsbruck",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJv_48xA1rnUcRxA0zN7OOnlQ"
   },
   {
     "kind": "bars",
@@ -6689,7 +7130,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Mauro",
     "city": "Mexico City",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/bar-mauro.html",
-    "address": "Tabasco 149, Roma Nte., Cuauhtémoc, 06700 Ciudad de México, CDMX, Mexico"
+    "address": "Tabasco 149, Roma Nte., Cuauhtémoc, 06700 Ciudad de México, CDMX, Mexico",
+    "googlePlaceId": "ChIJcdBWvtv_0YURTptIyzduRkU"
   },
   {
     "kind": "bars",
@@ -6699,7 +7141,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Snack",
     "city": "New York",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/bar-snack.html",
-    "address": "92 2nd Ave, New York, NY 10003, United States"
+    "address": "92 2nd Ave, New York, NY 10003, United States",
+    "googlePlaceId": "ChIJW5JA_yVZwokRrVVE7_Vb7CA"
   },
   {
     "kind": "bars",
@@ -6709,7 +7152,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Schmuck",
     "city": "New York",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/schmuck.html",
-    "address": "97 1st Ave, New York, NY 10003, United States"
+    "address": "97 1st Ave, New York, NY 10003, United States",
+    "googlePlaceId": "ChIJq2X9dwBZwokRdlXSC222znQ"
   },
   {
     "kind": "bars",
@@ -6741,7 +7185,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Keefer Bar",
     "city": "Vancouver",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/The-keefer-bar.html",
-    "address": "135 Keefer St, Vancouver, BC V6A 1X3, Canada"
+    "address": "135 Keefer St, Vancouver, BC V6A 1X3, Canada",
+    "googlePlaceId": "ChIJ9dpVvXpxhlQRpw50KX2udjk"
   },
   {
     "kind": "bars",
@@ -6751,7 +7196,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Pompette",
     "city": "Toronto",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/Bar-pompette.html",
-    "address": "607 College St, Toronto, ON M6G 1B5, Canada"
+    "address": "607 College St, Toronto, ON M6G 1B5, Canada",
+    "googlePlaceId": "ChIJp6yGSxc1K4gRjEPJXU-EXoY"
   },
   {
     "kind": "bars",
@@ -6772,7 +7218,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "El Gallo Altanero",
     "city": "Guadalajara",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/el-gallo-altanero.html",
-    "address": "Calle Marsella 126, Col Americana, Lafayette, Guadalajara, 44160"
+    "address": "Calle Marsella 126, Col Americana, Lafayette, Guadalajara, 44160",
+    "googlePlaceId": "ChIJ4TCrjA-uKIQRvlMaf5sUoCk"
   },
   {
     "kind": "bars",
@@ -6782,7 +7229,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Kumiko",
     "city": "Chicago",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/Kumiko.html",
-    "address": "630 W Lake St, Chicago, Illinois, 60661"
+    "address": "630 W Lake St, Chicago, Illinois, 60661",
+    "googlePlaceId": "ChIJVVVFV88sDogRIs6NMpEi61s"
   },
   {
     "kind": "bars",
@@ -6803,7 +7251,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Form + Matter",
     "city": "Mexico City",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/form-matter.html",
-    "address": "San Luis Potosí 37, Roma Nte., Cuauhtémoc, 06700 Ciudad de México, CDMX, Mexico"
+    "address": "San Luis Potosí 37, Roma Nte., Cuauhtémoc, 06700 Ciudad de México, CDMX, Mexico",
+    "googlePlaceId": "ChIJI_To_Iv_0YURznIW5r9HzjU"
   },
   {
     "kind": "bars",
@@ -6813,7 +7262,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "True Laurel",
     "city": "San Francisco",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/true-laurel.html",
-    "address": "753 Alabama St, San Francisco, CA 94110, United States"
+    "address": "753 Alabama St, San Francisco, CA 94110, United States",
+    "googlePlaceId": "ChIJz2enRzd-j4ARkM49V6yDT2U"
   },
   {
     "kind": "bars",
@@ -6823,7 +7273,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Clemente Bar",
     "city": "New York",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/clemente-bar.html",
-    "address": "11 Madison Ave, New York, NY 10010, United States"
+    "address": "11 Madison Ave, New York, NY 10010, United States",
+    "googlePlaceId": "ChIJ6UzR7c9ZwokRRO7pi5eXZIM"
   },
   {
     "kind": "bars",
@@ -6833,7 +7284,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Best Intentions",
     "city": "Chicago",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/Best-intentions.html",
-    "address": "3281 W Armitage Ave, Chicago, IL 60647, United States"
+    "address": "3281 W Armitage Ave, Chicago, IL 60647, United States",
+    "googlePlaceId": "ChIJOX_c02nND4gRhZNyBsxxB2E"
   },
   {
     "kind": "bars",
@@ -6843,7 +7295,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "June on Cambie",
     "city": "Vancouver",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/june-on-cambie.html",
-    "address": "3305 Cambie St., Vancouver, BC V5Z 2W6, Canada"
+    "address": "3305 Cambie St., Vancouver, BC V5Z 2W6, Canada",
+    "googlePlaceId": "ChIJGYNWIABzhlQRC3D1tp-SbTA"
   },
   {
     "kind": "bars",
@@ -6853,7 +7306,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mecenas",
     "city": "Guadalajara",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/mecenas.html",
-    "address": "Av. de la Paz 2133, Col Americana, Americana, 44150 Guadalajara, Jal., Mexico"
+    "address": "Av. de la Paz 2133, Col Americana, Americana, 44150 Guadalajara, Jal., Mexico",
+    "googlePlaceId": "ChIJqxg5pEOvKIQRypg_iNBJd6c"
   },
   {
     "kind": "bars",
@@ -6863,7 +7317,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Library Bar",
     "city": "Toronto",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/library-bar.html",
-    "address": "100 Front St W, Toronto, ON M5J 1E3, Canada"
+    "address": "100 Front St W, Toronto, ON M5J 1E3, Canada",
+    "googlePlaceId": "ChIJe1A28Ys1K4gRqgUyNDHkh2w"
   },
   {
     "kind": "bars",
@@ -6873,7 +7328,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Licorería Limantour",
     "city": "Mexico City",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/licoreria-limantour.html",
-    "address": "Av. Álvaro Obregón 106, Roma Nte., Cuauhtémoc, Mexico City, 06700"
+    "address": "Av. Álvaro Obregón 106, Roma Nte., Cuauhtémoc, Mexico City, 06700",
+    "googlePlaceId": "ChIJX03s9zr_0YURHdcjFe9hbiE"
   },
   {
     "kind": "bars",
@@ -6883,7 +7339,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Cure",
     "city": "New Orleans",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/Cure.html",
-    "address": "4905 Freret St, New Orleans, LA 70115, United States"
+    "address": "4905 Freret St, New Orleans, LA 70115, United States",
+    "googlePlaceId": "ChIJuwqeNamlIIYRiCYSjKciG5c"
   },
   {
     "kind": "bars",
@@ -6893,7 +7350,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mother",
     "city": "Toronto",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/mother.html",
-    "address": "874 Queen St W, Toronto, ON M6J 2V1, Canada"
+    "address": "874 Queen St W, Toronto, ON M6J 2V1, Canada",
+    "googlePlaceId": "ChIJAeETu6Q1K4gRCNiUMnRCgl0"
   },
   {
     "kind": "bars",
@@ -6903,7 +7361,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Martiny's",
     "city": "New York",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/martinys.html",
-    "address": "121 E 17th Street, Gramercy Park, New York, 10003"
+    "address": "121 E 17th Street, Gramercy Park, New York, 10003",
+    "googlePlaceId": "ChIJ_xzMHNtZwokRdVig2X11Rvk"
   },
   {
     "kind": "bars",
@@ -6913,7 +7372,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bekeb",
     "city": "San Miguel de Allende",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/bekeb.html",
-    "address": "Calz. De La Presa No. 85, Zona Centro, 37700 San Miguel de Allende, Gto., Mexico"
+    "address": "Calz. De La Presa No. 85, Zona Centro, 37700 San Miguel de Allende, Gto., Mexico",
+    "googlePlaceId": "ChIJI-yW-ltRK4QRjAhNyY8I3bw"
   },
   {
     "kind": "bars",
@@ -6923,7 +7383,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Kaito del Valle",
     "city": "Mexico City",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/kaito-del-valle.html",
-    "address": "Hamburgo 70B, Juárez, Cuauhtémoc, 06600"
+    "address": "Hamburgo 70B, Juárez, Cuauhtémoc, 06600",
+    "googlePlaceId": "ChIJ4QgDEKT_0YURJPINUbbCOhA"
   },
   {
     "kind": "bars",
@@ -6943,7 +7404,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Gus' Sip & Dip",
     "city": "Chicago",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/gus-sip-dip.html",
-    "address": "51 W Hubbard St Suite 100, Chicago, IL 60654, United States"
+    "address": "51 W Hubbard St Suite 100, Chicago, IL 60654, United States",
+    "googlePlaceId": "ChIJafbdjLEsDogRbvlpF3IWJqM"
   },
   {
     "kind": "bars",
@@ -6953,7 +7415,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mírate",
     "city": "Los Angeles",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/Mirate.html",
-    "address": "1712 N Vermont Ave, Los Angeles, CA 90027, United States"
+    "address": "1712 N Vermont Ave, Los Angeles, CA 90027, United States",
+    "googlePlaceId": "ChIJm4eLSVPBwoARog2JIXTPCx8"
   },
   {
     "kind": "bars",
@@ -6963,7 +7426,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Civil Works",
     "city": "Toronto",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/civil-works.html",
-    "address": "50 Brant St, Toronto, ON M5V 3G9, Canada"
+    "address": "50 Brant St, Toronto, ON M5V 3G9, Canada",
+    "googlePlaceId": "ChIJQxWQCwA1K4gRol-CoEDUBUU"
   },
   {
     "kind": "bars",
@@ -6973,7 +7437,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bisous",
     "city": "Chicago",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/bisous.html",
-    "address": "938 W Fulton Market, Chicago, IL 60607, United States"
+    "address": "938 W Fulton Market, Chicago, IL 60607, United States",
+    "googlePlaceId": "ChIJ5fYLgnctDogR2Oi8Z14g8pw"
   },
   {
     "kind": "bars",
@@ -6983,7 +7448,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Angel's Share",
     "city": "New York",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/Angels-share.html",
-    "address": "45 Grove St, New York, NY 10014, United States"
+    "address": "45 Grove St, New York, NY 10014, United States",
+    "googlePlaceId": "ChIJiyiwQFdZwokR7rsRrrchLJk"
   },
   {
     "kind": "bars",
@@ -6993,7 +7459,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Prophecy",
     "city": "Vancouver",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/prophecy.html",
-    "address": "801 W Georgia St, Vancouver, BC V6C 1P7, Canada"
+    "address": "801 W Georgia St, Vancouver, BC V6C 1P7, Canada",
+    "googlePlaceId": "ChIJFQ_bNvpxhlQRGTjg2X-ex78"
   },
   {
     "kind": "bars",
@@ -7014,7 +7481,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Press Club",
     "city": "Washington DC",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/press-club.html",
-    "address": "1506 19th St NW, Washington, DC 20036, United States"
+    "address": "1506 19th St NW, Washington, DC 20036, United States",
+    "googlePlaceId": "ChIJ7UBWbwC3t4kRU51s1pXk19w"
   },
   {
     "kind": "bars",
@@ -7035,7 +7503,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Madonna",
     "city": "New York",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/bar-madonna.html",
-    "address": "367 Metropolitan Ave, Brooklyn, NY 11211, United States"
+    "address": "367 Metropolitan Ave, Brooklyn, NY 11211, United States",
+    "googlePlaceId": "ChIJUWhXmjpZwokRjvRZ1_vjTqI"
   },
   {
     "kind": "bars",
@@ -7045,7 +7514,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Attaboy",
     "city": "New York",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/attaboy.html",
-    "address": "134 Eldridge St, New York, NY 10002, United States"
+    "address": "134 Eldridge St, New York, NY 10002, United States",
+    "googlePlaceId": "ChIJDbQMBIdZwokRVS4L8B8V5SA"
   },
   {
     "kind": "bars",
@@ -7055,7 +7525,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Botanist Bar",
     "city": "Vancouver",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/botanist-bar.html",
-    "address": "1038 Canada Pl, Vancouver, BC V6C 0B9, Canada"
+    "address": "1038 Canada Pl, Vancouver, BC V6C 0B9, Canada",
+    "googlePlaceId": "ChIJJYVOCYNxhlQRrkWpvkO-Ao4"
   },
   {
     "kind": "bars",
@@ -7065,7 +7536,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Service Bar",
     "city": "Washington DC",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/service-bar.html",
-    "address": "926-928 U St NW, Washington DC, 20001"
+    "address": "926-928 U St NW, Washington DC, 20001",
+    "googlePlaceId": "ChIJfwVroeW3t4kRPqFvM6RDkwM"
   },
   {
     "kind": "bars",
@@ -7075,7 +7547,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Maison Premiere",
     "city": "New York",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/maison-premiere.html",
-    "address": "298 Bedford Ave, Brooklyn, NY 11249, United States"
+    "address": "298 Bedford Ave, Brooklyn, NY 11249, United States",
+    "googlePlaceId": "ChIJW_WGT2BZwokRNpvZ4k3lVcs"
   },
   {
     "kind": "bars",
@@ -7085,7 +7558,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Pacific Cocktail Haven",
     "city": "San Francisco",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/pacific-cocktail-haven.html",
-    "address": "550 Sutter St, San Francisco, CA 94108, United States"
+    "address": "550 Sutter St, San Francisco, CA 94108, United States",
+    "googlePlaceId": "ChIJi2fwgI6AhYARglQgXX2A3WU"
   },
   {
     "kind": "bars",
@@ -7095,7 +7569,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Café La Trova",
     "city": "Miami",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/cafe-la-trova.html",
-    "address": "971 SW 8th St, Miami, Florida, 33130"
+    "address": "971 SW 8th St, Miami, Florida, 33130",
+    "googlePlaceId": "ChIJZzgtHTW32YgR-k9p8IqD5m0"
   },
   {
     "kind": "bars",
@@ -7105,7 +7580,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Selva",
     "city": "Oaxaca",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/Selva.html",
-    "address": "C. Macedonio Alcalá #403-int. 6, Ruta Independencia, Centro, Oaxaca, 68000"
+    "address": "C. Macedonio Alcalá #403-int. 6, Ruta Independencia, Centro, Oaxaca, 68000",
+    "googlePlaceId": "ChIJcbpk5Kwjx4URY3b98-scmEA"
   },
   {
     "kind": "bars",
@@ -7115,7 +7591,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Daisy Margarita Bar",
     "city": "Los Angeles",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/daisy-margarita-bar.html",
-    "address": "14633 Ventura Blvd, Sherman Oaks, CA 91403, United States"
+    "address": "14633 Ventura Blvd, Sherman Oaks, CA 91403, United States",
+    "googlePlaceId": "ChIJl1aEKvKXwoARF2q3tK3Pm-s"
   },
   {
     "kind": "bars",
@@ -7125,7 +7602,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Employees Only",
     "city": "New York",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/Employees-Only.html",
-    "address": "510 Hudson St, New York, NY 10014, United States"
+    "address": "510 Hudson St, New York, NY 10014, United States",
+    "googlePlaceId": "ChIJLztrVJNZwokRTmcQJheGNR4"
   },
   {
     "kind": "bars",
@@ -7135,7 +7613,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Viceversa",
     "city": "Miami",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/viceversa.html",
-    "address": "398 NE 5th St, Miami, FL 33132, United States"
+    "address": "398 NE 5th St, Miami, FL 33132, United States",
+    "googlePlaceId": "ChIJ_x2nF4e32YgRqFyJn1Tfd3U"
   },
   {
     "kind": "bars",
@@ -7145,7 +7624,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bandista",
     "city": "Houston",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/bandista.html",
-    "address": "1300 Lamar St, Houston, TX 77010, United States"
+    "address": "1300 Lamar St, Houston, TX 77010, United States",
+    "googlePlaceId": "ChIJgd1-TXa_QIYRU99_u8tS0KY"
   },
   {
     "kind": "bars",
@@ -7155,7 +7635,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Baltra Bar",
     "city": "Mexico City",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/Baltra-bar.html",
-    "address": "Iztaccihuatl 36D, Colonia Condesa, Cuauhtémoc, Mexico City, 06100"
+    "address": "Iztaccihuatl 36D, Colonia Condesa, Cuauhtémoc, Mexico City, 06100",
+    "googlePlaceId": "ChIJ0Q5aE0D_0YURSgPnuAqiwlY"
   },
   {
     "kind": "bars",
@@ -7165,7 +7646,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Library by the Sea",
     "city": "Grand Cayman",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/library-by-the-sea.html",
-    "address": "Seven Mile Beach, 60 Tanager Way, KY1-1303, Cayman Islands"
+    "address": "Seven Mile Beach, 60 Tanager Way, KY1-1303, Cayman Islands",
+    "googlePlaceId": "ChIJsSCpvAyHJY8RBLcXyyIwGhQ"
   },
   {
     "kind": "bars",
@@ -7175,7 +7657,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bon Vivants",
     "city": "Nassau",
     "url": "https://www.the50.com/bars/best-in-north-america/the-list/bon-vivants.html",
-    "address": "401 Seaskye Lane, Nassau, Bahamas"
+    "address": "401 Seaskye Lane, Nassau, Bahamas",
+    "googlePlaceId": "ChIJGZ4T2W9jL4kRQaGbWxaNLrU"
   },
   {
     "kind": "bars",
@@ -7185,7 +7668,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Aruba Day Drink",
     "city": "Tijuana",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJPaVruk1I2YARmSovAaJTJgw"
   },
   {
     "kind": "bars",
@@ -7195,7 +7679,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Katana Kitten",
     "city": "New York",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJp7-d8P9ZwokRtQtbCsCOCBA"
   },
   {
     "kind": "bars",
@@ -7205,7 +7690,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Humboldt Bar",
     "city": "Victoria",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJbR5q1KR1j1QRldgiRCmMct8"
   },
   {
     "kind": "bars",
@@ -7215,7 +7701,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Civil Liberties",
     "city": "Toronto",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJFVYTV_U0K4gR9xSrU5ym63A"
   },
   {
     "kind": "bars",
@@ -7225,7 +7712,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Silver Lyan",
     "city": "Washington DC",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJKXKljhe3t4kRBtVtmDLy2Xk"
   },
   {
     "kind": "bars",
@@ -7245,7 +7733,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Allegory",
     "city": "Washington DC",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJjy_y8Ui3t4kRo4kKXW9bvIg"
   },
   {
     "kind": "bars",
@@ -7255,7 +7744,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Dante",
     "city": "New York",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJUw68EZJZwokRJ15RD_T4OTw"
   },
   {
     "kind": "bars",
@@ -7265,7 +7755,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bagheera",
     "city": "Vancouver",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJYenfEvlxhlQRA-cGw5AYo4E"
   },
   {
     "kind": "bars",
@@ -7275,7 +7766,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Café de Nadie",
     "city": "Mexico City",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ_3DO2x7_0YURvIlJiTo6cds"
   },
   {
     "kind": "bars",
@@ -7285,7 +7777,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Arca",
     "city": "Tulum",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJJ-ohbMvQT48RUyLPOYlArC0"
   },
   {
     "kind": "bars",
@@ -7295,7 +7788,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Atwater Cocktail Club",
     "city": "Montreal",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJL0CFYncayUwRW4rGwHb7IMg"
   },
   {
     "kind": "bars",
@@ -7305,7 +7799,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Scotch Lodge",
     "city": "Portland",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJsY2Zf8yhlVQRCWpC4lx2uVw"
   },
   {
     "kind": "bars",
@@ -7315,7 +7810,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Meo",
     "city": "Vancouver",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJRdbvhBhxhlQRJozaEG_mln4"
   },
   {
     "kind": "bars",
@@ -7325,7 +7821,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Meadowlark",
     "city": "Chicago",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJIc0jUIbND4gRKT85LHk-mpM"
   },
   {
     "kind": "bars",
@@ -7345,7 +7842,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Yacht Club",
     "city": "Denver",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ-ScCWBt5bIcRnVLoXL9U7pc"
   },
   {
     "kind": "bars",
@@ -7355,7 +7853,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Vandell",
     "city": "Los Angeles",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJm5hwoADBwoARuhxQiLoe-ZQ"
   },
   {
     "kind": "bars",
@@ -7365,7 +7864,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Cry Baby Gallery",
     "city": "Toronto",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJu-iehGQ1K4gRwYbm1cSSeCA"
   },
   {
     "kind": "bars",
@@ -7375,7 +7875,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Kaiju",
     "city": "Miami",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJR3jsxUix2YgRkgtBI68Y0B4"
   },
   {
     "kind": "bars",
@@ -7385,7 +7886,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Portrait Bar",
     "city": "New York",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJo-4H-GJZwokR6zOIA9JH7Kc"
   },
   {
     "kind": "bars",
@@ -7395,7 +7897,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Laowai",
     "city": "Vancouver",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJOfGI5m9xhlQRER7HN5UUyhY"
   },
   {
     "kind": "bars",
@@ -7405,7 +7908,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Identidad",
     "city": "San Juan",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJS3vDkSZvA4wRfYymtN0RNI0"
   },
   {
     "kind": "bars",
@@ -7415,7 +7919,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Suite 115",
     "city": "Toronto",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJTxFin6U1K4gRJAFAY_wZvAc"
   },
   {
     "kind": "bars",
@@ -7425,7 +7930,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Bello",
     "city": "Montreal",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJoTnCRdgZyUwRiRvDG1noNR8"
   },
   {
     "kind": "bars",
@@ -7435,7 +7941,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Nine Bar",
     "city": "Chicago",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJy_2x1-8tDogRAIykimdI6vA"
   },
   {
     "kind": "bars",
@@ -7445,7 +7952,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Shinji’s",
     "city": "New York",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJiy6z0-NZwokR7WHqoTS8wSE"
   },
   {
     "kind": "bars",
@@ -7455,7 +7963,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Proof",
     "city": "Calgary",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJc5VXKwNwcVMRAtFZFC2wgdo"
   },
   {
     "kind": "bars",
@@ -7465,7 +7974,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Missy's",
     "city": "Calgary",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJXXPAy-BxcVMR_RqeGfAUQLM"
   },
   {
     "kind": "bars",
@@ -7475,7 +7985,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Queen Mary",
     "city": "Chicago",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJQ3h88bbSD4gRpCS8A9UibSs"
   },
   {
     "kind": "bars",
@@ -7485,7 +7996,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Leather Apron",
     "city": "Honolulu",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJTd6rUXNuAHwRD0iI21iD3AM"
   },
   {
     "kind": "bars",
@@ -7495,7 +8007,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "No Vacancy",
     "city": "Toronto",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJBaDLG0w1K4gR1H7x6wL4Rmk"
   },
   {
     "kind": "bars",
@@ -7505,7 +8018,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Father Forgive Me",
     "city": "Detroit",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJR_VtB0fVJIgRYpZXrWGw3Hg"
   },
   {
     "kind": "bars",
@@ -7515,7 +8029,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Julep",
     "city": "Houston",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJdxXa9ku_QIYRwDMzOxgRY_U"
   },
   {
     "kind": "bars",
@@ -7525,7 +8040,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Ticonderoga Club",
     "city": "Atlanta",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJ22T4EPgD9YgRDmyjbTF8bok"
   },
   {
     "kind": "bars",
@@ -7535,7 +8051,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Wig Shop",
     "city": "Boston",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJH3npKJ1w44kR_dYvt0jLaCs"
   },
   {
     "kind": "bars",
@@ -7545,7 +8062,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Citrus & Cane",
     "city": "Victoria",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJv6TWKGt1j1QRetAgPwNVAPU"
   },
   {
     "kind": "bars",
@@ -7565,7 +8083,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Roquette",
     "city": "Seattle",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJqRAdjd0VkFQR-Yi0kM9U45c"
   },
   {
     "kind": "bars",
@@ -7575,7 +8094,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Slice Of Life",
     "city": "Toronto",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJC3FKfd41K4gRMJwprlMFuUM"
   },
   {
     "kind": "bars",
@@ -7585,7 +8105,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Mount Pleasant Vintage & Provisions",
     "city": "Vancouver",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJn_qdRm5zhlQRamWJg_sp4Qk"
   },
   {
     "kind": "bars",
@@ -7595,7 +8116,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Thunderbolt",
     "city": "Los Angeles",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJef1q_RrHwoARMnCXpKfCz3o"
   },
   {
     "kind": "bars",
@@ -7615,7 +8137,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Bar Mordecai",
     "city": "Toronto",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJl7OWzXU1K4gR2wYw78hegXI"
   },
   {
     "kind": "bars",
@@ -7625,7 +8148,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Zapote Bar",
     "city": "Playa del Carmen",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJG82MBcBnTo8RE2c2LRN0UJA"
   },
   {
     "kind": "bars",
@@ -7635,7 +8159,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Nickel City",
     "city": "Austin",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJETpRB7u1RIYRDwQmAJdd-Wc"
   },
   {
     "kind": "bars",
@@ -7645,7 +8170,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The Coldroom",
     "city": "Montreal",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJvxPn9FYayUwRE0NzOMxYqag"
   },
   {
     "kind": "bars",
@@ -7655,7 +8181,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Shelter",
     "city": "Calgary",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJLzlP1wJwcVMRg4c1ZMZqTZQ"
   },
   {
     "kind": "bars",
@@ -7675,7 +8202,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Trick Dog",
     "city": "San Francisco",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJFc-4Pzd-j4ARf66cV7PRZxw"
   }
 ]
 /** Latest editions first so one-place search deduplication preserves the newest record. */

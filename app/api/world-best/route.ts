@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const p = award.googlePlaceId ? byId.get(award.googlePlaceId) : undefined
     if (!p) return []
     const ref = p.cover_photo_reference || p.photo_references?.[0]
-    return [{ google_place_id:p.google_place_id,name:p.name,address:p.address??"",lat:p.lat,lng:p.lng,rating:p.rating,rating_count:p.rating_count,photo:ref?buildPlacePhotoProxyUrl(ref,640,origin):undefined,award }]
+    return [{ google_place_id:p.google_place_id,name:award.name,address:p.address??"",lat:p.lat,lng:p.lng,rating:p.rating,rating_count:p.rating_count,photo:ref?buildPlacePhotoProxyUrl(ref,640,origin):undefined,award }]
   })
   const unlocated = WORLD_BEST.filter(r => !r.googlePlaceId || !byId.has(r.googlePlaceId)).map(({kind,scope,city,year,name})=>({kind,scope,city,year,name}))
   return NextResponse.json({ places, unlocated, total: WORLD_BEST.length, located: places.length }, { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=300" } })
