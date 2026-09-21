@@ -1,3 +1,4 @@
+import { WIDY_CONTEXT_RULES } from "@/lib/widy-trip-context"
 import { NextResponse } from "next/server"
 
 /**
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json()) as {
+      tripContext?: string
       query?: string
       city?: string
       country?: string
@@ -49,10 +51,12 @@ export async function POST(request: Request) {
         }).join(", ")
       : `${dayCount}일`
 
+    const tripContext = typeof body.tripContext === "string" ? body.tripContext.slice(0, 16000) : ""
     const promptText =
       `${destination} ${dayCount}일 여행의 하루 구성(블록)을 짜라.\n` +
       `일차와 요일: ${dayLines}\n` +
       `사용자의 요청: "${query}"\n` +
+      (tripContext ? `등록된 여행표:\n${tripContext}\n${WIDY_CONTEXT_RULES}\n` : "") +
       `규칙:\n` +
       `- 구체적인 가게·장소 이름을 절대 쓰지 마라. "숙소 근처 스파", "루프탑 바에서 한 잔"처럼 **활동의 큰 폭**만.\n` +
       `- 하루 2~4블록. 시간대는 현실적으로(느긋한 아침, 이동 여유). 첫날은 도착, 마지막 날은 출발을 감안해라.\n` +

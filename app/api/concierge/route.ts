@@ -1,3 +1,4 @@
+import { WIDY_CONTEXT_RULES } from "@/lib/widy-trip-context"
 import { regionQueries, requestedTripCity } from "@/shared/region-query"
 import { NextResponse } from "next/server"
 import { consumeWidyPlaceTicket } from "@/lib/widy-quota"
@@ -146,6 +147,7 @@ export async function POST(request: Request) {
 
     const body = (await request.json()) as {
       widyTicket?: string
+      tripContext?: string
       query?: string
       city?: string
       country?: string
@@ -172,7 +174,7 @@ export async function POST(request: Request) {
     }
 
     /* ① 캐시 — 같은 도시+질문이면 그대로 돌려준다 */
-    const cacheKey = JSON.stringify(["verified-v5", city, country, query, body.accommodation ?? null, Array.isArray(body.existingNames) ? [...body.existingNames].sort() : [], tripId])
+    const cacheKey = JSON.stringify(["verified-v6", body.tripContext ?? "", city, country, query, body.accommodation ?? null, Array.isArray(body.existingNames) ? [...body.existingNames].sort() : [], tripId])
     const hit = CACHE.get(cacheKey)
     if (hit && Date.now() - hit.at < CACHE_TTL) {
       return NextResponse.json({ results: hit.results, cached: true })
@@ -187,7 +189,7 @@ export async function POST(request: Request) {
         ? body.accommodation
         : null
 
-    const center = await cityCenter(city, country, placesKey) ?? accommodation
+    const center = accommodation ?? await cityCenter(city, country, placesKey)
     if (!center) return NextResponse.json({results:[],error:"여행 지역을 확인하지 못했어요. 도시와 국가를 확인해 주세요."})
 
     // 미쉐린 등급 요청은 생성 모델의 후보가 아니라 등급 원본에서 검색합니다.
@@ -200,10 +202,12 @@ export async function POST(request: Request) {
       ⚠️ 숙소 좌표가 있으면 "그 근처 우선"을 명시한다 — 제미나이 앱과 우리의
          차이가 여기서 시작된다(제미나이는 내 숙소를 모른다).
     */
+    const tripContext = typeof body.tripContext === "string" ? body.tripContext.slice(0, 16000) : ""
     const promptText =
       `${destination} 여행 중인 사용자의 요청: "${query}"\n` +
+      (tripContext ? `참고 여행표:\n${tripContext}\n${WIDY_CONTEXT_RULES}\n` : "") +
       (accommodation ? `사용자의 숙소 좌표는 (${accommodation.lat}, ${accommodation.lng}) — 이 근처를 우선해라.\n` : "") +
-      `이 요청에 딱 맞는 실제 장소 10곳을 추천해줘. 실존하는, 지도에서 검색되는 정확한 상호만.\n` +
+      `이 요청에 딱 맞는 실제 장소 최대 6곳을 추천해줘. 실존하는, 지도에서 검색되는 정확한 상호만.\n` +
       `서로 겹치지 않는 다른 장소여야 하고, 관광객 함정보다 현지에서 평가가 좋은 곳을 골라라.\n` +
       (existingNames.length > 0 ? `이미 목록에 있어 제외할 곳: ${existingNames.join(", ")}\n` : "") +
       `각 장소마다 highlight는 핵심 특징 하나를 8~24자 한국어로, reason은 이 사용자의 요청과 그 특징이 어떻게 맞는지 2~3문장(80~180자)으로 각각 작성해라.\n` +
@@ -213,9 +217,10 @@ export async function POST(request: Request) {
       `종류는 헬스장/식당/바/카페/스파/클럽/명소/쇼핑/기타. 반드시 JSON만: {"picks":[{"name":"정확한 상호","localName":"현지 상호","addressHint":"주소 또는 빈 문자열","placeType":"gym","highlight":"핵심 특징","reason":"요청과 연결한 상세 추천 이유","kind":"종류"}]}`
 
     let picks: Candidate[] = []
+    let generationError = "추천 후보를 확인하지 못했어요. 조건을 바꿔 찾을 수 있어요."
     try {
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 15_000)
+      const timeout = setTimeout(() => controller.abort(), 30_000)
       let response: Response
       try {
         response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent`, {
@@ -229,6 +234,12 @@ export async function POST(request: Request) {
         })
       } finally {
         clearTimeout(timeout)
+      }
+      if (!response.ok) {
+        console.warn("[widy] candidate_generation_http", { status: response.status })
+        generationError = response.status === 429
+          ? "추천 서비스의 요청이 몰리거나 이용 한도에 도달했어요. 잠시 후 이용해 주세요."
+          : "추천 서비스 연결에 문제가 생겼어요. 여행 지역 입력의 문제가 아니에요. 잠시 후 이용해 주세요."
       }
       if (response.ok) {
         const data = (await response.json()) as {
@@ -247,11 +258,13 @@ export async function POST(request: Request) {
           }))
           .filter((p) => p.name)
       }
-    } catch {
-      /* 아래에서 빈 결과로 처리 */
+    } catch (error) {
+      const timeout = error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError")
+      console.warn("[widy] candidate_generation_failed", { reason: timeout ? "timeout" : "invalid_response" })
+      generationError = timeout ? "추천 조회가 지연되고 있어요. 여행 지역 입력의 문제가 아니에요. 잠시 후 이용해 주세요." : "추천 응답을 확인하지 못했어요. 잠시 후 이용해 주세요."
     }
     if (picks.length === 0) {
-      return NextResponse.json({ results: [], error: "추천을 만들지 못했어요. 다시 물어봐 주세요." }, { status: 200 })
+      return NextResponse.json({ results: [], error: generationError }, { status: 200 })
     }
     /* ② 그라운딩은 6곳까지 — Text Search 가 회당 돈이다 */
     picks = picks.slice(0, 6)

@@ -1,3 +1,4 @@
+import { WIDY_CONTEXT_RULES } from "@/lib/widy-trip-context"
 import { NextResponse } from "next/server"
 import { checkWidyQuota, createWidyPlaceTicket } from "@/lib/widy-quota"
 
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
     if (!geminiKey) return NextResponse.json({ mode: "chat", reply: null, error: "서버 설정이 없어요." }, { status: 200 })
 
     const body = (await request.json()) as {
+      tripContext?: string
       query?: string
       history?: { role?: string; text?: string }[]
       city?: string
@@ -36,13 +38,15 @@ export async function POST(request: Request) {
     const country = String(body.country ?? "").trim()
     const history = (Array.isArray(body.history) ? body.history : [])
       .slice(-8)
-      .map((h) => `${h.role === "widy" ? "위디" : "사용자"}: ${String(h.text ?? "").slice(0, 90)}`)
+      .map((h) => `${h.role === "widy" ? "위디" : "사용자"}: ${String(h.text ?? "").slice(0, 300)}`)
       .join("\n")
 
+    const tripContext = typeof body.tripContext === "string" ? body.tripContext.slice(0, 16000) : ""
     const promptText =
       `너는 "위디(Widy)" — 여행 앱 위드트립의 여행 동행 AI다.\n` +
       (city ? `사용자는 ${city}${country ? ` (${country})` : ""} 여행 중/준비 중이다.\n` : "") +
       (body.startDate ? `여행 시작일: ${body.startDate}${body.days ? `, 총 ${body.days}일` : ""}. 요일을 말하면 일차로 환산해라.\n` : "") +
+      (tripContext ? `등록된 여행표:\n${tripContext}\n${WIDY_CONTEXT_RULES}\n` : "") +
       (history ? `최근 대화:\n${history}\n` : "") +
       `사용자의 새 말: "${query}"\n\n` +
       `사용자가 지금 원하는 것을 판단해라:\n` +
@@ -52,9 +56,10 @@ export async function POST(request: Request) {
       `2) "blocks" — 여행 일정(하루 구성·며칠 계획·큰 틀)을 짜 달라고 한다. search 에 요청을 완결된 문장으로.\n` +
       `3) "schedule" — **특정 일정 하나를 며칠째·몇 시에 추가해 달라**고 한다 ("3일차 저녁 7시에 ○○ 넣어줘", "토요일 점심에 스파 일정 추가").\n` +
       `   schedule 에 {"title":"일정 이름(맥락에서 장소명이 있으면 그것)","day":일차 숫자(모르면 null),"time":"HH:MM"(모르면 null)} 를 채워라. 저녁=19:00, 점심=12:00, 아침=09:00 정도로 환산.\n` +
-      `4) "chat" — 그 외 잡담·질문·상의. reply 에 2~3문장, 친근한 존댓말. 구체적인 가게·시설 이름은 절대 지어내지 마라(동네·거리 수준까지만).\n` +
+      `4) "chat" — 그 외 잡담·질문·상의. reply 에 2~3문장, 친근한 존댓말. 등록된 여행표의 숙소·항공편·일정 이름은 정확히 사용하되, 새 가게·시설 이름은 지어내지 마라.\n` +
       `   장소를 원하는 것 같은데 확신이 없으면 chat 이 아니라 places 를 골라라.\n` +
-      `반드시 JSON 만: {"mode":"places|blocks|schedule|chat","search":"...","reply":"...","schedule":{"title":"...","day":1,"time":"19:00"}}`
+      `search에는 요청한 도시·숙소·날짜를 빼지 마라. 숙소 주변 요청이면 등록된 숙소 중 해당 id를 stayId로 반환하고 모르면 null. 숙소나 항공편을 이미 알고 있으면 사용자에게 다시 입력하라고 하지 마라.\n` +
+      `반드시 JSON 만: {"stayId":"숙소 id 또는 null","mode":"places|blocks|schedule|chat","search":"...","reply":"...","schedule":{"title":"...","day":1,"time":"19:00"}}`
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 13_000)
@@ -77,6 +82,7 @@ export async function POST(request: Request) {
     const rawText = (data.candidates?.[0]?.content?.parts?.[0]?.text ?? "").replace(/```json|```/g, "").trim()
     try {
       const parsed = JSON.parse(rawText) as {
+        stayId?: string
         mode?: string
         search?: string
         reply?: string
@@ -88,6 +94,7 @@ export async function POST(request: Request) {
       const search = String(parsed.search ?? "").trim().slice(0,200) || query.slice(0,200)
       return NextResponse.json({
         mode,
+        stayId: typeof parsed.stayId === "string" ? parsed.stayId.slice(0, 36) : null,
         widyTicket: mode === "places" ? createWidyPlaceTicket(quota.userId,search) : undefined,
         search,
         reply: String(parsed.reply ?? "").trim().slice(0, 500) || null,

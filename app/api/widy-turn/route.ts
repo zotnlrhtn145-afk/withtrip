@@ -1,3 +1,4 @@
+import { selectWidyContext, widyContextText, type WidyTripContext } from "@/lib/widy-trip-context"
 import { randomUUID } from "node:crypto"
 import { after, NextResponse } from "next/server"
 import { shareAuth } from "@/lib/place-share-server"
@@ -52,19 +53,31 @@ export async function POST(request: Request) {
       if (error && error.code !== "23505") throw new Error("reply_save_failed")
     }
     try {
-      const [{ data: trip }, { data: recent }] = await Promise.all([
-        db.from("trips").select("city,location,country_code,start_date,end_date").eq("id", question.trip_id).maybeSingle(),
+      const [tripResult, recentResult, stayResult, transportResult, scheduleResult] = await Promise.all([
+        db.from("trips").select("city,location,title,country_code,start_date,end_date").eq("id", question.trip_id).maybeSingle(),
         db.from("trip_messages").select("kind,content").eq("trip_id", question.trip_id).eq("user_id", user.id).in("kind", ["widy", "widy_q"]).neq("id", question.id).is("deleted_at", null).order("created_at", { ascending: false }).limit(8),
+        db.from("trip_accommodations").select("id,name,address,check_in_date,check_in_time,check_out_date,check_out_time,lat,lng").eq("trip_id", question.trip_id).order("check_in_date").limit(60),
+        db.from("trip_transports").select("transport_type,from_label,to_label,depart_date,depart_time,arrive_date,arrive_time").eq("trip_id", question.trip_id).order("depart_date").limit(120),
+        db.from("trip_schedules").select("day_number,place_name,visit_time,address").eq("trip_id", question.trip_id).order("day_number").order("visit_time").limit(300),
       ])
+      if ([tripResult, recentResult, stayResult, transportResult, scheduleResult].some(r => r.error)) throw new Error("trip_context_unavailable")
+      const trip = tripResult.data, recent = recentResult.data
       if (!trip) throw new Error("trip_unavailable")
-      const city = trip.city || trip.location || ""
+      const context: WidyTripContext = { trip, stays: stayResult.data ?? [], transports: transportResult.data ?? [], schedules: scheduleResult.data ?? [] }
+      const originalQuery = String(question.content ?? "").slice(0, 400)
+      const selection = selectWidyContext(context, originalQuery)
+      const tripContext = widyContextText(context)
+      const city = selection.city
       const totalDays = Math.min(60, Math.max(1, Math.round((Date.parse(trip.end_date) - Date.parse(trip.start_date)) / 86400000) + 1 || 1))
-      const input = { query: String(question.content ?? "").slice(0, 400), city, country: trip.country_code, startDate: trip.start_date, days: totalDays, history: (recent ?? []).reverse().map(m => ({ role: m.kind === "widy" ? "widy" : "user", text: m.content })) }
+      const input = { query: originalQuery, city, country: selection.country, tripContext, startDate: trip.start_date, days: totalDays, history: (recent ?? []).reverse().map(m => ({ role: m.kind === "widy" ? "widy" : "user", text: m.content })) }
       const response = await routeQuestion(step("/api/widy-chat", input))
       const route = await response.json()
+      const target = selectWidyContext(context, originalQuery, route.stayId)
       if (!response.ok) await save(route.reply || "잠시 후 다시 이용해 주세요.", { t: "help" })
-      else if (route.mode === "places" && city) {
-        const result = await findPlaces(step("/api/concierge", { query: route.search || input.query, widyTicket: route.widyTicket, city, country: trip.country_code, tripId: question.trip_id, accommodation: body.accommodation, existingNames: Array.isArray(body.existingNames) ? body.existingNames.filter(x => typeof x === "string").slice(0, 200) : [] }))
+      else if (route.mode === "places" && target.needsStay) {
+        await save("요청하신 도시·날짜의 기준 숙소 위치를 확정하지 못했어요. 어느 숙소 또는 며칠째 일정 주변을 찾아드릴까요?", { t: "help" })
+      } else if (route.mode === "places" && target.city) {
+        const result = await findPlaces(step("/api/concierge", { query: route.search || input.query, widyTicket: route.widyTicket, city: target.city, country: target.country, tripContext, tripId: question.trip_id, accommodation: target.accommodation, existingNames: [...new Set(context.schedules.map(s => s.place_name).filter(Boolean))] }))
         const data = await result.json()
         const results = Array.isArray(data.results) ? data.results.slice(0, 50) : []
         await save(results.length ? `위디 추천 — ${results.length}곳${data.notice ? `\n${data.notice}` : ""}` : data.error || "맞는 곳을 찾지 못했어요. 다르게 물어봐 주세요.", results.length ? { t: "places", query: String(route.search || input.query).slice(0, 20), results } : { t: "help" })
@@ -82,9 +95,10 @@ export async function POST(request: Request) {
           await save(`Day ${sc.day}${time ? ` ${time}` : ""}에 「${sc.title}」 넣었어요 — 일정 탭에서 확인하세요.`, { t: "help" })
         }
       } else await save(route.reply || (city ? "지금 답을 만들지 못했어요. 잠시 후 다시 말씀해 주세요." : "여행지(도시)를 먼저 정해 주세요."), { t: "help" })
-    } catch {
+    } catch (error) {
       failed = true
-      await save("답변을 마무리하지 못했어요. 이미 추가된 일정은 일정 탭에서 확인해 주세요.", { t: "help" }).catch(() => {})
+      const contextFailed = error instanceof Error && ["trip_context_unavailable", "trip_unavailable"].includes(error.message)
+      await save(contextFailed ? "저장된 여행표를 불러오지 못했어요. 숙소와 일정을 확인해야 추천할 수 있어요. 잠시 후 다시 이용해 주세요." : "답변을 마무리하지 못했어요. 이미 추가된 일정은 일정 탭에서 확인해 주세요.", { t: "help" }).catch(() => {})
     } finally {
       await admin.from("widy_turns").update({ state: failed ? "failed" : "done", finished_at: new Date().toISOString() }).eq("question_id", question.id)
     }
