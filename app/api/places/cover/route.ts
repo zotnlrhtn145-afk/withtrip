@@ -1,4 +1,4 @@
-import { REVIEWED_AIRPORT_COVERS } from "@/lib/airport-cover-reviewed"
+import { REVIEWED_AIRPORT_ASSETS, REVIEWED_AIRPORT_COVERS } from "@/lib/airport-cover-reviewed"
 import { placePhotoPrompt, coverPolicyVersion } from "@/shared/place-photo-policy"
 import { createHash } from "node:crypto"
 
@@ -210,6 +210,12 @@ export async function POST(request: Request) {
 
       const policy = coverPolicyVersion(String(item.name ?? ""), String(item.kind ?? "restaurant"), String(item.subCategory ?? ""))
       const airport = policy === "airport-exterior-v3"
+      const asset = airport ? REVIEWED_AIRPORT_ASSETS[gid] : undefined
+      if (asset) {
+        covers[gid] = new URL(asset, origin).toString()
+        coverPolicies[gid] = policy
+        return
+      }
       const reviewed = airport ? REVIEWED_AIRPORT_COVERS[gid] : undefined
       if (reviewed && hit?.refs.includes(reviewed)) {
         covers[gid] = buildPlacePhotoProxyUrl(reviewed, 1200, origin)
