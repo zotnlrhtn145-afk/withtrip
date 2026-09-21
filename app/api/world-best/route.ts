@@ -7,8 +7,14 @@ export async function GET(request: Request) {
   const db = getSupabaseAdmin()
   if (!db) return NextResponse.json({ error: "장소를 불러오지 못했어요." }, { status: 503 })
   const ids = [...new Set(WORLD_BEST.flatMap(r => r.googlePlaceId ? [r.googlePlaceId] : []))]
-  const { data, error } = await db.from("places").select("google_place_id,name,address,lat,lng,rating,rating_count,cover_photo_reference,photo_references").in("google_place_id", ids).eq("is_closed", false).gte("last_refreshed_at", new Date(Date.now() - 30 * 86400000).toISOString()).limit(1000)
-  if (error) return NextResponse.json({ error: "장소를 불러오지 못했어요." }, { status: 503 })
+  // Keep ID filters small: a growing catalogue can exceed PostgREST URL/row limits.
+  const data: {google_place_id:string;name:string;address:string|null;lat:number;lng:number;rating:number|null;rating_count:number|null;cover_photo_reference:string|null;photo_references:string[]|null}[] = []
+  const freshAfter = new Date(Date.now() - 30 * 86400000).toISOString()
+  for (let offset = 0; offset < ids.length; offset += 100) {
+    const batch = await db.from("places").select("google_place_id,name,address,lat,lng,rating,rating_count,cover_photo_reference,photo_references").in("google_place_id", ids.slice(offset,offset+100)).eq("is_closed", false).gte("last_refreshed_at", freshAfter).limit(100)
+    if (batch.error) return NextResponse.json({ error: "장소를 불러오지 못했어요." }, { status: 503 })
+    data.push(...(batch.data ?? []))
+  }
   const origin = new URL(request.url).origin
   const byId = new Map((data ?? []).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng)).map(p => [p.google_place_id,p]))
   const places = WORLD_BEST.flatMap(award => {

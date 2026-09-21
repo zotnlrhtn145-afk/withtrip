@@ -1,0 +1,92 @@
+[
+  {
+    "name": "MAZ",
+    "city": "Tokyo",
+    "googlePlaceId": "ChIJHbq1qLiNGGARNlnd4lieF7I",
+    "officialAddress": "Japan, 〒102-0094 Tokyo, Chiyoda City, Kioicho, 1-3 東京ガーデンテラス 3F",
+    "source": "https://www.the50.com/restaurants/best-in-asia/the-list/maz.html",
+    "reviewedAt": "2026-09-21",
+    "method": "manual name, city, street/building review against existing places cache"
+  },
+  {
+    "name": "Myoujyaku",
+    "city": "Tokyo",
+    "googlePlaceId": "ChIJxxsn3a-LGGARYqb5FTmUL98",
+    "officialAddress": "Japan, 〒106-0031 Tokyo, Minato City, Nishiazabu, 3 Chome−2−34 B1F",
+    "source": "https://www.the50.com/restaurants/best-in-asia/the-list/myoujyaku.html",
+    "reviewedAt": "2026-09-21",
+    "method": "manual name, city, street/building review against existing places cache"
+  },
+  {
+    "name": "GOKAN",
+    "city": "Hong Kong",
+    "googlePlaceId": "ChIJR5ZeewABBDQRSqwvf8DTOxY",
+    "officialAddress": "30 Ice House St, Central, Hong Kong",
+    "source": "https://www.the50.com/bars/best-in-asia/the-list/gokan.html",
+    "reviewedAt": "2026-09-21",
+    "method": "manual name, city, street/building review against existing places cache"
+  },
+  {
+    "name": "Dry Wave Cocktail Studio",
+    "city": "Bangkok",
+    "googlePlaceId": "ChIJYRzUEACf4jAR5YxPdMHC300",
+    "officialAddress": "2nd Floor, 263 Thong Lo 13 Alley, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
+    "source": "https://www.the50.com/bars/best-in-asia/the-list/dry-wave-cocktail-studio.html",
+    "reviewedAt": "2026-09-21",
+    "method": "manual name, city, street/building review against existing places cache"
+  },
+  {
+    "name": "MIUS",
+    "city": "Hong Kong",
+    "googlePlaceId": "ChIJbclJp1ABBDQRmYIcm3q29rw",
+    "officialAddress": "29 Gough St, Central, Hong Kong",
+    "source": "https://www.the50.com/bars/best-in-asia/the-list/mius.html",
+    "reviewedAt": "2026-09-21",
+    "method": "manual name, city, street/building review against existing places cache"
+  },
+  {
+    "name": "Vesper",
+    "city": "Bangkok",
+    "googlePlaceId": "ChIJN4leQSyf4jARHG0tQIiRjic",
+    "officialAddress": "10/15 Convent Road, Silom, Bangkok",
+    "source": "https://www.the50.com/bars/best-in-asia/the-list/vesper.html",
+    "reviewedAt": "2026-09-21",
+    "method": "manual name, city, street/building review against existing places cache"
+  },
+  {
+    "name": "LAMP BAR",
+    "city": "Nara",
+    "googlePlaceId": "ChIJ68mQxSk6AWARxcziBW9XXqQ",
+    "officialAddress": "26 Tsunofuricho, Nara, 630-8224, Japan",
+    "source": "https://www.the50.com/bars/best-in-asia/the-list/lamp-bar.html",
+    "reviewedAt": "2026-09-21",
+    "method": "manual name, city, street/building review against existing places cache"
+  },
+  {
+    "name": "Speak Low",
+    "city": "Shanghai",
+    "googlePlaceId": "ChIJR8pziwpwsjURATf5H_7vnw4",
+    "officialAddress": "579 Fuxing Zhong Road, Huangpu, Shanghai",
+    "source": "https://www.the50.com/discovery/Establishments/China/Shanghai/Speak-Low.html",
+    "reviewedAt": "2026-09-21",
+    "method": "manual name, city, street/building review against existing places cache"
+  },
+  {
+    "name": "ATLAS",
+    "city": "Singapore",
+    "googlePlaceId": "ChIJycr4ZrAZ2jERk1LS3rkqgho",
+    "officialAddress": "Parkview Square, 600 North Bridge Road, Downtown Core, Singapore, 188778",
+    "source": "https://www.the50.com/discovery/Establishments/Singapore/Singapore/Atlas.html",
+    "reviewedAt": "2026-09-21",
+    "method": "manual name, city, street/building review against existing places cache"
+  },
+  {
+    "name": "The Haflington",
+    "city": "Hanoi",
+    "googlePlaceId": "ChIJLdCqKq2rNTER34VmoSujmZY",
+    "officialAddress": "94 P. Hàng Mã, Hàng Bồ, Hoàn Kiếm, Hanoi",
+    "source": "https://www.the50.com/discovery/Establishments/Vietnam/Hanoi/The-Haflington.html",
+    "reviewedAt": "2026-09-21",
+    "method": "manual name, city, street/building review against existing places cache"
+  }
+]
