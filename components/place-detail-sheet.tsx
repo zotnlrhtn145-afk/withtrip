@@ -118,6 +118,45 @@ function PlaceDetailContents({
   const [photoOpen, setPhotoOpen] = useState(false)
   const [photoIndex, setPhotoIndex] = useState(0)
   const [detail, setDetail] = useState<ApiDetail | null>(null)
+  const [savedHere, setSavedHere] = useState(false)
+  const [saveBusy, setSaveBusy] = useState(false)
+  const saveLock = useRef(false)
+  useEffect(() => {
+    let active = true
+    setSavedHere(false)
+    if (!place) return
+    void (async () => {
+      const { data: auth } = await supabase.auth.getUser()
+      if (!auth.user) return
+      let q = supabase.from("saved_places").select("id").eq("user_id", auth.user.id).is("trip_id", null)
+      const id = place.googlePlaceId || detail?.placeId
+      q = id ? q.eq("google_place_id", id) : q.eq("place_name", place.name)
+      if (!id) q = place.address ? q.eq("address", place.address) : q.is("address", null)
+      const { data } = await q.limit(1)
+      if (active && data?.length) setSavedHere(true)
+    })()
+    return () => { active = false }
+  }, [place?.name, place?.address, place?.googlePlaceId, detail?.placeId])
+  const savePlace = async () => {
+    if (!place || savedHere || saveLock.current) return
+    saveLock.current = true; setSaveBusy(true)
+    try {
+      const { data: auth } = await supabase.auth.getUser()
+      if (!auth.user) { window.alert("로그인한 뒤 나의 찜에 담아 주세요."); return }
+      const { error } = await supabase.from("saved_places").upsert({
+        user_id: auth.user.id, trip_id: null, place_name: place.name,
+        category: place.category, address: place.address,
+        google_place_id: place.googlePlaceId || detail?.placeId || null,
+        lat: place.lat ?? detail?.lat, lng: place.lng ?? detail?.lng,
+        image_url: resizePlacePhotoUrl(place.imageUrl || detail?.photos?.[0] || "", PHOTO_W.card) || null,
+        rating: place.rating ?? detail?.rating, review_count: place.reviewCount ?? detail?.reviewCount,
+        memo: place.memo, source_url: place.sourceUrl,
+      }, { onConflict: "user_id,dedupe_key", ignoreDuplicates: true })
+      if (error) throw error
+      setSavedHere(true)
+    } catch { window.alert("찜에 담지 못했어요. 연결을 확인하고 다시 시도해 주세요.") }
+    finally { saveLock.current = false; setSaveBusy(false) }
+  }
   const [loading, setLoading] = useState(false)
   const [showHours, setShowHours] = useState(false)
   const [tab, setTab] = useState<"photos" | "reviews" | "info">("photos")
@@ -362,6 +401,7 @@ function PlaceDetailContents({
           {address ? <p className="text-sm leading-[22px] text-slate-500">{address}</p> : null}
           {summary ? <p className="text-[15px] leading-[23px] text-[#242424]">{summary}</p> : null}
           <div className="flex items-start justify-around gap-2 py-3">
+            <button type="button" onClick={() => void savePlace()} disabled={saveBusy || savedHere} aria-pressed={savedHere} className="flex min-w-11 flex-1 flex-col items-center gap-2 text-xs"><span className="grid size-11 place-items-center rounded-full border border-slate-300"><img src="/design/saved-map-pin-figma.svg" alt="" className="h-[30px] w-auto" /></span>{saveBusy ? "저장 중" : savedHere ? "찜 완료" : "찜"}</button>
             <div className="flex flex-1 flex-col items-center gap-2"><DirectionsMenu destination={lat != null && lng != null ? { name, lat, lng } : null} fallbackQuery={address || name} variant="icon" className="size-11 rounded-full border border-slate-300 bg-white text-slate-900" /><span className="text-xs">길찾기</span></div>
             {detail?.phone ? <a href={`tel:${detail.phone.replace(/[^+0-9]/g, "")}`} className="flex flex-1 flex-col items-center gap-2 text-xs"><span className="grid size-11 place-items-center rounded-full border border-slate-300"><img src="/design/place/action-2.svg" alt="" className="size-[22px]" /></span>전화</a> : null}
             {onAddToTrip ? <button type="button" onClick={onAddToTrip} className="flex flex-1 flex-col items-center gap-2 text-xs"><span className="grid size-11 place-items-center rounded-full border border-[#fbbf24]"><img src="/design/place/action-3.svg" alt="" className="size-[22px]" /></span>여행에</button> : null}

@@ -6,7 +6,7 @@ export type PlaceEvidence = {
 }
 export type Candidate = { name: string; localName?: string; addressHint?: string; placeType?: string; kind: string; highlight: string; reason: string }
 const categoryTypes: Record<string, string[]> = {
-  클럽: ['night_club'], 헬스장: ['gym'], 식당: ['restaurant'], 바: ['bar'], 카페: ['cafe'], 스파: ['spa'], 쇼핑: ['shopping_mall','department_store','store'], 명소: ['tourist_attraction','park','museum','zoo','aquarium','art_gallery','church','hindu_temple','mosque','synagogue'],
+  클럽: ['night_club'], 헬스장: ['gym'], 식당: ['restaurant'], 바: ['bar'], 카페: ['cafe'], 스파: ['spa'], 사우나: ['spa'], 웰니스: ['spa','gym'], 쇼핑: ['shopping_mall','department_store','store'], 명소: ['tourist_attraction','park','museum','zoo','aquarium','art_gallery','church','hindu_temple','mosque','synagogue'],
 }
 export const supportedTypes = [...new Set(Object.values(categoryTypes).flat())]
 export function requestedTypes(query: string): string[] {
@@ -16,7 +16,7 @@ export function requestedTypes(query: string): string[] {
   if (/식당|맛집|restaurant/i.test(query)) out.push('restaurant')
   if (/카페|cafe|coffee/i.test(query)) out.push('cafe')
   if (/술집|칵테일|\bbar\b/i.test(query)) out.push('bar')
-  if (/스파|마사지|\bspa\b/i.test(query)) out.push('spa')
+  if (/스파|마사지|사우나|찜질|냉탕|아이스\s*(?:배스|바스|버킷)|\bspa\b|sauna|ice\s*bath|cold\s*plunge/i.test(query)) out.push('spa')
   return out
 }
 export function candidateTypes(p: Candidate, query: string): string[] {

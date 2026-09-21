@@ -1,4 +1,5 @@
 "use client"
+import { regionQueries } from "@/shared/region-query"
 import { WORLD_BEST_LOGO_SVG } from "@/shared/world-best-logo"
 import { WORLD_BEST, BEST_SCOPE_LABELS, type BestScope } from "@/shared/world-best"
 import { boundsCenter, filterBestPlaces, inSearchBounds, type SearchBounds, type BestPlace } from "@/shared/saved-search"
@@ -686,7 +687,11 @@ export function SavedPlacesView() {
     setRegionSearching(true);setRegionError("")
     try {
       if(typeof google==="undefined"||!google.maps)throw new Error()
-      const {results}=await new google.maps.Geocoder().geocode({address:query,language:"ko"})
+      let results: google.maps.GeocoderResult[] = []
+      for (const address of regionQueries(query)) {
+        try { results = (await new google.maps.Geocoder().geocode({address,language:"ko"})).results } catch { continue }
+        if (results.length) break
+      }
       const result=results.find(r=>r.types.some(t=>t==="locality"||t==="country"||t.startsWith("administrative_area")||t.startsWith("sublocality")))
       if(!result){setRegionError("도시나 동네 이름으로 지역을 검색해 주세요.");return}
       const lat=result.geometry.location.lat(),lng=result.geometry.location.lng()

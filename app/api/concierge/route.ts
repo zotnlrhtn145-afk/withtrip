@@ -1,3 +1,4 @@
+import { regionQueries, requestedTripCity } from "@/shared/region-query"
 import { NextResponse } from "next/server"
 import { consumeWidyPlaceTicket } from "@/lib/widy-quota"
 import { michelinRecommendations, requestedMichelinStars } from "@/lib/concierge-michelin"
@@ -68,17 +69,29 @@ function getPlacesApiKey() {
 
 const CITIES = new Map<string, {at:number;point:LatLng}>()
 async function cityCenter(city:string,country:string,key:string):Promise<LatLng|null> {
-  const cacheKey=JSON.stringify([city,country]);const hit=CITIES.get(cacheKey)
+  const query = `${regionQueries(city).at(-1) || city} ${country}`.trim()
+  const cacheKey=JSON.stringify(["city-center-v2",query]);const hit=CITIES.get(cacheKey)
   if(hit&&Date.now()-hit.at<86400000)return hit.point
   try {
-    const url=new URL("https://maps.googleapis.com/maps/api/geocode/json");url.searchParams.set("address",`${city} ${country}`);url.searchParams.set("key",key)
+    const ids = await getCachedSearch(cacheKey)
+    if (ids?.length === 1) {
+      const place = (await readPlacesByGoogleIds(ids)).get(ids[0])
+      if (place && place.google_types?.some(t => ['locality','administrative_area_level_1','administrative_area_level_2'].includes(t))) return {lat:place.lat,lng:place.lng}
+    }
+    // Use the already configured Places API, without a separate Geocoding API dependency.
+    const url=new URL("https://maps.googleapis.com/maps/api/place/textsearch/json");url.searchParams.set("query",query);url.searchParams.set("key",key)
     const r=await fetch(url,{signal:AbortSignal.timeout(5000)});if(!r.ok)return null
-    const data=await r.json();const candidates=(data.results??[]).filter((v:{types?:string[];partial_match?:boolean})=>!v.partial_match&&v.types?.some(t=>['locality','administrative_area_level_1','administrative_area_level_2'].includes(t)))
+    const data=await r.json();const candidates=(data.results??[]).filter((v:PlaceEvidence)=>v.types?.some(t=>['locality','administrative_area_level_1','administrative_area_level_2'].includes(t))) as PlaceEvidence[]
     if(candidates.length!==1)return null
-    const point=candidates[0].geometry?.location
-    if(!Number.isFinite(point?.lat)||!Number.isFinite(point?.lng)||Math.abs(point.lat)>90||Math.abs(point.lng)>180)return null
-    CITIES.set(cacheKey,{at:Date.now(),point});while(CITIES.size>200)CITIES.delete(CITIES.keys().next().value!)
-    return point
+    const place=candidates[0], point=place.geometry?.location
+    if(!Number.isFinite(point?.lat)||!Number.isFinite(point?.lng)||Math.abs(point!.lat!)>90||Math.abs(point!.lng!)>180)return null
+    const center={lat:point!.lat!,lng:point!.lng!}
+    if (place.place_id && place.name) {
+      await writePlaces([{googlePlaceId:place.place_id,name:place.name,address:place.formatted_address,...center,googleTypes:place.types}])
+      await putCachedSearch(cacheKey,[place.place_id])
+    }
+    CITIES.set(cacheKey,{at:Date.now(),point:center});while(CITIES.size>200)CITIES.delete(CITIES.keys().next().value!)
+    return center
   }catch{return null}
 }
 async function ground(p:Candidate, query:string, city:string, country:string, center:LatLng, apiKey:string, origin:string) {
@@ -140,7 +153,7 @@ export async function POST(request: Request) {
       existingNames?: string[]
     }
     const query = String(body.query ?? "").trim().slice(0, 300)
-    const city = String(body.city ?? "").trim()
+    const city = requestedTripCity(String(body.city ?? "").trim(), query)
     if (!query || !city) {
       return NextResponse.json({ results: [], error: "무엇을 찾는지 적어 주세요." }, { status: 200 })
     }
@@ -159,7 +172,7 @@ export async function POST(request: Request) {
     }
 
     /* ① 캐시 — 같은 도시+질문이면 그대로 돌려준다 */
-    const cacheKey = JSON.stringify(["verified-v4", city, country, query, body.accommodation ?? null, Array.isArray(body.existingNames) ? [...body.existingNames].sort() : [], tripId])
+    const cacheKey = JSON.stringify(["verified-v5", city, country, query, body.accommodation ?? null, Array.isArray(body.existingNames) ? [...body.existingNames].sort() : [], tripId])
     const hit = CACHE.get(cacheKey)
     if (hit && Date.now() - hit.at < CACHE_TTL) {
       return NextResponse.json({ results: hit.results, cached: true })
@@ -170,14 +183,15 @@ export async function POST(request: Request) {
       ? body.existingNames.map((n) => String(n ?? "").trim()).filter(Boolean)
       : []
     const accommodation: LatLng | null =
-      body.accommodation && typeof body.accommodation.lat === "number" && typeof body.accommodation.lng === "number"
+      body.accommodation && typeof body.accommodation.lat === "number" && typeof body.accommodation.lng === "number" && Number.isFinite(body.accommodation.lat) && Number.isFinite(body.accommodation.lng) && Math.abs(body.accommodation.lat) <= 90 && Math.abs(body.accommodation.lng) <= 180
         ? body.accommodation
         : null
 
+    const center = await cityCenter(city, country, placesKey) ?? accommodation
+    if (!center) return NextResponse.json({results:[],error:"여행 지역을 확인하지 못했어요. 도시와 국가를 확인해 주세요."})
+
     // 미쉐린 등급 요청은 생성 모델의 후보가 아니라 등급 원본에서 검색합니다.
     if (requestedMichelinStars(query) !== null) {
-      const center = await cityCenter(city, country, placesKey)
-      if (!center) return NextResponse.json({results:[],error:"여행 지역을 확인하지 못했어요. 도시와 국가를 확인해 주세요."})
       return NextResponse.json(await michelinRecommendations(query,center,accommodation,existingNames,new URL(request.url).origin))
     }
 
@@ -244,8 +258,6 @@ export async function POST(request: Request) {
 
     /* 그라운딩 — 실존·좌표·평점. 평점 4.0 미만은 탈락(집 규칙) */
     const origin = new URL(request.url).origin
-    const center=await cityCenter(city,country,placesKey)
-    if(!center)return NextResponse.json({results:[],error:"여행 지역을 정확히 확인하지 못했어요. 도시와 국가를 확인해 주세요."})
     const grounded = await Promise.all(picks.map((p) => ground(p, query, city, country, center, placesKey, origin)))
     const photos=await reviewRecommendationPhotos(grounded.map(g=>({refs:g?.photoRefs||[],type:g?.verifiedType||''})),geminiKey)
     let results: ConciergePick[] = []

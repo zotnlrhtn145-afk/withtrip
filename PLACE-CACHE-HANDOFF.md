@@ -1,3 +1,9 @@
+## 2026-09-21 버그 게시판 완료 상태 정리 및 새 6건 — 다음 빌드 대기 목록
+- 기존 배포 완료 18건을 bug_reports resolved/shipped=true, bug_queue done으로 갱신하고 18/18 재조회 확인. 근거와 한계는 docs/수정요청-처리현황-2026-09-21.md.
+- 새 6건: 사우나 업종검증, 미쉐린/WorldBest 마커 분기, 해외지역 한글 실패 시 영문별칭, 상세 찜 추가, 일정 메모 키보드 회피, 복수도시·숙소 좌표 추천 보완.
+- 앱·웹 타입검사 및 관련 회귀검사 통과. Figma409:4898. iOS/Android 실제 기기 화면·제스처 및 운영 추천 확인 미실시. 새 6건은 fixing/shipped=false. 이번 새 빌드/운영배포 없음.
+- 다음 빌드 시 웹 concierge/공통 region-query 배포와 iOS·Android 동시 검증 필요. 개인 AI 구독 및 월드베스트 미연결 기존 2건은 미완료 유지.
+
 ## 2026-09-21 공항 실내사진으로 변경
 - 운영 반영 완료: f29331a / dpl_EskhBKfDhjmoZFk8WVvrmQt5y28z READY. 웹 타입검사 통과. ICN·SGN 3개 ID 사진 HTTP200 확인, 설치 앱 shared/findScheduleCover 실조회 2개도 HTTP200. SGN 국제선은 이전 검토 ref가 캐시에서 갱신되어 v4 선별 결과를 반환했으며 내려받아 동일 체크인홀 실내사진임을 육안 확인. 휴대폰 UI 직접 검증은 미실시.
 - 사용자 최종 선택: 외관 대신 실내. ICN 출국장 / SGN 두 장소 ID 각각 체크인홀을 육안 확인해 선택.
