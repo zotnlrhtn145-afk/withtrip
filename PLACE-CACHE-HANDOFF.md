@@ -1,3 +1,11 @@
+## 2026-09-21 공항사진 서버 운영배포 완료 (기존 승인대기 해소)
+
+- 사용자 "넣어 전부다 승인이야"로 기존Vercel소스전송·운영배포 명시승인. 최초 CLI인증오류는 whoami/팀접근 확인 후 해소. 팀별칭 자동검토 차단은 기존 팀ID와 프로젝트ID 일치 증거 확인 후 정확한ID로 실행.
+- 웹304d54b 먼저운영배포, ICN정상/SGN사진없음 확인. SGN후보 실내·카페·항공기뿐이라 공항명 간판이 실제 찍힌 PD-self 외관 사진을 추가. 웹d8ecee3, 최종 dpl_9qDkwMJiPNwkNzu5hWubXoeRMdok READY / www.withtrip.co.kr 운영연결.
+- SGN exact ID 두개만 정적사진 연결. 원본2007년 Genghiskhanviet PD-self, public/images/airports/ATTRIBUTION.md 출처. 최신시설촬영이라고 주장하지 않음. 반복Google/AI호출 불필요. ICN은 기존검수Google사진 사용(간판우선 미구현).
+- 앱147/93의 실제 shared/findScheduleCover 함수로 운영 검색→정책→사진 검증: 인천국제공항 출발200 image/jpeg289508bytes, 탄손넛국제공항(Tan Son Nhat)도착200 image/jpeg214613bytes. 함수 실네트워크검증이며 실제폰 화면확인과 구분.
+- 웹tsc 및 airport-cover-api/schedule-cover 회귀통과. 앱새코드/빌드/OTA 불필요. 앱완전종료후다시열면 이전 실패메모리 초기화. 다른공항전수/개인AI/BEST미연결 등 기존제한 유지.
+
 ## 2026-09-21 공항 대표사진 외관 우선 — 다음 빌드 대기
 
 - 원인: shared schedule-cover가 photoUrls/photos[0]을 사용하고 기존 coverByName 사진은 재선별하지 않음. 앱·웹 공항 일정은 선별 결과를 우선하며 기존 임의 실내 사진으로 대체하지 않음.
