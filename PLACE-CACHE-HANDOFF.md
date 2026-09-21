@@ -1,4 +1,5 @@
 ## 2026-09-21 공항 실내사진으로 변경
+- 운영 반영 완료: f29331a / dpl_EskhBKfDhjmoZFk8WVvrmQt5y28z READY. 웹 타입검사 통과. ICN·SGN 3개 ID 사진 HTTP200 확인, 설치 앱 shared/findScheduleCover 실조회 2개도 HTTP200. SGN 국제선은 이전 검토 ref가 캐시에서 갱신되어 v4 선별 결과를 반환했으며 내려받아 동일 체크인홀 실내사진임을 육안 확인. 휴대폰 UI 직접 검증은 미실시.
 - 사용자 최종 선택: 외관 대신 실내. ICN 출국장 / SGN 두 장소 ID 각각 체크인홀을 육안 확인해 선택.
 - 선별 캐시는 airport-interior-v4로 갱신. 기존 iOS147/Android93 호환을 위해 응답 coverPolicies의 기존 토큰만 유지(실제 선별 기준과 분리). 추가 앱 빌드 없이 서버에서 교체.
 - API 회귀검사·일정 사진 연결 검사·shared 동기화 통과. 운영 반영 결과는 아래 후속 기록 참조.
