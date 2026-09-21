@@ -2876,7 +2876,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Shizen",
     "city": "Lima",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJueDt-eLIBZERCgKBb0cqhIo"
   },
   {
     "kind": "restaurants",
@@ -3029,7 +3030,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Oda",
     "city": "Bogotá",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJwX6B3iqbP44RfYU44hHXmEk"
   },
   {
     "kind": "restaurants",
@@ -3214,7 +3216,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Notiê",
     "city": "São Paulo",
     "url": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJz8jGygdZzpQR3vfmGzB7zJU"
   },
   {
     "kind": "restaurants",
@@ -5809,7 +5812,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "G.O.D",
     "city": "Bangkok",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/god-bangkok.html",
-    "address": "25, 27 Soi Rammaitree, Pom Prap, Pom Prap Sattru Phai, Bangkok 10100"
+    "address": "25, 27 Soi Rammaitree, Pom Prap, Pom Prap Sattru Phai, Bangkok 10100",
+    "googlePlaceId": "ChIJY4HIOuOZ4jAR8Wf54456kNg"
   },
   {
     "kind": "bars",
@@ -5962,7 +5966,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "The St. Regis Bar (Macau)",
     "city": "Macau",
     "url": "https://www.the50.com/bars/best-in-asia/the-list/the-st-regis-bar-macau.html",
-    "address": "Sands Cotai Central Cotai Strip, Macao"
+    "address": "Sands Cotai Central Cotai Strip, Macao",
+    "googlePlaceId": "ChIJl4j97ARwATQRXDkw4eUXi4g"
   },
   {
     "kind": "bars",
@@ -6179,7 +6184,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Cabinet 8",
     "city": "Kuala Lumpur",
     "url": "https://www.the50.com/bars/best-in-asia/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJe18mRwBJzDER0uVV1o5dybs"
   },
   {
     "kind": "bars",
@@ -6857,7 +6863,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Harry's Bar Paris",
     "city": "Paris",
     "url": "https://www.the50.com/bars/best-in-europe/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJu0Sg-TBu5kcRUIDfQSE4_yw"
   },
   {
     "kind": "bars",
@@ -7723,7 +7730,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Cloakroom",
     "city": "Montreal",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJj4OOUkAayUwR-VhDHTI6wF0"
   },
   {
     "kind": "bars",
@@ -8073,7 +8081,8 @@ export const CURRENT_WORLD_BEST: WorldBest[] = [
     "name": "Hecate Bar",
     "city": "Boston",
     "url": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-    "address": ""
+    "address": "",
+    "googlePlaceId": "ChIJzxisPch744kR-O0Y4cOeMLA"
   },
   {
     "kind": "bars",

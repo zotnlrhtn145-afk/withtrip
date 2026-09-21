@@ -1,8 +1,8 @@
 {
-  "checkedAt": "2026-09-21T15:01:30.513Z",
+  "checkedAt": "2026-09-21T15:09:46.568Z",
   "total": 1362,
-  "linked": 1214,
-  "uniqueLinked": 668,
+  "linked": 1249,
+  "uniqueLinked": 685,
   "proofs": [
     {
       "key": "restaurants|celele|cartagena",
@@ -917,6 +917,12 @@
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Panama%20City&neighbourhood="
     },
     {
+      "key": "restaurants|shizen|lima",
+      "id": "ChIJueDt-eLIBZERCgKBb0cqhIo",
+      "basis": "official_brand_and_coordinates",
+      "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Lima&neighbourhood="
+    },
+    {
       "key": "restaurants|pulperiasantaelvira|santiago",
       "id": "ChIJa2t4G4LFYpYRRgZ0DRr9cQQ",
       "basis": "unique_exact_name_and_official_city_area",
@@ -993,6 +999,12 @@
       "id": "ChIJAcKtqi8hX5ERa2iEZimHdu8",
       "basis": "official_brand_and_coordinates",
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=La%20Paz&neighbourhood="
+    },
+    {
+      "key": "restaurants|oda|bogota",
+      "id": "ChIJwX6B3iqbP44RfYU44hHXmEk",
+      "basis": "official_brand_and_coordinates",
+      "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Bogot%C3%A1&neighbourhood="
     },
     {
       "key": "restaurants|alos|buenosaires",
@@ -1083,6 +1095,12 @@
       "id": "ChIJvQvEyJ4FdZURUvfN5a7D2CE",
       "basis": "official_brand_and_coordinates",
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Punta%20del%20Este&neighbourhood="
+    },
+    {
+      "key": "restaurants|notie|saopaulo",
+      "id": "ChIJz8jGygdZzpQR3vfmGzB7zJU",
+      "basis": "official_brand_and_coordinates",
+      "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=S%C3%A3o%20Paulo&neighbourhood="
     },
     {
       "key": "restaurants|ana|guatemalacity",
@@ -2003,6 +2021,12 @@
       "source": "https://www.the50.com/bars/best-in-asia/the-list/punch-room-tokyo.html"
     },
     {
+      "key": "bars|god|bangkok",
+      "id": "ChIJY4HIOuOZ4jAR8Wf54456kNg",
+      "basis": "official_brand_and_coordinates",
+      "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Bangkok&neighbourhood="
+    },
+    {
       "key": "bars|barspiritforward|bengaluru",
       "id": "ChIJk1UT0hoXrjsRnVPEieFPPfQ",
       "basis": "official_phone_and_name",
@@ -2075,6 +2099,12 @@
       "source": "https://www.the50.com/bars/best-in-asia/the-list/the-hudson-room.html"
     },
     {
+      "key": "bars|thestregisbarmacau|macau",
+      "id": "ChIJl4j97ARwATQRXDkw4eUXi4g",
+      "basis": "official_phone_and_name",
+      "source": "https://www.the50.com/bars/best-in-asia/the-list/the-st-regis-bar-macau.html"
+    },
+    {
       "key": "bars|montana|hongkong",
       "id": "ChIJT_m7YAABBDQR8D1dVezrdGg",
       "basis": "official_profile_street_and_name",
@@ -2143,6 +2173,12 @@
     {
       "key": "bars|penrose|kualalumpur",
       "id": "ChIJS0y677RJzDERvxxFFqGh7eg",
+      "basis": "official_brand_and_coordinates",
+      "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Kuala%20Lumpur&neighbourhood="
+    },
+    {
+      "key": "bars|cabinet8|kualalumpur",
+      "id": "ChIJe18mRwBJzDER0uVV1o5dybs",
       "basis": "official_brand_and_coordinates",
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Kuala%20Lumpur&neighbourhood="
     },
@@ -2343,6 +2379,12 @@
       "id": "ChIJYatZZTu9oRQRJrkQceYY2uQ",
       "basis": "official_brand_and_coordinates",
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Athens&neighbourhood="
+    },
+    {
+      "key": "bars|harrysbarparis|paris",
+      "id": "ChIJu0Sg-TBu5kcRUIDfQSE4_yw",
+      "basis": "official_brand_and_coordinates",
+      "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Paris&neighbourhood="
     },
     {
       "key": "bars|devie|paris",
@@ -2597,6 +2639,12 @@
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Washington%20DC&neighbourhood="
     },
     {
+      "key": "bars|cloakroom|montreal",
+      "id": "ChIJj4OOUkAayUwR-VhDHTI6wF0",
+      "basis": "official_brand_and_coordinates",
+      "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Montreal&neighbourhood="
+    },
+    {
       "key": "bars|allegory|washingtondc",
       "id": "ChIJjy_y8Ui3t4kRo4kKXW9bvIg",
       "basis": "official_brand_and_coordinates",
@@ -2765,6 +2813,12 @@
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Boston&neighbourhood="
     },
     {
+      "key": "bars|hecatebar|boston",
+      "id": "ChIJzxisPch744kR-O0Y4cOeMLA",
+      "basis": "official_brand_and_coordinates",
+      "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Boston&neighbourhood="
+    },
+    {
       "key": "bars|citruscane|victoria",
       "id": "ChIJv6TWKGt1j1QRetAgPwNVAPU",
       "basis": "unique_exact_name_and_official_city_area",
@@ -2785,7 +2839,7 @@
     {
       "key": "bars|mountpleasantvintageprovisions|vancouver",
       "id": "ChIJn_qdRm5zhlQRamWJg_sp4Qk",
-      "basis": "official_profile_phone",
+      "basis": "official_phone_and_name",
       "source": "https://www.the50.com/discovery/Establishments/Canada/Vancouver/Mount-Pleasant-Vintage-and-Provisions.html"
     },
     {
@@ -2843,6 +2897,12 @@
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Tokyo&neighbourhood="
     },
     {
+      "key": "bars|lobsterbargrill|hongkong",
+      "id": "ChIJ_TkMMmYABDQRhl_3iepNAfM",
+      "basis": "official_brand_and_coordinates",
+      "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Hong%20Kong&neighbourhood="
+    },
+    {
       "key": "bars|manhattan|singapore",
       "id": "ChIJh-KXsYsZ2jERvp0vI8ZeAOw",
       "basis": "official_brand_and_coordinates",
@@ -2877,6 +2937,12 @@
       "id": "ChIJfWurl20Z2jERx6QkkzOlLhk",
       "basis": "official_brand_and_coordinates",
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Singapore&neighbourhood="
+    },
+    {
+      "key": "bars|thecurator|manila",
+      "id": "ChIJT8uxiaXJlzMRex8lcbZkUrk",
+      "basis": "official_brand_and_coordinates",
+      "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Manila&neighbourhood="
     },
     {
       "key": "bars|janeshooch|beijing",
@@ -3021,6 +3087,12 @@
       "id": "ChIJJTU89WQABDQR5mFjBmGlPzQ",
       "basis": "unique_exact_name_and_official_city_area",
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Hong%20Kong&neighbourhood="
+    },
+    {
+      "key": "bars|thenightrooster|bali",
+      "id": "ChIJdQspKC090i0RgRl7x12CKYM",
+      "basis": "official_brand_and_coordinates",
+      "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Bali&neighbourhood="
     },
     {
       "key": "bars|theoldman|hongkong",
@@ -3251,10 +3323,22 @@
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Singapore&neighbourhood="
     },
     {
+      "key": "bars|zlb23|bengaluru",
+      "id": "ChIJHV4ZFAAVrjsRxF3kP-6b7oo",
+      "basis": "official_name_and_coordinates",
+      "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Bengaluru&neighbourhood="
+    },
+    {
       "key": "bars|fura|singapore",
       "id": "ChIJU-dtEiYZ2jERu8y21-cOJFM",
       "basis": "official_brand_and_coordinates",
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Singapore&neighbourhood="
+    },
+    {
+      "key": "bars|pineco|seoul",
+      "id": "ChIJrfK6ThqjfDURFv6cbuVlLlY",
+      "basis": "official_name_and_coordinates",
+      "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Seoul&neighbourhood="
     },
     {
       "key": "bars|tokyoconfidential|tokyo",
@@ -3293,6 +3377,12 @@
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Tokyo&neighbourhood="
     },
     {
+      "key": "bars|goldbar|tokyo",
+      "id": "ChIJT41Zx3SLGGARk1RLf2Gwmww",
+      "basis": "official_brand_and_coordinates",
+      "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Tokyo&neighbourhood="
+    },
+    {
       "key": "bars|southbankcafelounge|muntinlupacity",
       "id": "ChIJeTahVf3RlzMRyx8yWh4H8vY",
       "basis": "official_brand_and_coordinates",
@@ -3307,13 +3397,13 @@
     {
       "key": "bars|bulgariginzabar|tokyo",
       "id": "ChIJrcxuA-SLGGARZ8k6-eQ6huw",
-      "basis": "official_profile_phone",
+      "basis": "official_phone_and_name",
       "source": "https://www.the50.com/discovery/Establishments/Japan/Tokyo/Bulgari-Ginza-Bar.html"
     },
     {
       "key": "bars|thestregisbarjakarta|jakarta",
       "id": "ChIJRfROpWb1aS4R_OBWaTm92ls",
-      "basis": "official_profile_phone",
+      "basis": "official_phone_and_name",
       "source": "https://www.the50.com/discovery/Establishments/Indonesia/Java/The-St-Regis-Bar-Jakarta.html"
     },
     {
@@ -3323,10 +3413,22 @@
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Singapore&neighbourhood="
     },
     {
+      "key": "bars|wunothingness|taipei",
+      "id": "ChIJJ-4nxIWrQjQR3nr-lefwxdQ",
+      "basis": "official_brand_and_coordinates",
+      "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Taipei&neighbourhood="
+    },
+    {
       "key": "bars|thestregisbar|jakarta",
       "id": "ChIJRfROpWb1aS4R_OBWaTm92ls",
       "basis": "unique_exact_name_and_official_city_area",
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Jakarta&neighbourhood="
+    },
+    {
+      "key": "bars|hideaway|goa",
+      "id": "ChIJ3YnoG3HpvzsRnPQsdy-bysw",
+      "basis": "official_brand_and_coordinates",
+      "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Goa&neighbourhood="
     },
     {
       "key": "bars|thealleycocktailbarkitchen|hochiminhcity",
@@ -3435,30 +3537,9 @@
       "status": "review"
     },
     {
-      "key": "restaurants|shizen|lima",
-      "name": "Shizen",
-      "city": "Lima",
-      "source": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-      "status": "review"
-    },
-    {
-      "key": "restaurants|oda|bogota",
-      "name": "Oda",
-      "city": "Bogotá",
-      "source": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-      "status": "review"
-    },
-    {
       "key": "restaurants|caleta|panamacity",
       "name": "Caleta",
       "city": "Panama City",
-      "source": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
-      "status": "review"
-    },
-    {
-      "key": "restaurants|notie|saopaulo",
-      "name": "Notiê",
-      "city": "São Paulo",
       "source": "https://www.the50.com/restaurants/best-in-latin-america/list/51-100",
       "status": "review"
     },
@@ -3533,20 +3614,6 @@
       "status": "review"
     },
     {
-      "key": "bars|god|bangkok",
-      "name": "G.O.D",
-      "city": "Bangkok",
-      "source": "https://www.the50.com/bars/best-in-asia/the-list/god-bangkok.html",
-      "status": "review"
-    },
-    {
-      "key": "bars|thestregisbarmacau|macau",
-      "name": "The St. Regis Bar (Macau)",
-      "city": "Macau",
-      "source": "https://www.the50.com/bars/best-in-asia/the-list/the-st-regis-bar-macau.html",
-      "status": "review"
-    },
-    {
       "key": "bars|tiao|beijing",
       "name": "Tiao",
       "city": "Beijing",
@@ -3557,13 +3624,6 @@
       "key": "bars|bop|singapore",
       "name": "BOP",
       "city": "Singapore",
-      "source": "https://www.the50.com/bars/best-in-asia/list/51-100",
-      "status": "review"
-    },
-    {
-      "key": "bars|cabinet8|kualalumpur",
-      "name": "Cabinet 8",
-      "city": "Kuala Lumpur",
       "source": "https://www.the50.com/bars/best-in-asia/list/51-100",
       "status": "review"
     },
@@ -3589,13 +3649,6 @@
       "status": "review"
     },
     {
-      "key": "bars|harrysbarparis|paris",
-      "name": "Harry's Bar Paris",
-      "city": "Paris",
-      "source": "https://www.the50.com/bars/best-in-europe/list/51-100",
-      "status": "review"
-    },
-    {
       "key": "bars|gorilla|thessaloniki",
       "name": "Gorilla",
       "city": "Thessaloniki",
@@ -3610,23 +3663,9 @@
       "status": "review"
     },
     {
-      "key": "bars|cloakroom|montreal",
-      "name": "Cloakroom",
-      "city": "Montreal",
-      "source": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-      "status": "review"
-    },
-    {
       "key": "bars|seedlibrary|newyork",
       "name": "Seed Library",
       "city": "New York",
-      "source": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-      "status": "review"
-    },
-    {
-      "key": "bars|hecatebar|boston",
-      "name": "Hecate Bar",
-      "city": "Boston",
       "source": "https://www.the50.com/bars/best-in-north-america/list/51-100",
       "status": "review"
     },
@@ -3642,13 +3681,6 @@
       "name": "Door No.4",
       "city": "Grand Cayman",
       "source": "https://www.the50.com/bars/best-in-north-america/list/51-100",
-      "status": "review"
-    },
-    {
-      "key": "bars|lobsterbargrill|hongkong",
-      "name": "Lobster Bar & Grill",
-      "city": "Hong Kong",
-      "source": "https://www.the50.com/bars/best-in-asia/previous-list/2016",
       "status": "review"
     },
     {
@@ -3676,13 +3708,6 @@
       "key": "bars|alchemy|taipei",
       "name": "Alchemy",
       "city": "Taipei",
-      "source": "https://www.the50.com/bars/best-in-asia/previous-list/2016",
-      "status": "review"
-    },
-    {
-      "key": "bars|thecurator|manila",
-      "name": "The Curator",
-      "city": "Manila",
       "source": "https://www.the50.com/bars/best-in-asia/previous-list/2016",
       "status": "review"
     },
@@ -3820,13 +3845,6 @@
       "status": "review"
     },
     {
-      "key": "bars|thenightrooster|bali",
-      "name": "The Night Rooster",
-      "city": "Bali",
-      "source": "https://www.the50.com/bars/best-in-asia/previous-list/2017",
-      "status": "review"
-    },
-    {
       "key": "bars|thetipplingclub|singapore",
       "name": "The Tippling Club",
       "city": "Singapore",
@@ -3897,37 +3915,9 @@
       "status": "review"
     },
     {
-      "key": "bars|zlb23|bengaluru",
-      "name": "ZLB23",
-      "city": "Bengaluru",
-      "source": "https://www.the50.com/bars/best-in-asia/previous-list/2024",
-      "status": "review"
-    },
-    {
-      "key": "bars|pineco|seoul",
-      "name": "Pine & Co",
-      "city": "Seoul",
-      "source": "https://www.the50.com/bars/best-in-asia/previous-list/2024",
-      "status": "review"
-    },
-    {
       "key": "bars|soko|soko",
       "name": "Soko",
       "city": "Soko",
-      "source": "https://www.the50.com/bars/best-in-asia/previous-list/2024",
-      "status": "review"
-    },
-    {
-      "key": "bars|goldbar|tokyo",
-      "name": "Gold Bar",
-      "city": "Tokyo",
-      "source": "https://www.the50.com/bars/best-in-asia/previous-list/2024",
-      "status": "review"
-    },
-    {
-      "key": "bars|wunothingness|taipei",
-      "name": "Wu (Nothingness)",
-      "city": "Taipei",
       "source": "https://www.the50.com/bars/best-in-asia/previous-list/2024",
       "status": "review"
     },
@@ -3936,13 +3926,6 @@
       "name": "Sol Kitchen & Bar",
       "city": "Ho Chi Minh City",
       "source": "https://www.the50.com/discovery/Establishments/Vietnam/Ho-Chi-Minh-City/Sol-Kitchen-and-Bar.html",
-      "status": "review"
-    },
-    {
-      "key": "bars|hideaway|goa",
-      "name": "Hideaway",
-      "city": "Goa",
-      "source": "https://www.the50.com/bars/best-in-asia/previous-list/2025",
       "status": "review"
     }
   ]
