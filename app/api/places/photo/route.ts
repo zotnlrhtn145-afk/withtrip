@@ -1,3 +1,4 @@
+import { recoverPlacePhoto } from "@/lib/place-photo-recovery"
 import { createHash } from "node:crypto"
 
 import { NextResponse } from "next/server"
@@ -107,7 +108,7 @@ export async function GET(request: Request) {
   return guardedPhoto(`${refHash(ref)}:${width}`, () => loadPhoto(ref, width, apiKey))
 }
 
-async function loadPhoto(ref: string, width: number, apiKey: string) {
+async function loadPhoto(ref: string, width: number, apiKey: string, allowRecovery = true) {
   const admin = getSupabaseAdmin()
   const hash = refHash(ref)
 
@@ -163,10 +164,18 @@ async function loadPhoto(ref: string, width: number, apiKey: string) {
   }
 
   if (!res.ok) {
+    if (allowRecovery && (res.status === 400 || res.status === 404)) {
+      try {
+        const recovered = await recoverPlacePhoto(ref, width, apiKey,
+          next => loadPhoto(next, width, apiKey, false))
+        if (recovered) return recovered
+      } catch { console.warn("[photo-recovery] temporary failure") }
+    }
     return NextResponse.json({ error: "사진을 가져오지 못했습니다." }, { status: 502 })
   }
 
   const contentType = res.headers.get("content-type") ?? "image/jpeg"
+  if (!contentType.startsWith("image/")) return NextResponse.json({ error: "사진 형식 오류" }, { status: 502 })
   let bytes: ArrayBuffer
   try {
     bytes = await res.arrayBuffer()
