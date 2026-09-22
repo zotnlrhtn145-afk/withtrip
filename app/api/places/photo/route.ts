@@ -14,16 +14,9 @@ export const runtime = "nodejs"
  *
  * 장소 사진 — **우리가 한 번 받아서 보관하고, 그 다음부터는 우리 것을 준다.**
  *
- * 왜 이렇게 하나:
- *  1) 키 감추기 — 예전에는 `.../place/photo?...&key=<서버키>` 를 그대로 내려보내서
- *     구글 키가 모든 응답과 DB(saved_places.image_url)에 노출됐다.
- *  2) 비용 — 예전에는 **화면에 뜰 때마다** 구글 Places Photo API 가 과금됐다.
- *     사용자가 만 명이면 호출도 만 배가 된다. 지금은 **사진 한 장당 30일에 한 번**만
- *     구글을 부르고, 나머지는 전부 우리 스토리지에서 나간다.
- *     → 사용자가 몇 명이든 구글 호출 수가 같다.
- *
- * 30일인 이유: 구글 약관이 Places 콘텐츠 캐싱을 30일까지만 허용한다.
- * (places 캐시 테이블의 갱신 주기와 같은 기준)
+ * 요청된 사진을 저장하고, 저장본은 기간 만료 없이 모든 이용자가 재사용한다.
+ * 2026-09-22 사용자 운영 결정. 저장/전송 비용 및 소스 이용 조건은 별개다.
+ * 사진 참조와 요청 해상도가 같은 경우 공유하며, 다른 해상도는 별도 확보한다.
  *
  * ⚠️ 이 라우트의 URL 모양은 **절대 바꾸지 않는다.** 이 주소가 그대로
  *    saved_places.image_url 에 저장돼 있고 네이티브 앱도 이 주소를 쓴다.
@@ -38,8 +31,6 @@ const MAX_WIDTH = 1600
 const DEFAULT_WIDTH = 800
 
 const BUCKET = "place-photos"
-/** 구글 약관: Places 콘텐츠는 30일까지만 보관할 수 있다. */
-const MAX_AGE_DAYS = 30
 /** 구글이 응답하지 않을 때 화면이 멈추지 않도록 하는 상한 */
 const FETCH_TIMEOUT_MS = 8_000
 
@@ -101,10 +92,6 @@ export async function GET(request: Request) {
     : DEFAULT_WIDTH
 
   const apiKey = getApiKey()
-  if (!apiKey) {
-    return NextResponse.json({ error: "Google API 키가 설정되지 않았습니다." }, { status: 500 })
-  }
-
   return guardedPhoto(`${refHash(ref)}:${width}`, () => loadPhoto(ref, width, apiKey))
 }
 
@@ -112,29 +99,29 @@ async function loadPhoto(ref: string, width: number, apiKey: string, allowRecove
   const admin = getSupabaseAdmin()
   const hash = refHash(ref)
 
-  // ── 1) 이미 우리가 갖고 있고, 아직 30일이 안 지났으면 그대로 준다 (구글 호출 없음)
+  // ── 1) 저장본은 fetched_at과 관계없이 재사용한다 (구글 호출 없음)
   if (admin) {
     try {
       const { data } = await admin
         .from("place_photos")
-        .select("storage_path, fetched_at")
+        .select("storage_path")
         .eq("photo_ref_hash", hash)
         .eq("width", width)
         .maybeSingle()
 
       if (data?.storage_path) {
-        const ageDays = (Date.now() - new Date(data.fetched_at).getTime()) / 86_400_000
-        if (ageDays < MAX_AGE_DAYS) {
-          const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(data.storage_path)
-          if (pub?.publicUrl) return redirectTo(pub.publicUrl, STORED_CACHE_SECONDS)
-        }
+        const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(data.storage_path)
+        if (pub?.publicUrl) return redirectTo(pub.publicUrl, STORED_CACHE_SECONDS)
       }
     } catch {
       // 조회 실패는 무시하고 구글에서 받아온다 — 사진은 어떻게든 보여야 한다
     }
   }
 
-  // ── 2) 없거나 오래됐으면 구글에서 한 번 받아온다
+  // ── 2) 저장본이 없을 때만 구글에서 받아온다. 기존 저장본은 키 없이도 제공한다.
+  if (!apiKey) {
+    return NextResponse.json({ error: "Google API 키가 설정되지 않았습니다." }, { status: 500 })
+  }
   /*
     ⚠️ 구글 사진 참조가 **두 가지 형식**이다.
        옛것: `AWCwyd...` (한 덩어리)          → legacy `place/photo`

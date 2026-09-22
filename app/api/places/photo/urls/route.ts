@@ -35,8 +35,6 @@ const DEFAULT_WIDTH = 500
 const BUCKET = "place-photos"
 /** 한 번에 물어볼 수 있는 장수 — 목록 한 페이지를 넉넉히 덮는다 */
 const MAX_REFS = 300
-/** 구글 약관: Places 콘텐츠는 30일까지만 보관할 수 있다. */
-const MAX_AGE_DAYS = 30
 
 function refHash(ref: string) {
   return createHash("sha256").update(ref).digest("hex")
@@ -83,19 +81,16 @@ export async function POST(request: Request) {
     const byHash = new Map(refs.map((r) => [refHash(r), r]))
     const { data } = await admin
       .from("place_photos")
-      .select("photo_ref_hash, storage_path, fetched_at")
+      .select("photo_ref_hash, storage_path")
       .in("photo_ref_hash", [...byHash.keys()])
       .eq("width", width)
 
-    const freshAfter = Date.now() - MAX_AGE_DAYS * 86_400_000
     for (const row of (data ?? []) as {
       photo_ref_hash: string
       storage_path: string
-      fetched_at: string | null
     }[]) {
-      // 30일 지난 건 프록시로 보내 다시 받아오게 둔다
-      const at = row.fetched_at ? Date.parse(row.fetched_at) : 0
-      if (!row.storage_path || at < freshAfter) continue
+      // 저장 시점과 무관하게 보관 중인 사진을 바로 제공한다.
+      if (!row.storage_path) continue
       const ref = byHash.get(row.photo_ref_hash)
       if (!ref) continue
       const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(row.storage_path)
