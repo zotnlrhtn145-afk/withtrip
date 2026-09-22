@@ -8,7 +8,7 @@ import { placeRecommendationCopy } from "@/shared/place-recommendation-copy"
 
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import { buildPlacePhotoProxyUrl } from "@/lib/place-cover-image"
-import { candidateTypes, selectVerifiedPlace, supportedTypes, type Candidate, type PlaceEvidence } from "@/lib/concierge-validation"
+import { candidateSearchLanguage, candidateTypes, selectVerifiedPlace, supportedTypes, type Candidate, type PlaceEvidence } from "@/lib/concierge-validation"
 import { reviewRecommendationPhotos } from "@/lib/concierge-photos"
 import { getCachedSearch, readPlacesByGoogleIds, putCachedSearch, writePlaces } from "@/lib/places-cache"
 import { distanceMeters } from "@/lib/geo"
@@ -98,22 +98,24 @@ async function cityCenter(city:string,country:string,key:string):Promise<LatLng|
 async function ground(p:Candidate, query:string, city:string, country:string, center:LatLng, apiKey:string, origin:string) {
   try {
     const expected=candidateTypes(p,query);if(!expected.length)return null
-    const search=`${p.name} ${p.localName||''} ${p.addressHint||''} ${city} ${country} ${expected.join(' ')}`
-    const searchKey=JSON.stringify(['concierge-verified-v3',search])
+    const language = candidateSearchLanguage(p, country)
+    const search=`${p.localName || p.name} ${regionQueries(city).at(-1) || city} ${country}`
+    const searchKey=JSON.stringify(['concierge-verified-v4',language,search])
     const ids=await getCachedSearch(searchKey)
     const cached=ids?.length?await readPlacesByGoogleIds(ids):null
     let rows:PlaceEvidence[]=[]
     if(ids?.length&&cached?.size===ids.length){rows=ids.map(id=>{const r=cached.get(id)!;return {place_id:id,name:r.name,formatted_address:r.address||'',types:r.google_types||[],business_status:r.is_closed?'CLOSED_PERMANENTLY':undefined,rating:r.rating??undefined,user_ratings_total:r.rating_count??undefined,photos:(r.photo_references||[]).map(photo_reference=>({photo_reference})),geometry:{location:{lat:r.lat,lng:r.lng}}}})}
     else {
       const url=new URL("https://maps.googleapis.com/maps/api/place/textsearch/json")
-      url.searchParams.set('query',search);url.searchParams.set('key',apiKey);url.searchParams.set('language','ko')
+      url.searchParams.set('query',search);url.searchParams.set('key',apiKey);url.searchParams.set('language',language)
       if(expected.length===1)url.searchParams.set('type',expected[0])
       url.searchParams.set('location',`${center.lat},${center.lng}`);url.searchParams.set('radius','50000')
       const r=await fetch(url,{signal:AbortSignal.timeout(6500)});if(!r.ok)return null
       const j=await r.json();rows=Array.isArray(j.results)?j.results:[]
+      if (j.status && !["OK", "ZERO_RESULTS"].includes(j.status)) console.warn("[widy] place_search_failed", { status: String(j.status).slice(0,40) })
     }
     const top=selectVerifiedPlace(p,query,rows,center,distanceMeters)
-    if(!top)return null
+    if(!top){ console.info("[widy] place_validation_empty", {language, resultCount:rows.length, expectedTypes:expected}); return null }
     let refs=(top.photos||[]).map(v=>v.photo_reference||'').filter(Boolean).slice(0,2)
     if(refs.length<2){
       try{const u=new URL('https://maps.googleapis.com/maps/api/place/details/json');u.searchParams.set('place_id',top.place_id!);u.searchParams.set('fields','photos');u.searchParams.set('key',apiKey);const r=await fetch(u,{signal:AbortSignal.timeout(4000)});if(r.ok){const j=await r.json();const more=(j.result?.photos||[]).map((v:{photo_reference?:string})=>v.photo_reference).filter((v:unknown):v is string=>typeof v==='string');refs=[...new Set([...refs,...more])].slice(0,2)}}catch{}
@@ -122,7 +124,7 @@ async function ground(p:Candidate, query:string, city:string, country:string, ce
     if(!cached?.size) {await writePlaces([{googlePlaceId:top.place_id!,name:top.name!,address:top.formatted_address,...point,rating:top.rating,ratingCount:top.user_ratings_total,googleTypes:top.types,photoReferences:refs}]);await putCachedSearch(searchKey,[top.place_id!])}
     const subCategory = cached?.get(top.place_id!)?.sub_category || guessSubCategory({kind:kindFromGoogleTypes(top.types),name:top.name,types:top.types})
     return {subCategory:subCategory === "기타" ? undefined : subCategory,name:top.name!,localName:top.name!,address:top.formatted_address!,imageUrl:refs[0]?buildPlacePhotoProxyUrl(refs[0],1200,origin):'',rating:top.rating,reviewCount:top.user_ratings_total,...point,photoRefs:refs,verifiedType:expected.find(t=>top.types?.includes(t))!}
-  }catch{return null}
+  }catch(error){console.warn("[widy] place_grounding_failed", {reason:error instanceof Error ? error.name : "unknown"});return null}
 }
 
 /*
@@ -174,7 +176,7 @@ export async function POST(request: Request) {
     }
 
     /* ① 캐시 — 같은 도시+질문이면 그대로 돌려준다 */
-    const cacheKey = JSON.stringify(["verified-v6", body.tripContext ?? "", city, country, query, body.accommodation ?? null, Array.isArray(body.existingNames) ? [...body.existingNames].sort() : [], tripId])
+    const cacheKey = JSON.stringify(["verified-v7", body.tripContext ?? "", city, country, query, body.accommodation ?? null, Array.isArray(body.existingNames) ? [...body.existingNames].sort() : [], tripId])
     const hit = CACHE.get(cacheKey)
     if (hit && Date.now() - hit.at < CACHE_TTL) {
       return NextResponse.json({ results: hit.results, cached: true })
@@ -213,7 +215,7 @@ export async function POST(request: Request) {
       `각 장소마다 highlight는 핵심 특징 하나를 8~24자 한국어로, reason은 이 사용자의 요청과 그 특징이 어떻게 맞는지 2~3문장(80~180자)으로 각각 작성해라.\n` +
       `reason에서 highlight를 그대로 반복하지 말고, 어떤 활동이나 상황에 적합한지 구체적으로 설명해라. 모든 장소에 같은 문장을 복사하지 마라.\n` +
       `확인되지 않은 시설, 가격, 운영시간, 예약/일일 입장 가능 여부, 자격/수상은 단정하지 마라. 불확실한 방문 조건은 확인이 필요하다고 밝혀라. 근거가 부족하면 빈칸을 채우려고 사실을 만들지 마라. 최고급·럭셔리·프라이빗 같은 품질이나 독점성 표현을 근거 없이 사용하지 마라.\n` +
-      `정확한 현지 상호 localName, 아는 경우 주소 addressHint(모르면 빈 문자열), 실제 업종 placeType을 ${supportedTypes.join("/")} 중 하나로 명시해라. 헬스클럽은 gym, 나이트클럽은 night_club이며 동명 화장품 매장은 제외.\n` +
+      `정확한 현지 문자 상호 localName(일본은 일본어, 한국은 한글로 작성), 아는 경우 주소 addressHint(모르면 빈 문자열), 실제 업종 placeType을 ${supportedTypes.join("/")} 중 하나로 명시해라. 헬스클럽은 gym, 나이트클럽은 night_club이며 동명 화장품 매장은 제외.\n` +
       `종류는 헬스장/식당/바/카페/스파/클럽/명소/쇼핑/기타. 반드시 JSON만: {"picks":[{"name":"정확한 상호","localName":"현지 상호","addressHint":"주소 또는 빈 문자열","placeType":"gym","highlight":"핵심 특징","reason":"요청과 연결한 상세 추천 이유","kind":"종류"}]}`
 
     let picks: Candidate[] = []

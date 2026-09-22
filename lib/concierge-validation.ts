@@ -28,9 +28,27 @@ export function candidateTypes(p: Candidate, query: string): string[] {
 export function normalizedPlaceName(s: string) {
   return s.normalize('NFD').replace(/\p{M}/gu,'').replace(/đ/gi,'d').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'')
 }
-function nameMatches(expected: string, found: string) {
-  const a = normalizedPlaceName(expected), b = normalizedPlaceName(found)
-  return a.length >= 3 && (a === b || (Math.min(a.length,b.length)/Math.max(a.length,b.length) >= .65 && (a.includes(b)||b.includes(a))))
+export function nameMatches(expected: string, found: string) {
+  const coreName = (s: string) => normalizedPlaceName(s.replace(/\b(?:kobe beef|steak restaurant|beef steak restaurant|restaurant)\b/gi, "").replace(/神戸牛|ステーキレストラン/g, ""))
+  const a = coreName(expected), b = coreName(found)
+  // Japanese map names often prepend a cuisine descriptor to the exact native shop name.
+  // Keep the complete candidate (including its branch) and reject ambiguous result IDs below.
+  const nativeFullName = /[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}]/u.test(expected) && a.length >= 5 && b.includes(a)
+  return a.length >= 3 && (a === b || nativeFullName || (Math.min(a.length,b.length)/Math.max(a.length,b.length) >= .65 && (a.includes(b)||b.includes(a))))
+}
+export function candidateSearchLanguage(p: Candidate, country: string) {
+  const native = p.localName || p.name
+  if (/^(JP|Japan|일본)$/i.test(country.trim()) && /[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}]/u.test(native)) return "ja"
+  if (/[가-힣]/.test(native)) return "ko"
+  return "en"
+}
+export function addressNumberMatches(hint: string | undefined, address: string) {
+  // Japanese addresses place prefecture/city/postcode first; full-width digits and chome are common.
+  const normalize = (s: string) => s.normalize("NFKC").toLowerCase().replace(/[‐‑‒–—−]/g, "-").replace(/(\d+)\s*-?\s*ch[oō]me\s*-?/g, "$1-").replace(/(\d+)丁目\s*/g, "$1-").replace(/(\d+)番(?:地)?\s*/g, "$1-").replace(/(\d+)号/g, "$1")
+  const expected = normalize(hint || "").trim().match(/^\d+[a-z]?(?:[/-]\d+)*\b/i)?.[0]
+  if (!expected) return true
+  const actual = normalize(address).match(/\d+[a-z]?(?:[/-]\d+)*/g) || []
+  return actual.includes(expected)
 }
 export function selectVerifiedPlace(p: Candidate, query: string, results: PlaceEvidence[], center: { lat: number; lng: number }, distance: (a: {lat:number;lng:number}, b: {lat:number;lng:number})=>number) {
   const types = candidateTypes(p, query)
@@ -43,9 +61,7 @@ export function selectVerifiedPlace(p: Candidate, query: string, results: PlaceE
     if (![p.name,p.localName||''].some(n=>nameMatches(n,r.name||''))) return false
     if (distance(center,{lat:lat!,lng:lng!}) > 80000) return false
     // AI address is only a disambiguation hint, never returned as verified data.
-    const expectedNo=p.addressHint?.trim().match(/^\d+[a-z]?(?:[/-]\d+)?\b/i)?.[0]?.toLowerCase()
-    const actualNo=r.formatted_address.trim().match(/^\d+[a-z]?(?:[/-]\d+)?\b/i)?.[0]?.toLowerCase()
-    return !expectedNo || (!!actualNo && expectedNo===actualNo)
+    return addressNumberMatches(p.addressHint, r.formatted_address)
   })
   // Similar named branches remain ambiguous; do not silently choose the first one.
   const ids=new Set(matches.map(r=>r.place_id))
