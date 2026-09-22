@@ -47,7 +47,7 @@ export function addressNumberMatches(hint: string | undefined, address: string) 
   const normalize = (s: string) => s.normalize("NFKC").toLowerCase().replace(/[‐‑‒–—−]/g, "-").replace(/(\d+)\s*-?\s*ch[oō]me\s*-?/g, "$1-").replace(/(\d+)丁目\s*/g, "$1-").replace(/(\d+)番(?:地)?\s*/g, "$1-").replace(/(\d+)号/g, "$1")
   const expected = normalize(hint || "").trim().match(/^\d+[a-z]?(?:[/-]\d+)*\b/i)?.[0]
   if (!expected) return true
-  const actual = normalize(address).match(/\d+[a-z]?(?:[/-]\d+)*/g) || []
+  const actual: string[] = normalize(address).match(/\d+[a-z]?(?:[/-]\d+)*/g) || []
   return actual.includes(expected)
 }
 export function selectVerifiedPlace(p: Candidate, query: string, results: PlaceEvidence[], center: { lat: number; lng: number }, distance: (a: {lat:number;lng:number}, b: {lat:number;lng:number})=>number) {
