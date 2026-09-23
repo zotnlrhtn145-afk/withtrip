@@ -1,6 +1,6 @@
 "use client"
 
-import { MapPin } from "lucide-react"
+import { MapPin, Wine, Utensils } from "lucide-react"
 import { PlaceAwardMarks } from "./place-award-marks"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { AdvancedMarker, AdvancedMarkerAnchorPoint, useMap } from "@vis.gl/react-google-maps"
@@ -69,9 +69,9 @@ export function SavedMapPins({ spots, selectedId, onSelect, onDetail }: { spots:
   })()
   const choose = (group: Group) => { setPopupVisible(20); setPopup(group); if (group.spots.length === 1) { clicked.current = group.spots[0].id; onSelect(group.spots[0].id) } }
   return <>{groups.map((group, index) => <AdvancedMarker key={`${group.id}:${group.spots.length}:${group.spots[0].id}`} position={{ lat: group.lat, lng: group.lng }} anchorPoint={AdvancedMarkerAnchorPoint.CENTER} zIndex={popup?.id === group.id ? 900 : 400} onClick={() => choose(group)}>
-    <button className={styles.mapPin} data-active={group.spots.some(spot => spot.id === selectedId)} aria-label={group.spots.length > 1 ? `장소 ${group.spots.length}곳 보기` : group.spots[0].name} style={{ position:"relative", animationDelay: `${Math.min(index, 8) * 24}ms`, ...(group.spots.length === 1 && (group.spots[0].awards?.worldBest || group.spots[0].awards?.michelin) ? {width:54,height:54,overflow:"visible",borderColor:"#FBBF24"} : {}) }}>
+    <button className={styles.mapPin} data-active={group.spots.some(spot => spot.id === selectedId)} aria-label={group.spots.length > 1 ? `장소 ${group.spots.length}곳 보기` : group.spots[0].name} style={{ position:"relative", animationDelay: `${Math.min(index, 8) * 24}ms`, ...(group.spots.length === 1 && group.spots[0].worldBest && group.spots[0].bestKind ? {width:42,height:42,borderRadius:12,overflow:"visible",borderColor:"#FBBF24",background:"white"} : group.spots.length === 1 && (group.spots[0].awards?.worldBest || group.spots[0].awards?.michelin) ? {width:54,height:54,overflow:"visible",borderColor:"#FBBF24"} : {}) }}>
       {group.spots.length > 1 ? <b>{group.spots.length > 999 ? "999+" : group.spots.length}곳</b> : <>
-        <span style={{position:"absolute",inset:0,borderRadius:"50%",overflow:"hidden",display:"grid",placeItems:"center"}}><MapPin size={22}/>{group.spots[0].image ? <img src={group.spots[0].image} alt="" style={{position:"absolute",width:"100%",height:"100%",objectFit:"cover"}} onError={event=>{event.currentTarget.style.display="none"}}/> : null}</span>
+        {group.spots[0].worldBest && group.spots[0].bestKind ? <span style={{display:"flex",flexDirection:"column",alignItems:"center",color:"#182430",gap:1}}>{group.spots[0].bestKind === "bars" ? <Wine size={18}/> : <Utensils size={18}/>}<span style={{fontSize:9,fontWeight:600,lineHeight:"11px"}}>{group.spots[0].bestKind === "bars" ? "바" : "레스토랑"}</span></span> : <span style={{position:"absolute",inset:0,borderRadius:"50%",overflow:"hidden",display:"grid",placeItems:"center"}}><MapPin size={22}/>{group.spots[0].image ? <img src={group.spots[0].image} alt="" style={{position:"absolute",width:"100%",height:"100%",objectFit:"cover"}} onError={event=>{event.currentTarget.style.display="none"}}/> : null}</span>}
         {group.spots[0].awards && (group.spots[0].awards.worldBest || group.spots[0].awards.michelin) ? <span style={{position:"absolute",top:"calc(100% + 4px)",left:"50%",transform:"translateX(-50%)",background:"white",borderRadius:12,padding:"4px 6px",whiteSpace:"nowrap",boxShadow:"0 2px 7px #17253620"}}><PlaceAwardMarks compact awards={group.spots[0].awards}/></span> : null}
       </>}
     </button>
