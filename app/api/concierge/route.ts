@@ -8,7 +8,7 @@ import { placeRecommendationCopy } from "@/shared/place-recommendation-copy"
 
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import { buildPlacePhotoProxyUrl } from "@/lib/place-cover-image"
-import { candidateSearchLanguage, candidateTypes, selectVerifiedPlace, supportedTypes, type Candidate, type PlaceEvidence } from "@/lib/concierge-validation"
+import { wellnessIntent, facilityNameMatches, uniqueGrounded, candidateSearchLanguage, candidateTypes, selectVerifiedPlace, supportedTypes, type Candidate, type PlaceEvidence } from "@/lib/concierge-validation"
 import { reviewRecommendationPhotos } from "@/lib/concierge-photos"
 import { getCachedSearch, readPlacesByGoogleIds, putCachedSearch, writePlaces } from "@/lib/places-cache"
 import { distanceMeters } from "@/lib/geo"
@@ -95,20 +95,21 @@ async function cityCenter(city:string,country:string,key:string):Promise<LatLng|
     return center
   }catch{return null}
 }
-async function ground(p:Candidate, query:string, city:string, country:string, center:LatLng, apiKey:string, origin:string) {
+async function ground(p:Candidate, query:string, city:string, country:string, center:LatLng, apiKey:string, origin:string, evidence?:PlaceEvidence[]) {
   try {
     const expected=candidateTypes(p,query);if(!expected.length)return null
     const language = candidateSearchLanguage(p, country)
     const search=`${p.localName || p.name} ${regionQueries(city).at(-1) || city} ${country}`
-    const searchKey=JSON.stringify(['concierge-verified-v4',language,search])
+    const searchKey=JSON.stringify(['concierge-verified-v5',language,search])
     const ids=await getCachedSearch(searchKey)
     const cached=ids?.length?await readPlacesByGoogleIds(ids):null
-    let rows:PlaceEvidence[]=[]
-    if(ids?.length&&cached?.size===ids.length){rows=ids.map(id=>{const r=cached.get(id)!;return {place_id:id,name:r.name,formatted_address:r.address||'',types:r.google_types||[],business_status:r.is_closed?'CLOSED_PERMANENTLY':undefined,rating:r.rating??undefined,user_ratings_total:r.rating_count??undefined,photos:(r.photo_references||[]).map(photo_reference=>({photo_reference})),geometry:{location:{lat:r.lat,lng:r.lng}}}})}
+    let rows:PlaceEvidence[]=evidence || []
+    if(evidence) { /* Discovery results are already map evidence. */ }
+    else if(ids?.length&&cached?.size===ids.length){rows=ids.map(id=>{const r=cached.get(id)!;return {place_id:id,name:r.name,formatted_address:r.address||'',types:r.google_types||[],business_status:r.is_closed?'CLOSED_PERMANENTLY':undefined,rating:r.rating??undefined,user_ratings_total:r.rating_count??undefined,photos:(r.photo_references||[]).map(photo_reference=>({photo_reference})),geometry:{location:{lat:r.lat,lng:r.lng}}}})}
     else {
       const url=new URL("https://maps.googleapis.com/maps/api/place/textsearch/json")
       url.searchParams.set('query',search);url.searchParams.set('key',apiKey);url.searchParams.set('language',language)
-      if(expected.length===1)url.searchParams.set('type',expected[0])
+      if(expected.length===1 && !wellnessIntent(query))url.searchParams.set('type',expected[0])
       url.searchParams.set('location',`${center.lat},${center.lng}`);url.searchParams.set('radius','50000')
       const r=await fetch(url,{signal:AbortSignal.timeout(6500)});if(!r.ok)return null
       const j=await r.json();rows=Array.isArray(j.results)?j.results:[]
@@ -116,21 +117,46 @@ async function ground(p:Candidate, query:string, city:string, country:string, ce
     }
     const top=selectVerifiedPlace(p,query,rows,center,distanceMeters)
     if(!top){ console.info("[widy] place_validation_empty", {language, resultCount:rows.length, expectedTypes:expected}); return null }
-    let refs=(top.photos||[]).map(v=>v.photo_reference||'').filter(Boolean).slice(0,2)
-    if(refs.length<2){
-      try{const u=new URL('https://maps.googleapis.com/maps/api/place/details/json');u.searchParams.set('place_id',top.place_id!);u.searchParams.set('fields','photos');u.searchParams.set('key',apiKey);const r=await fetch(u,{signal:AbortSignal.timeout(4000)});if(r.ok){const j=await r.json();const more=(j.result?.photos||[]).map((v:{photo_reference?:string})=>v.photo_reference).filter((v:unknown):v is string=>typeof v==='string');refs=[...new Set([...refs,...more])].slice(0,2)}}catch{}
-    }
+    const refs=(top.photos||[]).map(v=>v.photo_reference||'').filter(Boolean).slice(0,2)
     const loc=top.geometry!.location!;const point={lat:loc.lat!,lng:loc.lng!}
     if(!cached?.size) {await writePlaces([{googlePlaceId:top.place_id!,name:top.name!,address:top.formatted_address,...point,rating:top.rating,ratingCount:top.user_ratings_total,googleTypes:top.types,photoReferences:refs}]);await putCachedSearch(searchKey,[top.place_id!])}
-    const subCategory = cached?.get(top.place_id!)?.sub_category || guessSubCategory({kind:kindFromGoogleTypes(top.types),name:top.name,types:top.types})
-    return {subCategory:subCategory === "기타" ? undefined : subCategory,name:top.name!,localName:top.name!,address:top.formatted_address!,imageUrl:refs[0]?buildPlacePhotoProxyUrl(refs[0],1200,origin):'',rating:top.rating,reviewCount:top.user_ratings_total,...point,photoRefs:refs,verifiedType:expected.find(t=>top.types?.includes(t))!}
+    const subCategory = facilityNameMatches(query,top.name || "") ? "웰니스" : cached?.get(top.place_id!)?.sub_category || guessSubCategory({kind:kindFromGoogleTypes(top.types),name:top.name,types:top.types})
+    return {placeId:top.place_id!,subCategory:subCategory === "기타" ? undefined : subCategory,name:top.name!,localName:top.name!,address:top.formatted_address!,imageUrl:refs[0]?buildPlacePhotoProxyUrl(refs[0],1200,origin):'',rating:top.rating,reviewCount:top.user_ratings_total,...point,photoRefs:refs,verifiedType:facilityNameMatches(query,top.name || '') ? 'spa' : expected.find(t=>top.types?.includes(t))!}
   }catch(error){console.warn("[widy] place_grounding_failed", {reason:error instanceof Error ? error.name : "unknown"});return null}
+}
+
+async function discover(query:string,city:string,country:string,center:LatLng,key:string,existingNames:string[]) {
+  const intent = wellnessIntent(query) ? (/냉탕|아이스|ice|cold/i.test(query) ? "sauna ice bath cold plunge" : "sauna") : query
+  const search = `${intent} ${regionQueries(city).at(-1) || city} ${country}`
+  const cacheKey = JSON.stringify(["concierge-discovery-v1",search,center])
+  try {
+    const ids = await getCachedSearch(cacheKey)
+    const cached = ids?.length ? await readPlacesByGoogleIds(ids) : null
+    let rows:PlaceEvidence[] = []
+    if (ids && cached?.size === ids.length) rows=ids.map(id=>{const p=cached.get(id)!;return {place_id:id,name:p.name,formatted_address:p.address||'',types:p.google_types||[],rating:p.rating??undefined,business_status:p.is_closed?'CLOSED_PERMANENTLY':undefined,user_ratings_total:p.rating_count??undefined,photos:(p.photo_references||[]).map(photo_reference=>({photo_reference})),geometry:{location:{lat:p.lat,lng:p.lng}}}})
+    else {
+      const url=new URL("https://maps.googleapis.com/maps/api/place/textsearch/json")
+      url.searchParams.set("query",search);url.searchParams.set("key",key);url.searchParams.set("language","en");url.searchParams.set("location",`${center.lat},${center.lng}`);url.searchParams.set("radius","30000")
+      const r=await fetch(url,{signal:AbortSignal.timeout(6500)});if(!r.ok)return []
+      const data=await r.json();rows=Array.isArray(data.results)?data.results:[]
+      // Individual validated candidates are cached by ground(); don't store unverified hits.
+    }
+    const excluded=new Set(existingNames.map(normalizeName))
+    const result=rows.flatMap(evidence=>{
+      if(!evidence.name || excluded.has(normalizeName(evidence.name)))return []
+      const type=evidence.types?.find(t=>supportedTypes.includes(t)) || (facilityNameMatches(query,evidence.name)?'spa':'')
+      const candidate:Candidate={name:evidence.name,localName:evidence.name,placeType:type,kind:wellnessIntent(query)?'스파':'기타',highlight:wellnessIntent(query)?'사우나·회복시설 검색 후보':'요청 조건의 지도 검색 후보',reason:wellnessIntent(query)?'사우나·냉탕 관련 검색에서 확인된 장소예요. 실제 제공 시설과 냉탕 온도, 일일 입장 여부는 방문 전 확인해 주세요.':'요청하신 조건으로 지도에서 찾은 장소예요. 세부 서비스와 방문 조건은 업장에 확인해 주세요.'}
+      return selectVerifiedPlace(candidate,query,[evidence],center,distanceMeters) ? [{candidate,evidence}] : []
+    }).slice(0,7)
+    if(result.length && !cached?.size){await writePlaces(result.map(({evidence:p})=>({googlePlaceId:p.place_id!,name:p.name!,address:p.formatted_address,lat:p.geometry!.location!.lat!,lng:p.geometry!.location!.lng!,googleTypes:p.types,rating:p.rating,ratingCount:p.user_ratings_total,photoReferences:(p.photos||[]).map(p=>p.photo_reference||'').filter(Boolean)})));await putCachedSearch(cacheKey,result.map(p=>p.evidence.place_id!))}
+    return result
+  } catch {return []}
 }
 
 /*
   비용 안전장치 (v3.2 GO 확정):
   ① 같은 도시+비슷한 질문 1시간 캐시 — 위디의 방에서 같은 걸 다시 물어도 0원
-  ② 그라운딩 후보 10 → 6곳 (Text Search 회당 $0.032)
+  ② 그라운딩 후보 최대10곳 + 부족 시 검색1회/후보최대7곳 (Text Search 회당 $0.032)
   ③ 위디 질문 상한은 인증된 widy-chat에서 사용자 단위로 집계
   서버리스 메모리 캐시라 인스턴스마다 따로지만, 같은 사용자의 연타는 대부분
   같은 인스턴스에 떨어진다 — 완벽보다 뚜껑이 목적이다.
@@ -176,7 +202,7 @@ export async function POST(request: Request) {
     }
 
     /* ① 캐시 — 같은 도시+질문이면 그대로 돌려준다 */
-    const cacheKey = JSON.stringify(["verified-v7", body.tripContext ?? "", city, country, query, body.accommodation ?? null, Array.isArray(body.existingNames) ? [...body.existingNames].sort() : [], tripId])
+    const cacheKey = JSON.stringify(["verified-v8", body.tripContext ?? "", city, country, query, body.accommodation ?? null, Array.isArray(body.existingNames) ? [...body.existingNames].sort() : [], tripId])
     const hit = CACHE.get(cacheKey)
     if (hit && Date.now() - hit.at < CACHE_TTL) {
       return NextResponse.json({ results: hit.results, cached: true })
@@ -209,7 +235,7 @@ export async function POST(request: Request) {
       `${destination} 여행 중인 사용자의 요청: "${query}"\n` +
       (tripContext ? `참고 여행표:\n${tripContext}\n${WIDY_CONTEXT_RULES}\n` : "") +
       (accommodation ? `사용자의 숙소 좌표는 (${accommodation.lat}, ${accommodation.lng}) — 이 근처를 우선해라.\n` : "") +
-      `이 요청에 딱 맞는 실제 장소 최대 6곳을 추천해줘. 실존하는, 지도에서 검색되는 정확한 상호만.\n` +
+      `이 요청에 딱 맞는 실제 장소 7~10곳을 후보로 찾아줘. 검증 뒤 최대 7곳을 보여줄 예정이다. 실제로 조건에 맞는 곳이 적으면 억지로 채우지 마라. 실존하는, 지도에서 검색되는 정확한 상호만.\n` +
       `서로 겹치지 않는 다른 장소여야 하고, 관광객 함정보다 현지에서 평가가 좋은 곳을 골라라.\n` +
       (existingNames.length > 0 ? `이미 목록에 있어 제외할 곳: ${existingNames.join(", ")}\n` : "") +
       `각 장소마다 highlight는 핵심 특징 하나를 8~24자 한국어로, reason은 이 사용자의 요청과 그 특징이 어떻게 맞는지 2~3문장(80~180자)으로 각각 작성해라.\n` +
@@ -265,29 +291,33 @@ export async function POST(request: Request) {
       console.warn("[widy] candidate_generation_failed", { reason: timeout ? "timeout" : "invalid_response" })
       generationError = timeout ? "추천 조회가 지연되고 있어요. 여행 지역 입력의 문제가 아니에요. 잠시 후 이용해 주세요." : "추천 응답을 확인하지 못했어요. 잠시 후 이용해 주세요."
     }
-    if (picks.length === 0) {
-      return NextResponse.json({ results: [], error: generationError }, { status: 200 })
-    }
-    /* ② 그라운딩은 6곳까지 — Text Search 가 회당 돈이다 */
-    picks = picks.slice(0, 6)
+    // Even an empty generation can be recovered by one bounded map search.
+    /* ② 그라운딩은 최대10곳까지 — Text Search 가 회당 돈이다 */
+    picks = picks.slice(0, 10)
 
     /* 그라운딩 — 실존·좌표·평점. 평점 4.0 미만은 탈락(집 규칙) */
     const origin = new URL(request.url).origin
     const grounded = await Promise.all(picks.map((p) => ground(p, query, city, country, center, placesKey, origin)))
-    const photos=await reviewRecommendationPhotos(grounded.map(g=>({refs:g?.photoRefs||[],type:g?.verifiedType||''})),geminiKey)
+    let chosen = uniqueGrounded(grounded.flatMap((g,i)=>g ? [{...g,candidate:picks[i]}] : []))
+    if (chosen.length < 4) {
+      const fallback = await discover(query,city,country,center,placesKey,existingNames)
+      const more = await Promise.all(fallback.map(({candidate,evidence})=>ground(candidate,query,city,country,center,placesKey,origin,[evidence]).then(g=>g ? {...g,candidate} : null)))
+      chosen = uniqueGrounded([...chosen,...more.filter((g):g is NonNullable<typeof g>=>!!g)])
+    }
+    const photos=await reviewRecommendationPhotos(chosen.map(g=>({refs:g.photoRefs,type:g.verifiedType})),geminiKey)
     let results: ConciergePick[] = []
-    for (let i = 0; i < picks.length; i++) {
-      const g = grounded[i]
+    for (let i = 0; i < chosen.length; i++) {
+      const g = chosen[i]
       if (!g) continue
       if ((g.rating ?? 0) < 4.0) continue
       results.push({
         name:g.name,localName:g.localName,address:g.address,lat:g.lat,lng:g.lng,rating:g.rating,reviewCount:g.reviewCount,
         ...photos[i],
-        ...placeRecommendationCopy(picks[i]),
-        reason: [placeRecommendationCopy(picks[i]).reason, photos[i].imageUrl
+        ...placeRecommendationCopy(g.candidate),
+        reason: [placeRecommendationCopy(g.candidate).reason, photos[i].imageUrl
           ? `사진 안내: ${photos[i].photoAnalyzed ? `${photos[i].photoLabel} (AI 분류). ${photos[i].photoDescription} 사진만으로 시설 품질이나 현재 이용 조건은 확인할 수 없어요.` : photos[i].photoDescription}`
           : '등록된 장소 사진을 확인하지 못했어요.'].filter(Boolean).join('\n\n'),
-        kind: ({gym:'헬스장',night_club:'클럽',restaurant:'식당',cafe:'카페',bar:'바',spa:'스파'} as Record<string,string>)[g.verifiedType] || picks[i].kind,
+        kind: ({gym:'헬스장',night_club:'클럽',restaurant:'식당',cafe:'카페',bar:'바',spa:'스파'} as Record<string,string>)[g.verifiedType] || g.candidate.kind,
         distanceKm: accommodation
           ? Math.round((distanceMeters(accommodation, { lat: g.lat, lng: g.lng }) / 1000) * 10) / 10
           : undefined,
@@ -296,19 +326,7 @@ export async function POST(request: Request) {
       })
     }
 
-    /* 겹침 제거 (같은 이름·120m 안) */
-    const dedup: ConciergePick[] = []
-    for (const item of results) {
-      const norm = normalizeName(item.name)
-      const dup = dedup.some((kept) => {
-        const keptNorm = normalizeName(kept.name)
-        if (norm === keptNorm) return true
-        if (norm.length >= 3 && (norm.includes(keptNorm) || keptNorm.includes(norm))) return true
-        return distanceMeters({ lat: item.lat, lng: item.lng }, { lat: kept.lat, lng: kept.lng }) < 120
-      })
-      if (!dup) dedup.push(item)
-    }
-    results = dedup
+    // Deduplicated above by verified place ID; nearby independent businesses stay visible.
 
     /* 미쉐린 대조 — 같은 이름과 가까운 좌표가 모두 확인된 식당만. */
     const admin = getSupabaseAdmin()
@@ -342,8 +360,8 @@ export async function POST(request: Request) {
     /* 숙소 가까운 순 */
     if (accommodation) results.sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
 
-    const out = results.slice(0, 6)
-    if(!out.length)return NextResponse.json({results:[],error:"요청하신 업종과 위치가 확인된 장소를 찾지 못했어요. 조건을 조금 바꿔 주세요."})
+    const out = results.slice(0, 7)
+    if(!out.length)return NextResponse.json({results:[],error:picks.length ? "요청 조건을 검증한 장소를 아직 찾지 못했어요. 사우나·냉탕처럼 세부 시설은 업종 분류와 달라 확인이 더 필요할 수 있어요." : generationError})
     CACHE.set(cacheKey, { at: Date.now(), results: out })
     if (CACHE.size > 300) {
       const oldest = [...CACHE.entries()].sort((x, y) => x[1].at - y[1].at)[0]

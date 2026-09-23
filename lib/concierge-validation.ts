@@ -19,6 +19,21 @@ export function requestedTypes(query: string): string[] {
   if (/스파|마사지|사우나|찜질|냉탕|아이스\s*(?:배스|바스|버킷)|\bspa\b|sauna|ice\s*bath|cold\s*plunge/i.test(query)) out.push('spa')
   return out
 }
+/** Map categories are coarse: a sauna can also be registered as a bar or gym.
+ * Only verified map names may supply this alternative facility evidence. */
+export function wellnessIntent(query: string) {
+  return /사우나|찜질|냉탕|아이스\s*(?:배스|바스|버킷)|sauna|ice\s*bath|cold\s*plunge/i.test(query)
+}
+export function facilityNameMatches(query: string, name: string) {
+  if (!wellnessIntent(query)) return false
+  const heat = /사우나|찜질|sauna/i.test(query)
+  const cold = /냉탕|아이스\s*(?:배스|바스|버킷)|ice\s*bath|cold\s*plunge/i.test(query)
+  return (!heat || /sauna|사우나|찜질/i.test(name)) && (!cold || /ice\s*bath|cold\s*plunge|냉탕|아이스\s*(?:배스|바스)/i.test(name))
+}
+export function uniqueGrounded<T extends {placeId: string}>(items: T[], limit = 7): T[] {
+  const seen = new Set<string>()
+  return items.filter(p => { if (seen.has(p.placeId)) return false; seen.add(p.placeId); return true }).slice(0,limit)
+}
 export function candidateTypes(p: Candidate, query: string): string[] {
   const requested = requestedTypes(query)
   if (requested.length === 1) return requested
@@ -29,7 +44,7 @@ export function normalizedPlaceName(s: string) {
   return s.normalize('NFD').replace(/\p{M}/gu,'').replace(/đ/gi,'d').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'')
 }
 export function nameMatches(expected: string, found: string) {
-  const coreName = (s: string) => normalizedPlaceName(s.replace(/\b(?:kobe beef|steak restaurant|beef steak restaurant|restaurant)\b/gi, "").replace(/神戸牛|ステーキレストラン/g, ""))
+  const coreName = (s: string) => normalizedPlaceName(s.replace(/\s+-\s+(?:private studio|personal training|recovery services)\b.*$/i, "").replace(/\b(?:kobe beef|steak restaurant|beef steak restaurant|restaurant)\b/gi, "").replace(/神戸牛|ステーキレストラン/g, ""))
   const a = coreName(expected), b = coreName(found)
   // Japanese map names often prepend a cuisine descriptor to the exact native shop name.
   // Keep the complete candidate (including its branch) and reject ambiguous result IDs below.
@@ -57,7 +72,7 @@ export function selectVerifiedPlace(p: Candidate, query: string, results: PlaceE
     const {lat,lng} = r.geometry?.location || {}
     if (!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat!)>90||Math.abs(lng!)>180 || !r.place_id || !r.formatted_address) return false
     if (r.business_status?.startsWith('CLOSED') || !Number.isFinite(r.rating) || (r.rating ?? 0)<4) return false
-    if (!types.some(t => r.types?.includes(t))) return false
+    if (!types.some(t => r.types?.includes(t)) && !facilityNameMatches(query,r.name || '')) return false
     if (![p.name,p.localName||''].some(n=>nameMatches(n,r.name||''))) return false
     if (distance(center,{lat:lat!,lng:lng!}) > 80000) return false
     // AI address is only a disambiguation hint, never returned as verified data.
