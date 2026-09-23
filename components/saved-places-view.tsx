@@ -139,6 +139,7 @@ export function SavedPlacesView() {
   const [bestLoading,setBestLoading] = useState(false)
   const [bestError,setBestError] = useState(false)
   const [bestRetry,setBestRetry] = useState(0)
+  const bestLoadedRetry = useRef(-1)
   const [bestIncomplete,setBestIncomplete] = useState(false)
   const [pinned,setPinned] = useState<SearchBounds|null>(null)
   const [viewport,setViewport] = useState<SearchBounds|null>(null)
@@ -148,14 +149,16 @@ export function SavedPlacesView() {
   const [regionSearching,setRegionSearching] = useState(false)
   const [regionError,setRegionError] = useState("")
   useEffect(() => {
-    if (!bestOnly) return
+    if (!bestOnly || bestLoadedRetry.current === bestRetry) return
     const controller=new AbortController()
+    let active=true
+    const timeout=setTimeout(()=>controller.abort(),15000)
     setBestLoading(true);setBestError(false)
     void fetch("/api/world-best",{signal:controller.signal}).then(async r=>{if(!r.ok)throw new Error();return r.json()})
-      .then(d=>{if(!controller.signal.aborted){setBestPlaces(d.places??[]);setBestIncomplete((d.unlocated?.length??0)>0)}})
-      .catch(()=>{if(!controller.signal.aborted)setBestError(true)})
-      .finally(()=>{if(!controller.signal.aborted)setBestLoading(false)})
-    return ()=>controller.abort()
+      .then(d=>{if(active&&!controller.signal.aborted){bestLoadedRetry.current=bestRetry;setBestPlaces(d.places??[]);setBestIncomplete((d.unlocated?.length??0)>0)}})
+      .catch(()=>{if(active)setBestError(true)})
+      .finally(()=>{clearTimeout(timeout);if(active)setBestLoading(false)})
+    return ()=>{active=false;clearTimeout(timeout);controller.abort()}
   },[bestOnly,bestRetry])
   const [subFilter, setSubFilter] = useState<string | null>(null)
   const [addOpen, setAddOpen] = useState(false)
@@ -621,6 +624,17 @@ export function SavedPlacesView() {
       .sort((a, b) => b.count - a.count)
   }, [tripSpots])
 
+  const matchesExtraFilters = useCallback((p: {id:string;address?:string|null;category?:string|null}) => {
+    const saved = places.find(row => row.id === p.id)
+    if (starredOnly && !saved?.starred) return false
+    const gid = saved?.googlePlaceId
+    if (visitedOnly && (!gid || !marks[gid]?.visited)) return false
+    if (country !== "all" && !(saved?.countryCode === country || matchesSearch(buildQuery(flagNameOf(country)),[p.address]))) return false
+    if (region !== "all" && !matchesSearch(buildQuery(region),[p.address,saved?.region,regionLabel(saved?.region)])) return false
+    const h = gid ? hours[gid] : null
+    return !openOnly || !h || openState(h.periods,h.utcOffsetMin,nowMs).state !== "closed"
+  }, [places,starredOnly,visitedOnly,marks,country,region,hours,openOnly,nowMs])
+
   const filteredTripSpots = useMemo(() => {
     const byTrip = tripFilter === "all" ? tripSpots : tripSpots.filter((s) => s.tripId === tripFilter)
     const q = buildQuery(search)
@@ -628,7 +642,7 @@ export function SavedPlacesView() {
       ? byTrip.filter((s) => matchesSearch(q, [s.name, s.nameLocal, s.address, s.category]))
       : byTrip
     const base = subFilter ? bySearch.filter((s) => (s.category ?? "").trim() === subFilter) : bySearch
-    const arr = base.filter(p=>inSearchBounds(p,pinned))
+    const arr = base.filter(p=>inSearchBounds(p,pinned) && matchesExtraFilters(p))
     if (sort === "name") return arr.sort((a, b) => a.name.localeCompare(b.name, "ko"))
     if (sort === "rating") return arr.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
     return arr.sort((a, b) => {
@@ -636,7 +650,7 @@ export function SavedPlacesView() {
       const db = b.lat != null && b.lng != null ? distanceMeters(distanceOrigin, { lat: b.lat, lng: b.lng }) : Infinity
       return da - db
     })
-  }, [tripSpots, subFilter, distanceOrigin, sort, tripFilter, search, pinned])
+  }, [tripSpots, subFilter, distanceOrigin, sort, tripFilter, search, pinned, matchesExtraFilters])
 
   const tripDistanceLabels = useMemo(() => {
     const map = new Map<string, string>()
@@ -682,7 +696,7 @@ export function SavedPlacesView() {
   }, [tripSpots])
 
   const activeChips = subTab === "wish" ? subChips : tripChips
-  const searchedRecs = useMemo(() => { const q = buildQuery(search); return recs.filter(r=>inSearchBounds(r,pinned)&&(!q||matchesSearch(q,[r.placeName,r.address,r.category,r.subCategory]))) }, [recs, search,pinned])
+  const searchedRecs = useMemo(() => { const q = buildQuery(search); return recs.filter(r=>matchesExtraFilters(r)&&(!subFilter||r.subCategory===subFilter)&&inSearchBounds(r,pinned)&&(!q||matchesSearch(q,[r.placeName,r.address,r.category,r.subCategory]))) }, [recs, search,pinned,matchesExtraFilters,subFilter])
   const friendMapSpots = useMemo<MapSpot[]>(() => searchedRecs.filter(r => r.lat != null && r.lng != null).map(r => {
     const meters = distanceMeters(distanceOrigin, { lat: r.lat!, lng: r.lng! })
     return { id: r.id, name: r.placeName, nameLocal: r.placeName, category: r.category ?? "친구찜", address: r.address ?? "", lat: r.lat!, lng: r.lng!, rating: r.rating ?? 0, image: r.imageUrl ?? "", imageAlt: r.placeName, distanceMeters: meters, distanceLabel: formatDistance(meters) }
