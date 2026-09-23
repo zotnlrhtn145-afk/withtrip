@@ -1,8 +1,8 @@
 {
-  "checkedAt": "2026-09-21T20:49:02.079Z",
+  "checkedAt": "2026-09-23T23:38:02.862Z",
   "total": 1362,
-  "linked": 1280,
-  "uniqueLinked": 703,
+  "linked": 1297,
+  "uniqueLinked": 711,
   "proofs": [
     {
       "key": "restaurants|celele|cartagena",
@@ -3023,6 +3023,12 @@
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Singapore&neighbourhood="
     },
     {
+      "key": "bars|alchemy|taipei",
+      "id": "ChIJTeWliLarQjQR5z76uiJVAlM",
+      "basis": "reviewed_public_venue_address",
+      "source": "https://www.travel.taipei/en/shop/details/4104"
+    },
+    {
       "key": "bars|thecurator|manila",
       "id": "ChIJT8uxiaXJlzMRex8lcbZkUrk",
       "basis": "official_brand_and_coordinates",
@@ -3089,6 +3095,12 @@
       "source": "https://www.the50.com/discovery/Establishments/Thailand/Bangkok/The-Bamboo-Bar.html"
     },
     {
+      "key": "bars|unionbrasseriebakerybar|jakarta",
+      "id": "ChIJz9G3IEnxaS4Rju5wCDkCj78",
+      "basis": "reviewed_operator_address_and_phone",
+      "source": "https://uniongroupjakarta.com/brands/union/union-plaza-senayan"
+    },
+    {
       "key": "bars|barorchardginza|tokyo",
       "id": "ChIJ17eDWu-LGGAReIDDTEnksM0",
       "basis": "official_name_city_and_coordinates",
@@ -3105,6 +3117,18 @@
       "id": "ChIJN9i-kn4ABDQRWC8dkEF2ln0",
       "basis": "official_profile_phone",
       "source": "https://www.the50.com/discovery/Establishments/China/Hong-Kong/Zuma.html"
+    },
+    {
+      "key": "bars|ounce|taipei",
+      "id": "ChIJLyy9H82rQjQRrPkMb7HkH-s",
+      "basis": "reviewed_public_venue_address",
+      "source": "https://wanderlog.com/place/details/119999/ounce-taipei"
+    },
+    {
+      "key": "bars|maggiechoos|bangkok",
+      "id": "ChIJ68V6JtOY4jAREx42-cvq9R0",
+      "basis": "reviewed_public_venue_address",
+      "source": "https://www.timeout.com/bangkok/nightlife/maggie-choos"
     },
     {
       "key": "bars|constellation|shanghai",
@@ -3135,6 +3159,12 @@
       "id": "ChIJrT4XBg0Z2jER97ZUr5pBYtM",
       "basis": "unique_exact_name_and_official_city_area",
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Singapore&neighbourhood="
+    },
+    {
+      "key": "bars|bardstill|seoul",
+      "id": "ChIJ1bC99BaZfDUR5GDaNWHNpRA",
+      "basis": "reviewed_public_venue_address",
+      "source": "https://autoreserve.com/ja/restaurants/B1EYj7hMtfnGb5SrrLLY"
     },
     {
       "key": "bars|indulgeexperimentalbistro|taipei",
@@ -3185,10 +3215,22 @@
       "source": "https://www.the50.com/bars/best-in-asia/previous-list/2017"
     },
     {
+      "key": "bars|thechinneryatmandarinoriental|hongkong",
+      "id": "ChIJQzUr2H0ABDQRKewzmqm3Dq4",
+      "basis": "reviewed_operator_address_and_phone",
+      "source": "https://www.mandarinoriental.com/en/hong-kong/victoria-harbour/dine/the-chinnery"
+    },
+    {
       "key": "bars|potatoheadbeackclub|bali",
       "id": "ChIJ_XZL_xFH0i0RTo0EWBqsnRs",
       "basis": "reviewed_official_address_phone_or_coordinates",
       "source": "https://www.the50.com/discovery/Establishments/Indonesia/Bali/Potato-Head-Beach-Club.html"
+    },
+    {
+      "key": "bars|keepers|seoul",
+      "id": "ChIJT7ruG2ekfDURZgi4-BjX8KQ",
+      "basis": "reviewed_public_venue_address",
+      "source": "https://www.the50.com/discovery/Establishments/South-Korea/Seoul/Keepers.html"
     },
     {
       "key": "bars|drfernsginparlour|hongkong",
@@ -3249,6 +3291,12 @@
       "id": "ChIJXTdyWW0Z2jERuVioWz2jRLI",
       "basis": "reviewed_same_city_catalogue_alias",
       "source": "https://admin.webpuzzleapp.com/api/search/1.0/establishmentsByParameters?country=&town=Singapore&neighbourhood="
+    },
+    {
+      "key": "bars|thewiseking|hongkong",
+      "id": "ChIJMVVKbBMBBDQR2N-iQqUqPRc",
+      "basis": "reviewed_public_venue_address",
+      "source": "https://www.discoverhongkong.com/eng/place-to-go/travel.guide-the-wise-king.html"
     },
     {
       "key": "bars|ahasaloon|taipei",
@@ -3339,6 +3387,12 @@
       "id": "ChIJjYYtUVIBBDQR5DWJ-IDxEwI",
       "basis": "official_profile_phone",
       "source": "https://www.the50.com/discovery/Establishments/China/Hong-Kong/The-Diplomat.html"
+    },
+    {
+      "key": "bars|unionbrasseriebakeryandbar|jakarta",
+      "id": "ChIJz9G3IEnxaS4Rju5wCDkCj78",
+      "basis": "reviewed_operator_address_and_phone",
+      "source": "https://uniongroupjakarta.com/brands/union/union-plaza-senayan"
     },
     {
       "key": "bars|backstagecocktailclub|bangkok",
@@ -3745,13 +3799,6 @@
       "status": "review"
     },
     {
-      "key": "bars|alchemy|taipei",
-      "name": "Alchemy",
-      "city": "Taipei",
-      "source": "https://www.the50.com/bars/best-in-asia/previous-list/2016",
-      "status": "review"
-    },
-    {
       "key": "bars|wootaipei|taipei",
       "name": "Woo Taipei",
       "city": "Taipei",
@@ -3773,30 +3820,9 @@
       "status": "review"
     },
     {
-      "key": "bars|unionbrasseriebakerybar|jakarta",
-      "name": "Union Brasserie, Bakery & Bar",
-      "city": "Jakarta",
-      "source": "https://www.the50.com/bars/best-in-asia/previous-list/2016",
-      "status": "review"
-    },
-    {
       "key": "bars|codenamemixologyakasaka|tokyo",
       "name": "Codename Mixology Akasaka",
       "city": "Tokyo",
-      "source": "https://www.the50.com/bars/best-in-asia/previous-list/2016",
-      "status": "review"
-    },
-    {
-      "key": "bars|ounce|taipei",
-      "name": "Ounce",
-      "city": "Taipei",
-      "source": "https://www.the50.com/bars/best-in-asia/previous-list/2016",
-      "status": "review"
-    },
-    {
-      "key": "bars|maggiechoos|bangkok",
-      "name": "Maggie Choo's",
-      "city": "Bangkok",
       "source": "https://www.the50.com/bars/best-in-asia/previous-list/2016",
       "status": "review"
     },
@@ -3815,13 +3841,6 @@
       "status": "review"
     },
     {
-      "key": "bars|bardstill|seoul",
-      "name": "Bar D.Still",
-      "city": "Seoul",
-      "source": "https://www.the50.com/bars/best-in-asia/previous-list/2016",
-      "status": "review"
-    },
-    {
       "key": "bars|hydeseekgastrobar|bali",
       "name": "Hyde & Seek Gastro Bar",
       "city": "Bali",
@@ -3836,31 +3855,10 @@
       "status": "review"
     },
     {
-      "key": "bars|thechinneryatmandarinoriental|hongkong",
-      "name": "The Chinnery at Mandarin Oriental",
-      "city": "Hong Kong",
-      "source": "https://www.the50.com/bars/best-in-asia/previous-list/2017",
-      "status": "review"
-    },
-    {
-      "key": "bars|keepers|seoul",
-      "name": "Keepers",
-      "city": "Seoul",
-      "source": "https://www.the50.com/bars/best-in-asia/previous-list/2017",
-      "status": "review"
-    },
-    {
       "key": "bars|clubboyssaloon|taipei",
       "name": "Club Boys Saloon",
       "city": "Taipei",
       "source": "https://www.the50.com/bars/best-in-asia/previous-list/2017",
-      "status": "review"
-    },
-    {
-      "key": "bars|thewiseking|hongkong",
-      "name": "The Wise King",
-      "city": "Hong Kong",
-      "source": "https://www.the50.com/bars/best-in-asia/previous-list/2019",
       "status": "review"
     },
     {
@@ -3881,13 +3879,6 @@
       "key": "bars|barbarycoast|singapore",
       "name": "Barbary Coast",
       "city": "Singapore",
-      "source": "https://www.the50.com/bars/best-in-asia/previous-list/2021",
-      "status": "review"
-    },
-    {
-      "key": "bars|unionbrasseriebakeryandbar|jakarta",
-      "name": "Union Brasserie, Bakery and Bar",
-      "city": "Jakarta",
       "source": "https://www.the50.com/bars/best-in-asia/previous-list/2021",
       "status": "review"
     },
