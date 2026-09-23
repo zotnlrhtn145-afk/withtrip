@@ -30,6 +30,16 @@ export function facilityNameMatches(query: string, name: string) {
   const cold = /냉탕|아이스\s*(?:배스|바스|버킷)|ice\s*bath|cold\s*plunge/i.test(query)
   return (!heat || /sauna|사우나|찜질/i.test(name)) && (!cold || /ice\s*bath|cold\s*plunge|냉탕|아이스\s*(?:배스|바스)/i.test(name))
 }
+export function discoveryIntent(query:string) {
+  if (/와규|고베\s*(?:규|비프)|wagyu|kobe\s*beef/i.test(query)) return 'wagyu beef steak'
+  if (wellnessIntent(query)) return /냉탕|아이스|ice|cold/i.test(query) ? 'sauna ice bath cold plunge' : 'sauna'
+  return query
+}
+/** Extra search hits need evidence for explicit subtypes, not just "restaurant". */
+export function discoveryNameMatches(query:string,name:string) {
+  if (/와규|고베\s*(?:규|비프)|wagyu|kobe\s*beef/i.test(query)) return /wagyu|kobe\s*beef|beef|steak|yakiniku|神戸牛|和牛|ステーキ|焼肉|와규|고베규|스테이크/i.test(name)
+  return true
+}
 export function uniqueGrounded<T extends {placeId: string}>(items: T[], limit = 7): T[] {
   const seen = new Set<string>()
   return items.filter(p => { if (seen.has(p.placeId)) return false; seen.add(p.placeId); return true }).slice(0,limit)

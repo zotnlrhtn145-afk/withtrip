@@ -8,7 +8,7 @@ import { placeRecommendationCopy } from "@/shared/place-recommendation-copy"
 
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import { buildPlacePhotoProxyUrl } from "@/lib/place-cover-image"
-import { wellnessIntent, facilityNameMatches, uniqueGrounded, candidateSearchLanguage, candidateTypes, selectVerifiedPlace, supportedTypes, type Candidate, type PlaceEvidence } from "@/lib/concierge-validation"
+import { discoveryIntent, discoveryNameMatches, wellnessIntent, facilityNameMatches, uniqueGrounded, candidateSearchLanguage, candidateTypes, selectVerifiedPlace, supportedTypes, type Candidate, type PlaceEvidence } from "@/lib/concierge-validation"
 import { reviewRecommendationPhotos } from "@/lib/concierge-photos"
 import { getCachedSearch, readPlacesByGoogleIds, putCachedSearch, writePlaces } from "@/lib/places-cache"
 import { distanceMeters } from "@/lib/geo"
@@ -126,9 +126,9 @@ async function ground(p:Candidate, query:string, city:string, country:string, ce
 }
 
 async function discover(query:string,city:string,country:string,center:LatLng,key:string,existingNames:string[]) {
-  const intent = wellnessIntent(query) ? (/냉탕|아이스|ice|cold/i.test(query) ? "sauna ice bath cold plunge" : "sauna") : query
+  const intent = discoveryIntent(query)
   const search = `${intent} ${regionQueries(city).at(-1) || city} ${country}`
-  const cacheKey = JSON.stringify(["concierge-discovery-v1",search,center])
+  const cacheKey = JSON.stringify(["concierge-discovery-v2",search,center])
   try {
     const ids = await getCachedSearch(cacheKey)
     const cached = ids?.length ? await readPlacesByGoogleIds(ids) : null
@@ -143,9 +143,17 @@ async function discover(query:string,city:string,country:string,center:LatLng,ke
     }
     const excluded=new Set(existingNames.map(normalizeName))
     const result=rows.flatMap(evidence=>{
-      if(!evidence.name || excluded.has(normalizeName(evidence.name)))return []
+      if(!evidence.name || !discoveryNameMatches(query,evidence.name) || excluded.has(normalizeName(evidence.name)))return []
       const type=evidence.types?.find(t=>supportedTypes.includes(t)) || (facilityNameMatches(query,evidence.name)?'spa':'')
-      const candidate:Candidate={name:evidence.name,localName:evidence.name,placeType:type,kind:wellnessIntent(query)?'스파':'기타',highlight:wellnessIntent(query)?'사우나·회복시설 검색 후보':'요청 조건의 지도 검색 후보',reason:wellnessIntent(query)?'사우나·냉탕 관련 검색에서 확인된 장소예요. 실제 제공 시설과 냉탕 온도, 일일 입장 여부는 방문 전 확인해 주세요.':'요청하신 조건으로 지도에서 찾은 장소예요. 세부 서비스와 방문 조건은 업장에 확인해 주세요.'}
+      const facilityNamed = facilityNameMatches(query,evidence.name)
+      const menOnly = /\bfor men\b|\bmen[ -]only\b/i.test(evidence.name)
+      const loc=evidence.geometry?.location
+      const km=loc?.lat != null && loc?.lng != null ? (distanceMeters(center,{lat:loc.lat,lng:loc.lng})/1000).toFixed(1) : null
+      const candidate:Candidate={name:evidence.name,localName:evidence.name,placeType:type,kind:wellnessIntent(query)?'스파':'기타',
+        highlight:menOnly?'남성 대상 표기 · 방문 조건 확인':facilityNamed?'요청 시설이 상호에 명시된 곳':`지도 평점 ${evidence.rating ?? '-'} · 검색 후보`,
+        reason:[km ? `검색 기준 위치에서 약 ${km}km이며, 지도 평점은 ${evidence.rating ?? '-'}점이에요.` : `지도 검색에서 확인된 장소예요.`,
+          facilityNamed?'상호에 요청하신 시설이 명시되어 있어 후보로 골랐어요.':'요청하신 조건의 검색 후보이며, 세부 서비스까지 확인된 것은 아니에요.',
+          menOnly?'상호에 남성 대상으로 표시되어 있으니 이용 대상과 입장 조건을 먼저 확인해 주세요.':wellnessIntent(query)?'실제 제공 시설과 냉탕 온도, 일일 입장 여부는 방문 전 확인해 주세요.':'방문 전 운영시간과 이용 조건을 확인해 주세요.'].join(' ')}
       return selectVerifiedPlace(candidate,query,[evidence],center,distanceMeters) ? [{candidate,evidence}] : []
     }).slice(0,7)
     if(result.length && !cached?.size){await writePlaces(result.map(({evidence:p})=>({googlePlaceId:p.place_id!,name:p.name!,address:p.formatted_address,lat:p.geometry!.location!.lat!,lng:p.geometry!.location!.lng!,googleTypes:p.types,rating:p.rating,ratingCount:p.user_ratings_total,photoReferences:(p.photos||[]).map(p=>p.photo_reference||'').filter(Boolean)})));await putCachedSearch(cacheKey,result.map(p=>p.evidence.place_id!))}
