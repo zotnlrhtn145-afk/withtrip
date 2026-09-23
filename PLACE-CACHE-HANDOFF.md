@@ -1,3 +1,7 @@
+## 2026-09-24 상세 사진8장 운영배포 완료
+- a3521b2 / dpl_5HZZHcbbj694q1BAcpWfPtbnAYsE READY, www.withtrip.co.kr 연결 확인.
+- 실제 공개 장소 템플리프 사우나&스파 상세 API HTTP200 사진8장, 각8장 모두 HTTP200 image/jpeg 및 비어있지 않은 바이트 확인. /tmp/photos8-production-check.json. 새 클라이언트 조회에 공통적용, 양OS실제UI는 미검증.
+
 ## 2026-09-23 상세 사진 최대8장 — 배포 대기
 - details 응답 및 캐시 photoReferences의 slice(0,4)를 최대8로 수정. 웹/앱 기존 +장수·전체 확대보기로 소비. 검색/대표사진선정의 상한은 유지.
 - 실제 라우트+모의 Google응답 0/1/4/6/8/10장, 대표사진우선, 단일상세조회, 추가사진다운로드0 검사 통과. 타입 검사 통과. 운영 실제사진/양OS UI 미검증. 아직 배포 안 함.
