@@ -1,3 +1,4 @@
+import { distanceMeters } from "@/lib/geo"
 import { kindFromGoogleTypes } from "@/shared/place-subcategories"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 
@@ -323,4 +324,19 @@ export async function putCachedSearch(key: string, placeIds: string[]): Promise<
   } catch {
     /* 못 넣어도 다음에 다시 받으면 된다 */
   }
+}
+
+/** Visit matching: only fresh public cache rows, no user tracks and no place mutations. */
+export async function readNearbyCachedPlaces(lat: number, lng: number): Promise<{ id: string; name: string; address: string; lat: number; lng: number }[]> {
+  const db = getSupabaseAdmin()
+  if (!db) return []
+  const latDelta = 250 / 111000, lngDelta = Math.min(180, latDelta / Math.max(0.01, Math.cos(lat * Math.PI / 180)))
+  try {
+    const { data, error } = await db.from("places").select("google_place_id,name,address,lat,lng")
+      .gte("lat", lat - latDelta).lte("lat", lat + latDelta).gte("lng", lng - lngDelta).lte("lng", lng + lngDelta)
+      .eq("is_closed", false).gte("last_refreshed_at", new Date(Date.now() - STALE_DAYS * 86400000).toISOString()).limit(80)
+    if (error) return []
+    return (data ?? []).filter(p => p.name && p.google_place_id && p.lat != null && p.lng != null && distanceMeters({ lat, lng }, p) <= 200)
+      .map(p => ({ id: p.google_place_id, name: p.name, address: p.address ?? "", lat: p.lat, lng: p.lng }))
+  } catch { return [] }
 }

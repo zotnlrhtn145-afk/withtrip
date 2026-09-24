@@ -1,3 +1,10 @@
+## 2026-09-24 여행 자동 기록 후보 API — 미배포
+- 신규 POST /api/places/visit-candidates: 기존 shareAuth로 인증, 좌표 검사, HMAC 사용자·UTC날짜별 bump_api_counter 20회 상한/실패 차단. 응답 private,no-store.
+- lib/trip-visit-nearby.ts: 공개 places 캐시200m 우선, 빈 결과일 때 기존 Legacy Nearby 첫 페이지. 0.001도 구역24시간 unstable_cache, 최대7개, 사진/Details 추가 조회·기존 장소 갱신 없음.
+- lib/places-cache.ts readNearbyCachedPlaces 읽기 전용 추가. 방문 원시 좌표 이력·개인 기록 서버 저장 없음. 앱에서 명시 저장한 일정만 기존 trip_schedules 읽기 UI에 반영.
+- scripts/check-visit-candidates.cjs 실제 함수/모의 상위 응답 회귀 통과. 운영 공개 장소 캐시→실제 함수 후보2건 확인. 캐시 미스 Google 실호출은 로컬 서버키 미설정으로 미검증. 배포 후 로그인 인증→실제 캐시 미스 검증 필요.
+- 앱 docs/features/trip-recorder-2026-09-24.md 참조. 이번에는 커밋만, push/운영배포 없음. 기존 eas.json staged/app.json/tsconfig.tsbuildinfo 작업은 본 변경과 무관.
+
 ## 2026-09-24 상세 사진8장 운영배포 완료
 - a3521b2 / dpl_5HZZHcbbj694q1BAcpWfPtbnAYsE READY, www.withtrip.co.kr 연결 확인.
 - 실제 공개 장소 템플리프 사우나&스파 상세 API HTTP200 사진8장, 각8장 모두 HTTP200 image/jpeg 및 비어있지 않은 바이트 확인. /tmp/photos8-production-check.json. 새 클라이언트 조회에 공통적용, 양OS실제UI는 미검증.
