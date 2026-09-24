@@ -1,3 +1,7 @@
+## 2026-09-24 JUJU 일정 사진 번역 상호 대응 — 미배포
+- shared/schedule-cover: 영문 일정명과 한글 상세명 차이로 실제 사진8장이 제외됨. 전화번호+근거리로 동일 업장 확인, 좌표 없으면 전체 전화+정규화 주소 일치 필요. 공항 정책·다른 업장/먼 지점 거부 유지. ScheduleSection에서 주소/전화 전달 및 입력 키 갱신. 앱 shared 동기화.
+- 실제 운영 API를 사용한 이전/수정 함수 비교: 없음→사진 반환, HTTP200 image/png 713978bytes·육안 확인. 모의 오연결 방지 회귀/양 저장소 타입/shared 통과, 로그인 UI는 미검증. DB 변경/운영배포 없음.
+
 ## 2026-09-24 여행 자동 기록 후보 API — 미배포
 - 신규 POST /api/places/visit-candidates: 기존 shareAuth로 인증, 좌표 검사, HMAC 사용자·UTC날짜별 bump_api_counter 20회 상한/실패 차단. 응답 private,no-store.
 - lib/trip-visit-nearby.ts: 공개 places 캐시200m 우선, 빈 결과일 때 기존 Legacy Nearby 첫 페이지. 0.001도 구역24시간 unstable_cache, 최대7개, 사진/Details 추가 조회·기존 장소 갱신 없음.

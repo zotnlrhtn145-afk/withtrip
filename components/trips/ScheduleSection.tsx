@@ -1334,7 +1334,7 @@ export function ScheduleSection({
   }
 
   const [searchedCovers, setSearchedCovers] = useState<Record<string, string>>({})
-  const coverLookupKey = JSON.stringify(visibleItems.map(item => [item.id, item.placeName, item.lat, item.lng]))
+  const coverLookupKey = JSON.stringify(visibleItems.map(item => [item.id, item.placeName, item.lat, item.lng, item.address, item.phoneNumber]))
   useEffect(() => {
     let alive = true
     let cursor = 0
@@ -1342,8 +1342,8 @@ export function ScheduleSection({
     const worker = async () => {
       while (alive && cursor < missing.length) {
         const item = missing[cursor++]
-        const uri = await findScheduleCover({ name: item.placeName, lat: item.lat, lng: item.lng })
-        if (alive && uri) setSearchedCovers(prev => ({ ...prev, [JSON.stringify([item.id, item.placeName, item.lat, item.lng])]: uri }))
+        const uri = await findScheduleCover({ name: item.placeName, lat: item.lat, lng: item.lng, address: item.address, phone: item.phoneNumber })
+        if (alive && uri) setSearchedCovers(prev => ({ ...prev, [JSON.stringify([item.id, item.placeName, item.lat, item.lng, item.address, item.phoneNumber])]: uri }))
       }
     }
     void Promise.all([worker(), worker()])
@@ -1433,7 +1433,7 @@ export function ScheduleSection({
               ))}
             <TimelineItem
               item={item}
-              coverUrl={isAirportSchedule(item.placeName) ? searchedCovers[JSON.stringify([item.id, item.placeName, item.lat, item.lng])] : coverByName.get(`source:${item.sourceId}`) ?? coverByName.get(item.placeName.trim().toLowerCase()) ?? searchedCovers[JSON.stringify([item.id, item.placeName, item.lat, item.lng])]}
+              coverUrl={isAirportSchedule(item.placeName) ? searchedCovers[JSON.stringify([item.id, item.placeName, item.lat, item.lng, item.address, item.phoneNumber])] : coverByName.get(`source:${item.sourceId}`) ?? coverByName.get(item.placeName.trim().toLowerCase()) ?? searchedCovers[JSON.stringify([item.id, item.placeName, item.lat, item.lng, item.address, item.phoneNumber])]}
               isLast={index === visibleItems.length - 1}
               /*
                 다음 일정까지 얼마나 먼가.
