@@ -1,4 +1,5 @@
 "use client"
+import { GoogleMapPermit } from "./google-map-permit"
 import { CURRENT_LOCATION_IMAGE } from "@/shared/current-location-marker"
 
 import { useEffect } from "react"
@@ -36,7 +37,7 @@ export function MiniMap({ lat, lng, user }: { lat: number; lng: number; user?: {
   if (!key || !Number.isFinite(lat) || !Number.isFinite(lng)) return null
   return (
     <div className="h-44 w-full overflow-hidden rounded-xl border border-slate-100">
-      <APIProvider apiKey={key} libraries={["marker"]}>
+      <GoogleMapPermit><APIProvider apiKey={key} libraries={["marker"]}>
         <Map
           defaultCenter={{ lat, lng }}
           defaultZoom={15}
@@ -59,7 +60,7 @@ export function MiniMap({ lat, lng, user }: { lat: number; lng: number; user?: {
             </AdvancedMarker>
           ) : null}
         </Map>
-      </APIProvider>
+      </APIProvider></GoogleMapPermit>
     </div>
   )
 }

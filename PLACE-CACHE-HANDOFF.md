@@ -1,3 +1,13 @@
+## 2026-09-26 Google Maps 10만원 사용 승인 차단 — 서버 배포 준비
+
+- 사용자 요구: 승인 금액 소진 시 새 유료 요청 중단, 추가10만원 매번 명시 승인. 실제 카드 결제 자동화/Google 후불→선불 전환 아님. 초기 승인0/예약0/paused=true(추가 사용 아직 승인하지 않음).
+- 운영 신규 google_maps_budget + approvals + reservations 및 RPC2 적용. RLS, anon/authenticated 테이블·함수 권한 없음, SECURITY INVOKER/search_path 고정. 행 잠금으로 원자 예약; 승인version+UUID 중복 방지. 일/월 자동초기화·자동승인 없음.
+- instrumentation 공통 fetch 직전에 Maps/Places/Geocode/Directions/Matrix 차단. 사진20원, 상세·검색100원, 경로50원(행렬 원소별), 웹지도20원 보수예약. 무료량 미공제·세금환율 여유·1만원 안전금액. 실패/타임아웃도 반환하지 않음. 미지정endpoint/DB오류는차단. Gemini/타프로젝트/직접키사용·기존미청구액은 별개이며 Google 전체청구 하드캡 보장 아님.
+- 웹 지도3곳 공통 GoogleMapPermit에서 생성 전 예약. 앱 현재 PlacesMapNative iOS Apple/Android Maps SDK(공식가격상 무료), 서버조회공통적용. 오래된 WebView 설치/서버외부 스크립트·노출키직접사용은 밖의범위. GoogleConsole 할당량/카드자동청구설정 미변경.
+- 관리자 /_admin/costs: 체크박스+명시확인 10만원승인, assertAdmin 재검사, 매번pause/version조건. 일반 사용자 승인불가. Codex heartbeat automation-3 1시간 확인, 승인된version소진시1회만 알림, 자가승인금지. Mac/Codex 예약실행 가용성에따라 알림 지연가능, 차단은DB/서버에서 독립.
+- 검증: 운영DB rollback 트랜잭션 내900회/9만원 예약→차단→추가승인 재개, 중복승인/오래된version/예약중복/권한검사 통과; 종료 후승인0/예약0/기록0 확인. 실제REST 동시24개 미승인거부/익명승인·조회거부. 함수테스트40개동시차단Google0, 저장사진정상, 신규endpoint/DB장애차단. tsc/production build 통과(지도3곳공통화 후타입재검사). 네이티브 UI와 관리자 실제로그인→승인클릭은 미검증(실제허용승인안함).
+- 기존 관리 보안advisor 경고는 이번범위외; 신규table은 정책없이서버전용INFO만 해당. .zshrc Management token401, execute_sql읽기전용; Supabase apply_migration으로승인된신규구조만 적용.
+
 ## 2026-09-26 저장본 재요청 차단 — 운영 배포 완료
 
 - 운영 a0d1bd9 / Vercel C3Npub1xyfuNgGykgcZ9AXUVPqw1 SUCCESS. 배포 후 운영URL 실제1200px 저장사진→80/320/500/1600 모두 동일파일302, 이미지200 확인.
