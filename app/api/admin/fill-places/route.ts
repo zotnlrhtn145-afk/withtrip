@@ -34,6 +34,9 @@ type Row = { id: string; place_name: string | null; address: string | null; cate
 const VAGUE = new Set(["", "기타", "null", "레스토랑 · 다이닝", "라운지 · 바", "호텔 · 숙박"])
 
 export async function POST(req: Request) {
+  if (process.env.ENABLE_PAID_PLACE_MAINTENANCE !== "true") {
+    return NextResponse.json({ skipped: true, reason: "비용 절감을 위해 유료 일괄 보완을 중지했습니다." })
+  }
   /*
     ⚠️ **서비스 키로 잠근다.** 처음엔 `ADMIN_SESSION_SECRET` 으로 했는데
        로컬과 운영의 값이 달라서 막혔다. 서비스 키는 수파베이스 프로젝트

@@ -1,3 +1,4 @@
+import { after } from "next/server"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 
 /**
@@ -28,20 +29,23 @@ const FLUSH_AT = 25
 /** 뜸해도 이만큼 지나면 보낸다 (ms) */
 const FLUSH_EVERY = 10_000
 let timer: ReturnType<typeof setTimeout> | null = null
-let flushing = false
+let flushing: Promise<void> | null = null
 
-async function flush(): Promise<void> {
-  if (flushing || buffer.length === 0) return
-  flushing = true
-  const rows = buffer.splice(0, buffer.length)
-  try {
-    const c = getSupabaseAdmin()
-    if (c) await c.from("api_calls").insert(rows)
-  } catch {
-    /* 기록 실패는 삼킨다 — 돈 계산이 조금 비는 것보다 요청이 깨지는 게 나쁘다 */
-  } finally {
-    flushing = false
-  }
+function flush(): Promise<void> {
+  if (flushing) return flushing
+  flushing = (async () => {
+    while (buffer.length) {
+      const rows = buffer.splice(0, buffer.length)
+      try {
+        const c = getSupabaseAdmin()
+        if (c) {
+          const { error } = await c.from("api_calls").insert(rows)
+          if (error) console.warn("[api-meter] usage log write failed")
+        }
+      } catch { console.warn("[api-meter] usage log unavailable") }
+    }
+  })().finally(() => { flushing = null })
+  return flushing
 }
 
 function schedule() {
@@ -60,6 +64,8 @@ function schedule() {
 
 export function record(row: Row): void {
   buffer.push(row)
+  // after() keeps request-scoped logging alive on Vercel; timer remains fallback outside a request.
+  try { after(flushNow) } catch { /* background invocation: timer fallback */ }
   schedule()
 }
 
@@ -97,6 +103,7 @@ export function classify(url: string): { vendor: string; endpoint: string } | nu
     if (path.includes("/place/photo")) return { vendor: "google_places", endpoint: "photo" }
     if (path.includes("/place/nearbysearch")) return { vendor: "google_places", endpoint: "textsearch" }
     if (path.includes("/geocode")) return { vendor: "google_geocode", endpoint: "geocode" }
+    if (path.startsWith("/v1/places") && path.endsWith("/media")) return { vendor: "google_places", endpoint: "photo" }
     if (path.startsWith("/v1/places")) return { vendor: "google_places", endpoint: "details" }
     return null
   }

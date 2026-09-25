@@ -17,6 +17,9 @@ import { NextResponse } from "next/server"
 export const maxDuration = 300
 
 export async function GET(req: Request) {
+  if (process.env.ENABLE_PAID_PLACE_MAINTENANCE !== "true") {
+    return NextResponse.json({ skipped: true, reason: "비용 절감을 위해 유료 일괄 보완을 중지했습니다." })
+  }
   /*
     ⚠️ **열쇠가 없으면 잠근다 — 열지 않는다.**
        예전엔 `if (secret && ...)` 이라, `CRON_SECRET` 을 지우는 순간

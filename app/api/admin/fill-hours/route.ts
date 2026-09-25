@@ -68,6 +68,9 @@ async function fetchHours(apiKey: string, placeId: string): Promise<DetailsResul
 }
 
 export async function POST(req: Request) {
+  if (process.env.ENABLE_PAID_PLACE_MAINTENANCE !== "true") {
+    return NextResponse.json({ skipped: true, reason: "비용 절감을 위해 유료 일괄 보완을 중지했습니다." })
+  }
   const secret = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""
   if (!secret || req.headers.get("x-admin-secret") !== secret) {
     return NextResponse.json({ error: "관리자만 쓸 수 있습니다." }, { status: 403 })

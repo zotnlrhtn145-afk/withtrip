@@ -75,6 +75,9 @@ async function fetchRating(placeId: string, apiKey: string): Promise<RefreshResu
 }
 
 export async function GET(request: Request) {
+  if (process.env.ENABLE_PAID_PLACE_MAINTENANCE !== "true") {
+    return NextResponse.json({ skipped: true, reason: "비용 절감을 위해 유료 일괄 보완을 중지했습니다." })
+  }
   // Vercel Cron은 Authorization: Bearer $CRON_SECRET 을 붙여 호출한다.
   const secret = process.env.CRON_SECRET
   if (secret) {

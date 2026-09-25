@@ -449,7 +449,9 @@ export async function GET(request: Request) {
           return toApiItem(cachedToDetails(cached), kind)
         }
 
-        const details = await fetchPlaceDetails(item.place_id, apiKey)
+        const details: GoogleDetailsResult | null = item.name && item.geometry?.location
+          ? { ...item, formatted_address: item.formatted_address ?? item.vicinity }
+          : await fetchPlaceDetails(item.place_id, apiKey)
         if (details) {
           const merged = {
             ...details,
@@ -490,7 +492,7 @@ export async function GET(request: Request) {
     // 새로 받아온 것만 캐시에 기록 (실패해도 응답에는 영향 없음)
     if (toCache.length) await writePlaces(toCache)
 
-    const googleDetailCalls = top.filter((i) => i.place_id).length - cacheHits
+    const googleDetailCalls = top.filter((i) => i.place_id && !cache.has(i.place_id) && !i.name).length
     console.log(
       `[api/places/search] q="${q}" 검색캐시=${cachedIds ? "적중" : "미스"} / Details 캐시적중 ${cacheHits}건 / Details 호출 ${googleDetailCalls}건`
     )
