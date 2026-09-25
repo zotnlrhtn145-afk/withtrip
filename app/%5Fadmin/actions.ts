@@ -324,3 +324,15 @@ export async function loadMoreContentAction(
     | "all"
   return fetchContent(k, { before, days, limit: 15 })
 }
+
+/** Explicit owner approval only. This authorizes usage; it does not charge a card. */
+export async function approveMapsBudgetAction(form: FormData) {
+  await assertAdmin()
+  if (form.get("confirm") !== "approve-100000") throw new Error("10만 원 추가 사용에 동의해 주세요.")
+  const requestId = String(form.get("requestId") ?? "")
+  const version = Number(form.get("version"))
+  if (!/^[0-9a-f-]{36}$/i.test(requestId) || !Number.isSafeInteger(version) || version < 0) throw new Error("잘못된 승인 요청입니다.")
+  const { data, error } = await db().rpc("approve_google_maps_budget", { p_request_id: requestId, p_expected_version: version })
+  if (error || data !== true) throw new Error("승인 상태가 바뀌었습니다. 새로고침 후 다시 확인해 주세요.")
+  revalidatePath("/_admin/costs")
+}

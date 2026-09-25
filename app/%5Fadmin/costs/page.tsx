@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto"
+import { readMapsBudget } from "@/lib/google-maps-budget"
+import { ConfirmSubmit } from "../confirm-button"
 import Link from "next/link"
 
 import {
@@ -12,7 +15,7 @@ import {
   usdKrw,
 } from "@/lib/admin-billing"
 
-import { addRecurringAction, endRecurringAction, setActualCostAction } from "../actions"
+import { approveMapsBudgetAction, addRecurringAction, endRecurringAction, setActualCostAction } from "../actions"
 import { BarAxis, BarChart, RankBars } from "../charts"
 import { dayList, krw, monthOf, recentMonths, seoulToday, usd } from "../format"
 
@@ -68,6 +71,7 @@ export default async function CostsPage({
   }))
 
   const conn = connectionStatus()
+  const budget = await readMapsBudget().catch(() => null)
 
   return (
     <>
@@ -84,6 +88,22 @@ export default async function CostsPage({
           ))}
         </div>
       </div>
+
+      <section className="wt-card" style={{ marginBottom: 20 }}>
+        <h2>구글 지도·장소·사진 사용 승인</h2>
+        <p>{!budget ? "한도를 확인할 수 없어 새 유료 요청을 차단합니다." : budget.paused ? "승인 대기 · 새 유료 요청이 중지되어 있습니다." : "승인된 한도 안에서 사용 중입니다."}</p>
+        {budget && <>
+          <p>누적 승인 {krw(budget.approved_won)}원 · 보수적으로 예약한 사용액 {krw(budget.reserved_won)}원 · 사용 가능 {krw(Math.max(0, budget.approved_won - budget.reserved_won - budget.safety_won))}원</p>
+          <p className="wt-sub">10만 원씩 직접 승인하며 자동 충전·매월 초기화는 없습니다. 1만 원을 안전 여유로 남깁니다. 예약액은 실제 청구액이 아니며 무료 구간을 빼지 않고 세금·환율 여유를 포함해 계산합니다.</p>
+          {budget.paused && <form action={approveMapsBudgetAction}>
+            <input type="hidden" name="requestId" value={randomUUID()} />
+            <input type="hidden" name="version" value={budget.version} />
+            <label><input type="checkbox" name="confirm" value="approve-100000" required /> 추가 10만 원의 API 사용을 승인합니다.</label>
+            <ConfirmSubmit className="wt-btn" message="새 유료 요청을 재개하고 사용 한도를 10만 원 추가하시겠습니까? 카드 결제 버튼이 아니며, 구글의 기존 미청구 비용은 별도입니다.">10만 원 추가 사용 승인</ConfirmSubmit>
+          </form>}
+        </>}
+        <p className="wt-sub">저장된 사진·자료는 계속 이용할 수 있습니다. 구글 결제 방식은 후불로 유지되며 이미 발생한 비용, 다른 프로젝트, 서버를 거치지 않는 키 사용은 이 한도와 별개입니다.</p>
+      </section>
 
       <section className="wt-tiles">
         <div className="wt-tile accent">

@@ -1,4 +1,5 @@
 "use client"
+import { GoogleMapPermit } from "./google-map-permit"
 import type { SearchBounds } from "@/shared/saved-search"
 import { CURRENT_LOCATION_IMAGE } from "@/shared/current-location-marker"
 
@@ -372,6 +373,7 @@ export function NearbyMap({
   const apiKey = googleMapsApiKey()
   const [missingKey] = useState(!apiKey)
 
+
   const handleSelect = useCallback(
     (id: string) => {
       onSelect(id)
@@ -415,7 +417,7 @@ export function NearbyMap({
         className
       )}
     >
-      <APIProvider apiKey={apiKey} libraries={["marker"]}>
+      <GoogleMapPermit><APIProvider apiKey={apiKey} libraries={["marker"]}>
         <div className={cn(fill && "min-h-0 flex-1")}>
           <NearbyMapInner
             center={center}
@@ -437,7 +439,7 @@ export function NearbyMap({
             onSavedDetail={onSavedDetail}
           />
         </div>
-      </APIProvider>
+      </APIProvider></GoogleMapPermit>
 
       {!savedDesign ? <div className="flex items-center justify-between gap-2 border-t border-border px-4 py-2.5">
         <p className="text-xs text-muted-foreground">

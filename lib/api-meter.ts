@@ -1,3 +1,4 @@
+import { mapsCharge, reserveMapsSpend, mapsBudgetBlocked } from "@/lib/google-maps-budget"
 import { after } from "next/server"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 
@@ -137,6 +138,12 @@ export function installFetchMeter(): void {
   const original = globalThis.fetch
   globalThis.fetch = async function metered(input: RequestInfo | URL, init?: RequestInit) {
     const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url
+    const charge = mapsCharge(url)
+    // Reservation is atomic and durable BEFORE any billable dispatch. Never refund
+    // timeouts/errors: Google may have processed a request whose response was lost.
+    if (charge && !(await reserveMapsSpend(charge.operation, charge.units, await callerOf()))) {
+      return mapsBudgetBlocked()
+    }
     const kind = classify(url)
     if (!kind) return original(input as RequestInfo, init)
 

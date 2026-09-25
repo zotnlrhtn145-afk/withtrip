@@ -1,4 +1,5 @@
 "use client"
+import { GoogleMapPermit } from "./google-map-permit"
 
 import { useEffect } from "react"
 import { AdvancedMarker, APIProvider, Map, useMap } from "@vis.gl/react-google-maps"
@@ -130,7 +131,7 @@ export function TripRouteMap({
   const key = apiKey()
   if (!key || stops.length === 0) return null
   return (
-    <APIProvider apiKey={key} libraries={["marker"]}>
+    <GoogleMapPermit><APIProvider apiKey={key} libraries={["marker"]}>
       <Map
         defaultCenter={{ lat: stops[0].lat, lng: stops[0].lng }}
         defaultZoom={13}
@@ -163,6 +164,6 @@ export function TripRouteMap({
           </AdvancedMarker>
         ))}
       </Map>
-    </APIProvider>
+    </APIProvider></GoogleMapPermit>
   )
 }
