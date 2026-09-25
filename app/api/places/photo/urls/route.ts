@@ -83,7 +83,6 @@ export async function POST(request: Request) {
       .from("place_photos")
       .select("photo_ref_hash, storage_path, width")
       .in("photo_ref_hash", [...byHash.keys()])
-      .gte("width", width)
       .order("width", { ascending: false })
 
     for (const row of (data ?? []) as {
@@ -93,7 +92,7 @@ export async function POST(request: Request) {
       // 저장 시점과 무관하게 보관 중인 사진을 바로 제공한다.
       if (!row.storage_path) continue
       const ref = byHash.get(row.photo_ref_hash)
-      if (!ref) continue
+      if (!ref || urls[ref]?.startsWith("https://")) continue
       const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(row.storage_path)
       if (pub?.publicUrl) urls[ref] = pub.publicUrl
     }

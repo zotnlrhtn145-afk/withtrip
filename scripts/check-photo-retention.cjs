@@ -19,6 +19,7 @@ const db = {
   },
   storage: {from:()=>({
     getPublicUrl: path=>({data:{publicUrl:'https://storage.example/'+path}}),
+    list:async()=>({data:[],error:null}),
     upload:async()=>{uploads++;return {error:null};}
   })}
 };
@@ -44,10 +45,10 @@ const request=ref=>new Request('https://example/api/places/photo?ref='+ref+'&w=5
 async function test() {
   rows=[{photo_ref_hash:hash('old'),width:500,storage_path:'old.jpg',fetched_at:'2000-01-01'}];
   const route=load('app/api/places/photo/route.ts',db,{});
-  for(let i=0;i<3;i++) assert.equal((await route.GET(request('old'))).headers.get('location'),'https://storage.example/old.jpg');
+  for(const w of [80,500,1600]) assert.equal((await route.GET(new Request('https://example/api/places/photo?ref=old&w='+w))).headers.get('location'),'https://storage.example/old.jpg');
   assert.equal(upstream,0,'old stored photo needs neither Google key nor request');
   const batch=load('app/api/places/photo/urls/route.ts');
-  const result=await batch.POST(new Request('https://example/api/places/photo/urls',{method:'POST',body:JSON.stringify({refs:['old','missing'],w:500})}));
+  const result=await batch.POST(new Request('https://example/api/places/photo/urls',{method:'POST',body:JSON.stringify({refs:['old','missing'],w:1600})}));
   assert.equal((await result.json()).urls.old,'https://storage.example/old.jpg');
   const fresh=load('app/api/places/photo/route.ts');
   await fresh.GET(request('new')); await fresh.GET(new Request('https://example/api/places/photo?ref=new&w=720')); await fresh.GET(new Request('https://example/api/places/photo?ref=new&w=1600'));

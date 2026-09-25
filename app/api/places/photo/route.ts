@@ -16,14 +16,14 @@ export const runtime = "nodejs"
  *
  * 요청된 사진을 저장하고, 저장본은 기간 만료 없이 모든 이용자가 재사용한다.
  * 2026-09-22 사용자 운영 결정. 저장/전송 비용 및 소스 이용 조건은 별개다.
- * 같은 참조의 큰 저장본을 작은 요청에도 재사용하고, 신규 사진은 1600px 한 번만 확보한다.
+ * 같은 참조의 저장본은 해상도와 무관하게 재사용하고, 신규 사진은 1600px로 확보한다.
  *
  * ⚠️ 이 라우트의 URL 모양은 **절대 바꾸지 않는다.** 이 주소가 그대로
  *    saved_places.image_url 에 저장돼 있고 네이티브 앱도 이 주소를 쓴다.
  *    안에서 어디서 가져오는지만 달라진다.
  *
- * 무슨 일이 있어도 사진은 보여야 한다 — 스토리지·DB가 안 되면
- * 예전처럼 구글로 바로 넘긴다(기능 저하만, 고장 없음).
+ * 저장 여부를 확인하지 못하면 유료 요청을 하지 않는다.
+ * DB 색인이 누락돼도 실제 저장 파일을 먼저 확인한다.
  */
 
 const MIN_WIDTH = 80
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
     : DEFAULT_WIDTH
 
   const apiKey = getApiKey()
-  // New misses share the 1600px master; existing adequate sizes remain reusable.
+  // Existing stored sizes always win; only true misses need a 1600px master.
   return guardedPhoto(`${refHash(ref)}:${width}`, () => loadPhoto(ref, width, apiKey))
 }
 
@@ -100,25 +100,41 @@ async function loadPhoto(ref: string, width: number, apiKey: string, allowRecove
   const admin = getSupabaseAdmin()
   const hash = refHash(ref)
 
-  // ── 1) 저장본은 fetched_at과 관계없이 재사용한다 (구글 호출 없음)
-  if (admin) {
-    try {
-      const { data } = await admin
-        .from("place_photos")
-        .select("storage_path")
-        .eq("photo_ref_hash", hash)
-        .gte("width", width)
-        .order("width", { ascending: true })
-        .limit(1)
-        .maybeSingle()
-
-      if (data?.storage_path) {
-        const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(data.storage_path)
-        if (pub?.publicUrl) return redirectTo(pub.publicUrl, STORED_CACHE_SECONDS)
-      }
-    } catch {
-      // 조회 실패는 무시하고 구글에서 받아온다 — 사진은 어떻게든 보여야 한다
+  // Fail closed: an unavailable index is not evidence that the photo is missing.
+  const unavailable = () => NextResponse.json({ error: "저장된 사진을 잠시 후 다시 불러와 주세요." }, {
+    status: 503, headers: { "Cache-Control": "no-store", "Retry-After": "30" },
+  })
+  if (!admin) return unavailable()
+  try {
+    const { data, error } = await admin.from("place_photos")
+      .select("storage_path")
+      .eq("photo_ref_hash", hash)
+      .order("width", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (error) return unavailable()
+    if (data?.storage_path) {
+      const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(data.storage_path)
+      return pub?.publicUrl ? redirectTo(pub.publicUrl, STORED_CACHE_SECONDS) : unavailable()
     }
+
+    // Upload may have succeeded while the index write failed. Recover that exact
+    // reference's file, never substitute a different photo based on its place/name.
+    const prefix = hash.slice(0, 2)
+    const { data: files, error: listError } = await admin.storage.from(BUCKET)
+      .list(prefix, { search: `${hash}_`, limit: 100 })
+    if (listError || !files) return unavailable()
+    const pattern = new RegExp(`^${hash}_(\\d+)\\.(jpg|png|webp)$`)
+    const stored = files.map(file => ({ file, match: file.name.match(pattern) }))
+      .filter(item => item.match && Number(item.match[1]) > 0)
+      .sort((a, b) => Number(b.match![1]) - Number(a.match![1]))[0]
+    if (stored) {
+      const path = `${prefix}/${stored.file.name}`
+      const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(path)
+      return pub?.publicUrl ? redirectTo(pub.publicUrl, STORED_CACHE_SECONDS) : unavailable()
+    }
+  } catch {
+    return unavailable()
   }
 
   // ── 2) 저장본이 없을 때만 구글에서 받아온다. 기존 저장본은 키 없이도 제공한다.
