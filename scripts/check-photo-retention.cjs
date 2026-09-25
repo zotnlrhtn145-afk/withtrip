@@ -10,6 +10,7 @@ const db = {
     let filters = [];
     const q = {
       select() { return q; }, eq(k,v) { filters.push(r=>r[k]===v); return q; },
+      gte(k,v) { filters.push(r=>r[k]>=v); return q; }, order() { return q; }, limit() { return q; },
       in(k,v) { filters.push(r=>v.includes(r[k])); return q; },
       maybeSingle: async()=>({data: rows.find(r=>filters.every(f=>f(r))) ?? null}),
       upsert: async row=>{ rows.push(row); return {error:null}; },
@@ -49,7 +50,7 @@ async function test() {
   const result=await batch.POST(new Request('https://example/api/places/photo/urls',{method:'POST',body:JSON.stringify({refs:['old','missing'],w:500})}));
   assert.equal((await result.json()).urls.old,'https://storage.example/old.jpg');
   const fresh=load('app/api/places/photo/route.ts');
-  await fresh.GET(request('new')); await fresh.GET(request('new'));
+  await fresh.GET(request('new')); await fresh.GET(new Request('https://example/api/places/photo?ref=new&w=720')); await fresh.GET(new Request('https://example/api/places/photo?ref=new&w=1600'));
   assert.equal(upstream,1); assert.equal(uploads,1);
   const bad=load('app/api/places/photo/route.ts',db,{GOOGLE_PLACES_API_KEY:'test'},async()=>new Response('html',{headers:{'content-type':'text/html'}}));
   assert.equal((await bad.GET(request('invalid'))).status,502);

@@ -16,7 +16,7 @@ export const runtime = "nodejs"
  *
  * 요청된 사진을 저장하고, 저장본은 기간 만료 없이 모든 이용자가 재사용한다.
  * 2026-09-22 사용자 운영 결정. 저장/전송 비용 및 소스 이용 조건은 별개다.
- * 사진 참조와 요청 해상도가 같은 경우 공유하며, 다른 해상도는 별도 확보한다.
+ * 같은 참조의 큰 저장본을 작은 요청에도 재사용하고, 신규 사진은 1600px 한 번만 확보한다.
  *
  * ⚠️ 이 라우트의 URL 모양은 **절대 바꾸지 않는다.** 이 주소가 그대로
  *    saved_places.image_url 에 저장돼 있고 네이티브 앱도 이 주소를 쓴다.
@@ -92,10 +92,11 @@ export async function GET(request: Request) {
     : DEFAULT_WIDTH
 
   const apiKey = getApiKey()
+  // New misses share the 1600px master; existing adequate sizes remain reusable.
   return guardedPhoto(`${refHash(ref)}:${width}`, () => loadPhoto(ref, width, apiKey))
 }
 
-async function loadPhoto(ref: string, width: number, apiKey: string, allowRecovery = true) {
+async function loadPhoto(ref: string, width: number, apiKey: string, allowRecovery = true): Promise<Response> {
   const admin = getSupabaseAdmin()
   const hash = refHash(ref)
 
@@ -106,7 +107,9 @@ async function loadPhoto(ref: string, width: number, apiKey: string, allowRecove
         .from("place_photos")
         .select("storage_path")
         .eq("photo_ref_hash", hash)
-        .eq("width", width)
+        .gte("width", width)
+        .order("width", { ascending: true })
+        .limit(1)
         .maybeSingle()
 
       if (data?.storage_path) {
@@ -129,6 +132,9 @@ async function loadPhoto(ref: string, width: number, apiKey: string, allowRecove
        새 형식을 옛 주소에 넣으면 502 가 난다 — 실제로 그렇게 깨졌다.
        어느 쪽이든 받아 준다.
   */
+  if (width !== MAX_WIDTH) {
+    return guardedPhoto(`${hash}:${MAX_WIDTH}`, () => loadPhoto(ref, MAX_WIDTH, apiKey, allowRecovery))
+  }
   const isNewRef = ref.startsWith("places/")
   const target = isNewRef
     ? new URL(`https://places.googleapis.com/v1/${ref}/media`)
@@ -155,7 +161,22 @@ async function loadPhoto(ref: string, width: number, apiKey: string, allowRecove
       try {
         const recovered = await recoverPlacePhoto(ref, width, apiKey,
           next => loadPhoto(next, width, apiKey, false))
-        if (recovered) return recovered
+        if (recovered) {
+          // Remember an expired reference as an alias to the repaired stored photo.
+          // Old installed apps must not pay for the same failed ref on every request.
+          const location = recovered.headers.get("location")
+          const base = admin?.storage.from(BUCKET).getPublicUrl("").data.publicUrl
+          if (admin && location && base && location.startsWith(base)) {
+            const storagePath = location.slice(base.length).replace(/^\/+/, "")
+            if (storagePath && !storagePath.includes("?") && !storagePath.includes("..")) {
+              await admin.from("place_photos").upsert({
+                photo_ref_hash: hash, width, storage_path: storagePath,
+                fetched_at: new Date().toISOString(),
+              }, { onConflict: "photo_ref_hash,width" })
+            }
+          }
+          return recovered
+        }
       } catch { console.warn("[photo-recovery] temporary failure") }
     }
     return NextResponse.json({ error: "사진을 가져오지 못했습니다." }, { status: 502 })

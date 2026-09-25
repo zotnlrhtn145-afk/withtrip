@@ -81,9 +81,10 @@ export async function POST(request: Request) {
     const byHash = new Map(refs.map((r) => [refHash(r), r]))
     const { data } = await admin
       .from("place_photos")
-      .select("photo_ref_hash, storage_path")
+      .select("photo_ref_hash, storage_path, width")
       .in("photo_ref_hash", [...byHash.keys()])
-      .eq("width", width)
+      .gte("width", width)
+      .order("width", { ascending: false })
 
     for (const row of (data ?? []) as {
       photo_ref_hash: string

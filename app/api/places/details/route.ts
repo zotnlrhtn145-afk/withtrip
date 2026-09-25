@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache"
+import { openState } from "@/shared/opening-hours"
 import { preferredPhotoRefs } from "@/shared/place-photo-policy"
 import { readPlaceByGoogleId } from "@/lib/places-cache"
 import { NextResponse } from "next/server"
@@ -111,6 +113,14 @@ async function fetchDetails(apiKey: string, placeId: string): Promise<DetailsRes
   return json.result
 }
 
+// Persist by place ID, independent of q/lat/lng/visitor and across server instances.
+// Do not cache failures. Opening state is calculated at response time, never frozen.
+const readDetails = unstable_cache(async (placeId: string) => {
+  const result = await fetchDetails(getApiKey(), placeId)
+  if (!result) throw new Error("장소 상세를 불러오지 못했습니다.")
+  return result
+}, ["place-details-cost-v1-ko"], { revalidate: 86400 })
+
 /**
  * GET /api/places/details?q=<장소명>&lat=&lng=&placeId=
  * 장소 상세: 대표 사진(최대 8)·영업시간·영업중 여부·카테고리·설명 등.
@@ -140,11 +150,8 @@ export async function GET(request: Request) {
     }
     if (!placeId) return NextResponse.json({ detail: null })
 
-    // ⚠️ 상세는 영업시간/영업중 여부(open_now)를 보여주므로 캐시로 대체하지 않는다.
-    //    (실시간 정보를 캐시하면 "영업중"이 틀리게 표시됨 + 구글 정책상으로도 부적절)
-    //    대신 받아온 결과를 캐시에 써넣어서 검색 API가 재활용하게 한다.
-    const r = await fetchDetails(apiKey, placeId)
-    if (!r) return NextResponse.json({ detail: null })
+    const r = await readDetails(placeId)
+    const state = openState(r.opening_hours?.periods, utcOffsetOf(r))
 
     const chosen = await readPlaceByGoogleId(r.place_id ?? placeId)
     const orderedPhotos = preferredPhotoRefs((r.photos ?? []).map(p => p.photo_reference ?? ""), chosen?.cover_photo_reference).map(photo_reference => ({ photo_reference }))
@@ -207,7 +214,7 @@ export async function GET(request: Request) {
         priceLevel: typeof r.price_level === "number" ? r.price_level : null,
         types: r.types ?? [],
         summary: r.editorial_summary?.overview ?? "",
-        openNow: typeof r.opening_hours?.open_now === "boolean" ? r.opening_hours.open_now : null,
+        openNow: state.state === "unknown" ? null : state.state === "open" || state.state === "always",
         hours: r.opening_hours?.weekday_text ?? [],
         /* 앱·웹이 현지 시각으로 직접 판단할 수 있게 숫자도 같이 준다 */
         periods: r.opening_hours?.periods ?? [],
@@ -217,7 +224,7 @@ export async function GET(request: Request) {
         photos,
       },
       },
-      { headers: { "Cache-Control": "public, s-maxage=86400, max-age=3600, stale-while-revalidate=604800" } }
+      { headers: { "Cache-Control": "public, s-maxage=60, max-age=60" } }
     )
   } catch (error) {
     const message = error instanceof Error ? error.message : "장소 상세 조회 실패"
