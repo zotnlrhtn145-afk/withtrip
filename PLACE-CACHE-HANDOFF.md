@@ -708,3 +708,8 @@ anon 키는 브라우저에 공개돼 있어 **누구나 실제 google_place_id 
 ## 참고 (정직하게 사용자에게 전달할 점)
 - 목록 조회 비용은 이미 saved_places 캐싱으로 상당 부분 절감돼 있음. 이번 작업의 큰 실익은 (a) place_id 중복방지 (b) 평점 주1회 갱신 (c) 검색/Details 호출에 대한 상한·세션토큰 관리.
 - 반드시 각 DB 단계 전에 사용자 확인. 백업 없이는 시작 금지.
+
+## 2026-09-26 저장 사진 상세 영업시간 복구 · 길찾기 좌표 우선
+- `readStoredPlaceDetail`이 저장 사진 fallback에서 hours/periods/utcOffsetMin을 비우던 회귀 수정. DB의 hours_text/opening_periods/utc_offset_min을 그대로 보존하고 openState로 현재 영업 상태 계산. 운영 1f0b781 배포 성공.
+- 신고 장소 포항 순이 실제 운영 상세 응답: 사진 4장, 요일 7개, periods 7개, UTC+540. 실제 저장소 이미지 4개 모두 200, helper 검증은 Google 호출 0. 실기기 화면 갱신은 미검증.
+- 앱·웹 Google 길찾기 목적지는 유효한 좌표를 우선. 좌표가 없으면 앱은 주소 우선, 웹은 전달받은 검색어 사용. 동명이점 잘못 연결 방지. iOS/Android URL 전달 모의 검사 및 양쪽 TypeScript 통과. 외부 지도 앱 실제 실행·선택창 문제는 아직 미검증이며 사용자 증상 단계 답변 대기.

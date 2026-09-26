@@ -7,7 +7,8 @@ export type NavDestination = {
 
 /** 좌표가 유효한 숫자로 둘 다 있는지 확인. */
 function hasCoords(dest: NavDestination): dest is NavDestination & { lat: number; lng: number } {
-  return typeof dest.lat === "number" && typeof dest.lng === "number"
+  return typeof dest.lat === "number" && Number.isFinite(dest.lat) && Math.abs(dest.lat) <= 90
+    && typeof dest.lng === "number" && Number.isFinite(dest.lng) && Math.abs(dest.lng) <= 180
 }
 
 const TMAP_ANDROID_PACKAGE = "com.skt.tmap.ku"
@@ -119,7 +120,7 @@ export function openUberDirections(dest: NavDestination) {
 
 /**
  * Universal, worldwide Google Maps directions.
- * 목적지를 좌표 대신 업장 이름으로 넣어 이름이 표시되게 한다(없으면 좌표).
+ * 동명이점으로 이동하지 않도록 유효한 목적지 좌표를 우선한다.
  *
  * ⚠️ 구글은 한국 내 자동차·도보 경로를 제공하지 않는다(지도 데이터 반출 규제 → 국내는 대중교통만).
  *   travelmode 를 강제하지 않는 이유: 현재 위치가 한국이면 자가용 경로가 "범위 초과" 오류를 낸다.
@@ -128,7 +129,7 @@ export function openUberDirections(dest: NavDestination) {
  */
 export function buildGoogleMapsDirectionsUrl(dest: NavDestination): string {
   const name = dest.name?.trim()
-  const destination = name ? encodeURIComponent(name) : `${dest.lat},${dest.lng}`
+  const destination = hasCoords(dest) ? `${dest.lat},${dest.lng}` : encodeURIComponent(name || "")
   return `https://www.google.com/maps/dir/?api=1&destination=${destination}`
 }
 
@@ -141,7 +142,7 @@ export function openGoogleMapsDirections(dest: NavDestination) {
 export function openGoogleTransitDirections(dest: NavDestination) {
   if (typeof window === "undefined") return
   const name = dest.name?.trim()
-  const destination = name ? encodeURIComponent(name) : `${dest.lat},${dest.lng}`
+  const destination = hasCoords(dest) ? `${dest.lat},${dest.lng}` : encodeURIComponent(name || "")
   window.open(
     `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=transit`,
     "_blank",
