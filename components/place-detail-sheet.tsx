@@ -311,7 +311,7 @@ function PlaceDetailContents({
    *    갈아끼워진다. 그때 **크기가 제각각이라 화면이 튀고 깨져 보였다.**
    *    폭을 하나로 맞춰 받는다 — 바뀌어도 같은 자리에 같은 크기로 들어온다.
    */
-  const photos = (detail?.photos?.length ? detail.photos : place.imageUrl ? [place.imageUrl] : [])
+  const photos = (detail?.photos?.length ? detail.photos : place.imageUrl ? [place.imageUrl] : []).slice(0, 4)
     .filter(Boolean)
     .map((u) => resizePlacePhotoUrl(u, PHOTO_W.card))
   const name = place.name || detail?.name || "장소"
