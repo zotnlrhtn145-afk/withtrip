@@ -1,3 +1,4 @@
+import { openState } from "@/shared/opening-hours"
 import { createHash } from "node:crypto"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import { preferredPhotoRefs } from "@/shared/place-photo-policy"
@@ -8,7 +9,7 @@ export async function readStoredPlaceDetail(placeId: string) {
   const db = getSupabaseAdmin()
   if (!db) return null
   const { data: p, error } = await db.from("places")
-    .select("google_place_id,name,address,phone,rating,rating_count,price_level,google_types,lat,lng,photo_references,cover_photo_reference")
+    .select("google_place_id,name,address,phone,rating,rating_count,price_level,google_types,lat,lng,photo_references,cover_photo_reference,opening_periods,hours_text,utc_offset_min")
     .eq("google_place_id", placeId).maybeSingle()
   if (error || !p) return null
   const refs = preferredPhotoRefs(p.photo_references ?? [], p.cover_photo_reference).slice(0, 30)
@@ -28,7 +29,11 @@ export async function readStoredPlaceDetail(placeId: string) {
       if (photos.length === 4) break
     }
   }
+  const periods = Array.isArray(p.opening_periods) ? p.opening_periods : []
+  const hours = Array.isArray(p.hours_text) ? p.hours_text : []
+  const offset = typeof p.utc_offset_min === "number" ? p.utc_offset_min : null
+  const state = openState(periods, offset)
   return { placeId:p.google_place_id,name:p.name,address:p.address ?? "",phone:p.phone ?? "",
     rating:p.rating,reviewCount:p.rating_count,priceLevel:p.price_level,types:p.google_types ?? [],
-    summary:"",openNow:null,hours:[],periods:[],utcOffsetMin:null,lat:p.lat,lng:p.lng,photos,source:"stored" }
+    summary:"",openNow:state.state === "unknown" ? null : state.state === "open" || state.state === "always",hours,periods,utcOffsetMin:offset,lat:p.lat,lng:p.lng,photos,source:"stored" }
 }
