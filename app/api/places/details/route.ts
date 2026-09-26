@@ -1,3 +1,4 @@
+import { readStoredPlaceDetail } from "@/lib/stored-place-detail"
 import { unstable_cache } from "next/cache"
 import { openState } from "@/shared/opening-hours"
 import { preferredPhotoRefs } from "@/shared/place-photo-policy"
@@ -123,7 +124,7 @@ const readDetails = unstable_cache(async (placeId: string) => {
 
 /**
  * GET /api/places/details?q=<장소명>&lat=&lng=&placeId=
- * 장소 상세: 대표 사진(최대 8)·영업시간·영업중 여부·카테고리·설명 등.
+ * 장소 상세: 대표 사진(최대 4)·영업시간·영업중 여부·카테고리·설명 등.
  */
 export async function GET(request: Request) {
   const apiKey = getApiKey()
@@ -156,7 +157,7 @@ export async function GET(request: Request) {
     const chosen = await readPlaceByGoogleId(r.place_id ?? placeId)
     const orderedPhotos = preferredPhotoRefs((r.photos ?? []).map(p => p.photo_reference ?? ""), chosen?.cover_photo_reference).map(photo_reference => ({ photo_reference }))
     const photos = orderedPhotos
-      .slice(0, 8)
+      .slice(0, 4)
       .map((p) =>
         p.photo_reference
           ? buildPlacePhotoProxyUrl(p.photo_reference, 720, resolveRequestOrigin(request.url))
@@ -187,7 +188,7 @@ export async function GET(request: Request) {
           priceLevel: typeof r.price_level === "number" ? r.price_level : null,
           googleTypes: r.types ?? null,
           photoReferences: (r.photos ?? [])
-            .slice(0, 8)
+            .slice(0, 4)
             .map((p) => p.photo_reference ?? "")
             .filter(Boolean),
           phone: r.formatted_phone_number ?? null,
@@ -227,6 +228,8 @@ export async function GET(request: Request) {
       { headers: { "Cache-Control": "public, s-maxage=60, max-age=60" } }
     )
   } catch (error) {
+    const stored = await readStoredPlaceDetail(placeId).catch(() => null)
+    if (stored) return NextResponse.json({ detail: stored }, { headers: { "Cache-Control": "no-store" } })
     const message = error instanceof Error ? error.message : "장소 상세 조회 실패"
     return NextResponse.json({ error: message }, { status: 500 })
   }
