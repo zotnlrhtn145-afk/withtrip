@@ -1,3 +1,10 @@
+## 2026-09-26 한도 소진 앱 알림 — 운영 적용
+
+- 사용자 요청: 위드트립+Codex 알림. 시간별AI조회비용 피하려 automation-3 삭제 완료. Codex 외부이벤트 수신 공식 연결 수단은 현도구에서 미확인, Codex알림 미구현; 반복AI 작업 재생성하지 않음.
+- migration 20260926020931: budget notification_user_id를 기존단일관리자계정에 연결, 소진UPDATE 트리거→announcement 알림→기존wt_push_notify. 승인version별 ledger PK로한번만, 초기version0무알림. RLS서버전용/SECURITY INVOKER. 기존한도/승인액/자동결제 변경 없음.
+- 운영rollback검증 초기무알림·같은version반복1건·다음version1건 통과, 실제승인0/예약0/version0/paused유지확인. 실테스트알림1건 저장 및 기존웹훅응답200 ok=true sent=2. 단말수신/OS배너와 Expo개별전달영수증은 미검증.
+- 소진시에만DB/푸시실행, 시간별Codex사용량없음. 관리자비용화면에서추가사용승인 필요(실제선불결제/충전잔액이아님). 앱기존공지알림 사용, 새UI/빌드/OTA 없음.
+
 ## 2026-09-26 다음 빌드 대기: 장소 상세 사진 최대4장
 
 - 사용자 비용 절감 요청으로 details 서버 응답·새 캐시 photoReferences 최대8→4. 웹 상세 및 앱 상세의 기존 캐시 응답도 최대4장으로 제한하여 확대보기에서5~8장 요청 방지. 기존 저장 이미지 파일은 삭제하지 않음.
