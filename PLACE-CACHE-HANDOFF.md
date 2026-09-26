@@ -1,3 +1,10 @@
+## 2026-09-26 찜 상세 사진1장 복구 — 서버 운영완료/앱 다음빌드
+
+- 원인: 유료 readDetails 실패 시 전체응답500→앱 대표1장 fallback. 운영97ecc5d SUCCESS: readStoredPlaceDetail이 기존places+place_photos에서실제저장경로 최대4장 직접반환; 같은참조 최고해상도·URL중복제거. 별도Google조회없음. 캐시영업시간은 추정않고unknown/빈값으로반환.
+- 4장 제한 서버·웹도 이 배포에 포함. 웹 기존googlePlaceId전달. 앱도googlePlaceId전달변경/4장상한은 다음네이티브빌드대기; EAS/OTA없음.
+- 운영 실제상세200 source=stored photos4, 네이미지모두200/image 확인. 실제저장소helper도4장/Google0, 라우트모의503→저장detail200 회귀통과. 앱·웹타입통과. 양OS실기기UI 미검증. 저장본1장인업장은 새유료조회승인없이4장채울수없음.
+- 초기검증script target미지정으로Set순회실패; ES2022로수정후실저장본통과. 데이터색인오류로확정하지말것.
+
 ## 2026-09-26 한도 소진 앱 알림 — 운영 적용
 
 - 사용자 요청: 위드트립+Codex 알림. 시간별AI조회비용 피하려 automation-3 삭제 완료. Codex 외부이벤트 수신 공식 연결 수단은 현도구에서 미확인, Codex알림 미구현; 반복AI 작업 재생성하지 않음.

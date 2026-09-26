@@ -1,3 +1,4 @@
+import { readStoredPlaceDetail } from "@/lib/stored-place-detail"
 import { unstable_cache } from "next/cache"
 import { openState } from "@/shared/opening-hours"
 import { preferredPhotoRefs } from "@/shared/place-photo-policy"
@@ -227,6 +228,8 @@ export async function GET(request: Request) {
       { headers: { "Cache-Control": "public, s-maxage=60, max-age=60" } }
     )
   } catch (error) {
+    const stored = await readStoredPlaceDetail(placeId).catch(() => null)
+    if (stored) return NextResponse.json({ detail: stored }, { headers: { "Cache-Control": "no-store" } })
     const message = error instanceof Error ? error.message : "장소 상세 조회 실패"
     return NextResponse.json({ error: message }, { status: 500 })
   }

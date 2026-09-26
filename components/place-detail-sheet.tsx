@@ -274,6 +274,7 @@ function PlaceDetailContents({
     setDetail(null)
     setLoading(true)
     const params = new URLSearchParams({ q: place.name })
+    if (place.googlePlaceId) params.set("placeId", place.googlePlaceId)
     if (place.lat != null && place.lng != null) {
       params.set("lat", String(place.lat))
       params.set("lng", String(place.lng))
