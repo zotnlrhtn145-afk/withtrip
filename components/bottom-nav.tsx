@@ -3,15 +3,14 @@
 import { useEffect, useState, type MouseEvent } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { motion, useReducedMotion } from "framer-motion"
-import { Compass, Heart, CircleUserRound, type LucideIcon } from "lucide-react"
+import { Compass, Heart, type LucideIcon } from "lucide-react"
 
 
 export type NavKey = "home" | "friends" | "spots" | "settlement" | "mypage" | "saved"
 
 export const navItems: { key: NavKey; label: string; icon: LucideIcon }[] = [
-  { key: "home", label: "여행", icon: Compass },
+  { key: "home", label: "일정", icon: Compass },
   { key: "saved", label: "찜", icon: Heart },
-  { key: "mypage", label: "프로필", icon: CircleUserRound },
 ]
 
 function toHref(key: NavKey): string {
@@ -81,18 +80,18 @@ export function BottomNav({
   if (pathname === "/saved" || pathname.startsWith("/saved/")) return null
   return (
     <nav aria-label="주요 메뉴"
-      style={{ bottom: "max(16px, env(safe-area-inset-bottom))", width: compact ? 210 : "calc(100% - 44px)", maxWidth: 396, padding: compact ? "4px 8px" : "6px 10px", transition: reduced ? "none" : "width 350ms cubic-bezier(.22,1,.36,1), padding 350ms cubic-bezier(.22,1,.36,1)" }}
+      style={{ bottom: "max(16px, env(safe-area-inset-bottom))", width: compact ? 160 : "calc(100% - 44px)", maxWidth: 264, padding: compact ? "4px 8px" : "6px 10px", transition: reduced ? "none" : "width 350ms cubic-bezier(.22,1,.36,1), padding 350ms cubic-bezier(.22,1,.36,1)" }}
       className="fixed inset-x-0 z-20 mx-auto rounded-[38px] border border-[#f6f7f6] bg-[#fffffff5] shadow-[0_5px_26px_#202a3210] backdrop-blur-[16px] md:hidden">
       <ul className="m-0 flex list-none items-center gap-[6px] p-0">
         {navItems.map(item => {
           const selected = item.key === active
-          return <motion.li key={item.key} initial={false} animate={{ flex: selected && !compact ? 1.8 : 1 }} transition={{ duration: reduced ? 0 : .35, ease: [.22, 1, .36, 1] }} className="min-w-11">
+          return <motion.li key={item.key} initial={false} animate={{ flex: 1 }} transition={{ duration: reduced ? 0 : .35, ease: [.22, 1, .36, 1] }} className="min-w-11">
             <motion.button type="button" aria-label={item.label} aria-current={selected ? "page" : undefined}
               onClick={event => handleTabClick(event, item.key)} whileTap={reduced ? undefined : { scale: .93 }}
-              style={{ gap: selected && !compact ? 9 : 0 }}
+              style={{ gap: !compact ? 9 : 0 }}
               className="flex min-h-12 w-full min-w-11 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-amber-400">
               <ReferenceNavIcon item={item} selected={selected} compact={compact} reduced={!!reduced} />
-              <span style={{ maxWidth: selected && !compact ? 60 : 0, opacity: selected && !compact ? 1 : 0, transition: reduced ? "none" : "max-width 220ms, opacity 220ms" }} className="overflow-hidden text-[14px] font-[650] whitespace-nowrap text-[#182126]">{item.label}</span>
+              <span style={{ maxWidth: !compact ? 60 : 0, opacity: !compact ? 1 : 0, transition: reduced ? "none" : "max-width 220ms, opacity 220ms" }} className="overflow-hidden text-[14px] font-[650] whitespace-nowrap text-[#182126]">{item.label}</span>
             </motion.button>
           </motion.li>
         })}
