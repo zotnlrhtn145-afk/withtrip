@@ -40,3 +40,10 @@
 .filterButtons button>span{grid-row:2;line-height:16px}
 .filterButtons{overflow-x:auto}
 .filterButtons button:last-child{flex:1 0 44px;margin-left:4px}
+
+/* Figma 444:4902 — 장소 정보 위계. 필터·버튼 규격은 유지. */
+.name{font-size:22px;line-height:31px;padding-top:18px;padding-bottom:8px}
+.meta{font-size:15px;line-height:23px;color:#182430}
+.meta b{flex-basis:100%;font-size:16px;line-height:24px;font-weight:700}
+.details{font-size:15px;line-height:23px;color:#182430}
+.card .addressLink{font-size:15px;line-height:23px;color:#182430;margin-top:18px;min-height:44px}

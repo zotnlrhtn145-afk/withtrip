@@ -1,0 +1,10 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict'),ts=require('typescript');
+const code=ts.transpileModule(fs.readFileSync(require('path').join(__dirname,'../shared/opening-hours.ts'),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
+const box={exports:{}};vm.runInNewContext(code,box);const {openingPresentation:p,openingWeekdayIndex:d}=box.exports;
+const periods=[{open:{day:1,time:'1100'},close:{day:1,time:'1500'}},{open:{day:1,time:'1600'},close:{day:1,time:'2200'}}];
+for(const [time,expected] of [['10:20','오픈 전 · 40분 뒤 오픈'],['14:45','영업 중 · 15분 뒤 브레이크타임'],['15:30','브레이크타임 · 30분 뒤 영업 재개'],['21:35','영업 중 · 25분 뒤 마감'],['22:00','영업 종료']])assert.equal(p(periods,540,Date.parse(`2026-09-28T${time}:00+09:00`)).text,expected);
+assert.equal(p(null,540).tone,'none');assert.equal(p(periods,null).tone,'none');assert.equal(p([{open:{day:0,time:'0000'}}],540).text,'24시간');
+assert.equal(p([{open:{day:6,time:'2300'},close:{day:0,time:'0200'}}],540,Date.parse('2026-09-27T01:35:00+09:00')).text,'영업 중 · 25분 뒤 마감');
+assert.equal(d(-420,Date.parse('2026-09-28T01:00:00Z')),6);assert.equal(d(540,Date.parse('2026-09-28T01:00:00Z')),0);assert.equal(d(null),null);
+assert.equal(p(periods,540,Date.parse('2026-09-28T14:59:45+09:00')).text,'영업 중 · 1분 뒤 브레이크타임');
+console.log('PASS 12 cases: open/break/reopen/close, seconds, overnight/week rollover, timezone, unknown, 24h');

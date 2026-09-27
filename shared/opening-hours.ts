@@ -170,3 +170,32 @@ export function openLabel(s: OpenState): { text: string; tone: "good" | "warn" |
       return { text: "", tone: "none" }
   }
 }
+
+
+/** 화면 카운트다운. 저장된 시간표만 사용하며 네트워크 요청을 만들지 않는다. */
+export function openingPresentation(periods: Period[] | null | undefined, utcOffsetMin: number | null | undefined, nowMs = Date.now()): ReturnType<typeof openLabel> {
+  const state = openState(periods, utcOffsetMin, nowMs)
+  const fallback = openLabel(state)
+  if (!periods?.length || utcOffsetMin == null || !Number.isFinite(utcOffsetMin) || state.state === "unknown" || state.state === "always") return fallback
+  const local = new Date(nowMs + utcOffsetMin * 60_000)
+  const at = local.getUTCDay() * 1440 + local.getUTCHours() * 60 + local.getUTCMinutes() + local.getUTCSeconds() / 60
+  const list = spans(periods)
+  const current = list.find(s => at >= s.from && at < s.to)
+  if (current) {
+    const next = list.find(s => s.from > current.to)
+    const isBreak = !!next && Math.floor(next.from / 1440) === Math.floor(current.from / 1440)
+    const minutes = Math.max(1, Math.ceil(current.to - at))
+    return { text: `영업 중 · ${minutes}분 뒤 ${isBreak ? "브레이크타임" : "마감"}`, tone: isBreak || minutes <= 60 ? "warn" : "good" }
+  }
+  if (state.state === "break" || (state.state === "closed" && state.reason === "before")) {
+    const next = list.find(s => s.from > at)
+    if (next) return { text: `${state.state === "break" ? "브레이크타임" : "오픈 전"} · ${Math.max(1, Math.ceil(next.from - at))}분 뒤 ${state.state === "break" ? "영업 재개" : "오픈"}`, tone: state.state === "break" ? "warn" : "good" }
+  }
+  return fallback
+}
+
+/** Google weekday_text는 월~일 순서. 기기 대신 업장 현지 요일 사용. */
+export function openingWeekdayIndex(utcOffsetMin: number | null | undefined, nowMs = Date.now()): number | null {
+  if (utcOffsetMin == null || !Number.isFinite(utcOffsetMin)) return null
+  return (new Date(nowMs + utcOffsetMin * 60_000).getUTCDay() + 6) % 7
+}

@@ -1,4 +1,6 @@
 "use client"
+import { PlaceOpeningStatus } from "./place-opening-status"
+import { openingPresentation, openingWeekdayIndex, type Period } from "@/shared/opening-hours"
 import { ZoomablePhoto } from "./zoomable-photo"
 import { WorldBestBadges } from "./world-best-badges"
 
@@ -56,16 +58,15 @@ type ApiDetail = {
   types: string[]
   summary: string
   openNow: boolean | null
+  periods?: Period[]
+  utcOffsetMin?: number | null
   hours: string[]
   lat: number | null
   lng: number | null
   photos: string[]
 }
 
-const todayIdx = (() => {
-  const js = new Date().getDay() // 0=일
-  return js === 0 ? 6 : js - 1 // google weekday_text: 월~일
-})()
+
 
 export function PlaceDetailSheet(props: ComponentProps<typeof PlaceDetailContents>) {
   const reduced = useReducedMotion()
@@ -108,6 +109,8 @@ function PlaceDetailContents({
   /** 가게 열쇠를 방금 채웠을 때 — 목록의 그 행도 같이 맞춘다 */
   onGooglePlaceId?: (savedPlaceId: string, googlePlaceId: string) => void
 }) {
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  useEffect(() => { const id = setInterval(() => setNowMs(Date.now()), 30_000); return () => clearInterval(id) }, [])
   const [michelin, setMichelin] = useState<MichelinDetail | null>(null)
   useEffect(() => {
     let cancelled = false
@@ -321,6 +324,8 @@ function PlaceDetailContents({
   const address = detail?.address || place.address || ""
   const rating = detail?.rating ?? place.rating ?? null
   const reviewCount = detail?.reviewCount ?? place.reviewCount ?? null
+  const todayIdx = openingWeekdayIndex(detail?.utcOffsetMin, nowMs)
+  const hoursStatus = openingPresentation(detail?.periods, detail?.utcOffsetMin, nowMs)
   const summary = place.memo?.trim() || detail?.summary || ""
   const lat = place.lat ?? detail?.lat
   const lng = place.lng ?? detail?.lng
@@ -370,28 +375,18 @@ function PlaceDetailContents({
 
         {/* 본문 */}
         <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-6">
-          {category ? <p className="mt-1 text-sm text-slate-500">{category}</p> : null}
+
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-[26px] leading-9 font-semibold text-slate-900">{name}</h2>
+              <h2 className="text-[28px] leading-[38px] font-bold text-slate-900">{name}</h2>
               {michelin ? <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-800 px-2.5 py-1 text-xs font-bold text-white" aria-label={`미쉐린 ${michelin.distinction || "가이드 등재"}${michelin.award_year ? ` ${michelin.award_year}` : ""}`}><span className="text-[10px] tracking-wide text-amber-200">MICHELIN</span>{michelin.distinction || "가이드 등재"}{michelin.award_year ? <span className="text-slate-400">{michelin.award_year}</span> : null}</span> : null}
-              {detail?.openNow != null ? (
-                <span
-                  className={cn(
-                    "rounded-full px-2.5 py-1 text-[11px] font-extrabold",
-                    detail.openNow ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-600"
-                  )}
-                >
-                  {detail.openNow ? "영업 중" : "영업 종료"}
-                </span>
-              ) : loading ? (
-                <span className="text-sm font-semibold text-slate-600">불러오는 중…</span>
-              ) : null}
+
             </div>
+            <p className="text-[15px] leading-[23px] text-slate-900">{[category, dist != null ? `내 위치에서 ${formatDistance(dist)}` : null].filter(Boolean).join(" · ")}</p>
             <WorldBestBadges name={name} address={address} googlePlaceId={gpid || place?.googlePlaceId} />
             <div className="flex flex-wrap items-center gap-2">
               {rating ? (
-                <span className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500">
+                <span className="inline-flex items-center gap-1 text-base font-bold text-slate-900">
                   <Star className="size-3.5 fill-amber-400 text-amber-400" />
                   {rating.toFixed(1)}
                   {reviewCount ? ` · 리뷰 ${reviewCount.toLocaleString()}` : ""}
@@ -400,8 +395,10 @@ function PlaceDetailContents({
             </div>
           </div>
 
-          {address ? <p className="text-sm leading-[22px] text-slate-500">{address}</p> : null}
-          {summary ? <p className="text-[15px] leading-[23px] text-[#242424]">{summary}</p> : null}
+          <PlaceOpeningStatus status={hoursStatus} />
+          <div className="space-y-2">{address ? <p className="text-[15px] leading-[23px] text-slate-900">{address}</p> : null}
+          {detail?.phone ? <a className="flex min-h-11 items-center text-[15px] font-bold text-slate-900" href={`tel:${detail.phone.replace(/[^+0-9]/g, "")}`}>전화 {detail.phone}</a> : null}</div>
+          {summary ? <p className="text-[13px] leading-[21px] text-slate-500">{summary}</p> : null}
           <div className="flex items-start justify-around gap-2 py-3">
             <button type="button" onClick={() => void savePlace()} disabled={saveBusy || savedHere} aria-pressed={savedHere} className="flex min-w-11 flex-1 flex-col items-center gap-2 text-xs"><span className="grid size-11 place-items-center rounded-full border border-slate-300"><img src="/design/saved-map-pin-figma.svg" alt="" className="h-[30px] w-auto" /></span>{saveBusy ? "저장 중" : savedHere ? "찜 완료" : "찜"}</button>
             <div className="flex flex-1 flex-col items-center gap-2"><DirectionsMenu destination={lat != null && lng != null ? { name, lat, lng } : null} fallbackQuery={address || name} variant="icon" className="size-11 rounded-full border border-slate-300 bg-white text-slate-900" /><span className="text-xs">길찾기</span></div>
@@ -411,7 +408,7 @@ function PlaceDetailContents({
           </div>
           <Dialog open={photoOpen} onOpenChange={setPhotoOpen}><DialogContent overlayClassName="z-[99]" className="z-[100] max-w-[calc(100%-2rem)] border-0 bg-black p-0 text-white sm:max-w-4xl"><DialogTitle className="sr-only">{name} 사진</DialogTitle>{photos[photoIndex] ? <ZoomablePhoto key={photos[photoIndex]}><img src={photos[photoIndex]} alt={`${name} 사진 ${photoIndex + 1}`} className="absolute inset-0 h-full w-full object-contain" /><img key={photos[photoIndex]} src={resizePlacePhotoUrl(photos[photoIndex], PHOTO_W.full)} alt="" decoding="async" className="absolute inset-0 h-full w-full object-contain" onError={e => { e.currentTarget.style.visibility = "hidden" }} /></ZoomablePhoto> : null}<div className="flex items-center justify-between px-5 pb-4 text-white"><button type="button" disabled={photoIndex === 0} onClick={() => setPhotoIndex(i => i - 1)} className="min-h-11 disabled:opacity-30">이전</button><span>{photoIndex + 1} / {photos.length}</span><button type="button" disabled={photoIndex >= photos.length - 1} onClick={() => setPhotoIndex(i => i + 1)} className="min-h-11 disabled:opacity-30">다음</button></div></DialogContent></Dialog>
           <div role="tablist" aria-label="장소 상세 보기" className="flex shrink-0 border-b border-neutral-200">
-            {([{ key: "photos", label: `사진 ${photos.length}` }, { key: "reviews", label: "리뷰" }, { key: "info", label: "정보" }] as const).map(t => <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)} className={cn("min-h-14 flex-1 border-b-[3px] text-[15px] font-semibold transition-colors", tab === t.key ? "border-[#fbbf24] text-slate-900" : "border-transparent text-slate-500")}>{t.label}</button>)}
+            {([{ key: "photos", label: `사진 ${photos.length}` }, { key: "reviews", label: "리뷰" }, { key: "info", label: "정보" }] as const).map(t => <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)} className={cn("min-h-14 min-w-0 basis-0 flex-1 py-4 border-b-[3px] text-[15px] font-semibold transition-colors", tab === t.key ? "border-[#fbbf24] text-slate-900" : "border-transparent text-slate-500")}>{t.label}</button>)}
           </div>
           <div key={tab} role="tabpanel" className="flex flex-col gap-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-2 duration-200">
           {tab === "photos" ? <><div className="flex items-center justify-between"><h3 className="text-[17px] font-semibold">장소 사진</h3><span className="text-[13px] text-slate-500">{photos.length}장</span></div>{photos.length ? <div className="space-y-3"><button type="button" onClick={() => { setPhotoIndex(0); setPhotoOpen(true) }} aria-label="첫 번째 장소 사진 확대" className="block aspect-[392/182] w-full overflow-hidden rounded-[20px] bg-slate-50"><img fetchPriority="high" decoding="async" src={photos[0]} alt={name} className="aspect-[392/182] w-full rounded-[20px] object-cover" /></button><div className="grid grid-cols-3 gap-3">{photos.slice(1, 4).map((photo, i) => <button key={i} type="button" onClick={() => { setPhotoIndex(i + 1); setPhotoOpen(true) }} aria-label={`${i + 2}번째 장소 사진 확대`} className="relative overflow-hidden rounded-2xl"><img src={photo} alt="" className="aspect-[4/3] w-full object-cover" loading="lazy" />{i === 2 && photos.length > 4 ? <span className="absolute inset-0 grid place-items-center bg-black/40 text-lg font-semibold text-white">+{photos.length - 4}</span> : null}</button>)}</div></div> : <p className="py-8 text-center text-sm text-slate-500">아직 사진이 없어요</p>}</> : null}
@@ -471,7 +468,7 @@ function PlaceDetailContents({
                 className="flex w-full items-center gap-3 p-4 text-left"
               >
                 <Clock className="size-5 shrink-0 text-amber-500" />
-                <span className="flex-1 text-sm font-bold text-slate-800">{detail.hours[todayIdx] ?? "영업시간"}</span>
+                <span className="flex-1 text-sm font-bold text-slate-800">{detail.hours[todayIdx ?? -1] ?? "영업시간"}</span>
                 <span className="text-sm text-slate-600">{showHours ? "접기" : "전체"}</span>
               </button>
               {showHours ? (
