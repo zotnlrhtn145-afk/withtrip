@@ -51,8 +51,9 @@ import {
 import { DirectionsMenu } from "@/components/directions-menu"
 import { InstagramIcon } from "@/components/icon-instagram"
 import { PlaceDetailSheet, type PlaceDetailInput } from "@/components/place-detail-sheet"
+import { PlaceOpeningStatus } from "./place-opening-status"
 import { fetchPlaceHours, type PlaceHours } from "@/lib/place-hours"
-import { openLabel, openState } from "@/shared/opening-hours"
+import { openingPresentation, openState } from "@/shared/opening-hours"
 import { ScrollTopButton } from "@/components/scroll-top-button"
 import { RecommendPlaceDialog, type RecommendTarget } from "@/components/recommend-place-dialog"
 import { SwipeToDelete } from "@/components/swipe-to-delete"
@@ -947,13 +948,13 @@ export function SavedPlacesView() {
   const renderPlaceCard = (place: SavedPlace) => {
     const mark = place.googlePlaceId ? marks[place.googlePlaceId] : undefined
     const placeHours = place.googlePlaceId ? hours[place.googlePlaceId] : undefined
-    const tag = placeHours ? openLabel(openState(placeHours.periods, placeHours.utcOffsetMin, nowMs)) : null
+    const tag = placeHours ? openingPresentation(placeHours.periods, placeHours.utcOffsetMin, nowMs) : null
     return <li key={place.id} ref={node => { cardRefs.current[place.id] = node }} className="list-none">
       <SwipeToDelete onDelete={() => setDeleteConfirm({ id: place.id, name: place.placeName })}>
         <SavedPlaceCard awards={<PlaceAwardMarks awards={awardsFor(place.placeName,place.address,place.googlePlaceId,place.lat,place.lng,place.localName)}/>} name={place.placeName} source="mine" photo={place.imageUrl ? photoUrlWith(fastPhotos, place.imageUrl, PHOTO_W.card) : null} selected={selectedMapId === place.id} starred={place.starred} onStar={() => void toggleStar(place)} onMap={place.lat != null && place.lng != null ? () => showOnMap(place.id) : undefined} onDetail={() => openDetail(place)}
           badge={<>{mark?.visited ? <span>다녀옴</span> : null}{place.sourceUrl ? <a href={place.sourceUrl} target="_blank" rel="noreferrer" aria-label="가져온 게시물 보기"><InstagramIcon className="size-4" /></a> : null}</>}
           metadata={<><span>{place.subCategory || place.category}</span>{placeDistanceLabels.has(place.id) ? <span>· {placeDistanceLabels.get(place.id)}</span> : null}{place.rating ? <b>· ★ {place.rating}{place.reviewCount ? ` (${place.reviewCount.toLocaleString()})` : ""}</b> : null}</>}
-          details={<>{place.recommendedBy && place.recommender ? <div className={savedStyles.person}>{place.recommender.avatarUrl ? <img src={place.recommender.avatarUrl} alt="" /> : <i />}<span>{place.recommender.nickname || "게스트"}님이 추천한 장소</span></div> : null}<button className={savedStyles.addressLink} onClick={() => showOnMap(place.id)} aria-label={`${place.placeName} 지도에서 보기`}><span>{place.address || "지도에서 보기"}</span><SavedDesignIcon name="locate-fixed" size={15} /></button>{place.memo?.trim() ? <p className="line-clamp-3 text-[15px] leading-[23px] text-[#242424]">{place.memo.trim()}</p> : null}{tag && tag.tone !== "none" ? <p style={{ color: tag.tone === "good" ? "#087b5d" : tag.tone === "warn" ? "#a16a00" : "#65717c", fontWeight: 600 }}>{tag.text}</p> : null}{mark?.myRating != null ? <p>내 평점 {mark.myRating}</p> : null}</>}
+          details={<>{tag ? <div className="mt-[18px]"><PlaceOpeningStatus status={tag} /></div> : null}{place.recommendedBy && place.recommender ? <div className={savedStyles.person}>{place.recommender.avatarUrl ? <img src={place.recommender.avatarUrl} alt="" /> : <i />}<span>{place.recommender.nickname || "게스트"}님이 추천한 장소</span></div> : null}<button className={savedStyles.addressLink} onClick={() => showOnMap(place.id)} aria-label={`${place.placeName} 지도에서 보기`}><span>{place.address || "지도에서 보기"}</span><SavedDesignIcon name="locate-fixed" size={15} /></button>{place.phoneNumber || placeHours?.phone ? <a className="flex min-h-11 items-center text-[15px] font-bold text-slate-900" href={`tel:${(place.phoneNumber || placeHours?.phone || "").replace(/[^+0-9]/g, "")}`}>전화 {place.phoneNumber || placeHours?.phone}</a> : null}{place.memo?.trim() ? <p className="line-clamp-3 text-[13px] leading-[21px] text-slate-500">{place.memo.trim()}</p> : null}{mark?.myRating != null ? <p>내 평점 {mark.myRating}</p> : null}</>}
           actions={<><div><DirectionsMenu destination={{ name: place.placeName, lat: place.lat, lng: place.lng }} fallbackQuery={place.address || place.placeName} label="길찾기" /></div><SavedCardAction icon="plane" label="여행담기" onClick={() => setSendTarget(place)} /><SavedCardAction icon="send" label="공유" onClick={() => setRecTarget({ label: place.placeName, sourceId: place.id, place: { place_name: place.placeName, category: place.category, sub_category: place.subCategory, local_name: place.localName, address: place.address, phone_number: place.phoneNumber, image_url: place.imageUrl, rating: place.rating, review_count: place.reviewCount, lat: place.lat, lng: place.lng } })} /><SavedCardAction icon="info" label="상세" onClick={() => openDetail(place)} /></>}
         />
       </SwipeToDelete>

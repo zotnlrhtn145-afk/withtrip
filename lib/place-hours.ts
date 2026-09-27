@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase"
 import type { Period } from "@/shared/opening-hours"
 
 export type PlaceHours = {
+  phone?: string | null
   periods: Period[] | null
   utcOffsetMin: number | null
 }
@@ -26,15 +27,17 @@ export async function fetchPlaceHours(googlePlaceIds: string[]): Promise<Record<
     for (let i = 0; i < ids.length; i += 80) {
       const { data, error } = await supabase
         .from("places")
-        .select("google_place_id, opening_periods, utc_offset_min")
+        .select("google_place_id, opening_periods, utc_offset_min, phone")
         .in("google_place_id", ids.slice(i, i + 80))
       if (error) continue
       for (const r of (data ?? []) as {
+        phone: string | null
         google_place_id: string
         opening_periods: Period[] | null
         utc_offset_min: number | null
       }[]) {
         out[r.google_place_id] = {
+          phone: r.phone ?? null,
           periods: r.opening_periods ?? null,
           utcOffsetMin: r.utc_offset_min ?? null,
         }
