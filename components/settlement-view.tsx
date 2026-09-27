@@ -1,5 +1,7 @@
 "use client"
 
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+
 import { fundKrw, fundInput } from "@/shared/fund-currency"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -234,6 +236,13 @@ export function SettlementView({
 
   // 모바일 액션 FAB(speed-dial) 열림 상태
   const [fabOpen, setFabOpen] = useState(false)
+  const reducedMenuMotion = useReducedMotion()
+  useEffect(() => {
+    if (!fabOpen) return
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setFabOpen(false) }
+    window.addEventListener("keydown", close)
+    return () => window.removeEventListener("keydown", close)
+  }, [fabOpen])
 
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -1640,23 +1649,18 @@ export function SettlementView({
 
       {/* 모바일 액션 FAB (speed-dial) — 데스크톱은 사이드바 버튼 사용 */}
       <div className="md:hidden">
-        {fabOpen ? (
-          <button
+        <AnimatePresence>{fabOpen ? (
+          <motion.button
             type="button"
             aria-label="메뉴 닫기"
             onClick={() => setFabOpen(false)}
-            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px] duration-200 animate-in fade-in-0"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reducedMenuMotion ? 0 : .16 }}
+            className="fixed inset-0 z-40 bg-slate-900/20"
           />
-        ) : null}
+        ) : null}</AnimatePresence>
         <div className="fixed right-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-50 flex flex-col items-end gap-3">
-          {fabOpen ? (
-            <>
-              {/*
-                아이콘과 이름을 **한 알약 안에** 담는다.
-                예전엔 검은 알약(이름) + 동그라미(아이콘)가 따로 떠 있었고
-                색도 카카오 노랑·흰색·앰버가 섞여 산만했다.
-                지금은 흰 알약으로 통일하고, 주된 동작(지출 추가)만 브랜드색으로 둔다.
-              */}
+          <AnimatePresence>{fabOpen ? (
+            <motion.div initial={{ opacity: 0, y: reducedMenuMotion ? 0 : 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reducedMenuMotion ? 0 : 8 }} transition={{ duration: reducedMenuMotion ? 0 : .2, ease: [.22, 1, .36, 1] }} className="w-56 rounded-3xl border border-slate-200 bg-white p-2 shadow-[0_6px_16px_rgba(15,23,42,0.10)]">
               <button
                 type="button"
                 disabled={sharing || loading}
@@ -1664,13 +1668,12 @@ export function SettlementView({
                   setFabOpen(false)
                   void handleShareSettlement()
                 }}
-                style={{ animationDelay: "80ms" }}
-                className="flex items-center gap-2 rounded-full bg-white py-2.5 pr-4 pl-3 text-sm font-bold text-neutral-800 shadow-lg ring-1 ring-neutral-200/70 transition-transform duration-200 animate-in fade-in-0 slide-in-from-bottom-2 active:scale-95 disabled:opacity-50"
+                className="flex min-h-14 w-full items-center gap-3 rounded-2xl px-3.5 text-base font-medium text-slate-900 active:opacity-70 disabled:opacity-45 bg-white"
               >
                 {sharing ? (
                   <Loader2 className="size-[18px] animate-spin text-neutral-400" />
                 ) : (
-                  <Share2 className="size-[18px] text-neutral-400" />
+                  <Share2 className="size-[22px] text-slate-900" />
                 )}
                 공유
               </button>
@@ -1682,15 +1685,14 @@ export function SettlementView({
                   setFabOpen(false)
                   void handleToggleTripSettled()
                 }}
-                style={{ animationDelay: "40ms" }}
-                className="flex items-center gap-2 rounded-full bg-white py-2.5 pr-4 pl-3 text-sm font-bold text-neutral-800 shadow-lg ring-1 ring-neutral-200/70 transition-transform duration-200 animate-in fade-in-0 slide-in-from-bottom-2 active:scale-95 disabled:opacity-50"
+                className="flex min-h-14 w-full items-center gap-3 rounded-2xl px-3.5 text-base font-medium text-slate-900 active:opacity-70 disabled:opacity-45 bg-white"
               >
                 {settlingTrip ? (
                   <Loader2 className="size-[18px] animate-spin text-neutral-400" />
                 ) : tripSettled ? (
-                  <RotateCcw className="size-[18px] text-neutral-400" />
+                  <RotateCcw className="size-[22px] text-slate-900" />
                 ) : (
-                  <Check className="size-[18px] text-neutral-400" />
+                  <Check className="size-[22px] text-slate-900" />
                 )}
                 {tripSettled ? "정산 재개" : "정산 완료"}
               </button>
@@ -1702,22 +1704,22 @@ export function SettlementView({
                   setFabOpen(false)
                   setOpen(true)
                 }}
-                className="flex items-center gap-2 rounded-full bg-amber-400 py-2.5 pr-4 pl-3 text-sm font-bold text-neutral-900 shadow-lg shadow-amber-400/30 transition-transform duration-200 animate-in fade-in-0 slide-in-from-bottom-2 active:scale-95 disabled:opacity-50"
+                className="flex min-h-14 w-full items-center gap-3 rounded-2xl px-3.5 text-base font-medium text-slate-900 active:opacity-70 disabled:opacity-45 bg-[#FFF5CC]"
               >
-                <Plus className="size-[18px]" />
+                <Plus className="size-[22px]" />
                 지출 추가
               </button>
-            </>
-          ) : null}
+            </motion.div>
+          ) : null}</AnimatePresence>
           {/* 메인 FAB */}
           <button
             type="button"
             aria-label={fabOpen ? "정산 메뉴 닫기" : "정산 메뉴 열기"}
             aria-expanded={fabOpen}
             onClick={() => setFabOpen((prev) => !prev)}
-            className="flex size-14 items-center justify-center rounded-full bg-amber-400 text-neutral-900 shadow-xl shadow-amber-400/40 transition-transform active:scale-90"
+            className="flex size-14 items-center justify-center rounded-full bg-amber-400 text-neutral-900 shadow-[0_4px_10px_rgba(15,23,42,0.12)] active:opacity-80"
           >
-            <Plus className={cn("size-7 transition-transform duration-300 ease-out", fabOpen && "rotate-45")} />
+            <Plus className={cn("size-6 transition-transform duration-200 ease-out motion-reduce:transition-none", fabOpen && "rotate-45")} />
           </button>
         </div>
       </div>
