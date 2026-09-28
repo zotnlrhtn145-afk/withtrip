@@ -1,3 +1,4 @@
+import { extractExplicitCaptionPlaces } from "@/lib/explicit-caption-places";
 import { normalizeThreadsUrl } from "@/shared/social-post-url";
 import { NextResponse } from "next/server";
 
@@ -15,6 +16,7 @@ import {
   flashModelCandidates,
   markModelGone,
   isTransient,
+  isBillingProblem,
   rememberModel,
   sleep,
   TEXT_PURPOSE,
@@ -247,6 +249,7 @@ function splitOgPrefix(caption: string): { body: string; handle: string } {
 
 /** 진단용 — 추출이 왜 실패했는지 응답에 실어 보낸다(비밀값은 담지 않는다). */
 type ExtractDiag = {
+  billingBlocked?: boolean;
   keyPresent: boolean;
   attempts: string[];
   ms?: number;
@@ -259,6 +262,7 @@ async function extractPlaces(
   locationTag: string,
   diag: ExtractDiag,
 ): Promise<ExtractedPlace[]> {
+  if (diag.billingBlocked) return [];
   const key = getGeminiKey();
   diag.keyPresent = Boolean(key);
   if (!key) return [];
@@ -341,6 +345,10 @@ async function extractPlaces(
         );
         if (!res.ok) {
           diag.attempts.push(`${model}:HTTP_${res.status}`);
+          if (res.status === 402 || isBillingProblem(res.status, await res.text())) {
+            diag.billingBlocked = true;
+            return [];
+          }
           if (res.status === 400 && !noThinking) {
             noThinking = true;
             continue;
@@ -932,7 +940,7 @@ async function extractPlacesFromImages(
   caption = "",
 ): Promise<ExtractedPlace[]> {
   const key = getGeminiKey();
-  if (!key || imageUrls.length === 0) return [];
+  if (diag.billingBlocked || !key || imageUrls.length === 0) return [];
 
   const parts: Array<Record<string, unknown>> = [];
   for (const url of imageUrls.slice(0, 10)) {
@@ -1004,6 +1012,10 @@ async function extractPlacesFromImages(
       );
       if (!res.ok) {
         diag.attempts.push(`images:${model}:HTTP_${res.status}`);
+        if (res.status === 402 || isBillingProblem(res.status, await res.text())) {
+          diag.billingBlocked = true;
+          return [];
+        }
         continue;
       }
       const data = (await res.json()) as {
@@ -1053,7 +1065,7 @@ async function extractPlacesFromVideo(
   diag: ExtractDiag,
 ): Promise<ExtractedPlace[]> {
   const key = getGeminiKey();
-  if (!key) return [];
+  if (diag.billingBlocked || !key) return [];
 
   let bytes: ArrayBuffer;
   try {
@@ -1121,6 +1133,10 @@ async function extractPlacesFromVideo(
       );
       if (!res.ok) {
         diag.attempts.push(`video:${model}:HTTP_${res.status}`);
+        if (res.status === 402 || isBillingProblem(res.status, await res.text())) {
+          diag.billingBlocked = true;
+          return [];
+        }
         continue;
       }
       const data = (await res.json()) as {
@@ -1323,6 +1339,12 @@ export async function POST(request: Request) {
     if (extracted.length === 0) extracted = await extractPlaces(cleaned, locationTag, diag);
   }
 
+  // 본문의 명시된 상호+주소만 복구한다. 검색/좌표 검증은 기존 경로를 유지한다.
+  if (extracted.length === 0) {
+    extracted = extractExplicitCaptionPlaces(cleaned);
+    if (extracted.length) diag.attempts.push("explicit_caption_fallback");
+  }
+
   // 캡션에 이름이 없으면 영상 자막·카드 이미지를 읽는다
   const videoUrl = String(body.videoUrl ?? "").trim() || embed.videoUrl;
   const imageUrls = [
@@ -1376,6 +1398,13 @@ export async function POST(request: Request) {
      *    한때 지역 기반 추천을 대신 보여주기도 했는데 — 영상에 나온 가게가 아니라서
      *    오히려 잘못 담기게 만들었다. 지금은 **이유만 정직하게** 말한다.
      */
+    if (diag.billingBlocked) {
+      return NextResponse.json({
+        places: [], reason: "ai_billing_unavailable", retryable: false,
+        error: "장소 분석 서비스의 사용 한도 문제로 게시물을 분석하지 못했어요. 관리자 확인이 필요해요.",
+        diag,
+      });
+    }
     const hadMedia = videoUrl.startsWith("https://") || imageUrls.length > 0;
     return NextResponse.json({
       places: [],
@@ -1537,7 +1566,7 @@ export async function POST(request: Request) {
       placeName: g.place!.placeName,
       address: g.place!.address,
     }));
-  if (needClassify.length) {
+  if (needClassify.length && !diag.billingBlocked) {
     const fixed = await classifySubCategories(needClassify);
     for (const g of grounded) {
       const sub = g.place && fixed.get(g.place.googlePlaceId);
