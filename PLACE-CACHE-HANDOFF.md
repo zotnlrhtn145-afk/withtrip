@@ -1,3 +1,10 @@
+## 2026-09-28 전용 Gemini 운영 연결 및 실제 인스타 추출 복구 완료
+- 사용자 전용 키 생성·위드트립 Vercel 운영 등록·재배포·실제 검증 승인. WithTrip Production Gemini 키 생성, 프로젝트 withtrip-gemini(1055636634924), 전용 선불계정01C5AC-1E60FA-D1CB24 사용. 20만원 충전/자동충전OFF는 앞선 기록 유지. 새 프로젝트 월한도30000원 저장 확인(공급자 안내: 약10분 처리지연 가능).
+- 새 키 단독 공개 업장명 추출HTTP200/Breadventure 확인 후, Vercel 기존 GEMINI_API_KEY production+preview 공유범위를 분리: 기존키는preview 유지, 새키는production 전용 sensitive 변수. 다른서비스·Maps키 변경 없음. 임시 키 전달파일 삭제 완료. 키값을 기록하지 말 것.
+- 기존 운영 커밋cf20e02753abe9aeed2cb9d40c3eee2fb7952101 동일소스로 재배포 dpl_9BsLLvqL4Wgv6khnHjax9H12ksuT READY, www.withtrip.co.kr 등 운영alias 확인. 미배포fafcc96/0da12b5 및 앱20ff8a9은 이번에 포함하지 않음. OTA/EAS빌드 없음.
+- 실제 운영 /api/resolve-instagram POST: 사용자 릴스 Dd0XYtOvhGM URL 입력200/7.407초, 실제게시물캡션을 보내는 앱방식200/7.541초. 둘다Breadventure/24 Do Quang Ho Chi Minh 주소·좌표1건 반환. 새계정직접검사+운영키등록+실제운영응답으로복구검증. 양OS실기기 공유→찜저장UI까지는미검증.
+- 검증기록 /tmp/withtrip-reel-after-connect.json 및 -caption.json. 계정증거 /tmp/withtrip-gemini-month-cap.png. Vercel MCP scope403이지만 기존CLI로그인의공식API정상. 운영키복호화진단은실행안함.
+
 ## 2026-09-28 Gemini 장애 근본 원인 확인 / 알림 코드 배포 대기
 - 로그인된 Google AI Studio 읽기 전용 확인: WITHTRIP 포함 WITHMOA/naverblog/99homepage 네 프로젝트가 같은 Gemini 선불 결제 계정 사용. 잔액 -292원, 자동충전 사용중지,9/21 10만원 추가 표시. 9/1~28 WITHTRIP6018원/월한도30000원, 계정전체 약172K원(최대24h 지연). Google Maps 승인가능액과 별개. 기존10만원 전체를 위드트립 비용이라 단정하면 안 됨.
 - 운영 api_calls:9/28 11시대10건성공,13시대21/18시대24건모두실패(진단/재시도포함,사용자수아님). 운영402+선불잔액0이하+공식Gemini과금문서로 장애원인 확인. 충전/자동결제/결제계정분리 실행 없음.
