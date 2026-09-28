@@ -1,3 +1,4 @@
+import { isAiBillingFailure, reportAiBillingFailure } from "@/lib/ai-billing-alert"
 import { mapsCharge, reserveMapsSpend, mapsBudgetBlocked } from "@/lib/google-maps-budget"
 import { after } from "next/server"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
@@ -155,6 +156,21 @@ export function installFetchMeter(): void {
       // 못 붙은 호출은 과금되지 않는다 — 실패로만 남긴다
       record({ ...kind, caller: await callerOf(), in_tokens: null, out_tokens: null, ok: false, ms: Date.now() - started })
       throw err
+    }
+
+    if (kind.vendor === "gemini" && !res.ok) {
+      let billing = isAiBillingFailure(res.status)
+      if (!billing && [403,429].includes(res.status)) {
+        try { billing = isAiBillingFailure(res.status, await res.clone().text()) } catch { /* status still logged */ }
+      }
+      // Keep diagnostic codes only: provider payloads can contain secrets/prompts.
+      console.warn("[ai-health]", JSON.stringify({ provider: "gemini", status: res.status,
+        reason: billing ? "billing_unavailable" : "provider_error" }))
+      if (billing) {
+        const status = res.status
+        try { after(() => reportAiBillingFailure(status)) }
+        catch { void reportAiBillingFailure(status) }
+      }
     }
 
     let inTok: number | null = null
