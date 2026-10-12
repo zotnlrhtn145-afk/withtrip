@@ -3,6 +3,8 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 
 import { fundKrw, fundInput } from "@/shared/fund-currency"
+import { DEFAULT_FEE_RATE } from "@/shared/fx"
+import { settlementMoney, settlementSummary } from "@/shared/settlement-currency"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -70,6 +72,7 @@ import {
   deleteExpense,
   setTripCarryover,
   syncSettlementsForTrip,
+  settlementExpenseInput,
   fetchTripProxies,
   insertProxy,
   deleteProxy,
@@ -345,7 +348,12 @@ export function SettlementView({
         typed?.details,
         typed?.hint
       )
-      setError("정산 데이터를 불러오지 못했어요.")
+      const needsRate = typed?.message?.includes("환율 확인 필요")
+      setError(needsRate ? "환율 확인이 필요한 지출이 있어요. 앱에서 저장된 환율을 확인해 주세요." : "정산 데이터를 불러오지 못했어요.")
+      setExpenses([])
+      setSettlements([])
+      setProxies([])
+      setCarryover(0)
     } finally {
       setLoading(false)
     }
@@ -560,10 +568,17 @@ export function SettlementView({
     setParticipantIds(here.length > 0 ? here : members.map((m) => m.userId))
   }, [members, presence, expenseDate, editingExpenseId, presentOn])
 
-  const total = useMemo(
-    () => expenses.reduce((sum, item) => sum + item.amount, 0),
+  const currencySummary = useMemo(
+    () => settlementSummary(expenses.map((expense) => ({
+      amount: expense.amount,
+      currency: expense.currency ?? "KRW",
+      fxRate: expense.fxRate ?? ((expense.currency ?? "KRW") === "KRW" ? 1 : 0),
+      feeRate: expense.feeRate ?? DEFAULT_FEE_RATE,
+      calibrated: !!expense.calibrated,
+    }))),
     [expenses]
   )
+  const total = currencySummary.totalKrw ?? 0
   const memberCount = members.length
 
   const isCarryOwner = !!currentUserId && currentUserId === carryOwnerId
@@ -579,12 +594,7 @@ export function SettlementView({
       applyCarryoverCredit(
       calcVariableMemberBalances(
         memberIds,
-        expenses.map((expense) => ({
-          amount: expense.amount,
-          payerId: expense.payerId,
-          participantIds:
-            expense.participantIds.length > 0 ? expense.participantIds : memberIds,
-        }))
+        expenses.map((expense) => settlementExpenseInput(expense, memberIds))
       ),
       carryover,
       carryMembers
@@ -750,6 +760,10 @@ export function SettlementView({
    *    (updateExpense 가 receiptUrl 이 없으면 건드리지 않는다).
    */
   const startEditExpense = (expense: ExpenseRecord) => {
+    if ((expense.currency ?? "KRW") !== "KRW" || expense.participantShares?.some((part) => part.amount != null)) {
+      showToast("외화·지정 분담 지출은 원금과 환율이 보존되도록 앱에서 고쳐 주세요.")
+      return
+    }
     setEditingExpenseId(expense.id)
     setTitle(expense.title ?? "")
     setAmount(String(expense.amount ?? ""))
@@ -767,7 +781,7 @@ export function SettlementView({
 
   /** 지출 지우기 — 정산 금액이 바로 바뀌므로 무엇을 지우는지 보여 주고 묻는다 */
   const removeExpense = async (expense: ExpenseRecord) => {
-    const label = `${expense.title || "지출"} · ${formatWon(expense.amount)}`
+    const label = `${expense.title || "지출"} · ${formatWon(expense.amountKrw ?? expense.amount)}`
     if (!window.confirm(`"${label}" 을(를) 지울까요?\n정산 금액이 바로 바뀝니다.`)) return
     try {
       await deleteExpense(expense.id)
@@ -782,6 +796,10 @@ export function SettlementView({
   const handleAddExpense = async (event: React.FormEvent) => {
     event.preventDefault()
     if (scanningReceipt) return
+    if (loading || error) {
+      setFormError("정산 데이터를 확인한 뒤 다시 저장해 주세요.")
+      return
+    }
     if (!activeTripId) {
       setFormError("사이드바에서 여행을 선택해 주세요.")
       return
@@ -860,6 +878,10 @@ export function SettlementView({
   const handleBulkAddExpense = async (event: React.FormEvent) => {
     event.preventDefault()
     if (scanningReceipt) return
+    if (loading || error) {
+      setFormError("정산 데이터를 확인한 뒤 다시 저장해 주세요.")
+      return
+    }
     if (!activeTripId) {
       setFormError("사이드바에서 여행을 선택해 주세요.")
       return
@@ -992,6 +1014,10 @@ export function SettlementView({
 
   const handleToggleTripSettled = async () => {
     if (!activeTripId || settlingTrip) return
+    if (loading || error || currencySummary.totalKrw == null) {
+      showToast("정산 금액을 확인한 뒤 완료해 주세요.")
+      return
+    }
     const next = !tripSettled
     setSettlingTrip(true)
     try {
@@ -1029,6 +1055,10 @@ export function SettlementView({
 
   const handleShareSettlement = async () => {
     if (sharing) return
+    if (loading || error || currencySummary.totalKrw == null) {
+      showToast("정산 금액을 확인한 뒤 다시 공유해 주세요.")
+      return
+    }
     setSharing(true)
     try {
       const result = await shareSettlementSummary({
@@ -1135,12 +1165,17 @@ export function SettlementView({
                 <div className="min-w-0">
                   <div className="flex items-center justify-between gap-4"><p className="text-sm text-slate-500">총 지출</p><span className="rounded-full border border-slate-200 px-2.5 py-1 text-xs text-slate-500">{tripSettled ? "정산 완료" : "정산 진행 중"}</span></div>
                   <p className="mt-3 break-all text-[40px] leading-[52px] font-semibold tracking-[-1px] text-neutral-900 tabular-nums">
-                    {loading ? "—" : formatWon(total)}
+                    {loading || error ? "—" : currencySummary.primary}
                   </p>
+                  {!loading && !error && currencySummary.foreign.length > 0 ? (
+                    <div className="mt-2 space-y-1 text-xs leading-5 text-slate-600 tabular-nums">
+                      {currencySummary.foreign.map((line, index) => <p key={index}>{line}</p>)}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <p className="text-sm text-slate-600 tabular-nums">
-                    {expenses.length}건 · {memberCount}명
+                    {loading || error ? "—" : `${expenses.length}건 · ${memberCount}명`}
                   </p>
                   <button
                     type="button"
@@ -1154,7 +1189,7 @@ export function SettlementView({
               </div>
 
               {/* 공동 자금(이월) — 정산에서 먼저 빼고 나눈다. 호스트만 지정 가능. */}
-              {!loading ? (
+              {!loading && !error ? (
                 isCarryOwner ? (
                   <button
                     type="button"
@@ -1201,6 +1236,10 @@ export function SettlementView({
               <div className="flex items-center justify-center gap-2 py-20 text-sm text-neutral-500">
                 <Loader2 className="size-4 animate-spin" />
                 정산 데이터를 불러오는 중…
+              </div>
+            ) : error ? (
+              <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                {error}
               </div>
             ) : (
               <div className="flex flex-col gap-8">
@@ -1442,11 +1481,11 @@ export function SettlementView({
                           <li
                             key={expense.id}
                             className={cn(
-                              "flex items-start justify-between gap-4 py-4 transition-all duration-200",
+                              "flex flex-col items-start gap-3 py-4 transition-all duration-200 sm:flex-row sm:justify-between sm:gap-4",
                               index < expenses.length - 1 && "border-b border-neutral-100"
                             )}
                           >
-                            <div className="flex min-w-0 items-start gap-3">
+                            <div className="flex w-full min-w-0 items-start gap-3 sm:w-auto sm:flex-1">
                               <Avatar className="size-11 shrink-0">
                                 {expense.payerAvatarUrl ? (
                                   <AvatarImage src={expense.payerAvatarUrl} alt="" />
@@ -1491,10 +1530,21 @@ export function SettlementView({
                                 </p>
                               </div>
                             </div>
-                            <div className="flex shrink-0 items-center gap-1 pt-0.5">
-                              <span className="text-sm font-bold tabular-nums text-neutral-900">
-                                {formatWon(expense.amount)}
-                              </span>
+                            <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-1 pt-0.5 sm:w-auto sm:max-w-[60%] sm:shrink-0">
+                              {(() => {
+                                const money = settlementMoney({
+                                  amount: expense.amount,
+                                  currency: expense.currency ?? "KRW",
+                                  fxRate: expense.fxRate ?? ((expense.currency ?? "KRW") === "KRW" ? 1 : 0),
+                                }, expense.feeRate ?? DEFAULT_FEE_RATE, !!expense.calibrated)
+                                return (
+                                  <div className="w-full text-right tabular-nums">
+                                    <p className="text-sm font-bold text-neutral-900">{money.primary}</p>
+                                    {money.local ? <p className="mt-1 text-xs leading-5 text-slate-600">{money.local}</p> : null}
+                                    {money.rate ? <p className="text-xs leading-5 text-slate-600">{money.rate}</p> : null}
+                                  </div>
+                                )
+                              })()}
                               {/*
                                 ⚠️ 잘못 넣은 지출을 고칠 방법이 아예 없어서 틀린 금액이
                                    정산에 그대로 남았다. 줄마다 손댈 자리를 만든다.
@@ -1502,11 +1552,11 @@ export function SettlementView({
                               <button
                                 type="button"
                                 onClick={() => startEditExpense(expense)}
-                                aria-label="지출 고치기"
-                                title="고치기"
+                                aria-label={(expense.currency ?? "KRW") !== "KRW" || expense.participantShares?.some((part) => part.amount != null) ? "앱에서 지출 수정" : "지출 고치기"}
+                                title={(expense.currency ?? "KRW") !== "KRW" || expense.participantShares?.some((part) => part.amount != null) ? "앱에서 수정" : "고치기"}
                                 className="ml-1 rounded-md px-2 py-1 text-xs font-semibold text-neutral-500 transition-colors hover:bg-amber-50 hover:text-amber-900"
                               >
-                                고치기
+                                {(expense.currency ?? "KRW") !== "KRW" || expense.participantShares?.some((part) => part.amount != null) ? "앱에서 수정" : "고치기"}
                               </button>
                               <button
                                 type="button"
@@ -1602,7 +1652,7 @@ export function SettlementView({
               <Button
                 type="button"
                 variant="outline"
-                disabled={settlingTrip || loading}
+                disabled={settlingTrip || loading || Boolean(error) || currencySummary.totalKrw == null}
                 onClick={() => void handleToggleTripSettled()}
                 className={cn(
                   "h-11 w-full rounded-xl font-semibold shadow-none transition-all duration-200 active:scale-[0.98]",
@@ -1680,7 +1730,7 @@ export function SettlementView({
 
               <button
                 type="button"
-                disabled={settlingTrip || loading}
+                disabled={settlingTrip || loading || Boolean(error) || currencySummary.totalKrw == null}
                 onClick={() => {
                   setFabOpen(false)
                   void handleToggleTripSettled()

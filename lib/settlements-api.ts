@@ -1,4 +1,7 @@
 import { fundCurrency } from "@/shared/fund-currency"
+import { DEFAULT_FEE_RATE, type Money } from "@/shared/fx"
+import { settlementMoney, sharesKrw } from "@/shared/settlement-currency"
+import type { SharePart } from "@/shared/expense-share"
 import { resolveAvatarUrl } from "@/lib/avatar"
 import { applyProxyPayments } from "@/shared/settlement-proxy"
 import { createClient } from "@/utils/supabase/client"
@@ -26,7 +29,15 @@ export type ExpenseRecord = {
   id: string
   tripId: string
   title: string
+  /** 원금은 저장된 통화 그대로 유지한다. */
   amount: number
+  currency?: string
+  fxRate?: number
+  feeRate?: number
+  calibrated?: boolean
+  amountKrw?: number
+  /** 지정 분담액은 원금과 같은 통화이며, 계산 직전에 원화로 환산한다. */
+  participantShares?: SharePart[]
   category: ExpenseCategory
   payerId: string
   payerNickname: string
@@ -36,6 +47,32 @@ export type ExpenseRecord = {
   receiptUrl?: string
   /** Users sharing this expense (from expense_participants). */
   participantIds: string[]
+}
+
+
+/** 화면과 송금 계산이 같은 원화 금액·지정 분담액을 사용한다. */
+export function settlementExpenseInput(expense: ExpenseRecord, memberIds: string[]) {
+  const money: Money = {
+    amount: expense.amount,
+    currency: expense.currency ?? "KRW",
+    fxRate: expense.fxRate ?? ((expense.currency ?? "KRW") === "KRW" ? 1 : 0),
+  }
+  const feeRate = expense.feeRate ?? DEFAULT_FEE_RATE
+  const converted = settlementMoney(money, feeRate, !!expense.calibrated)
+  const amountKrw = converted.amountKrw
+  if (amountKrw == null || !Number.isFinite(amountKrw)) {
+    throw new Error("환율 확인 필요")
+  }
+  const participantIds = expense.participantIds.length > 0 ? expense.participantIds : memberIds
+  const localParts = expense.participantShares?.length
+    ? expense.participantShares
+    : participantIds.map((id) => ({ id, amount: null }))
+  return {
+    amount: amountKrw,
+    payerId: expense.payerId,
+    participantIds,
+    parts: sharesKrw(money, localParts, feeRate),
+  }
 }
 
 export type SettlementRecord = {
@@ -272,11 +309,32 @@ export async function fetchTripExpenses(tripId: string): Promise<ExpenseRecord[]
   const rows = (data as Array<Record<string, unknown>> | null) ?? []
   const expenseIds = rows.map((row) => String(row.id ?? "").trim()).filter(Boolean)
 
+  const foreignRows = rows.some((row) => String(row.currency ?? "KRW") !== "KRW")
+  let defaultFee = DEFAULT_FEE_RATE
+  const feeByUser = new Map<string, number>()
+  if (foreignRows) {
+    const [tripFees, userFees] = await Promise.all([
+      supabase.from("trips").select("fx_fee_rate").eq("id", id).maybeSingle(),
+      supabase.from("trip_fx_fees").select("user_id, fee_rate").eq("trip_id", id),
+    ])
+    if (tripFees.error) throw tripFees.error
+    if (userFees.error) throw userFees.error
+    const tripFee = tripFees.data?.fx_fee_rate
+    if (tripFee != null && Number.isFinite(Number(tripFee)) && Number(tripFee) >= 0) {
+      defaultFee = Number(tripFee)
+    }
+    for (const row of (userFees.data as Array<{ user_id: string; fee_rate: number }> | null) ?? []) {
+      const fee = Number(row.fee_rate)
+      if (Number.isFinite(fee) && fee >= 0) feeByUser.set(row.user_id, fee)
+    }
+  }
+
   const participantsByExpense = new Map<string, string[]>()
+  const sharesByExpense = new Map<string, SharePart[]>()
   if (expenseIds.length > 0) {
     const { data: participantRows, error: participantError } = await supabase
       .from("expense_participants")
-      .select("expense_id, user_id, guest_id")
+      .select("expense_id, user_id, guest_id, share_amount")
       .in("expense_id", expenseIds)
 
     if (participantError) {
@@ -287,6 +345,7 @@ export async function fetchTripExpenses(tripId: string): Promise<ExpenseRecord[]
         expense_id?: string
         user_id?: string | null
         guest_id?: string | null
+        share_amount?: number | null
       }> | null) ?? []) {
         const expenseId = String(row.expense_id ?? "").trim()
         const pid = String(row.user_id ?? row.guest_id ?? "").trim()
@@ -294,6 +353,10 @@ export async function fetchTripExpenses(tripId: string): Promise<ExpenseRecord[]
         const list = participantsByExpense.get(expenseId) ?? []
         list.push(pid)
         participantsByExpense.set(expenseId, list)
+        const parts = sharesByExpense.get(expenseId) ?? []
+        const fixed = row.share_amount == null ? null : Number(row.share_amount)
+        parts.push({ id: pid, amount: fixed != null && Number.isFinite(fixed) && fixed >= 0 ? fixed : null })
+        sharesByExpense.set(expenseId, parts)
       }
     }
   }
@@ -303,11 +366,25 @@ export async function fetchTripExpenses(tripId: string): Promise<ExpenseRecord[]
     const category = String(row.category ?? "기타") as ExpenseCategory
     const expenseId = String(row.id)
     const participantIds = participantsByExpense.get(expenseId) ?? []
+    const amount = Number(row.amount) || 0
+    const currency = String(row.currency ?? "KRW")
+    const fxRate = currency === "KRW" ? 1 : Number(row.fx_rate)
+    const payerId = String(row.payer_id ?? "")
+    const feeRate = feeByUser.get(payerId) ?? defaultFee
+    const calibrated = feeByUser.has(payerId)
+    const presentation = settlementMoney({ amount, currency, fxRate }, feeRate, calibrated)
+    if (presentation.amountKrw == null) throw new Error("환율 확인 필요")
     return {
       id: expenseId,
       tripId: String(row.trip_id),
       title: String(row.title ?? "").trim() || "지출",
-      amount: Number(row.amount) || 0,
+      amount,
+      currency,
+      fxRate,
+      feeRate,
+      calibrated,
+      amountKrw: presentation.amountKrw,
+      participantShares: sharesByExpense.get(expenseId) ?? [],
       category: EXPENSE_CATEGORIES.includes(category) ? category : "기타",
       payerId: String(row.payer_id ?? ""),
       payerNickname: payer.nickname,
@@ -540,12 +617,7 @@ export async function syncSettlementsForTrip(
 
   const rawBalances = calcVariableMemberBalances(
     memberIds,
-    expenses.map((expense) => ({
-      amount: expense.amount,
-      payerId: expense.payerId,
-      participantIds:
-        expense.participantIds.length > 0 ? expense.participantIds : [...memberIds],
-    }))
+    expenses.map((expense) => settlementExpenseInput(expense, memberIds))
   )
   // 공동 자금(이월)을 반영해 실제 송금 대상/금액을 줄인다.
   const balances = applyProxyPayments(

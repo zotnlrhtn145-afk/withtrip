@@ -1,3 +1,5 @@
+import { splitExpense, type SharePart } from "@/shared/expense-share"
+
 export type SettlementBalance = {
   userId: string
   balance: number
@@ -14,6 +16,8 @@ export type ExpenseSplitInput = {
   payerId: string
   /** Users who share this expense. Empty → treat as payer-only. */
   participantIds: string[]
+  /** 원화로 환산한 지정 분담액. 없으면 기존 균등 분할을 유지한다. */
+  parts?: SharePart[]
 }
 
 /**
@@ -85,13 +89,17 @@ export function calcVariableMemberBalances(
 
     ensure(payerId)
     for (const userId of participants) ensure(userId)
+    for (const part of expense.parts ?? []) ensure(part.id)
 
     if (payerId) {
       paid[payerId] = (paid[payerId] ?? 0) + amount
     }
 
-    const shares = splitExpenseShares(amount, participants)
-    for (const [userId, share] of Object.entries(shares)) {
+    const parts = expense.parts?.length
+      ? expense.parts
+      : participants.map((id) => ({ id, amount: null }))
+    const { byPerson } = splitExpense(amount, parts)
+    for (const [userId, share] of byPerson) {
       owed[userId] = (owed[userId] ?? 0) + share
     }
   }
