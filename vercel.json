@@ -8,5 +8,10 @@
       "path": "/api/cron/fill-places",
       "schedule": "0 18 * * *"
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "migration/mac-mini-2026-10-13": false
+    }
+  }
 }
