@@ -1,0 +1,11 @@
+.sheet {
+  top: auto; bottom: 0; left: 50%; translate: -50% 0; transform: none;
+  width: 100%; max-width: 480px; max-height: calc(100dvh - 48px);
+  display: flex; flex-direction: column; gap: 8px;
+  border-radius: 24px 24px 0 0; padding: 12px 24px max(24px, env(safe-area-inset-bottom));
+}
+.sheet[data-open] { animation: expense-sheet-in 280ms cubic-bezier(.22,.7,.25,1) both; }
+.sheet[data-closed] { animation: expense-sheet-out 240ms cubic-bezier(.4,0,1,1) both; }
+@keyframes expense-sheet-in { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes expense-sheet-out { from { transform: translateY(0); } to { transform: translateY(100%); } }
+@media (prefers-reduced-motion: reduce) { .sheet[data-open], .sheet[data-closed] { animation-duration: 1ms; } }
