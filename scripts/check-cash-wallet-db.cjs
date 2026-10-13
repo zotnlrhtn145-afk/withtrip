@@ -1,0 +1,26 @@
+const {PGlite}=require(process.env.PGLITE_MODULE || '@electric-sql/pglite');const fs=require('fs'),assert=require('assert/strict');
+(async()=>{const db=new PGlite();
+await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;create table trips(id uuid primary key,user_id uuid);create table trip_members(trip_id uuid,user_id uuid,status text);create table settlement_guests(id uuid,trip_id uuid);create table expenses(id uuid primary key default gen_random_uuid(),trip_id uuid,currency text,amount numeric,from_pool boolean default false,paid_cash boolean default false);create function can_access_trip_settlement(p uuid) returns boolean language sql stable security definer set search_path=public as $$select exists(select 1 from trips where id=p and user_id=auth.uid()) or exists(select 1 from trip_members where trip_id=p and user_id=auth.uid() and status='accepted')$$;grant select on trips,trip_members,settlement_guests to authenticated;grant select,insert,update on expenses to authenticated;`);
+await db.exec(`alter table expenses add column title text,add column category text,add column payer_id uuid,add column expense_date date,add column expense_time text,add column fx_rate numeric;create table expense_participants(id uuid default gen_random_uuid(),expense_id uuid,user_id uuid,guest_id uuid,share_amount numeric);grant select,insert,delete on expense_participants to authenticated;`);
+await db.exec(fs.readFileSync(require('path').join(__dirname,'../supabase/migrations/20261013064024_cash_wallet_entries.sql'),'utf8'));
+const a='00000000-0000-0000-0000-000000000001',b='00000000-0000-0000-0000-000000000002',x='00000000-0000-0000-0000-000000000003',t='10000000-0000-0000-0000-000000000001';
+await db.exec(`insert into auth.users values ('${a}'),('${b}'),('${x}');insert into trips values('${t}','${a}');insert into trip_members values('${t}','${b}','accepted');set role authenticated;select set_config('request.jwt.claim.sub','${a}',false);`);
+const entry=(who,kind,amount)=>`insert into trip_wallet_entries(trip_id,person_id,currency,kind,amount,fx_rate) values('${t}','${who}','VND','${kind}',${amount},0.052)`;
+await db.exec(entry(a,'deposit',100000));await db.exec(entry(b,'deposit',100000));
+await db.exec(`insert into expenses(trip_id,currency,amount,from_pool) values('${t}','VND',120000,true)`);
+assert.equal((await db.query('select paid_cash from expenses')).rows[0].paid_cash,true);
+async function denied(sql,label){await assert.rejects(()=>db.exec(sql));console.log('PASS '+label)}
+await denied(entry(x,'deposit',100),'nonparticipant');await denied(entry(a,'refund',90000),'refund exceeds remaining');
+await denied(`insert into expenses(trip_id,currency,amount,from_pool) values('${t}','VND',90000,true)`,'spending exceeds remaining');
+await db.exec(entry(a,'refund',40000));await db.exec(entry(b,'refund',40000));
+await denied(entry(a,'refund',1),'empty wallet refund');await denied(entry(a,'deposit',1.1),'VND fractional amount');
+await db.exec(`select set_config('request.jwt.claim.sub','${x}',false)`);assert.equal((await db.query('select * from trip_wallet_entries')).rows.length,0);await denied(entry(a,'deposit',50000),'outsider write');
+await db.exec(`select set_config('request.jwt.claim.sub','${a}',false)`);await denied('update trip_wallet_entries set amount=1','immutable ledger update');await denied('delete from trip_wallet_entries','immutable ledger delete');
+await db.exec(entry(a,'deposit',100000));
+const fields={title:'테스트 공동 지출',amount:50000,currency:'VND',category:'식사',payer_id:a,expense_date:'2026-10-13',fx_rate:0.052,from_pool:true,paid_cash:true};
+const call=async(parts,id=null)=>db.query('select save_cash_wallet_expense($1,$2,$3,$4) as id',[t,id,fields,parts]);
+const saved=await call([{id:a,amount:null},{id:b,amount:null}]);assert.equal((await db.query('select count(*)::int as n from expense_participants')).rows[0].n,2);
+await assert.rejects(()=>call([{id:x,amount:null}],saved.rows[0].id));assert.equal((await db.query('select count(*)::int as n from expense_participants')).rows[0].n,2);
+await assert.rejects(()=>call([{id:a,amount:60000}],saved.rows[0].id));console.log('PASS atomic expense save and invalid edit rollback');
+await db.exec('reset role;set role anon');await denied('select * from trip_wallet_entries','anonymous read');
+console.log('PASS PostgreSQL schema, ledger, cash spend, refunds, RLS');await db.close()})().catch(e=>{console.error(e.message);process.exitCode=1});
