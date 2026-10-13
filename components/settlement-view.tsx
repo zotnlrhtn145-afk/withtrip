@@ -1161,17 +1161,27 @@ export function SettlementView({
           <div className="flex flex-col gap-4">
             {/* Compact totals */}
             <div className="relative rounded-3xl border border-neutral-200 bg-white p-5 shadow-[0_6px_24px_rgba(0,0,0,0.05)] before:absolute before:left-0 before:top-5 before:h-8 before:w-1 before:rounded-r-full before:bg-[#fbbf24]">
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div className="min-w-0">
+              <div className="flex flex-col gap-3">
+                <div className="min-w-0 w-full">
                   <div className="flex items-center justify-between gap-4"><p className="text-sm text-slate-500">총 지출</p><span className="rounded-full border border-slate-200 px-2.5 py-1 text-xs text-slate-500">{tripSettled ? "정산 완료" : "정산 진행 중"}</span></div>
-                  <p className="mt-3 break-all text-[40px] leading-[52px] font-semibold tracking-[-1px] text-neutral-900 tabular-nums">
-                    {loading || error ? "—" : currencySummary.primary}
+                  <p className="mt-3 break-words text-[36px] leading-[46px] font-semibold tracking-[-1px] text-neutral-900 tabular-nums">
+                    {!loading && !error && currencySummary.primary.startsWith("약 ") ? <span className="text-sm font-medium tracking-normal text-slate-500">약 </span> : null}
+                    {loading || error ? "—" : currencySummary.primary.replace(/^약 /, "")}
                   </p>
-                  {!loading && !error && currencySummary.foreign.length > 0 ? (
-                    <div className="mt-2 space-y-1 text-xs leading-5 text-slate-600 tabular-nums">
-                      {currencySummary.foreign.map((line, index) => <p key={index}>{line}</p>)}
-                    </div>
-                  ) : null}
+                  {!loading && !error ? currencySummary.foreignDetails.map(detail => (
+                    <dl key={detail.currency} className="mt-3 space-y-1.5 rounded-xl bg-slate-50 p-3 tabular-nums">
+                      {[
+                        { label: "현지 금액", value: detail.amount, primary: true },
+                        { label: "적용 환율", value: detail.rate, primary: false },
+                        { label: "카드 수수료", value: detail.fee, primary: false },
+                      ].map(row => (
+                        <div key={row.label} className="flex items-start gap-3">
+                          <dt className="shrink-0 text-xs leading-5 text-slate-500">{row.label}</dt>
+                          <dd className={`min-w-0 flex-1 break-words text-right text-[13px] leading-5 ${row.primary ? "font-semibold text-slate-800" : "text-slate-500"}`}>{row.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <p className="text-sm text-slate-600 tabular-nums">

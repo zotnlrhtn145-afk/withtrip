@@ -28,6 +28,7 @@ export function settlementMoney(m: Money, feeRate: number, calibrated: boolean):
 /** 통화끼리 더하지 않는다. 원화는 건별 반올림 후 더하고 원금은 통화별로 기록한다. */
 export function settlementSummary(entries: SettlementMoney[]): {
   totalKrw: number | null; primary: string; estimated: boolean; foreign: string[]
+  foreignDetails: { currency: string; amount: string; rate: string; fee: string }[]
 } {
   let total = 0
   let missing = false
@@ -54,6 +55,13 @@ export function settlementSummary(entries: SettlementMoney[]): {
     totalKrw: missing ? null : total,
     primary: missing ? "환율 확인 필요" : `${estimated ? "약 " : ""}${total.toLocaleString()}원`,
     estimated,
+    // 카드에서는 값을 별도 행으로 정렬하고, 공유 문구는 기존 foreign을 유지한다.
+    foreignDetails: [...groups].map(([currency, g]) => ({
+      currency,
+      amount: localLabel({ amount: g.amount, currency, fxRate: 1 }).replace(/^[^\d+-]+/, ""),
+      rate: g.missing ? "확인 필요" : `1 ${currency} = ${range(g.rates, rateNumber)}원`,
+      fee: range(g.fees, feeLabel),
+    })),
     foreign: [...groups].map(([currency, g]) => {
       const rate = g.missing ? "적용 환율 확인 필요" : `적용 기준환율 1 ${currency} = ${range(g.rates, rateNumber)}원`
       return `현지 금액 ${localLabel({ amount: g.amount, currency, fxRate: 1 })} · ${rate} · 수수료 ${range(g.fees, feeLabel)}`
