@@ -12,6 +12,7 @@ export type ComputedTransfer = {
 }
 
 export type ExpenseSplitInput = {
+  fromPool?: boolean
   amount: number
   payerId: string
   /** Users who share this expense. Empty → treat as payer-only. */
@@ -77,6 +78,7 @@ export function calcVariableMemberBalances(
   }
 
   for (const expense of expenses) {
+    if (expense.fromPool) continue
     const amount = Math.round(Number(expense.amount) || 0)
     if (amount <= 0) continue
     const payerId = String(expense.payerId ?? "").trim()

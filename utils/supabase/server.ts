@@ -19,6 +19,7 @@ export async function createClient() {
   }
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { "x-withtrip-wallet-version": "2" } },
     cookies: {
       getAll() {
         return cookieStore.getAll()

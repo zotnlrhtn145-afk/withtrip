@@ -25,7 +25,7 @@ export function createClient(): SupabaseClient {
   }
 
   if (!client) {
-    client = createBrowserClient(supabaseUrl, supabaseAnonKey)
+    client = createBrowserClient(supabaseUrl, supabaseAnonKey, { global: { headers: { "x-withtrip-wallet-version": "2" } } })
   }
 
   return client

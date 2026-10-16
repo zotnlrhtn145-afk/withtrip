@@ -1,4 +1,5 @@
 "use client"
+import { CashWalletView } from "./cash-wallet-view"
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 
@@ -192,6 +193,7 @@ export function SettlementView({
   const { refreshTrips, setTripSettledStatus } = useTrips()
 
   const [members, setMembers] = useState<SettlementMember[]>([])
+  const [walletPending,setWalletPending] = useState(true)
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([])
   const [settlements, setSettlements] = useState<SettlementRecord[]>([])
   /** 대납 — 남의 몫을 대신 내준 기록 */
@@ -1016,6 +1018,7 @@ export function SettlementView({
   }
 
   const handleToggleTripSettled = async () => {
+    if (!tripSettled && walletPending) return showToast("공동 지갑의 남은 현금과 환급·추가 입금을 먼저 확인해 주세요.")
     if (!activeTripId || settlingTrip) return
     if (loading || error || currencySummary.totalKrw == null) {
       showToast("정산 금액을 확인한 뒤 완료해 주세요.")
@@ -1218,7 +1221,7 @@ export function SettlementView({
                       <Wallet className={cn("size-3.5 shrink-0", carryover > 0 ? "text-emerald-600" : "text-neutral-400")} />
                       <span className={cn("truncate text-xs font-semibold", carryover > 0 ? "text-emerald-700" : "text-neutral-500")}>
                         {carryover > 0
-                          ? `공동 자금 −${carryover.toLocaleString()}원 · 1인당 ${formatWon(perPerson)}`
+                          ? `기존 이월금 −${carryover.toLocaleString()}원 · 1인당 ${formatWon(perPerson)}`
                           : "공동 자금(이월) 추가"}
                       </span>
                     </span>
@@ -1230,7 +1233,7 @@ export function SettlementView({
                   <div className="mt-2.5 flex items-center gap-1.5 border-t border-slate-200 bg-white px-0 py-3">
                     <Wallet className="size-3.5 shrink-0 text-emerald-600" />
                     <span className="truncate text-xs font-semibold text-emerald-700">
-                      공동 자금 −{carryover.toLocaleString()}원 (호스트 지정)
+                      기존 이월금 −{carryover.toLocaleString()}원 (호스트 지정)
                     </span>
                   </div>
                 ) : null
@@ -1256,11 +1259,12 @@ export function SettlementView({
               </div>
             ) : (
               <div className="flex flex-col gap-8">
+                <CashWalletView tripId={activeTripId} expenses={expenses} members={members} onPendingChange={setWalletPending} />
                 {showTransfers ? (
                   <div className="flex flex-col gap-4">
                     <div className="flex flex-wrap items-end justify-between gap-3">
                       <div>
-                        <h3 className="text-[15px] font-semibold text-neutral-900">송금 현황</h3>
+                        <h3 className="text-[15px] font-semibold text-neutral-900">{expenses.some(e=>e.fromPool)?"개인 결제 송금":"송금 현황"}</h3>
                         <p className="mt-0.5 text-sm text-slate-600">
                           누가 누구에게 보내야 하는지 자동으로 계산돼요
                         </p>
@@ -1416,7 +1420,7 @@ export function SettlementView({
                   <div className="h-px bg-neutral-100" />
                 ) : null}
 
-                {showTransfers ? <section className="space-y-3 py-3"><h3 className="text-[15px] font-semibold">멤버별 정산</h3>            {/* 지출마다 참여자가 달라질 수 있어 "1인당" 균등분할 대신, 실제 부담액을 인원별로 보여준다. */}
+                {showTransfers ? <section className="space-y-3 py-3"><h3 className="text-[15px] font-semibold">{expenses.some(e=>e.fromPool)?"개인 결제 정산":"멤버별 정산"}</h3>            {/* 지출마다 참여자가 달라질 수 있어 "1인당" 균등분할 대신, 실제 부담액을 인원별로 보여준다. */}
               {!loading && memberBalances.length > 0 ? (
                 <ul className="flex flex-col gap-4">
                   {memberBalances.map(({ userId, balance, member }) => {

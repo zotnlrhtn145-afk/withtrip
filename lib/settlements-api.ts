@@ -26,6 +26,8 @@ export type SettlementMember = {
 }
 
 export type ExpenseRecord = {
+  fromPool?: boolean
+  paidCash?: boolean
   id: string
   tripId: string
   title: string
@@ -68,6 +70,7 @@ export function settlementExpenseInput(expense: ExpenseRecord, memberIds: string
     ? expense.participantShares
     : participantIds.map((id) => ({ id, amount: null }))
   return {
+    fromPool: expense.fromPool,
     amount: amountKrw,
     payerId: expense.payerId,
     participantIds,
@@ -370,11 +373,13 @@ export async function fetchTripExpenses(tripId: string): Promise<ExpenseRecord[]
     const currency = String(row.currency ?? "KRW")
     const fxRate = currency === "KRW" ? 1 : Number(row.fx_rate)
     const payerId = String(row.payer_id ?? "")
-    const feeRate = feeByUser.get(payerId) ?? defaultFee
+    const feeRate = row.from_pool || row.paid_cash ? 0 : feeByUser.get(payerId) ?? defaultFee
     const calibrated = feeByUser.has(payerId)
     const presentation = settlementMoney({ amount, currency, fxRate }, feeRate, calibrated)
     if (presentation.amountKrw == null) throw new Error("환율 확인 필요")
     return {
+      fromPool: !!row.from_pool,
+      paidCash: !!row.paid_cash,
       id: expenseId,
       tripId: String(row.trip_id),
       title: String(row.title ?? "").trim() || "지출",
@@ -387,7 +392,7 @@ export async function fetchTripExpenses(tripId: string): Promise<ExpenseRecord[]
       participantShares: sharesByExpense.get(expenseId) ?? [],
       category: EXPENSE_CATEGORIES.includes(category) ? category : "기타",
       payerId: String(row.payer_id ?? ""),
-      payerNickname: payer.nickname,
+      payerNickname: row.from_pool ? "공동 지갑" : payer.nickname,
       payerAvatarUrl: payer.avatarUrl,
       expenseDate: String(row.expense_date ?? "").slice(0, 10),
       createdAt: String(row.created_at ?? ""),
